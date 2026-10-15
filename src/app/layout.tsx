@@ -1,14 +1,10 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Bagel_Fat_One } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const display = Bagel_Fat_One({
+  weight: "400",
+  variable: "--font-bagel",
   subsets: ["latin"],
 });
 
@@ -17,12 +13,14 @@ export const metadata: Metadata = {
   description: "말로 이야기하고, 필요할 때 가까운 병원으로",
 };
 
+export const viewport: Viewport = {
+  themeColor: "#AFC1FF",
+  viewportFit: "cover",
+};
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="ko"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="ko" className={`${display.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
