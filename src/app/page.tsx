@@ -2,11 +2,12 @@
 
 import { useRef, useState } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
+import { type Msg, type Session, saveSession } from "@/lib/log";
 import { Hills, Icon, Mongle } from "./art";
 import Hospitals from "./Hospitals";
+import Log from "./Log";
 import Sheet from "./Sheet";
 
-type Msg = { role: "user" | "assistant"; content: string };
 type Status = "idle" | "listening" | "thinking" | "speaking";
 
 const GREETING = "안녕, 나는 몽글이야. 네 마음을 같이 정리하는 AI 친구야. 진단이나 치료는 사람 전문가가 해. 오늘은 어떤 하루였어?";
@@ -21,12 +22,17 @@ const HINT: Record<Status, string> = {
 const TAIL = "M0 14C7 14 9 1 15 1C21 1 23 14 30 14Z";
 
 /** 하늘 배경 + 언덕. 폰 한 장 너비로 가운데에 둔다. */
-function Stage({ splash = false, children }: { splash?: boolean; children: React.ReactNode }) {
+/** hills=false: 기록 화면처럼 하늘만 있는 배경 */
+function Stage({ splash = false, hills = true, children }: { splash?: boolean; hills?: boolean; children: React.ReactNode }) {
   return (
     <main className="relative mx-auto h-dvh min-h-[640px] w-full max-w-[430px] overflow-clip bg-linear-to-b from-sky-top to-sky-bot">
       <div className="grain" />
-      <div className={`absolute -inset-x-12 h-[180px] rounded-[50%] bg-glow opacity-85 blur-[55px] ${splash ? "bottom-[124px]" : "bottom-[178px]"}`} />
-      <Hills variant={splash ? "splash" : "talk"} className={`absolute inset-x-0 h-[324px] w-full ${splash ? "-bottom-[90px]" : "bottom-0"}`} />
+      {hills && (
+        <>
+          <div className={`absolute -inset-x-12 h-[180px] rounded-[50%] bg-glow opacity-85 blur-[55px] ${splash ? "bottom-[124px]" : "bottom-[178px]"}`} />
+          <Hills variant={splash ? "splash" : "talk"} className={`absolute inset-x-0 h-[324px] w-full ${splash ? "-bottom-[90px]" : "bottom-0"}`} />
+        </>
+      )}
       {children}
     </main>
   );
@@ -76,9 +82,11 @@ export default function Home() {
   const [typing, setTyping] = useState(false);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
+  const [showLog, setShowLog] = useState(false);
 
   const recorder = useRef<MediaRecorder | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
+  const session = useRef<Session | null>(null);
 
   const lastMongle = messages.findLast((m) => m.role === "assistant")?.content ?? GREETING;
   const lastMe = messages.findLast((m) => m.role === "user")?.content;
@@ -121,7 +129,9 @@ export default function Home() {
       if (data.crisis) setCrisis(true);
       if (!res.ok || !data.reply) throw new Error(data.error);
       if (data.suggestHospital) setSuggest(true);
-      setMessages([...next, { role: "assistant", content: data.reply }]);
+      const done: Msg[] = [...next, { role: "assistant", content: data.reply }];
+      setMessages(done);
+      if (session.current) saveSession({ ...session.current, messages: done });
       setStatus("idle");
       speak(data.reply);
     } catch (e) {
@@ -165,6 +175,7 @@ export default function Home() {
   }
 
   function begin() {
+    session.current = { id: crypto.randomUUID(), startedAt: Date.now(), messages: [] };
     setIntro(false);
     setStarted(true);
     speak(GREETING, sound);
@@ -178,6 +189,8 @@ export default function Home() {
       rec.stop();
     }
     setStarted(false);
+    setShowLog(false);
+    session.current = null;
     setMessages([]);
     setCrisis(false);
     setSuggest(false);
@@ -206,7 +219,7 @@ export default function Home() {
           <Sheet title="시작하기 전에" onClose={() => setIntro(false)}>
             <ul className="mt-4 flex flex-col gap-2.5">
               <Note icon="info" title="몽글이는 AI예요" body="진단과 치료는 사람 전문가가 해요." />
-              <Note icon="lock" title="대화는 저장하지 않아요" body="대화를 마치면 바로 지워져요." />
+              <Note icon="lock" title="듣는 사람은 없어요" body="기록은 이 기기의 브라우저에만 남아요." />
               <Note icon="phone" title="위급할 때는 109" body="24시간 사람과 이야기할 수 있어요." />
             </ul>
             <label className="mt-4 flex gap-3 rounded-[18px] p-4 ring-[1.5px] ring-ink/10 ring-inset">
@@ -225,6 +238,14 @@ export default function Home() {
     );
   }
 
+  if (showLog) {
+    return (
+      <Stage hills={false}>
+        <Log onBack={() => setShowLog(false)} />
+      </Stage>
+    );
+  }
+
   const busy = status === "thinking";
   const listening = status === "listening";
 
@@ -238,7 +259,9 @@ export default function Home() {
           <span className="font-display text-xl">몽글이</span>
           <span className="rounded-[7px] bg-ink px-[7px] py-0.5 text-[11px] font-bold text-white" title="몽글이는 AI예요">AI</span>
         </p>
-        <span className="size-11" />
+        <button onClick={() => setShowLog(true)} disabled={status === "listening"} aria-label="내 기록" className="grid size-11 place-items-center rounded-[14px] bg-white/70 disabled:opacity-40">
+          <Icon name="log" size={22} />
+        </button>
       </header>
 
       {crisis && (
