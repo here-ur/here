@@ -1,26 +1,65 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* 몽글이 프로토타입의 색: 밝은 하늘과 보라. 앱 전체를 이 한 가지 톤으로 고정한다. */
+@theme {
+  --color-ink: #18181d;
+  --color-ink-2: #4a4a57;
+  --color-ink-3: #5a5a66;
+  --color-cream: #fffdf6;
+  --color-paper: #fbf8f1;
+  --color-violet: #6f4ff0;
+  --color-violet-tint: #f1edff;
+  --color-sky-top: #afc1ff;
+  --color-sky-bot: #ddd2ff;
+  --color-glow: #fff1d2;
+  --color-danger: #c2362b;
+  --color-danger-tint: #fff1ee;
+  --font-sans: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  --font-display: var(--font-bagel), var(--font-sans);
+  --shadow-violet: 0 14px 28px -14px rgb(74 47 181 / 0.65);
+  --shadow-bubble: 0 8px 24px rgb(74 47 181 / 0.15);
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --animate-pop: pop 0.22s cubic-bezier(0.3, 1.4, 0.6, 1);
+  --animate-rise: rise 0.26s cubic-bezier(0.2, 0.9, 0.3, 1);
+  --animate-fade: fade 0.18s ease-out;
+  --animate-ring: ring 2.4s ease-in-out infinite;
+  --animate-wave: wave 0.9s ease-in-out infinite;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  @keyframes pop {
+    from { transform: scale(0.94); opacity: 0; }
+  }
+  @keyframes rise {
+    from { transform: translateY(40px); opacity: 0; }
+  }
+  @keyframes fade {
+    from { opacity: 0; }
+  }
+  @keyframes ring {
+    50% { transform: scale(1.08); }
+  }
+  @keyframes wave {
+    50% { height: 12px; }
   }
 }
 
+html {
+  color-scheme: light;
+  background: var(--color-paper);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* 프로토타입 배경의 오돌토돌한 질감 */
+.grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.43 0 0 0 0 0.37 0 0 0 0 0.84 0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)'/%3E%3C/svg%3E");
 }
