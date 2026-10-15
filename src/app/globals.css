@@ -1,26 +1,29 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* 몽글이 프로토타입의 색: 밝은 하늘과 보라. 앱 전체를 이 한 가지 톤으로 고정한다. */
+@theme {
+  --color-ink: #18181d;
+  --color-ink-2: #4a4a57;
+  --color-ink-3: #5a5a66;
+  --color-cream: #fffdf6;
+  --color-violet: #6f4ff0;
+  --color-violet-tint: #f1edff;
+  --color-sky-top: #afc1ff;
+  --color-sky-bot: #ddd2ff;
+  --color-peach: #ffd3c0;
+  --color-peach-2: #ffebdd;
+  --color-danger: #c2362b;
+  --color-danger-tint: #fff1ee;
+  --font-sans: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  --font-display: var(--font-bagel), var(--font-sans);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: linear-gradient(var(--color-sky-top), var(--color-sky-bot));
+  color: var(--color-ink);
+  font-family: var(--font-sans);
 }
