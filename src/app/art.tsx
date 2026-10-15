@@ -90,6 +90,8 @@ export function Hills({ variant, className = "" }: { variant: keyof typeof LAYOU
 
 const PATHS = {
   down: <path d="M6 9.5l6 6 6-6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />,
+  back: <path d="M14.5 6l-6 6 6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />,
+  log: <path d="M5 7h14M5 12h14M5 17h9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />,
   mic: (
     <>
       <rect x="8.6" y="2.8" width="6.8" height="11.6" rx="3.4" stroke="currentColor" strokeWidth="2.2" />
