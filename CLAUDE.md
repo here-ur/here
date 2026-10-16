@@ -5,7 +5,7 @@
 말로 이야기하면 들어 주고, 필요할 때 가까운 정신건강의학과로 이어 주는 앱. 지금은 MVP 단계.
 
 - 프로젝트 홈: https://app.notion.com/p/3a3d23ad25db82448d1601010d0ed47b
-- PRD: https://app.notion.com/p/3fad23ad25db81e3baf6da6653cf98bb
+- PRD: [docs/PRD.md](docs/PRD.md) — 확정된 결정의 기준. 논의는 [Notion PRD](https://app.notion.com/p/3fad23ad25db81e3baf6da6653cf98bb)에서 하고, 정해지면 이 파일에 PR로 반영한다.
 - IA (화면 흐름): https://app.notion.com/p/3fad23ad25db81488f05e5503e5af0e3
 
 ## MVP 범위 — 기능은 두 개뿐
