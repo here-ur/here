@@ -30,7 +30,10 @@ export async function connectRealtime(h: Handlers): Promise<Realtime> {
 
   let mic: MediaStream | null = null;
   try {
-    mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // 스피커로 나온 몽글이 목소리를 다시 내 말로 듣지 않게 에코 제거를 켠다.
+    mic = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
     pc.addTrack(mic.getTracks()[0], mic);
   } catch {
     pc.addTransceiver("audio", { direction: "recvonly" }); // 마이크 없이 글로만 대화
