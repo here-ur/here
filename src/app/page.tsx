@@ -246,12 +246,12 @@ export default function Home() {
 
       <Mongle className="absolute top-[55px] left-1/2 h-[min(440px,52dvh)] -translate-x-1/2" />
 
-      <section aria-live="polite" className="absolute inset-x-6 bottom-[218px] z-[2] flex flex-col justify-end gap-2.5">
-        <div className="relative max-w-[322px] min-w-[204px] animate-pop self-start rounded-3xl bg-white px-5 pt-3.5 pb-[18px] shadow-bubble">
-          <svg width="30" height="14" viewBox="0 0 30 14" className="absolute -top-[13px] left-[150px] text-white" aria-hidden="true">
+      <section aria-live="polite" className="absolute inset-x-5 bottom-[150px] z-[2] flex flex-col justify-end gap-2">
+        <div className="relative max-w-[300px] min-w-[180px] animate-pop self-start rounded-[22px] bg-white px-4 pt-3 pb-3.5 shadow-bubble">
+          <svg width="30" height="14" viewBox="0 0 30 14" className="absolute -top-[13px] left-[120px] text-white" aria-hidden="true">
             <path d={TAIL} fill="currentColor" />
           </svg>
-          <p className="mb-1.5 flex items-center gap-1.5 text-[13px] font-bold text-violet">
+          <p className="mb-1 flex items-center gap-1.5 text-[12px] font-bold text-violet">
             <span className="inline-flex h-3.5 items-center gap-0.5" aria-hidden="true">
               {[0, -0.2, -0.45, -0.1].map((d) => (
                 <i
@@ -263,12 +263,12 @@ export default function Home() {
             </span>
             몽글이
           </p>
-          <p className={`max-h-[150px] overflow-y-auto font-semibold whitespace-pre-wrap ${lastMongle.length > 60 ? "text-[17px] leading-[26px]" : "text-xl leading-[30px]"}`}>
+          <p className="max-h-[120px] overflow-y-auto text-[16px] leading-[24px] font-medium whitespace-pre-wrap">
             {busy ? "음…" : lastMongle}
           </p>
           {suggest && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button onClick={() => setShowHospitals(true)} className="h-9 rounded-xl bg-violet-tint px-3.5 text-[13.5px] font-bold text-violet">
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              <button onClick={() => setShowHospitals(true)} className="h-8 rounded-xl bg-violet-tint px-3 text-[13px] font-bold text-violet">
                 가까운 정신건강의학과 보기
               </button>
             </div>
@@ -282,9 +282,9 @@ export default function Home() {
               sendText(draft);
               setDraft("");
             }}
-            className="relative w-[304px] max-w-full animate-pop self-end rounded-3xl bg-violet px-5 pt-3.5 pr-[60px] pb-[18px] text-white shadow-bubble"
+            className="relative w-[280px] max-w-full animate-pop self-end rounded-[22px] bg-violet px-4 pt-3 pr-[52px] pb-3.5 text-white shadow-bubble"
           >
-            <p className="mb-1.5 flex items-center gap-1.5 text-[13px] font-semibold text-[#f3efff]">
+            <p className="mb-1 flex items-center gap-1.5 text-[12px] font-semibold text-[#f3efff]">
               <i className="size-2 rounded-full bg-[#ffd35c]" aria-hidden="true" />
               듣고 있어
             </p>
@@ -303,36 +303,36 @@ export default function Home() {
               maxLength={800}
               placeholder="여기에 적어 줘"
               enterKeyHint="send"
-              className="block w-full resize-none bg-transparent text-xl leading-[30px] font-semibold caret-[#ffd35c] outline-0 placeholder:text-white/70"
+              className="block w-full resize-none bg-transparent text-[16px] leading-[24px] font-medium caret-[#ffd35c] outline-0 placeholder:text-white/70"
             />
             <button
               aria-label="보내기"
               disabled={busy || !draft.trim()}
-              className="absolute right-3 bottom-3 grid size-10 place-items-center rounded-[14px] bg-white text-violet disabled:opacity-40"
+              className="absolute right-2.5 bottom-2.5 grid size-9 place-items-center rounded-[12px] bg-white text-violet disabled:opacity-40"
             >
-              <Icon name="send" size={20} />
+              <Icon name="send" size={18} />
             </button>
           </form>
         ) : (
           lastMe && (
-            <div className="relative w-[304px] max-w-full animate-pop self-end rounded-3xl bg-violet px-5 pt-3.5 pb-[18px] text-white shadow-bubble">
-              <svg width="30" height="14" viewBox="0 0 30 14" className="absolute -bottom-[13px] left-[118px] rotate-180 text-violet" aria-hidden="true">
+            <div className="relative max-w-[260px] animate-pop self-end rounded-[22px] bg-violet px-4 pt-3 pb-3.5 text-white shadow-bubble">
+              <svg width="30" height="14" viewBox="0 0 30 14" className="absolute right-8 -bottom-[13px] rotate-180 text-violet" aria-hidden="true">
                 <path d={TAIL} fill="currentColor" />
               </svg>
-              <p className="mb-1.5 flex items-center gap-1.5 text-[13px] font-semibold text-[#f3efff]">
+              <p className="mb-1 flex items-center gap-1.5 text-[12px] font-semibold text-[#f3efff]">
                 <i className="size-2 rounded-full bg-[#ffd35c]" aria-hidden="true" />나
               </p>
-              <p className="line-clamp-4 text-xl leading-[30px] font-semibold">{lastMe}</p>
+              <p className="line-clamp-3 text-[15px] leading-[22px] font-medium">{lastMe}</p>
             </div>
           )
         )}
       </section>
 
-      <p className={`absolute inset-x-0 bottom-[176px] text-center text-[13px] font-medium ${error ? "text-danger" : "text-ink-2"}`}>
-        {error || (micOn || status !== "idle" ? HINT[status] : "마이크가 꺼져 있어요. 가운데 버튼으로 켜요")}
+      <p className={`absolute inset-x-0 bottom-[118px] text-center text-[13px] font-medium ${error ? "text-danger" : "text-ink-2"}`}>
+        {error || (micOn || status !== "idle" ? HINT[status] : "마이크가 꺼져 있어요")}
       </p>
 
-      <div className="absolute inset-x-0 bottom-[46px] flex items-start justify-center gap-[17px]">
+      <div className="absolute inset-x-0 bottom-[30px] flex items-start justify-center gap-[17px]">
         <DockSide
           label={sound ? "소리 켬" : "소리 끔"}
           pressed={!sound}
@@ -344,27 +344,27 @@ export default function Home() {
           <Icon name={sound ? "soundOn" : "soundOff"} size={26} />
         </DockSide>
 
-        <div className="relative grid size-[84px] place-items-center">
-          {listening && (
-            <>
-              <i className="absolute -inset-6 animate-ring rounded-full bg-white/35" aria-hidden="true" />
-              <i className="absolute -inset-3 animate-ring rounded-full bg-white/55 [animation-delay:-0.5s]" aria-hidden="true" />
-            </>
-          )}
-          <button
-            onClick={() => {
-              rt.current?.setMic(!micOn);
-              setMicOn(!micOn);
-            }}
-            disabled={!hasMic}
-            aria-pressed={micOn}
-            aria-label={micOn ? "마이크 끄기" : "마이크 켜기"}
-            className={`relative grid size-[84px] place-items-center rounded-full transition active:scale-[.96] disabled:opacity-50 ${
-              micOn ? "bg-violet text-white" : "bg-white text-violet ring-2 ring-violet/25 ring-inset"
-            }`}
-          >
-            <Icon name={micOn ? "mic" : "micOff"} size={34} />
-          </button>
+        <div className="flex w-[100px] flex-col items-center gap-1.5 pt-3.5">
+          <span className="relative">
+            {listening && <i className="absolute -inset-1.5 animate-ring rounded-[22px] bg-violet/20" aria-hidden="true" />}
+            <button
+              onClick={() => {
+                rt.current?.setMic(!micOn);
+                setMicOn(!micOn);
+              }}
+              disabled={!hasMic}
+              aria-pressed={micOn}
+              aria-label={micOn ? "마이크 끄기" : "마이크 켜기"}
+              className={`relative grid size-14 place-items-center rounded-[18px] transition active:scale-[.96] disabled:opacity-50 ${
+                micOn ? "bg-violet text-white" : "bg-white/90 text-ink"
+              }`}
+            >
+              <Icon name={micOn ? "mic" : "micOff"} size={26} />
+            </button>
+          </span>
+          <span className="text-xs font-medium text-ink-2" aria-hidden="true">
+            {micOn ? "마이크 켬" : "마이크 끔"}
+          </span>
         </div>
 
         <DockSide label="글로 쓰기" pressed={typing} onClick={() => setTyping(!typing)}>
