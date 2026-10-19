@@ -24,6 +24,8 @@
   --animate-fade: fade 0.18s ease-out;
   --animate-ring: ring 2.4s ease-in-out infinite;
   --animate-wave: wave 0.9s ease-in-out infinite;
+  --animate-bob: bob 1.4s ease-in-out infinite;
+  --animate-halo: halo 2s ease-out infinite;
 
   @keyframes pop {
     from { transform: scale(0.94); opacity: 0; }
@@ -36,6 +38,13 @@
   }
   @keyframes ring {
     50% { transform: scale(1.08); }
+  }
+  @keyframes bob {
+    50% { transform: translateY(-8px) scale(1.02); }
+  }
+  @keyframes halo {
+    from { transform: scale(0.85); opacity: 0.7; }
+    to { transform: scale(1.35); opacity: 0; }
   }
   @keyframes wave {
     50% { height: 12px; }

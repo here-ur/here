@@ -99,6 +99,12 @@ const PATHS = {
     </>
   ),
   stop: <rect x="6.5" y="6.5" width="11" height="11" rx="2.6" fill="currentColor" />,
+  micOff: (
+    <>
+      <rect x="8.6" y="2.8" width="6.8" height="11.6" rx="3.4" stroke="currentColor" strokeWidth="2.2" />
+      <path d="M5.2 11.2a6.8 6.8 0 0 0 13.6 0M12 18v3M3.5 3.5l17 17" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    </>
+  ),
   keyboard: (
     <>
       <rect x="2.6" y="5.6" width="18.8" height="12.8" rx="3.6" stroke="currentColor" strokeWidth="2.2" />
@@ -122,6 +128,18 @@ const PATHS = {
     </>
   ),
   send: <path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />,
+  hangUp: (
+    <path
+      d="M3.2 14.6c4.9-4.6 12.7-4.6 17.6 0 .5.5.6 1.3.2 1.9l-1.3 1.8c-.4.6-1.2.8-1.9.5l-2.6-1.2c-.5-.3-.9-.8-.9-1.4v-1.6a12.4 12.4 0 0 0-4.6 0v1.6c0 .6-.4 1.1-.9 1.4l-2.6 1.2c-.7.3-1.5.1-1.9-.5L3 16.5c-.4-.6-.3-1.4.2-1.9z"
+      fill="currentColor"
+    />
+  ),
+  captions: (
+    <>
+      <rect x="2.8" y="5.2" width="18.4" height="13.6" rx="3" stroke="currentColor" strokeWidth="2" />
+      <path d="M10.6 10.2a2.4 2.4 0 1 0 0 3.6M17.4 10.2a2.4 2.4 0 1 0 0 3.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </>
+  ),
   info: (
     <>
       <circle cx="12" cy="12" r="8.6" stroke="currentColor" strokeWidth="2" />

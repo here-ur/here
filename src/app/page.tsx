@@ -1,25 +1,25 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
 import { type Msg, type Session, saveSession } from "@/lib/log";
+import { type Realtime, connectRealtime } from "@/lib/realtime";
 import { Hills, Icon, Mongle } from "./art";
 import Hospitals from "./Hospitals";
 import Log from "./Log";
 import Sheet from "./Sheet";
 
-type Status = "idle" | "listening" | "thinking" | "speaking";
-
-const GREETING = "안녕, 나는 몽글이야. 네 마음을 같이 정리하는 AI 친구야. 진단이나 치료는 사람 전문가가 해. 오늘은 어떤 하루였어?";
+type Status = "connecting" | "idle" | "listening" | "thinking" | "speaking";
 
 const HINT: Record<Status, string> = {
-  idle: "가운데 버튼을 누르고 말해 줘",
-  listening: "듣고 있어. 다 말했으면 한 번 더 눌러 줘",
-  thinking: "몽글이가 생각하는 중",
+  connecting: "몽글이와 연결하는 중…",
+  idle: "편하게 말해요. 몽글이가 듣고 있어요",
+  listening: "듣고 있어요",
+  thinking: "생각하는 중…",
   speaking: "몽글이가 말하는 중",
 };
 
-const TAIL = "M0 14C7 14 9 1 15 1C21 1 23 14 30 14Z";
+const clock = (sec: number) => `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
 
 /** 하늘 배경 + 언덕. 폰 한 장 너비로 가운데에 둔다. */
 /** hills=false: 기록 화면처럼 하늘만 있는 배경 */
@@ -52,14 +52,17 @@ function Note({ icon, title, body }: { icon: "info" | "lock" | "phone"; title: s
   );
 }
 
-function DockSide({ label, pressed, onClick, children }: { label: string; pressed: boolean; onClick: () => void; children: React.ReactNode }) {
+function CallButton({ label, pressed, danger, disabled, onClick, children }: { label: string; pressed?: boolean; danger?: boolean; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <div className="flex w-[100px] flex-col items-center gap-1.5 pt-3.5">
+    <div className="flex w-[72px] flex-col items-center gap-1.5">
       <button
         onClick={onClick}
+        disabled={disabled}
         aria-pressed={pressed}
         aria-label={label}
-        className="grid size-14 place-items-center rounded-[18px] bg-white/90 text-ink aria-pressed:bg-ink aria-pressed:text-cream"
+        className={`grid size-[60px] place-items-center rounded-full transition active:scale-95 disabled:opacity-40 ${
+          danger ? "bg-danger text-white" : pressed ? "bg-ink text-cream" : "bg-white/85 text-ink"
+        }`}
       >
         {children}
       </button>
@@ -74,134 +77,128 @@ export default function Home() {
   const [intro, setIntro] = useState(false);
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
+  const [live, setLive] = useState(""); // 몽글이가 말하는 중인 문장
   const [status, setStatus] = useState<Status>("idle");
   const [crisis, setCrisis] = useState(false);
   const [suggest, setSuggest] = useState(false);
   const [showHospitals, setShowHospitals] = useState(false);
   const [sound, setSound] = useState(true);
+  const [micOn, setMicOn] = useState(true);
+  const [hasMic, setHasMic] = useState(false);
   const [typing, setTyping] = useState(false);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [showLog, setShowLog] = useState(false);
+  const [captions, setCaptions] = useState(false); // 자막: 소리가 안 들릴 때를 위해
+  const [elapsed, setElapsed] = useState(0);
+  const [ended, setEnded] = useState(false); // 통화를 끝내고 대화 내용을 보는 중
 
-  const recorder = useRef<MediaRecorder | null>(null);
-  const audio = useRef<HTMLAudioElement | null>(null);
+  const rt = useRef<Realtime | null>(null);
   const session = useRef<Session | null>(null);
 
-  const lastMongle = messages.findLast((m) => m.role === "assistant")?.content ?? GREETING;
-  const lastMe = messages.findLast((m) => m.role === "user")?.content;
+  useEffect(() => () => rt.current?.close(), []);
 
-  async function speak(text: string, on = sound) {
-    if (!on || !text) return;
-    audio.current?.pause();
-    setStatus("speaking");
-    try {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      if (!res.ok) throw new Error();
-      const el = new Audio(URL.createObjectURL(await res.blob()));
-      audio.current = el;
-      el.onended = () => setStatus("idle");
-      await el.play();
-    } catch {
-      setStatus("idle");
-    }
+  const connecting = status === "connecting";
+  useEffect(() => {
+    if (!started || ended || connecting) return;
+    const t = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [started, ended, connecting]);
+
+
+  function add(msg: Msg) {
+    setMessages((prev) => {
+      const next = [...prev, msg];
+      if (session.current) saveSession({ ...session.current, messages: next });
+      return next;
+    });
   }
 
-  async function send(text: string) {
+  function sendText(text: string) {
     text = text.trim();
-    if (!text) return;
-    if (hasCrisisSignal(text)) setCrisis(true); // AI 답보다 먼저 109를 띄운다
-    const next: Msg[] = [...messages, { role: "user", content: text }];
-    setMessages(next);
+    if (!text || !rt.current) return;
+    if (hasCrisisSignal(text)) setCrisis(true); // 몽글이 답보다 먼저 109를 띄운다
+    add({ role: "user", content: text });
     setStatus("thinking");
-    setError("");
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next }),
-      });
-      const data = await res.json();
-      if (data.crisis) setCrisis(true);
-      if (!res.ok || !data.reply) throw new Error(data.error);
-      if (data.suggestHospital) setSuggest(true);
-      const done: Msg[] = [...next, { role: "assistant", content: data.reply }];
-      setMessages(done);
-      if (session.current) saveSession({ ...session.current, messages: done });
-      setStatus("idle");
-      speak(data.reply);
-    } catch (e) {
-      setError((e as Error).message || "잠시 연결이 어려워요. 조금 뒤에 다시 해 줘.");
-      setStatus("idle");
-    }
+    rt.current.sendText(text);
   }
 
-  async function toggleMic() {
-    if (status === "listening") return recorder.current?.stop();
-    audio.current?.pause();
-    setError("");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const rec = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-      rec.ondataavailable = (e) => chunks.push(e.data);
-      rec.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        setStatus("thinking");
-        const blob = new Blob(chunks, { type: rec.mimeType });
-        const form = new FormData();
-        form.append("audio", blob, rec.mimeType.includes("mp4") ? "voice.mp4" : "voice.webm");
-        try {
-          const res = await fetch("/api/stt", { method: "POST", body: form });
-          const { text } = await res.json();
-          if (!res.ok || !text) throw new Error();
-          send(text);
-        } catch {
-          setError("잘 못 들었어. 한 번만 다시 말해 줄래?");
-          setStatus("idle");
-        }
-      };
-      recorder.current = rec;
-      rec.start();
-      setStatus("listening");
-    } catch {
-      setError("마이크를 쓸 수 없어서 글로 적을 수 있게 열어 뒀어.");
-      setTyping(true);
-    }
-  }
-
-  function begin() {
-    session.current = { id: crypto.randomUUID(), startedAt: Date.now(), messages: [] };
+  async function begin() {
+    session.current = { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, startedAt: Date.now(), messages: [] };
     setIntro(false);
     setStarted(true);
-    speak(GREETING, sound);
+    setStatus("connecting");
+    setError("");
+    try {
+      const conn = await connectRealtime({
+        onStatus: setStatus,
+        onUserPartial: (text) => hasCrisisSignal(text) && setCrisis(true),
+        onUserText: (text) => {
+          if (hasCrisisSignal(text)) setCrisis(true);
+          add({ role: "user", content: text });
+        },
+        onAssistantPartial: setLive,
+        onAssistantText: (text) => {
+          setLive("");
+          add({ role: "assistant", content: text });
+        },
+        onTool: (name) => (name === "show_crisis_help" ? setCrisis(true) : setSuggest(true)),
+        onError: setError,
+      });
+      rt.current = conn;
+      conn.setSound(sound);
+      setHasMic(conn.hasMic);
+      if (!conn.hasMic) {
+        setMicOn(false);
+        setTyping(true);
+        setCaptions(true);
+        setError("마이크를 쓸 수 없어서 글로 적을 수 있게 열어 뒀어.");
+      }
+      setStatus("idle");
+    } catch (e) {
+      setError((e as Error).message);
+      setStatus("idle");
+    }
   }
 
-  function end() {
-    audio.current?.pause();
-    const rec = recorder.current;
-    if (rec?.state === "recording") {
-      rec.onstop = () => rec.stream.getTracks().forEach((t) => t.stop()); // 마친 대화는 보내지 않는다
-      rec.stop();
-    }
+  function hangUp() {
+    rt.current?.close();
+    rt.current = null;
+    if (messages.some((m) => m.role === "user")) setEnded(true);
+    else reset();
+  }
+
+  function reset() {
+    setEnded(false);
+    setElapsed(0);
+    setCaptions(false);
     setStarted(false);
     setShowLog(false);
     session.current = null;
     setMessages([]);
+    setLive("");
     setCrisis(false);
     setSuggest(false);
     setTyping(false);
+    setMicOn(true);
     setError("");
     setStatus("idle");
+  }
+
+  if (showLog) {
+    return (
+      <Stage hills={false}>
+        <Log onBack={() => setShowLog(false)} />
+      </Stage>
+    );
   }
 
   if (!started) {
     return (
       <Stage splash>
+        <button onClick={() => setShowLog(true)} aria-label="내 기록" className="absolute top-14 right-5 grid size-11 place-items-center rounded-[14px] bg-white/70">
+          <Icon name="log" size={22} />
+        </button>
         <h1 className="absolute inset-x-0 top-[104px] text-center font-display text-[60px] leading-[72px] tracking-[-0.01em]">Here!</h1>
         <p className="absolute inset-x-0 top-[182px] text-center text-lg font-semibold text-ink-2">오늘 마음은 어떤 색이야?</p>
         <Mongle className="absolute bottom-[150px] left-1/2 h-[min(440px,50dvh)] -translate-x-1/2" />
@@ -238,34 +235,76 @@ export default function Home() {
     );
   }
 
-  if (showLog) {
+  if (ended) {
     return (
       <Stage hills={false}>
-        <Log onBack={() => setShowLog(false)} />
+        <div className="absolute inset-0 overflow-y-auto px-5 pt-16 pb-32">
+          <h1 className="font-display text-2xl">오늘 나눈 이야기</h1>
+          <p className="mt-1 text-sm text-ink-3">통화 {clock(elapsed)} · 기록은 이 기기에만 남아요</p>
+          {crisis && (
+            <a href="tel:109" className="mt-4 flex items-center justify-between rounded-[18px] bg-white p-4 ring-[1.5px] ring-danger ring-inset">
+              <span className="text-sm font-semibold">
+                자살예방상담전화 <b className="text-danger">109</b>
+                <small className="block font-medium text-ink-3">24시간, 사람과 이야기할 수 있어요</small>
+              </span>
+              <span className="rounded-xl bg-danger-tint px-3.5 py-2 text-sm font-bold text-danger">전화하기</span>
+            </a>
+          )}
+          <ol className="mt-5 flex flex-col gap-2.5">
+            {messages.map((m, i) => (
+              <li
+                key={i}
+                className={`max-w-[85%] rounded-[18px] px-4 py-2.5 text-[15px] leading-[22px] ${
+                  m.role === "user" ? "self-end bg-violet text-white" : "self-start bg-white"
+                }`}
+              >
+                {m.content}
+              </li>
+            ))}
+          </ol>
+        </div>
+        <div className="absolute inset-x-5 bottom-8 flex gap-2">
+          {suggest && (
+            <button onClick={() => setShowHospitals(true)} className="h-14 flex-1 rounded-[20px] bg-violet-tint font-bold text-violet">
+              가까운 병원 보기
+            </button>
+          )}
+          <button onClick={reset} className="h-14 flex-1 rounded-[20px] bg-ink text-lg font-bold text-cream">
+            닫기
+          </button>
+        </div>
+        {showHospitals && <Hospitals onClose={() => setShowHospitals(false)} />}
       </Stage>
     );
   }
 
-  const busy = status === "thinking";
-  const listening = status === "listening";
+  const listening = status === "listening" && micOn;
+  const lastAssistant = live || messages.findLast((m) => m.role === "assistant")?.content;
+  const statusText = error || (!micOn && status === "idle" ? "마이크가 꺼져 있어요" : HINT[status]);
 
   return (
     <Stage>
       <header className="absolute inset-x-5 top-14 flex h-11 items-center justify-between">
-        <button onClick={end} aria-label="대화 마치기" className="grid size-11 place-items-center rounded-[14px] bg-white/70">
-          <Icon name="down" size={22} />
-        </button>
-        <p className="flex items-center gap-[7px]">
-          <span className="font-display text-xl">몽글이</span>
-          <span className="rounded-[7px] bg-ink px-[7px] py-0.5 text-[11px] font-bold text-white" title="몽글이는 AI예요">AI</span>
-        </p>
-        <button onClick={() => setShowLog(true)} disabled={status === "listening"} aria-label="내 기록" className="grid size-11 place-items-center rounded-[14px] bg-white/70 disabled:opacity-40">
-          <Icon name="log" size={22} />
+        <span className="size-11" />
+        <div className="text-center">
+          <p className="flex items-center justify-center gap-[7px]">
+            <span className="font-display text-xl">몽글이</span>
+            <span className="rounded-[7px] bg-ink px-[7px] py-0.5 text-[11px] font-bold text-white" title="몽글이는 AI예요">AI</span>
+          </p>
+          <p className="text-xs font-medium text-ink-2 tabular-nums">{connecting ? "연결 중" : clock(elapsed)}</p>
+        </div>
+        <button
+          onClick={() => setCaptions(!captions)}
+          aria-pressed={captions}
+          aria-label="자막"
+          className="grid size-11 place-items-center rounded-[14px] bg-white/70 aria-pressed:bg-ink aria-pressed:text-cream"
+        >
+          <Icon name="captions" size={22} />
         </button>
       </header>
 
       {crisis && (
-        <div role="alert" className="absolute inset-x-4 top-[108px] z-10 flex items-center justify-between gap-2 rounded-[14px] bg-white py-2 pr-2 pl-3.5 text-[13.5px] font-semibold ring-[1.5px] ring-danger ring-inset">
+        <div role="alert" className="absolute inset-x-4 top-[116px] z-10 flex items-center justify-between gap-2 rounded-[14px] bg-white py-2 pr-2 pl-3.5 text-[13.5px] font-semibold ring-[1.5px] ring-danger ring-inset">
           <span>
             자살예방상담전화 <b className="ml-1 text-[17px] text-danger">109</b>
             <small className="block text-[11.5px] font-medium text-ink-3">24시간, 사람과 이야기할 수 있어요</small>
@@ -276,128 +315,85 @@ export default function Home() {
         </div>
       )}
 
-      <Mongle className="absolute top-[55px] left-1/2 h-[min(440px,52dvh)] -translate-x-1/2" />
-
-      <section aria-live="polite" className="absolute inset-x-6 bottom-[218px] z-[2] flex flex-col justify-end gap-2.5">
-        <div className="relative max-w-[322px] min-w-[204px] animate-pop self-start rounded-3xl bg-white px-5 pt-3.5 pb-[18px] shadow-bubble">
-          <svg width="30" height="14" viewBox="0 0 30 14" className="absolute -top-[13px] left-[150px] text-white" aria-hidden="true">
-            <path d={TAIL} fill="currentColor" />
-          </svg>
-          <p className="mb-1.5 flex items-center gap-1.5 text-[13px] font-bold text-violet">
-            <span className="inline-flex h-3.5 items-center gap-0.5" aria-hidden="true">
-              {[0, -0.2, -0.45, -0.1].map((d) => (
-                <i
-                  key={d}
-                  className={`h-[5px] w-[2.4px] rounded-sm bg-current ${status === "speaking" ? "animate-wave" : ""}`}
-                  style={{ animationDelay: `${d}s` }}
-                />
-              ))}
-            </span>
-            몽글이
-          </p>
-          <p className={`max-h-[150px] overflow-y-auto font-semibold whitespace-pre-wrap ${lastMongle.length > 60 ? "text-[17px] leading-[26px]" : "text-xl leading-[30px]"}`}>
-            {busy ? "음…" : lastMongle}
-          </p>
-          {suggest && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button onClick={() => setShowHospitals(true)} className="h-9 rounded-xl bg-violet-tint px-3.5 text-[13.5px] font-bold text-violet">
-                가까운 정신건강의학과 보기
-              </button>
-            </div>
+      <div className="absolute inset-x-0 top-[calc(50%_-_250px)] flex flex-col items-center">
+        <div className="relative grid place-items-center">
+          {listening && (
+            <>
+              <i className="absolute size-[min(300px,36dvh)] animate-halo rounded-full bg-white/60" aria-hidden="true" />
+              <i className="absolute size-[min(300px,36dvh)] animate-halo rounded-full bg-white/60 [animation-delay:-1s]" aria-hidden="true" />
+            </>
           )}
+          <Mongle className={`relative h-[min(340px,40dvh)] ${status === "speaking" ? "animate-bob" : ""}`} />
         </div>
+        <p role="status" className={`-mt-6 text-[15px] font-medium ${error ? "text-danger" : "text-ink-2"}`}>
+          {statusText}
+        </p>
+        {captions && lastAssistant && (
+          <p className="mx-8 mt-3 line-clamp-3 text-center text-[15px] leading-[22px] text-ink">{lastAssistant}</p>
+        )}
+      </div>
 
-        {typing && !busy ? (
+      <div className="absolute inset-x-5 bottom-[132px] flex flex-col items-center gap-3">
+        {suggest && (
+          <button onClick={() => setShowHospitals(true)} className="h-10 rounded-full bg-white/90 px-4 text-[14px] font-bold text-violet shadow-bubble">
+            가까운 정신건강의학과 보기
+          </button>
+        )}
+        {typing && (
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              send(draft);
+              sendText(draft);
               setDraft("");
             }}
-            className="relative w-[304px] max-w-full animate-pop self-end rounded-3xl bg-violet px-5 pt-3.5 pr-[60px] pb-[18px] text-white shadow-bubble"
+            className="flex w-full items-center gap-2 rounded-full bg-white/90 p-1.5 pl-4 shadow-bubble"
           >
-            <p className="mb-1.5 flex items-center gap-1.5 text-[13px] font-semibold text-[#f3efff]">
-              <i className="size-2 rounded-full bg-[#ffd35c]" aria-hidden="true" />
-              듣고 있어
-            </p>
             <label htmlFor="draft" className="sr-only">몽글이에게 할 말</label>
-            <textarea
+            <input
               id="draft"
-              rows={2}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  e.currentTarget.form?.requestSubmit();
-                }
-              }}
               maxLength={800}
-              placeholder="여기에 적어 줘"
+              placeholder="글로 적어도 돼요"
               enterKeyHint="send"
-              className="block w-full resize-none bg-transparent text-xl leading-[30px] font-semibold caret-[#ffd35c] outline-0 placeholder:text-white/70"
+              autoComplete="off"
+              className="min-w-0 flex-1 bg-transparent text-[16px] outline-0"
             />
-            <button
-              aria-label="보내기"
-              disabled={busy || !draft.trim()}
-              className="absolute right-3 bottom-3 grid size-10 place-items-center rounded-[14px] bg-white text-violet disabled:opacity-40"
-            >
-              <Icon name="send" size={20} />
+            <button aria-label="보내기" disabled={!draft.trim() || connecting} className="grid size-10 place-items-center rounded-full bg-violet text-white disabled:opacity-40">
+              <Icon name="send" size={18} />
             </button>
           </form>
-        ) : (
-          lastMe && (
-            <div className="relative w-[304px] max-w-full animate-pop self-end rounded-3xl bg-violet px-5 pt-3.5 pb-[18px] text-white shadow-bubble">
-              <svg width="30" height="14" viewBox="0 0 30 14" className="absolute -bottom-[13px] left-[118px] rotate-180 text-violet" aria-hidden="true">
-                <path d={TAIL} fill="currentColor" />
-              </svg>
-              <p className="mb-1.5 flex items-center gap-1.5 text-[13px] font-semibold text-[#f3efff]">
-                <i className="size-2 rounded-full bg-[#ffd35c]" aria-hidden="true" />나
-              </p>
-              <p className="line-clamp-4 text-xl leading-[30px] font-semibold">{lastMe}</p>
-            </div>
-          )
         )}
-      </section>
+      </div>
 
-      <p className={`absolute inset-x-0 bottom-[176px] text-center text-[13px] font-medium ${error ? "text-danger" : "text-ink-2"}`}>
-        {error || HINT[status]}
-      </p>
-
-      <div className="absolute inset-x-0 bottom-[46px] flex items-start justify-center gap-[17px]">
-        <DockSide
-          label={sound ? "소리 켬" : "소리 끔"}
+      <div className="absolute inset-x-0 bottom-[34px] flex justify-center gap-3">
+        <CallButton
+          label={sound ? "소리" : "소리 끔"}
           pressed={!sound}
           onClick={() => {
             setSound(!sound);
-            audio.current?.pause();
+            rt.current?.setSound(!sound);
           }}
         >
-          <Icon name={sound ? "soundOn" : "soundOff"} size={26} />
-        </DockSide>
-
-        <div className="relative grid size-[84px] place-items-center">
-          {listening && (
-            <>
-              <i className="absolute -inset-6 animate-ring rounded-full bg-white/35" aria-hidden="true" />
-              <i className="absolute -inset-3 animate-ring rounded-full bg-white/55 [animation-delay:-0.5s]" aria-hidden="true" />
-            </>
-          )}
-          <button
-            onClick={toggleMic}
-            disabled={busy}
-            aria-label={listening ? "말하기 끝내기" : "말하기"}
-            className={`relative grid size-[84px] place-items-center rounded-full transition active:scale-[.96] disabled:opacity-50 ${
-              listening ? "bg-violet text-white" : "bg-white text-violet ring-2 ring-violet/25 ring-inset"
-            }`}
-          >
-            <Icon name={listening ? "stop" : "mic"} size={34} />
-          </button>
-        </div>
-
-        <DockSide label="글로 쓰기" pressed={typing} onClick={() => setTyping(!typing)}>
-          <Icon name="keyboard" size={26} />
-        </DockSide>
+          <Icon name={sound ? "soundOn" : "soundOff"} size={24} />
+        </CallButton>
+        <CallButton
+          label={micOn ? "마이크" : "음소거"}
+          pressed={!micOn}
+          disabled={!hasMic}
+          onClick={() => {
+            rt.current?.setMic(!micOn);
+            setMicOn(!micOn);
+          }}
+        >
+          <Icon name={micOn ? "mic" : "micOff"} size={24} />
+        </CallButton>
+        <CallButton label="글로 쓰기" pressed={typing} onClick={() => setTyping(!typing)}>
+          <Icon name="keyboard" size={24} />
+        </CallButton>
+        <CallButton label="끝내기" danger onClick={hangUp}>
+          <Icon name="hangUp" size={26} />
+        </CallButton>
       </div>
 
       {showHospitals && <Hospitals onClose={() => setShowHospitals(false)} />}
