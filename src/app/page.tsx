@@ -1,20 +1,22 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
 import { type Msg, type Session, saveSession } from "@/lib/log";
+import { type Realtime, connectRealtime } from "@/lib/realtime";
 import { Hills, Icon, Mongle } from "./art";
 import Hospitals from "./Hospitals";
 import Log from "./Log";
 import Sheet from "./Sheet";
 
-type Status = "idle" | "listening" | "thinking" | "speaking";
+type Status = "connecting" | "idle" | "listening" | "thinking" | "speaking";
 
-const GREETING = "안녕, 나는 몽글이야. 네 마음을 같이 정리하는 AI 친구야. 진단이나 치료는 사람 전문가가 해. 오늘은 어떤 하루였어?";
+const GREETING = "안녕, 나는 몽글이야. 오늘은 어떤 하루였어?";
 
 const HINT: Record<Status, string> = {
-  idle: "가운데 버튼을 누르고 말해 줘",
-  listening: "듣고 있어. 다 말했으면 한 번 더 눌러 줘",
+  connecting: "몽글이와 연결하는 중…",
+  idle: "그냥 말하면 돼요. 몽글이가 듣고 있어요",
+  listening: "듣고 있어",
   thinking: "몽글이가 생각하는 중",
   speaking: "몽글이가 말하는 중",
 };
@@ -74,127 +76,93 @@ export default function Home() {
   const [intro, setIntro] = useState(false);
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
+  const [live, setLive] = useState(""); // 몽글이가 말하는 중인 문장
   const [status, setStatus] = useState<Status>("idle");
   const [crisis, setCrisis] = useState(false);
   const [suggest, setSuggest] = useState(false);
   const [showHospitals, setShowHospitals] = useState(false);
   const [sound, setSound] = useState(true);
+  const [micOn, setMicOn] = useState(true);
+  const [hasMic, setHasMic] = useState(false);
   const [typing, setTyping] = useState(false);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [showLog, setShowLog] = useState(false);
 
-  const recorder = useRef<MediaRecorder | null>(null);
-  const audio = useRef<HTMLAudioElement | null>(null);
+  const rt = useRef<Realtime | null>(null);
   const session = useRef<Session | null>(null);
 
-  const lastMongle = messages.findLast((m) => m.role === "assistant")?.content ?? GREETING;
+  useEffect(() => () => rt.current?.close(), []);
+
+  const lastMongle = live || (messages.findLast((m) => m.role === "assistant")?.content ?? GREETING);
   const lastMe = messages.findLast((m) => m.role === "user")?.content;
 
-  async function speak(text: string, on = sound) {
-    if (!on || !text) return;
-    audio.current?.pause();
-    setStatus("speaking");
-    try {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      if (!res.ok) throw new Error();
-      const el = new Audio(URL.createObjectURL(await res.blob()));
-      audio.current = el;
-      el.onended = () => setStatus("idle");
-      await el.play();
-    } catch {
-      setStatus("idle");
-    }
+  function add(msg: Msg) {
+    setMessages((prev) => {
+      const next = [...prev, msg];
+      if (session.current) saveSession({ ...session.current, messages: next });
+      return next;
+    });
   }
 
-  async function send(text: string) {
+  function sendText(text: string) {
     text = text.trim();
-    if (!text) return;
-    if (hasCrisisSignal(text)) setCrisis(true); // AI 답보다 먼저 109를 띄운다
-    const next: Msg[] = [...messages, { role: "user", content: text }];
-    setMessages(next);
+    if (!text || !rt.current) return;
+    if (hasCrisisSignal(text)) setCrisis(true); // 몽글이 답보다 먼저 109를 띄운다
+    add({ role: "user", content: text });
     setStatus("thinking");
-    setError("");
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next }),
-      });
-      const data = await res.json();
-      if (data.crisis) setCrisis(true);
-      if (!res.ok || !data.reply) throw new Error(data.error);
-      if (data.suggestHospital) setSuggest(true);
-      const done: Msg[] = [...next, { role: "assistant", content: data.reply }];
-      setMessages(done);
-      if (session.current) saveSession({ ...session.current, messages: done });
-      setStatus("idle");
-      speak(data.reply);
-    } catch (e) {
-      setError((e as Error).message || "잠시 연결이 어려워요. 조금 뒤에 다시 해 줘.");
-      setStatus("idle");
-    }
+    rt.current.sendText(text);
   }
 
-  async function toggleMic() {
-    if (status === "listening") return recorder.current?.stop();
-    audio.current?.pause();
-    setError("");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const rec = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-      rec.ondataavailable = (e) => chunks.push(e.data);
-      rec.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        setStatus("thinking");
-        const blob = new Blob(chunks, { type: rec.mimeType });
-        const form = new FormData();
-        form.append("audio", blob, rec.mimeType.includes("mp4") ? "voice.mp4" : "voice.webm");
-        try {
-          const res = await fetch("/api/stt", { method: "POST", body: form });
-          const { text } = await res.json();
-          if (!res.ok || !text) throw new Error();
-          send(text);
-        } catch {
-          setError("잘 못 들었어. 한 번만 다시 말해 줄래?");
-          setStatus("idle");
-        }
-      };
-      recorder.current = rec;
-      rec.start();
-      setStatus("listening");
-    } catch {
-      setError("마이크를 쓸 수 없어서 글로 적을 수 있게 열어 뒀어.");
-      setTyping(true);
-    }
-  }
-
-  function begin() {
-    session.current = { id: crypto.randomUUID(), startedAt: Date.now(), messages: [] };
+  async function begin() {
+    session.current = { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, startedAt: Date.now(), messages: [] };
     setIntro(false);
     setStarted(true);
-    speak(GREETING, sound);
+    setStatus("connecting");
+    setError("");
+    try {
+      const conn = await connectRealtime({
+        onStatus: setStatus,
+        onUserPartial: (text) => hasCrisisSignal(text) && setCrisis(true),
+        onUserText: (text) => {
+          if (hasCrisisSignal(text)) setCrisis(true);
+          add({ role: "user", content: text });
+        },
+        onAssistantPartial: setLive,
+        onAssistantText: (text) => {
+          setLive("");
+          add({ role: "assistant", content: text });
+        },
+        onTool: (name) => (name === "show_crisis_help" ? setCrisis(true) : setSuggest(true)),
+        onError: setError,
+      });
+      rt.current = conn;
+      conn.setSound(sound);
+      setHasMic(conn.hasMic);
+      if (!conn.hasMic) {
+        setMicOn(false);
+        setTyping(true);
+        setError("마이크를 쓸 수 없어서 글로 적을 수 있게 열어 뒀어.");
+      }
+      setStatus("idle");
+    } catch (e) {
+      setError((e as Error).message);
+      setStatus("idle");
+    }
   }
 
   function end() {
-    audio.current?.pause();
-    const rec = recorder.current;
-    if (rec?.state === "recording") {
-      rec.onstop = () => rec.stream.getTracks().forEach((t) => t.stop()); // 마친 대화는 보내지 않는다
-      rec.stop();
-    }
+    rt.current?.close();
+    rt.current = null;
     setStarted(false);
     setShowLog(false);
     session.current = null;
     setMessages([]);
+    setLive("");
     setCrisis(false);
     setSuggest(false);
     setTyping(false);
+    setMicOn(true);
     setError("");
     setStatus("idle");
   }
@@ -246,8 +214,8 @@ export default function Home() {
     );
   }
 
-  const busy = status === "thinking";
-  const listening = status === "listening";
+  const busy = status === "thinking" || status === "connecting";
+  const listening = status === "listening" && micOn;
 
   return (
     <Stage>
@@ -259,7 +227,7 @@ export default function Home() {
           <span className="font-display text-xl">몽글이</span>
           <span className="rounded-[7px] bg-ink px-[7px] py-0.5 text-[11px] font-bold text-white" title="몽글이는 AI예요">AI</span>
         </p>
-        <button onClick={() => setShowLog(true)} disabled={status === "listening"} aria-label="내 기록" className="grid size-11 place-items-center rounded-[14px] bg-white/70 disabled:opacity-40">
+        <button onClick={() => setShowLog(true)} aria-label="내 기록" className="grid size-11 place-items-center rounded-[14px] bg-white/70 disabled:opacity-40">
           <Icon name="log" size={22} />
         </button>
       </header>
@@ -311,7 +279,7 @@ export default function Home() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              send(draft);
+              sendText(draft);
               setDraft("");
             }}
             className="relative w-[304px] max-w-full animate-pop self-end rounded-3xl bg-violet px-5 pt-3.5 pr-[60px] pb-[18px] text-white shadow-bubble"
@@ -361,7 +329,7 @@ export default function Home() {
       </section>
 
       <p className={`absolute inset-x-0 bottom-[176px] text-center text-[13px] font-medium ${error ? "text-danger" : "text-ink-2"}`}>
-        {error || HINT[status]}
+        {error || (micOn || status !== "idle" ? HINT[status] : "마이크가 꺼져 있어요. 가운데 버튼으로 켜요")}
       </p>
 
       <div className="absolute inset-x-0 bottom-[46px] flex items-start justify-center gap-[17px]">
@@ -370,7 +338,7 @@ export default function Home() {
           pressed={!sound}
           onClick={() => {
             setSound(!sound);
-            audio.current?.pause();
+            rt.current?.setSound(!sound);
           }}
         >
           <Icon name={sound ? "soundOn" : "soundOff"} size={26} />
@@ -384,14 +352,18 @@ export default function Home() {
             </>
           )}
           <button
-            onClick={toggleMic}
-            disabled={busy}
-            aria-label={listening ? "말하기 끝내기" : "말하기"}
+            onClick={() => {
+              rt.current?.setMic(!micOn);
+              setMicOn(!micOn);
+            }}
+            disabled={!hasMic}
+            aria-pressed={micOn}
+            aria-label={micOn ? "마이크 끄기" : "마이크 켜기"}
             className={`relative grid size-[84px] place-items-center rounded-full transition active:scale-[.96] disabled:opacity-50 ${
-              listening ? "bg-violet text-white" : "bg-white text-violet ring-2 ring-violet/25 ring-inset"
+              micOn ? "bg-violet text-white" : "bg-white text-violet ring-2 ring-violet/25 ring-inset"
             }`}
           >
-            <Icon name={listening ? "stop" : "mic"} size={34} />
+            <Icon name={micOn ? "mic" : "micOff"} size={34} />
           </button>
         </div>
 

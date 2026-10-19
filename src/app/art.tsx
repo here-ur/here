@@ -99,6 +99,12 @@ const PATHS = {
     </>
   ),
   stop: <rect x="6.5" y="6.5" width="11" height="11" rx="2.6" fill="currentColor" />,
+  micOff: (
+    <>
+      <rect x="8.6" y="2.8" width="6.8" height="11.6" rx="3.4" stroke="currentColor" strokeWidth="2.2" />
+      <path d="M5.2 11.2a6.8 6.8 0 0 0 13.6 0M12 18v3M3.5 3.5l17 17" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    </>
+  ),
   keyboard: (
     <>
       <rect x="2.6" y="5.6" width="18.8" height="12.8" rx="3.6" stroke="currentColor" strokeWidth="2.2" />

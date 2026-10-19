@@ -1,0 +1,119 @@
+// 브라우저 ↔ OpenAI realtime (WebRTC). 진짜 키는 서버에만 있고, 여기서는 /api/realtime이 준 임시 키만 쓴다.
+
+export type Handlers = {
+  onStatus: (s: "listening" | "thinking" | "speaking" | "idle") => void;
+  onUserText: (text: string) => void; // 사용자 말이 글로 확정됐을 때
+  onUserPartial: (text: string) => void; // 받아쓰는 중(위기 표현을 빨리 잡으려고)
+  onAssistantPartial: (text: string) => void;
+  onAssistantText: (text: string) => void;
+  onTool: (name: "show_crisis_help" | "show_clinics") => void;
+  onError: (message: string) => void;
+};
+
+export type Realtime = {
+  sendText: (text: string) => void;
+  setMic: (on: boolean) => void;
+  setSound: (on: boolean) => void;
+  close: () => void;
+  hasMic: boolean;
+};
+
+export async function connectRealtime(h: Handlers): Promise<Realtime> {
+  const res = await fetch("/api/realtime", { method: "POST" });
+  if (!res.ok) throw new Error("몽글이와 연결하지 못했어요. 조금 뒤에 다시 해 줘.");
+  const { key } = await res.json();
+
+  const pc = new RTCPeerConnection();
+  const audioEl = new Audio();
+  audioEl.autoplay = true;
+  pc.ontrack = (e) => (audioEl.srcObject = e.streams[0]);
+
+  let mic: MediaStream | null = null;
+  try {
+    mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+    pc.addTrack(mic.getTracks()[0], mic);
+  } catch {
+    pc.addTransceiver("audio", { direction: "recvonly" }); // 마이크 없이 글로만 대화
+  }
+
+  const dc = pc.createDataChannel("oai-events");
+  const send = (event: object) => dc.readyState === "open" && dc.send(JSON.stringify(event));
+  const userParts = new Map<string, string>();
+  let assistant = "";
+
+  dc.onopen = () => send({ type: "response.create" }); // 몽글이가 먼저 인사
+  dc.onmessage = (msg) => {
+    const e = JSON.parse(msg.data);
+    switch (e.type) {
+      case "input_audio_buffer.speech_started":
+        return h.onStatus("listening");
+      case "input_audio_buffer.speech_stopped":
+        return h.onStatus("thinking");
+      case "conversation.item.input_audio_transcription.delta": {
+        const text = (userParts.get(e.item_id) ?? "") + e.delta;
+        userParts.set(e.item_id, text);
+        return h.onUserPartial(text);
+      }
+      case "conversation.item.input_audio_transcription.completed":
+        userParts.delete(e.item_id);
+        if (e.transcript?.trim()) h.onUserText(e.transcript.trim());
+        return;
+      case "response.output_audio_transcript.delta":
+        assistant += e.delta;
+        return h.onAssistantPartial(assistant);
+      case "response.output_audio_transcript.done":
+        assistant = "";
+        if (e.transcript?.trim()) h.onAssistantText(e.transcript.trim());
+        return;
+      case "output_audio_buffer.started":
+        return h.onStatus("speaking");
+      case "output_audio_buffer.stopped":
+        return h.onStatus("idle");
+      case "response.function_call_arguments.done":
+        if (e.name === "show_crisis_help" || e.name === "show_clinics") h.onTool(e.name);
+        send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: e.call_id, output: '{"shown":true}' } });
+        return;
+      case "response.done": {
+        // 도구만 부르고 말은 안 했으면, 결과를 받은 뒤 이어서 말하게 한다.
+        const out: { type: string }[] = e.response?.output ?? [];
+        if (out.some((o) => o.type === "function_call") && !out.some((o) => o.type === "message")) {
+          send({ type: "response.create" });
+        }
+        return;
+      }
+      case "error":
+        console.error("realtime", e.error);
+        return h.onError("잠시 연결이 어려워요. 조금 뒤에 다시 해 줘.");
+    }
+  };
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  const answer = await fetch("https://api.openai.com/v1/realtime/calls", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/sdp" },
+    body: offer.sdp,
+  });
+  if (!answer.ok) throw new Error("몽글이와 연결하지 못했어요. 조금 뒤에 다시 해 줘.");
+  await pc.setRemoteDescription({ type: "answer", sdp: await answer.text() });
+
+  return {
+    hasMic: !!mic,
+    sendText(text) {
+      send({ type: "conversation.item.create", item: { type: "message", role: "user", content: [{ type: "input_text", text }] } });
+      send({ type: "response.create" });
+    },
+    setMic(on) {
+      mic?.getTracks().forEach((t) => (t.enabled = on));
+    },
+    setSound(on) {
+      audioEl.muted = !on;
+    },
+    close() {
+      dc.close();
+      pc.close();
+      mic?.getTracks().forEach((t) => t.stop());
+      audioEl.srcObject = null;
+    },
+  };
+}
