@@ -43,6 +43,7 @@ export async function connectRealtime(h: Handlers): Promise<Realtime> {
   const send = (event: object) => dc.readyState === "open" && dc.send(JSON.stringify(event));
   const userParts = new Map<string, string>();
   let assistant = "";
+  let playing = false; // 소리 재생 신호(output_audio_buffer.*)를 받았는지
 
   dc.onopen = () => send({ type: "response.create" }); // 몽글이가 먼저 인사
   dc.onmessage = (msg) => {
@@ -62,6 +63,7 @@ export async function connectRealtime(h: Handlers): Promise<Realtime> {
         if (e.transcript?.trim()) h.onUserText(e.transcript.trim());
         return;
       case "response.output_audio_transcript.delta":
+        if (!assistant) h.onStatus("speaking"); // 재생 신호가 늦어도 "생각 중"에 멈추지 않게
         assistant += e.delta;
         return h.onAssistantPartial(assistant);
       case "response.output_audio_transcript.done":
@@ -69,8 +71,10 @@ export async function connectRealtime(h: Handlers): Promise<Realtime> {
         if (e.transcript?.trim()) h.onAssistantText(e.transcript.trim());
         return;
       case "output_audio_buffer.started":
+        playing = true;
         return h.onStatus("speaking");
       case "output_audio_buffer.stopped":
+        playing = false;
         return h.onStatus("idle");
       case "response.function_call_arguments.done":
         if (e.name === "show_crisis_help" || e.name === "show_clinics") h.onTool(e.name);
@@ -81,6 +85,8 @@ export async function connectRealtime(h: Handlers): Promise<Realtime> {
         const out: { type: string }[] = e.response?.output ?? [];
         if (out.some((o) => o.type === "function_call") && !out.some((o) => o.type === "message")) {
           send({ type: "response.create" });
+        } else if (!playing) {
+          h.onStatus("idle"); // 재생 신호가 오지 않는 환경에서도 대기로 돌아온다
         }
         return;
       }

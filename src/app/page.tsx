@@ -244,9 +244,9 @@ export default function Home() {
         </div>
       )}
 
-      <Mongle className="absolute top-[55px] left-1/2 h-[min(440px,52dvh)] -translate-x-1/2" />
+      <Mongle className="absolute top-[96px] left-1/2 h-[min(220px,26dvh)] -translate-x-1/2" />
 
-      <section aria-live="polite" className="absolute inset-x-5 bottom-[150px] z-[2] flex flex-col justify-end gap-2">
+      <section aria-live="polite" className="absolute inset-x-5 top-[calc(96px_+_min(220px,26dvh)*0.78)] bottom-[150px] z-[2] flex flex-col justify-start gap-3">
         <div className="relative max-w-[300px] min-w-[180px] animate-pop self-start rounded-[22px] bg-white px-4 pt-3 pb-3.5 shadow-bubble">
           <svg width="30" height="14" viewBox="0 0 30 14" className="absolute -top-[13px] left-[120px] text-white" aria-hidden="true">
             <path d={TAIL} fill="currentColor" />
@@ -263,8 +263,8 @@ export default function Home() {
             </span>
             몽글이
           </p>
-          <p className="max-h-[120px] overflow-y-auto text-[16px] leading-[24px] font-medium whitespace-pre-wrap">
-            {busy ? "음…" : lastMongle}
+          <p className="max-h-[min(264px,34dvh)] overflow-y-auto text-[16px] leading-[24px] font-medium whitespace-pre-wrap">
+            {live || (busy ? "음…" : lastMongle)}
           </p>
           {suggest && (
             <div className="mt-2.5 flex flex-wrap gap-2">
