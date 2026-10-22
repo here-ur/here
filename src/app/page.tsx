@@ -6,10 +6,10 @@ import { type Msg, type Session, saveSession } from "@/lib/log";
 import { type Profile, parseProfile, profileRaw, saveProfile } from "@/lib/onboarding";
 import { type Realtime, connectRealtime } from "@/lib/realtime";
 import { Hills, Icon, Mongle } from "./art";
+import HomeScreen from "./HomeScreen";
 import Hospitals from "./Hospitals";
 import Log from "./Log";
 import Onboarding from "./Onboarding";
-import Sheet from "./Sheet";
 
 type Status = "connecting" | "idle" | "listening" | "thinking" | "speaking";
 
@@ -37,20 +37,6 @@ function Stage({ splash = false, hills = true, children }: { splash?: boolean; h
       )}
       {children}
     </main>
-  );
-}
-
-function Note({ icon, title, body }: { icon: "info" | "lock" | "phone"; title: string; body: string }) {
-  return (
-    <li className="flex items-center gap-3.5 rounded-[18px] bg-violet-tint px-4 py-3.5">
-      <span className="grid size-[42px] shrink-0 place-items-center rounded-[13px] bg-white text-violet">
-        <Icon name={icon} size={22} />
-      </span>
-      <span>
-        <b className="block text-base">{title}</b>
-        <span className="text-sm text-ink-2">{body}</span>
-      </span>
-    </li>
   );
 }
 
@@ -83,7 +69,7 @@ export default function Home() {
   const [newProfile, setNewProfile] = useState<Profile | null>(null);
   const profile = newProfile ?? (storedProfile === undefined ? undefined : parseProfile(storedProfile));
 
-  const [intro, setIntro] = useState(false);
+  const [justMet, setJustMet] = useState(false); // 온보딩을 막 끝냈으면 홈에서 몽글이가 처음 인사한다
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [live, setLive] = useState(""); // 몽글이가 말하는 중인 문장
@@ -132,10 +118,17 @@ export default function Home() {
     rt.current.sendText(text);
   }
 
-  async function begin() {
+  /** 대화 시작. 홈의 글 칸에서 시작하면(firstText) 소리는 끄고 자막·글 입력을 켠 채로 그 글부터 보낸다. */
+  async function begin(firstText?: string) {
     session.current = { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, startedAt: Date.now(), messages: [] };
-    setIntro(false);
+    setJustMet(false);
     setStarted(true);
+    const quiet = Boolean(firstText);
+    if (quiet) {
+      setSound(false);
+      setTyping(true);
+      setCaptions(true);
+    }
     setStatus("connecting");
     setError("");
     try {
@@ -155,7 +148,7 @@ export default function Home() {
         onError: setError,
       }, { name: profile?.companion, voice: profile?.voice });
       rt.current = conn;
-      conn.setSound(sound);
+      conn.setSound(quiet ? false : sound);
       setHasMic(conn.hasMic);
       if (!conn.hasMic) {
         setMicOn(false);
@@ -164,6 +157,7 @@ export default function Home() {
         setError("마이크를 쓸 수 없어서 글로 적을 수 있게 열어 뒀어.");
       }
       setStatus("idle");
+      if (firstText) sendText(firstText);
     } catch (e) {
       setError((e as Error).message);
       setStatus("idle");
@@ -194,7 +188,7 @@ export default function Home() {
     setStatus("idle");
   }
 
-  if (profile === undefined) return <Stage splash>{null}</Stage>;
+  if (profile === undefined) return <main className="mx-auto h-dvh w-full max-w-[430px] bg-[#FAFCFE]" />; // 저장소를 읽기 전 한순간
 
   if (profile === null) {
     return (
@@ -202,6 +196,7 @@ export default function Home() {
         onDone={(p) => {
           saveProfile(p);
           setNewProfile(p);
+          setJustMet(true);
         }}
       />
     );
@@ -216,45 +211,7 @@ export default function Home() {
   }
 
   if (!started) {
-    return (
-      <Stage splash>
-        <button onClick={() => setShowLog(true)} aria-label="내 기록" className="absolute top-14 right-5 grid size-11 place-items-center rounded-[14px] bg-white/70">
-          <Icon name="log" size={22} />
-        </button>
-        <h1 className="absolute inset-x-0 top-[104px] text-center font-display text-[60px] leading-[72px] tracking-[-0.01em]">Here!</h1>
-        <p className="absolute inset-x-0 top-[182px] text-center text-lg font-semibold text-ink-2">오늘 마음은 어떤 색이야?</p>
-        <Mongle className="absolute bottom-[150px] left-1/2 h-[min(440px,50dvh)] -translate-x-1/2" />
-        <button
-          onClick={() => setIntro(true)}
-          className="absolute inset-x-6 bottom-[56px] h-[60px] rounded-[20px] bg-violet text-lg font-bold text-white shadow-violet transition active:scale-[.98]"
-        >
-          이야기 시작하기
-        </button>
-        <p className="absolute inset-x-0 bottom-[26px] text-center text-[12.5px] font-medium text-ink-3">
-          몽글이는 AI예요 · 진단과 치료는 전문가가 해요
-        </p>
-
-        {intro && (
-          <Sheet title="시작하기 전에" onClose={() => setIntro(false)}>
-            <ul className="mt-4 flex flex-col gap-2.5">
-              <Note icon="info" title="몽글이는 AI예요" body="진단과 치료는 사람 전문가가 해요." />
-              <Note icon="lock" title="듣는 사람은 없어요" body="기록은 이 기기의 브라우저에만 남아요." />
-              <Note icon="phone" title="위급할 때는 109" body="24시간 사람과 이야기할 수 있어요." />
-            </ul>
-            <label className="mt-4 flex gap-3 rounded-[18px] p-4 ring-[1.5px] ring-ink/10 ring-inset">
-              <input type="checkbox" checked={sound} onChange={(e) => setSound(e.target.checked)} className="mt-0.5 size-5 accent-violet" />
-              <span>
-                <b className="block">몽글이 목소리로 듣기</b>
-                <span className="text-sm text-ink-3">이어폰을 끼면 더 좋아요. 대화 중에도 켜고 끌 수 있어요.</span>
-              </span>
-            </label>
-            <button onClick={begin} className="mt-5 h-[60px] w-full rounded-[20px] bg-ink text-lg font-bold text-cream active:scale-[.98]">
-              시작하기
-            </button>
-          </Sheet>
-        )}
-      </Stage>
-    );
+    return <HomeScreen profile={profile} greet={justMet} onVoice={() => begin()} onText={(t) => begin(t)} onLog={() => setShowLog(true)} />;
   }
 
   if (ended) {

@@ -22,7 +22,7 @@ import Buddy from "./Buddy";
 
 // Tolan의 온보딩 구조를 빌린 첫 실행 흐름. 어두운 우주에서 몽글이를 찾고, 처음 만나는 순간부터 밝아진다.
 // 알림 권한 화면은 MVP 밖(알림 기능 없음)이라 뺐다.
-type Step = "splash" | "name" | "safety" | "finding" | "match" | "shape" | "color" | "voice" | "naming" | "hold" | "burst" | "reveal";
+type Step = "splash" | "name" | "safety" | "finding" | "match" | "shape" | "color" | "voice" | "naming" | "hold" | "burst";
 
 const HOLD_MS = 1400;
 const LEAVE_MS = 200;
@@ -210,15 +210,14 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
     sfx.burst();
     sfx.stopPad();
     setStep("burst");
-    setTimeout(() => setStep("reveal"), 1300);
+    setTimeout(finish, 1300); // 하얀 빛이 걷히며 홈이 나타나고, 거기서 몽글이가 처음 인사한다
   }
 
   function finish() {
-    sfx.tick();
     onDone({ nickname: nickname.trim(), companion: cleanName(companion), shape, color, voice, style });
   }
 
-  const dark = step !== "splash" && step !== "reveal";
+  const dark = step !== "splash";
   // 나갈 때는 짧게 흐려지고, 들어올 때는 제목 → 내용 → 버튼 순으로 떠오른다. 동작 줄이기를 켜면 바로 바뀐다.
   const screen = leaving
     ? "motion-safe:animate-screen-out"
@@ -590,23 +589,6 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
 
       {step === "burst" && <div aria-hidden="true" className="absolute inset-0 animate-burst bg-[radial-gradient(circle,#fff_0%,#fff_35%,#f3eefc_60%,#d9d4ea_100%)]" />}
 
-      {step === "reveal" && (
-        <div className={`absolute inset-0 ${screen} bg-[radial-gradient(circle_at_50%_45%,#efede8,#d2d0cb)] text-[#1e1d2b]`}>
-          <p className="absolute inset-x-0 top-[80px] text-center text-[13px] font-semibold tracking-[.12em] text-[#45434e]">처음 만나는</p>
-          <h1 className="absolute inset-x-0 top-[104px] text-center font-serif text-[56px] font-bold">{cleanName(companion)}</h1>
-          <div className="absolute inset-x-0 top-[280px] flex justify-center">
-            <Buddy shape={shape} color={color} size={220} look={[0.25, 0.2]} mouth="tongue" bob />
-          </div>
-          <div className="absolute inset-x-5 bottom-28">
-            <Caption>
-              안녕, {name}! 나는 {josa(cleanName(companion), "이야", "야")}. 만나서 반가워.
-            </Caption>
-          </div>
-          <button onClick={finish} className="absolute bottom-10 left-1/2 h-12 -translate-x-1/2 rounded-full bg-[#1e1d2b] px-7 text-[15px] font-bold text-white">
-            시작하기
-          </button>
-        </div>
-      )}
     </main>
   );
 }

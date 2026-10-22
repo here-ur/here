@@ -39,6 +39,7 @@
   --animate-twinkle: twinkle 2.8s ease-in-out infinite;
   --animate-ring-once: ring-once 1.4s ease-out both;
   --animate-aurora-a: aurora-a 22s ease-in-out infinite alternate;
+  --animate-unveil: unveil 1.4s ease-out forwards;
   --animate-aurora-b: aurora-b 28s ease-in-out infinite alternate;
 
   @keyframes pop {
@@ -66,6 +67,9 @@
   @keyframes drift {
     33% { transform: translate(6px, -8px) rotate(4deg); }
     66% { transform: translate(-6px, 6px) rotate(-3deg); }
+  }
+  @keyframes unveil {
+    to { opacity: 0; visibility: hidden; }
   }
   @keyframes aurora-a {
     from { transform: translate(-12%, -6%) scale(1); }
@@ -152,7 +156,7 @@ body {
    위치(position)는 정하지 않는다. 쓰는 쪽에서 relative나 absolute를 붙인다(::before가 거기에 붙는다). */
 @utility liquid-glass {
   isolation: isolate;
-  background: rgba(255, 255, 255, 0.06);
+  background-color: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(6px) saturate(180%);
   -webkit-backdrop-filter: blur(6px) saturate(180%);
   box-shadow:
