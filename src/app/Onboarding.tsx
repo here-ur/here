@@ -16,6 +16,7 @@ import {
   matchStyle,
 } from "@/lib/onboarding";
 import * as sfx from "@/lib/sound";
+import { Mongle } from "./art";
 
 // Tolan의 온보딩 구조를 빌린 첫 실행 흐름. 어두운 우주에서 몽글이를 찾고, 처음 만나는 순간부터 밝아진다.
 // 알림 권한 화면은 MVP 밖(알림 기능 없음)이라 뺐다.
@@ -23,17 +24,12 @@ type Step = "splash" | "name" | "safety" | "finding" | "match" | "color" | "voic
 
 const HOLD_MS = 1400;
 
-function Orb({ light, hue = 0, size, className = "" }: { light?: boolean; hue?: number; size: number; className?: string }) {
+function Buddy({ tint, size, className = "", bob }: { tint: string; size: number; className?: string; bob?: boolean }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- 애니메이션 SVG라 next/image 최적화가 필요 없다
-    <img
-      src={light ? "/orb/orb-light.svg" : "/orb/orb-dark.svg"}
-      alt=""
-      width={size}
-      height={size}
-      className={`pointer-events-none select-none motion-safe:animate-breathe ${className}`}
-      style={{ filter: hue ? `hue-rotate(${hue}deg)` : undefined }}
-    />
+    <div className={`relative ${className}`} style={{ width: size, height: size }}>
+      <div aria-hidden="true" className="absolute inset-[12%] rounded-full blur-2xl" style={{ background: tint, opacity: 0.45 }} />
+      <Mongle tint={tint} className={`relative size-full ${bob ? "motion-safe:animate-bob" : "motion-safe:animate-breathe"}`} />
+    </div>
   );
 }
 
@@ -100,7 +96,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
   const [step, setStep] = useState<Step>("splash");
   const [nickname, setNickname] = useState("");
   const [answers, setAnswers] = useState<Answers>({});
-  const [color, setColor] = useState<ColorId>("sky");
+  const [color, setColor] = useState<ColorId>("lavender");
   const [voice, setVoice] = useState<VoiceId>("marin");
   const [companion, setCompanion] = useState(DEFAULT_COMPANION);
   const [muted, setMuted] = useState(false);
@@ -113,7 +109,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
   const name = nickname.trim() || "친구";
   const style = matchStyle(answers);
   const matched = describeStyle(style, answers);
-  const hue = COLORS.find((c) => c.id === color)!.hue;
+  const tint = COLORS.find((c) => c.id === color)!.tint;
   const qIndex = QUESTIONS.findIndex((q) => !answers[q.id]);
 
   function go(next: Step) {
@@ -208,7 +204,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       {step === "splash" && (
         <button onClick={start} className="absolute inset-0 grid place-items-center bg-[#f7f6f2]" aria-label="시작">
           <span className="flex animate-fade items-center gap-2.5 text-[28px] font-bold tracking-[-0.02em] text-[#1e1d2b]">
-            <Orb light size={36} /> Here!
+            <Buddy tint="#DCD5F8" size={44} /> Here!
           </span>
           <span className="absolute bottom-16 text-sm text-[#6e6c7e]">눌러서 시작하기</span>
         </button>
@@ -291,7 +287,13 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
         <div className="absolute inset-0 animate-fade">
           <p className="absolute inset-x-0 top-[66px] text-center text-[13px] font-semibold tracking-[.12em] text-white/85">몽글이를 찾는 중</p>
           <div className="absolute inset-x-0 top-[150px] flex justify-center">
-            <LightCloud level={Object.keys(answers).length} />
+            {qIndex >= 0 ? (
+              <LightCloud level={Object.keys(answers).length} />
+            ) : (
+              <div className="grid size-[260px] place-items-center">
+                <Buddy tint={tint} size={200} className="animate-pop" />
+              </div>
+            )}
           </div>
           <div className="absolute inset-x-5 bottom-10 flex flex-col gap-4">
             {qIndex >= 0 ? (
@@ -322,14 +324,13 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       {step === "match" && (
         <div className="absolute inset-0 animate-fade">
           <Title>이렇게 곁에 있을게요</Title>
-          <div className="absolute top-[190px] left-1/2 flex size-[300px] -translate-x-1/2 flex-col items-center justify-center rounded-full bg-white/[.07] px-8 text-center">
-            <p className="text-lg font-semibold">{name}님에게</p>
-            <p className="mt-1 text-sm text-[#c4c1d4]">어울리는 몽글이는</p>
-            <p className="mt-1 text-[21px] font-bold">{matched.name}</p>
-            <p className="mt-3 text-[15px] leading-relaxed text-[#e4e2ee]">{matched.summary}</p>
+          <div className="absolute inset-x-0 top-[196px] flex justify-center">
+            <Buddy tint={tint} size={150} bob />
           </div>
-          <div className="absolute inset-x-0 top-[440px] flex justify-center">
-            <Orb size={150} />
+          <div className="absolute inset-x-6 top-[372px] rounded-[28px] border border-white/10 bg-white/[.07] px-6 py-6 text-center backdrop-blur-md">
+            <p className="text-sm text-[#c4c1d4]">{name}님에게 어울리는 몽글이는</p>
+            <p className="mt-1.5 text-[22px] font-bold tracking-[-0.02em]">{matched.name}</p>
+            <p className="mt-3 text-[15px] leading-relaxed text-[#e4e2ee]">{matched.summary}</p>
           </div>
           <div className="absolute inset-x-0 top-[640px] flex justify-center">
             <Next onClick={() => go("color")} />
@@ -342,7 +343,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <Back onClick={() => go("match")} />
           <Title sub="언제든 바꿀 수 있어요.">몽글이는 어떤 빛이면 좋을까요?</Title>
           <div className="absolute inset-x-0 top-[290px] flex justify-center">
-            <Orb size={170} hue={hue} key={color} className="animate-pop" />
+            <Buddy tint={tint} size={190} key={color} className="animate-pop" />
           </div>
           <p className="absolute inset-x-0 top-[490px] text-center text-[15px] font-semibold">{COLORS.find((c) => c.id === color)!.label}</p>
           <div className="absolute inset-x-0 top-[530px] flex justify-center gap-4" role="radiogroup" aria-label="몽글이 빛">
@@ -358,7 +359,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                 }}
                 className={`size-11 rounded-full p-1.5 ${color === c.id ? "ring-2 ring-white" : ""}`}
               >
-                <span className="block size-full rounded-full bg-[#7fb2ff]" style={{ filter: `hue-rotate(${c.hue}deg)` }} />
+                <span className="block size-full rounded-full" style={{ background: `linear-gradient(135deg, #fff, ${c.tint})` }} />
               </button>
             ))}
           </div>
@@ -373,7 +374,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <Back onClick={() => go("color")} />
           <Title sub="언제든 바꿀 수 있어요.">어떤 목소리가 좋을까요?</Title>
           <div className="absolute inset-x-0 top-[250px] flex justify-center">
-            <Orb size={110} hue={hue} />
+            <Buddy tint={tint} size={140} bob />
           </div>
           <div className="absolute inset-x-6 top-[420px] flex items-end justify-between" role="radiogroup" aria-label="몽글이 목소리">
             {VOICES.map((v, i) => (
@@ -416,7 +417,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <Back onClick={() => go("voice")} />
           <Title sub="언제든 바꿀 수 있어요.">몽글이 이름은 뭐로 할까요?</Title>
           <div className="absolute inset-x-0 top-[330px] flex justify-center">
-            <Orb size={96} hue={hue} />
+            <Buddy tint={tint} size={150} />
           </div>
           <div className="absolute inset-x-5 bottom-10 flex h-[58px] items-center rounded-full bg-[#f4f2ea] pr-2 pl-6">
             <label htmlFor="companion" className="sr-only">몽글이 이름</label>
@@ -452,7 +453,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
             >
               <span
                 aria-hidden="true"
-                className="absolute inset-0 rounded-full bg-[radial-gradient(closest-side,#fff8f2,#f2e6ff_70%,rgba(242,230,255,0))] transition-transform ease-out"
+                className="absolute inset-0 rounded-full bg-[radial-gradient(closest-side,rgba(255,255,255,.28),rgba(255,255,255,0))] transition-transform ease-out"
                 style={{ transform: holding ? "scale(1.12)" : "scale(1)", transitionDuration: holding ? `${HOLD_MS}ms` : "300ms" }}
               />
               <svg aria-hidden="true" className="absolute inset-0 -rotate-90" viewBox="0 0 260 260">
@@ -469,7 +470,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                   style={{ transition: `stroke-dashoffset ${holding ? HOLD_MS : 250}ms linear` }}
                 />
               </svg>
-              <Orb light size={200} hue={hue} className="relative opacity-80" />
+              <Buddy tint={tint} size={200} />
             </button>
           </div>
           <p className="absolute inset-x-0 top-[500px] flex items-center justify-center gap-2 text-[15px]">
@@ -488,7 +489,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <p className="absolute inset-x-0 top-[80px] text-center text-[13px] font-semibold tracking-[.12em] text-[#45434e]">처음 만나는</p>
           <h1 className="absolute inset-x-0 top-[104px] text-center font-serif text-[56px] font-bold">{cleanName(companion)}</h1>
           <div className="absolute inset-x-0 top-[280px] flex justify-center">
-            <Orb light size={190} hue={hue} />
+            <Buddy tint={tint} size={200} bob />
           </div>
           <div className="absolute inset-x-5 bottom-28">
             <Caption>

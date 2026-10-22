@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 // 몽글이 프로토타입의 그림(구름 캐릭터, 복숭아 언덕)과 아이콘을 그대로 옮긴 것.
 
 const CLOUD = [
@@ -19,22 +21,24 @@ function CloudShape({ fill }: { fill: string }) {
   );
 }
 
-export function Mongle({ className = "" }: { className?: string }) {
+/** tint: 몸 아래쪽 색(온보딩에서 고른 빛). 같은 화면에 여럿 그려도 id가 겹치지 않게 useId를 쓴다. */
+export function Mongle({ className = "", tint = "#DCD5F8" }: { className?: string; tint?: string }) {
+  const id = `mongle${useId().replace(/[^a-zA-Z0-9]/g, "")}`; // useId의 콜론·특수문자는 url(#…)에서 깨질 수 있다
   return (
     <svg viewBox="0 0 440 440" className={className} aria-hidden="true" style={{ overflow: "visible" }}>
       <defs>
-        <linearGradient id="mongle-fill" gradientUnits="userSpaceOnUse" x1="90" y1="70" x2="330" y2="370">
+        <linearGradient id={`${id}-fill`} gradientUnits="userSpaceOnUse" x1="90" y1="70" x2="330" y2="370">
           <stop offset="0" stopColor="#FFFFFF" />
-          <stop offset="1" stopColor="#DCD5F8" />
+          <stop offset="1" stopColor={tint} />
         </linearGradient>
-        <filter id="mongle-grain" x="0" y="0" width="100%" height="100%">
+        <filter id={`${id}-grain`} x="0" y="0" width="100%" height="100%">
           <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch" />
           <feColorMatrix values="0 0 0 0 0.43  0 0 0 0 0.37  0 0 0 0 0.84  0 0 0 0.22 0" />
           <feComposite in2="SourceGraphic" operator="in" />
         </filter>
       </defs>
-      <CloudShape fill="url(#mongle-fill)" />
-      <g filter="url(#mongle-grain)">
+      <CloudShape fill={`url(#${id}-fill)`} />
+      <g filter={`url(#${id}-grain)`}>
         <CloudShape fill="#fff" />
       </g>
       <g transform="translate(0 -0.4) scale(1.1)">

@@ -2,10 +2,10 @@
 // 서버로 보내는 건 몽글이 이름과 목소리뿐이다(/api/realtime이 받아서 그대로 쓴다).
 
 export const COLORS = [
-  { id: "sky", label: "하늘", hue: 0 },
-  { id: "lavender", label: "라벤더", hue: 40 },
-  { id: "mint", label: "민트", hue: -60 },
-  { id: "peach", label: "피치", hue: 170 },
+  { id: "lavender", label: "라벤더", tint: "#DCD5F8" },
+  { id: "sky", label: "하늘", tint: "#CADDFB" },
+  { id: "mint", label: "민트", tint: "#C9EEDF" },
+  { id: "peach", label: "피치", tint: "#FFD9C7" },
 ] as const;
 
 // OpenAI realtime 목소리 중 여섯. 서버도 이 목록에 있는 것만 받는다.
@@ -38,7 +38,7 @@ export const QUESTIONS = [
 export type Answers = Partial<Record<(typeof QUESTIONS)[number]["id"], string>>;
 
 const STYLES = {
-  listen: { name: "차분히 들어 주는 친구", line: "서두르지 않고, 네 속도에 맞춰 들어 줄게요." },
+  listen: { name: "차분히 들어 주는 친구", line: "서두르지 않고, 천천히 들어 줄게요." },
   sort: { name: "같이 정리해 주는 친구", line: "엉킨 생각을 하나씩 같이 풀어 볼게요." },
   chat: { name: "편하게 수다 떠는 친구", line: "무겁지 않게, 아무 이야기나 편하게 해요." },
 } as const;
