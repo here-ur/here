@@ -30,7 +30,7 @@ const LEAVE_MS = 200;
 
 function Next({ onClick, label = "다음", disabled }: { onClick: () => void; label?: string; disabled?: boolean }) {
   return (
-    <button onClick={onClick} disabled={disabled} aria-label={label} className="liquid-glass grid size-[84px] place-items-center rounded-full text-white transition active:scale-95 disabled:[&>svg]:opacity-40">
+    <button onClick={onClick} disabled={disabled} aria-label={label} className="liquid-glass relative grid size-[84px] place-items-center rounded-full text-white transition active:scale-95 disabled:[&>svg]:opacity-40">
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M9.5 5.5l6.5 6.5-6.5 6.5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -228,13 +228,17 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       {/* Liquid Glass 굴절: 유리 뒤 배경을 가장자리에서 살짝 휘게 한다(크롬 계열만, 사파리는 흐림·반사광만) */}
       <svg aria-hidden="true" className="absolute size-0">
         <filter id="liquid-refract" x="0" y="0" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.012 0.012" numOctaves="2" seed="7" result="noise" />
-          <feGaussianBlur in="noise" stdDeviation="2" result="soft" />
-          <feDisplacementMap in="SourceGraphic" in2="soft" scale="38" xChannelSelector="R" yChannelSelector="G" />
+          <feTurbulence type="fractalNoise" baseFrequency="0.006 0.006" numOctaves="1" seed="7" result="noise" />
+          <feGaussianBlur in="noise" stdDeviation="6" result="soft" />
+          <feDisplacementMap in="SourceGraphic" in2="soft" scale="14" xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </svg>
       {dark && (
         <>
+          {/* 아주 천천히 흐르는 오로라: 하늘이 살아 있는 느낌만 나게 은은하게 */}
+          <div aria-hidden="true" className="pointer-events-none absolute -inset-1/4 bg-[radial-gradient(40%_35%_at_30%_30%,rgba(124,92,255,.24),transparent_70%)] motion-safe:animate-aurora-a" />
+          <div aria-hidden="true" className="pointer-events-none absolute -inset-1/4 bg-[radial-gradient(35%_30%_at_70%_65%,rgba(64,140,255,.18),transparent_70%)] motion-safe:animate-aurora-b" />
+          <div aria-hidden="true" className="pointer-events-none absolute -inset-1/4 bg-[radial-gradient(30%_25%_at_50%_88%,rgba(255,120,190,.12),transparent_70%)] motion-safe:animate-aurora-a [animation-delay:-11s]" />
           <div className="stars" aria-hidden="true" />
           <div aria-hidden="true" className="absolute -bottom-16 left-1/2 h-[120px] w-[220px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(255,214,150,.8),rgba(255,150,200,.5)_45%,rgba(140,170,255,.3)_70%,transparent)] blur-2xl" />
           <button
@@ -276,17 +280,19 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           }}
         >
           <Title>뭐라고 부르면 될까요?</Title>
-          <label htmlFor="nickname" className="sr-only">이름이나 별명</label>
-          <input
-            id="nickname"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            maxLength={12}
-            placeholder="이름이나 별명"
-            autoComplete="nickname"
-            enterKeyHint="next"
-            className="absolute inset-x-8 top-[206px] h-[58px] rounded-full bg-[#ecebf1] text-center text-[19px] font-semibold tracking-[-0.02em] text-[#1b1830] outline-0 placeholder:text-[#6b6979]"
-          />
+          <div className="liquid-glass absolute inset-x-8 top-[206px] h-[58px] rounded-full focus-within:ring-2 focus-within:ring-white/50">
+            <label htmlFor="nickname" className="sr-only">이름이나 별명</label>
+            <input
+              id="nickname"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              maxLength={12}
+              placeholder="이름이나 별명"
+              autoComplete="nickname"
+              enterKeyHint="next"
+              className="size-full rounded-full bg-transparent text-center text-[19px] font-semibold tracking-[-0.02em] text-white outline-0 placeholder:text-[#b9b6c9]"
+            />
+          </div>
           <p className="absolute inset-x-6 top-[282px] text-center text-xs leading-[1.6] text-[#8c89a0]">
             계속하면 이용약관과 개인정보 처리방침에 동의하게 돼요.
             <br />
@@ -514,7 +520,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <div className="absolute inset-x-0 top-[330px] flex justify-center">
             <Buddy shape={shape} color={color} size={170} look={[0.1, 0.65]} />
           </div>
-          <div className="absolute inset-x-5 bottom-10 flex h-[58px] items-center rounded-full bg-[#f4f2ea] pr-2 pl-6">
+          <div className="liquid-glass absolute inset-x-5 bottom-10 flex h-[58px] items-center rounded-full pr-2 pl-6 focus-within:ring-2 focus-within:ring-white/50">
             <label htmlFor="companion" className="sr-only">몽글이 이름</label>
             <input
               id="companion"
@@ -522,9 +528,9 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
               onChange={(e) => setCompanion(e.target.value)}
               maxLength={10}
               enterKeyHint="done"
-              className="min-w-0 flex-1 bg-transparent text-[17px] font-semibold text-[#1e1d2b] outline-0"
+              className="min-w-0 flex-1 bg-transparent text-[17px] font-semibold text-white outline-0"
             />
-            <button aria-label="정하기" className="grid size-11 place-items-center rounded-full bg-[#1e1d2b] text-white">
+            <button aria-label="정하기" className="grid size-11 place-items-center rounded-full bg-white text-[#1e1d2b]">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M6 12.5l4 4 8-9" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
