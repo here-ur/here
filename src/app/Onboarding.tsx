@@ -57,7 +57,7 @@ function Caption({ children }: { children: React.ReactNode }) {
 
 function Title({ children, sub }: { children: React.ReactNode; sub?: string }) {
   return (
-    <div className="absolute inset-x-16 top-[112px] text-center">
+    <div className="absolute inset-x-6 top-[112px] text-center">
       <h1 className="text-[22px] leading-[1.35] font-bold tracking-[-0.02em] text-white">{children}</h1>
       {sub && <p className="mt-2 text-sm text-[#a9a6ba]">{sub}</p>}
     </div>
@@ -230,7 +230,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
             enterKeyHint="next"
             className="absolute inset-x-8 top-[206px] h-[58px] rounded-full bg-[#ecebf1] text-center text-[19px] font-semibold tracking-[-0.02em] text-[#1b1830] outline-0 placeholder:text-[#6b6979]"
           />
-          <p className="absolute inset-x-10 top-[284px] text-center text-[13px] leading-relaxed text-[#a9a6ba]">
+          <p className="absolute inset-x-6 top-[282px] text-center text-xs leading-[1.6] text-[#8c89a0]">
             계속하면 이용약관과 개인정보 처리방침에 동의하게 돼요.
             <br />
             몽글이는 AI예요.
@@ -244,7 +244,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       {step === "safety" && (
         <div className="absolute inset-0 animate-fade">
           <p className="absolute inset-x-0 top-[64px] flex justify-center">
-            <span className="flex items-center gap-1.5 rounded-full bg-[#f4f2ea] px-3.5 py-2 text-sm font-semibold text-[#1e1d2b]">
+            <span className="flex items-center gap-1.5 rounded-full bg-[#f4f2ea] py-2 pr-4 pl-3 text-sm font-semibold text-[#1e1d2b]">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" fill="#1e1d2b" />
                 <path d="M7.5 12.5l3 3 6-6.5" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -252,10 +252,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
               반가워요, {name}님
             </span>
           </p>
-          <Title>
-            시작하기 전에
-            <br />세 가지만요
-          </Title>
+          <Title>시작하기 전에 세 가지만요</Title>
           <ul className="absolute inset-x-5 top-[236px] flex flex-col gap-1 rounded-[24px] border border-white/10 bg-white/[.06] p-2 backdrop-blur-md">
             <li className="rounded-2xl px-4 py-3.5">
               <b className="block text-[15px]">몽글이는 AI예요</b>
