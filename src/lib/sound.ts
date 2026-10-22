@@ -57,30 +57,60 @@ export function pick(i: number) {
   tone(scale[i % scale.length], { dur: 0.3, vol: 0.12, type: "triangle" });
 }
 
-/** 잔잔한 배경음. 다시 불러도 하나만 돈다. */
+// 배경음 화음 진행(낮은 음역). 8초마다 다음 화음으로 천천히 넘어간다: Fmaj7 → Am7 → Dm7 → Cmaj7
+const CHORDS = [
+  [174.61, 220, 261.63, 329.63],
+  [220, 261.63, 329.63, 392],
+  [146.83, 220, 261.63, 349.23],
+  [130.81, 196, 246.94, 329.63],
+];
+const CHORD_S = 8;
+
+/** 잔잔한 배경음. 화음이 천천히 바뀌고 숨 쉬듯 커졌다 작아진다. 다시 불러도 하나만 돈다. */
 export function startPad() {
   const c = audio();
   if (!c || !master || pad) return;
-  const g = c.createGain();
+  const out = c.createGain();
   const lp = c.createBiquadFilter();
   lp.type = "lowpass";
-  lp.frequency.value = 900;
-  g.gain.value = 0;
-  g.gain.linearRampToValueAtTime(0.06, c.currentTime + 3);
-  const oscs = [220, 277.18, 329.63, 440].map((f, i) => {
+  lp.frequency.value = 600;
+  lp.Q.value = 0.3;
+  out.gain.value = 0;
+  out.gain.linearRampToValueAtTime(0.035, c.currentTime + 4);
+
+  // 아주 느린 흔들림: 음량과 밝기가 10초 주기로 오르내린다
+  const lfo = c.createOscillator();
+  const lfoVol = c.createGain();
+  const lfoTone = c.createGain();
+  lfo.frequency.value = 0.1;
+  lfoVol.gain.value = 0.012;
+  lfoTone.gain.value = 250;
+  lfo.connect(lfoVol).connect(out.gain);
+  lfo.connect(lfoTone).connect(lp.frequency);
+  lfo.start();
+
+  const voices = CHORDS[0].map((f, i) => {
     const o = c.createOscillator();
     o.type = "sine";
     o.frequency.value = f;
-    o.detune.value = (i - 1.5) * 4;
+    o.detune.value = (i - 1.5) * 5;
     o.connect(lp);
     o.start();
     return o;
   });
-  lp.connect(g).connect(master);
+  lp.connect(out).connect(master);
+
+  let n = 0;
+  const timer = setInterval(() => {
+    n = (n + 1) % CHORDS.length;
+    voices.forEach((o, i) => o.frequency.setTargetAtTime(CHORDS[n][i], c.currentTime, 1.5)); // 미끄러지듯 넘어간다
+  }, CHORD_S * 1000);
+
   pad = {
     stop: () => {
-      g.gain.setTargetAtTime(0, c.currentTime, 0.6);
-      oscs.forEach((o) => o.stop(c.currentTime + 3));
+      clearInterval(timer);
+      out.gain.setTargetAtTime(0, c.currentTime, 0.6);
+      [...voices, lfo].forEach((o) => o.stop(c.currentTime + 3));
     },
   };
 }
