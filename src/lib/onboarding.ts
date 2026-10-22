@@ -1,6 +1,12 @@
 // 온보딩에서 정한 것(부르는 이름, 몽글이 이름·빛·목소리, 곁에 있는 방식)을 이 기기의 localStorage에만 남긴다.
 // 서버로 보내는 건 몽글이 이름과 목소리뿐이다(/api/realtime이 받아서 그대로 쓴다).
 
+// 몽글이 모습: 광택 구름 + 왕눈, 또는 여러 색이 번진 동그라미 + 낙서 얼굴
+export const SHAPES = [
+  { id: "cloud", label: "구름" },
+  { id: "round", label: "동글" },
+] as const;
+
 // 몽글이 빛: 구름 몸 아래쪽 색(base)과 그 안에서 번지는 두 색(blob1·blob2), 위쪽 밝은 색(light)
 export const COLORS = [
   { id: "lavender", label: "라벤더", base: "#B7A6FF", blob1: "#8EB4FF", blob2: "#F6B4E4", light: "#EEE8FF" },
@@ -19,6 +25,7 @@ export const VOICES = [
   { id: "alloy", label: "알로이", desc: "잔잔하고 고른 목소리" },
 ] as const;
 
+export type ShapeId = (typeof SHAPES)[number]["id"];
 export type ColorId = (typeof COLORS)[number]["id"];
 export type VoiceId = (typeof VOICES)[number]["id"];
 
@@ -68,6 +75,7 @@ export function describeStyle(style: StyleId, answers: Answers) {
 export type Profile = {
   nickname: string;
   companion: string;
+  shape: ShapeId;
   color: ColorId;
   voice: VoiceId;
   style: StyleId;

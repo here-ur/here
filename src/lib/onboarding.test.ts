@@ -37,7 +37,7 @@ test("받침에 따라 조사를 고른다", () => {
 
 test("프로필을 저장하고 다시 읽는다", () => {
   assert.equal(loadProfile(), null);
-  const p = { nickname: "하늘", companion: "몽글이", color: "sky", voice: "marin", style: "listen" } as const;
+  const p = { nickname: "하늘", companion: "몽글이", shape: "round", color: "sky", voice: "marin", style: "listen" } as const;
   saveProfile(p);
   assert.deepEqual(loadProfile(), p);
 });
