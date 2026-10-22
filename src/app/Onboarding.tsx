@@ -43,7 +43,7 @@ function Next({ onClick, label = "다음", disabled }: { onClick: () => void; la
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="grid size-[84px] place-items-center rounded-full bg-white text-[#2a2838] shadow-[0_8px_30px_rgba(0,0,0,.35)] transition active:scale-95 disabled:opacity-40"
+      className="grid size-[84px] place-items-center rounded-full border border-white/35 bg-linear-to-b from-white/30 to-white/[.08] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.5),0_8px_30px_rgba(0,0,0,.3)] backdrop-blur-xl transition active:scale-95 disabled:opacity-35"
     >
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M9.5 5.5l6.5 6.5-6.5 6.5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
