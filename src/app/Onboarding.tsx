@@ -65,24 +65,69 @@ function Title({ children, sub }: { children: React.ReactNode; sub?: string }) {
   );
 }
 
-/** 몽글이가 아직 모양을 갖추기 전의 흐릿한 빛 덩어리 */
-function LightCloud({ level }: { level: number }) {
+/** 몽글이가 아직 모양을 갖추기 전의 흐릿한 빛 덩어리. 모습을 고르기 전까지는 늘 이걸로 보인다.
+ * 색 덩어리가 저마다 떠다니고, 전체 빛이 숨 쉬듯 밝아지고, 주변에 빛 알갱이가 깜빡인다. level이 오를수록 진해진다. */
+function LightCloud({ level, size = 260 }: { level: number; size?: number }) {
   const blobs = [
-    ["#ffb3c7", -40, -30, 120],
-    ["#ffd59e", 30, -10, 110],
-    ["#a8d4ff", -20, 40, 100],
-    ["#d7c2ff", 40, 50, 90],
-    ["#fff2a8", 0, 0, 80],
+    ["#ff8fb8", -44, -30, 120],
+    ["#ffb56e", 34, -14, 108],
+    ["#6fb4ff", -24, 42, 104],
+    ["#b28cff", 44, 48, 96],
+    ["#ffe27a", 0, 2, 56],
+  ] as const;
+  const sparks = [
+    [-96, -58, 6, 0],
+    [84, -82, 5, 0.8],
+    [104, 18, 7, 1.6],
+    [-104, 40, 5, 2.2],
+    [22, 104, 6, 0.4],
+    [-30, -106, 4, 1.2],
+    [64, 72, 4, 2.6],
+    [-70, 92, 5, 1.9],
+    [110, -30, 4, 0.2],
   ] as const;
   return (
-    <div aria-hidden="true" className="relative size-[260px] motion-safe:animate-drift" style={{ opacity: 0.55 + level * 0.2 }}>
-      {blobs.map(([c, x, y, s]) => (
-        <span
-          key={c}
-          className="absolute top-1/2 left-1/2 rounded-full blur-2xl"
-          style={{ background: c, width: s + level * 20, height: s + level * 20, transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))` }}
-        />
-      ))}
+    <div aria-hidden="true" className="relative" style={{ width: size, height: size }}>
+      <div className="absolute top-1/2 left-1/2 size-[260px]" style={{ translate: "-50% -50%", scale: size / 260 }}>
+        <div className="absolute inset-0 motion-safe:animate-drift">
+          <div className="absolute inset-0 motion-safe:animate-glow" style={{ opacity: Math.min(1, 0.5 + level * 0.18) }}>
+            {blobs.map(([c, x, y, s], i) => (
+              <span
+                key={c}
+                className="absolute top-1/2 left-1/2 rounded-full blur-2xl motion-safe:animate-blob"
+                style={{
+                  background: c,
+                  width: s + level * 20,
+                  height: s + level * 20,
+                  translate: `calc(-50% + ${x}px) calc(-50% + ${y}px)`,
+                  animationDuration: `${6 + i * 1.3}s`,
+                  animationDelay: `${-i * 1.7}s`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+        {size >= 120 &&
+          sparks.slice(0, 3 + level * 2).map(([x, y, r, d]) => (
+            <span
+              key={`${x}-${y}`}
+              className="absolute top-1/2 left-1/2 rounded-full bg-white shadow-[0_0_10px_3px_rgba(255,255,255,.65)] motion-safe:animate-twinkle"
+              style={{ width: r, height: r, translate: `${x}px ${y}px`, animationDelay: `${d}s` }}
+            />
+          ))}
+      </div>
+    </div>
+  );
+}
+
+/** 캐릭터가 나타날 때: 뒤에서 빛이 맥박처럼 뛰고, 나타나는 순간 빛 고리가 한 번 퍼진다 */
+function Appear({ color, size, children }: { color: ColorId; size: number; children: React.ReactNode }) {
+  const light = COLORS.find((c) => c.id === color)!.light;
+  return (
+    <div className="relative grid place-items-center" style={{ width: size, height: size }}>
+      <span aria-hidden="true" className="absolute rounded-full opacity-60 blur-2xl motion-safe:animate-glow" style={{ width: size * 0.85, height: size * 0.85, background: light }} />
+      <span aria-hidden="true" className="absolute rounded-full border-2 border-white/70 motion-safe:animate-ring-once" style={{ width: size * 0.8, height: size * 0.8 }} />
+      {children}
     </div>
   );
 }
@@ -169,7 +214,10 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
   }
 
   const dark = step !== "splash" && step !== "reveal";
-  const screen = leaving ? "screen-leave" : "screen-enter";
+  // 나갈 때는 짧게 흐려지고, 들어올 때는 제목 → 내용 → 버튼 순으로 떠오른다. 동작 줄이기를 켜면 바로 바뀐다.
+  const screen = leaving
+    ? "motion-safe:animate-screen-out"
+    : "motion-safe:[&>*]:animate-screen-in [&>*:nth-child(2)]:[animation-delay:70ms] [&>*:nth-child(3)]:[animation-delay:140ms] [&>*:nth-child(4)]:[animation-delay:210ms] [&>*:nth-child(n+5)]:[animation-delay:280ms]";
 
   return (
     <main
@@ -211,9 +259,9 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       )}
 
       {step === "splash" && (
-        <button onClick={start} className={`absolute inset-0 grid place-items-center bg-[#f7f6f2] ${leaving ? "screen-leave" : ""}`} aria-label="시작">
+        <button onClick={start} className={`absolute inset-0 grid place-items-center bg-[#f7f6f2] ${leaving ? "motion-safe:animate-screen-out" : ""}`} aria-label="시작">
           <span className="flex animate-fade items-center gap-2.5 text-[28px] font-bold tracking-[-0.02em] text-[#1e1d2b]">
-            <Buddy size={52} look={[0.3, 0.1]} /> Here!
+            <LightCloud level={1} size={44} /> Here!
           </span>
           <span className="absolute bottom-16 text-sm text-[#6e6c7e]">눌러서 시작하기</span>
         </button>
@@ -296,9 +344,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
             {qIndex >= 0 ? (
               <LightCloud level={Object.keys(answers).length} />
             ) : (
-              <div className="grid size-[260px] place-items-center">
-                <Buddy shape={shape} color={color} size={220} look={[0, -0.6]} mouth="o" className="animate-pop" />
-              </div>
+              <LightCloud level={3} />
             )}
           </div>
           <div className="absolute inset-x-5 bottom-10 flex flex-col gap-4">
@@ -331,7 +377,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
         <div className={`absolute inset-0 ${screen}`}>
           <Title>이렇게 곁에 있을게요</Title>
           <div className="absolute inset-x-0 top-[196px] flex justify-center">
-            <Buddy shape={shape} color={color} size={170} look={[0.2, 0.25]} bob />
+            <LightCloud level={3} size={170} />
           </div>
           <div className="absolute inset-x-6 top-[372px] rounded-[28px] border border-white/10 bg-white/[.07] px-6 py-6 text-center backdrop-blur-md">
             <p className="text-sm text-[#c4c1d4]">{name}님에게 어울리는 몽글이는</p>
@@ -354,7 +400,9 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                 <path d="M14.5 6l-6 6 6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-            <Buddy shape={shape} color={color} size={210} key={shape} look={[0, 0.2]} className="animate-pop" />
+            <Appear color={color} size={210} key={shape}>
+              <Buddy shape={shape} color={color} size={210} look={[0, 0.2]} className="animate-pop" />
+            </Appear>
             <button onClick={() => switchShape(1)} aria-label="다음 모습" className="grid size-11 place-items-center rounded-full bg-white/15 text-white">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M9.5 6l6 6-6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -388,7 +436,9 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <Back onClick={() => go("shape")} />
           <Title sub="언제든 바꿀 수 있어요.">몽글이는 어떤 빛이면 좋을까요?</Title>
           <div className="absolute inset-x-0 top-[290px] flex justify-center">
-            <Buddy shape={shape} color={color} size={210} key={color} look={[0, 0.2]} className="animate-pop" />
+            <Appear color={color} size={210} key={color}>
+              <Buddy shape={shape} color={color} size={210} look={[0, 0.2]} className="animate-pop" />
+            </Appear>
           </div>
           <p className="absolute inset-x-0 top-[490px] text-center text-[15px] font-semibold">{COLORS.find((c) => c.id === color)!.label}</p>
           <div className="absolute inset-x-0 top-[530px] flex justify-center gap-4" role="radiogroup" aria-label="몽글이 빛">
