@@ -125,7 +125,12 @@ function Appear({ color, size, children }: { color: ColorId; size: number; child
   const light = COLORS.find((c) => c.id === color)!.light;
   return (
     <div className="relative grid place-items-center" style={{ width: size, height: size }}>
-      <span aria-hidden="true" className="absolute rounded-full opacity-60 blur-2xl motion-safe:animate-glow" style={{ width: size * 0.85, height: size * 0.85, background: light }} />
+      {/* filter(흐림)를 쓰지 않고 가장자리가 투명해지는 빛으로 그린다. 흐림과 밝기 애니메이션을 같이 걸면 맥박 때마다 흐림이 풀려 또렷한 원이 보인다. */}
+      <span
+        aria-hidden="true"
+        className="absolute rounded-full opacity-40 motion-safe:animate-glow-pulse"
+        style={{ width: size * 1.25, height: size * 1.25, background: `radial-gradient(closest-side, ${light}, ${light}99 40%, transparent)` }}
+      />
       <span aria-hidden="true" className="absolute rounded-full border-2 border-white/70 motion-safe:animate-ring-once" style={{ width: size * 0.8, height: size * 0.8 }} />
       {children}
     </div>
