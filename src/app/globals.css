@@ -29,6 +29,8 @@
   --animate-breathe: breathe 6s ease-in-out infinite;
   --animate-drift: drift 9s ease-in-out infinite;
   --animate-burst: burst 1.3s ease-out both;
+  --animate-blink: blink 5s ease-in-out infinite;
+  --animate-float: float 4.5s ease-in-out infinite;
 
   @keyframes pop {
     from { transform: scale(0.94); opacity: 0; }
@@ -50,11 +52,18 @@
     to { transform: scale(1.35); opacity: 0; }
   }
   @keyframes breathe {
-    50% { transform: scale(1.04); }
+    50% { transform: scale(1.02); }
   }
   @keyframes drift {
     33% { transform: translate(6px, -8px) rotate(4deg); }
     66% { transform: translate(-6px, 6px) rotate(-3deg); }
+  }
+  @keyframes float {
+    50% { transform: translateY(-4px); }
+  }
+  @keyframes blink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.1); }
   }
   @keyframes burst {
     from { transform: scale(0.2); opacity: 0; }

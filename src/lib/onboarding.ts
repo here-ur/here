@@ -1,11 +1,12 @@
 // 온보딩에서 정한 것(부르는 이름, 몽글이 이름·빛·목소리, 곁에 있는 방식)을 이 기기의 localStorage에만 남긴다.
 // 서버로 보내는 건 몽글이 이름과 목소리뿐이다(/api/realtime이 받아서 그대로 쓴다).
 
+// 몽글이 빛: 구름 몸 아래쪽 색(base)과 그 안에서 번지는 두 색(blob1·blob2), 위쪽 밝은 색(light)
 export const COLORS = [
-  { id: "lavender", label: "라벤더", tint: "#DCD5F8" },
-  { id: "sky", label: "하늘", tint: "#CADDFB" },
-  { id: "mint", label: "민트", tint: "#C9EEDF" },
-  { id: "peach", label: "피치", tint: "#FFD9C7" },
+  { id: "lavender", label: "라벤더", base: "#B7A6FF", blob1: "#8EB4FF", blob2: "#F6B4E4", light: "#EEE8FF" },
+  { id: "sky", label: "하늘", base: "#8CC4FF", blob1: "#6F86FF", blob2: "#9DEFE0", light: "#E2F4FF" },
+  { id: "mint", label: "민트", base: "#78D8BC", blob1: "#58BDEB", blob2: "#CDEE7C", light: "#E3FFF4" },
+  { id: "peach", label: "피치", base: "#FFB08A", blob1: "#FF7EA8", blob2: "#FFE27A", light: "#FFF1E4" },
 ] as const;
 
 // OpenAI realtime 목소리 중 여섯. 서버도 이 목록에 있는 것만 받는다.

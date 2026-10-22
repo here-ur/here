@@ -16,7 +16,7 @@ import {
   matchStyle,
 } from "@/lib/onboarding";
 import * as sfx from "@/lib/sound";
-import { Mongle } from "./art";
+import Buddy from "./Buddy";
 
 // Tolan의 온보딩 구조를 빌린 첫 실행 흐름. 어두운 우주에서 몽글이를 찾고, 처음 만나는 순간부터 밝아진다.
 // 알림 권한 화면은 MVP 밖(알림 기능 없음)이라 뺐다.
@@ -24,14 +24,6 @@ type Step = "splash" | "name" | "safety" | "finding" | "match" | "color" | "voic
 
 const HOLD_MS = 1400;
 
-function Buddy({ tint, size, className = "", bob }: { tint: string; size: number; className?: string; bob?: boolean }) {
-  return (
-    <div className={`relative ${className}`} style={{ width: size, height: size }}>
-      <div aria-hidden="true" className="absolute inset-[12%] rounded-full blur-2xl" style={{ background: tint, opacity: 0.45 }} />
-      <Mongle tint={tint} className={`relative size-full ${bob ? "motion-safe:animate-bob" : "motion-safe:animate-breathe"}`} />
-    </div>
-  );
-}
 
 function Next({ onClick, label = "다음", disabled }: { onClick: () => void; label?: string; disabled?: boolean }) {
   return (
@@ -64,7 +56,7 @@ function Caption({ children }: { children: React.ReactNode }) {
 function Title({ children, sub }: { children: React.ReactNode; sub?: string }) {
   return (
     <div className="absolute inset-x-16 top-[112px] text-center">
-      <h1 className="text-[28px] leading-[1.25] font-bold tracking-[-0.03em] text-white">{children}</h1>
+      <h1 className="text-[22px] leading-[1.35] font-bold tracking-[-0.02em] text-white">{children}</h1>
       {sub && <p className="mt-2 text-sm text-[#a9a6ba]">{sub}</p>}
     </div>
   );
@@ -109,8 +101,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
   const name = nickname.trim() || "친구";
   const style = matchStyle(answers);
   const matched = describeStyle(style, answers);
-  const tint = COLORS.find((c) => c.id === color)!.tint;
-  const qIndex = QUESTIONS.findIndex((q) => !answers[q.id]);
+    const qIndex = QUESTIONS.findIndex((q) => !answers[q.id]);
 
   function go(next: Step) {
     sfx.tick();
@@ -204,7 +195,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       {step === "splash" && (
         <button onClick={start} className="absolute inset-0 grid place-items-center bg-[#f7f6f2]" aria-label="시작">
           <span className="flex animate-fade items-center gap-2.5 text-[28px] font-bold tracking-[-0.02em] text-[#1e1d2b]">
-            <Buddy tint="#DCD5F8" size={44} /> Here!
+            <Buddy size={52} look={[0.3, 0.1]} /> Here!
           </span>
           <span className="absolute bottom-16 text-sm text-[#6e6c7e]">눌러서 시작하기</span>
         </button>
@@ -291,7 +282,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
               <LightCloud level={Object.keys(answers).length} />
             ) : (
               <div className="grid size-[260px] place-items-center">
-                <Buddy tint={tint} size={200} className="animate-pop" />
+                <Buddy color={color} size={220} look={[0, -0.6]} mouth="o" className="animate-pop" />
               </div>
             )}
           </div>
@@ -325,7 +316,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
         <div className="absolute inset-0 animate-fade">
           <Title>이렇게 곁에 있을게요</Title>
           <div className="absolute inset-x-0 top-[196px] flex justify-center">
-            <Buddy tint={tint} size={150} bob />
+            <Buddy color={color} size={170} look={[0.2, 0.25]} bob />
           </div>
           <div className="absolute inset-x-6 top-[372px] rounded-[28px] border border-white/10 bg-white/[.07] px-6 py-6 text-center backdrop-blur-md">
             <p className="text-sm text-[#c4c1d4]">{name}님에게 어울리는 몽글이는</p>
@@ -343,7 +334,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <Back onClick={() => go("match")} />
           <Title sub="언제든 바꿀 수 있어요.">몽글이는 어떤 빛이면 좋을까요?</Title>
           <div className="absolute inset-x-0 top-[290px] flex justify-center">
-            <Buddy tint={tint} size={190} key={color} className="animate-pop" />
+            <Buddy color={color} size={210} key={color} look={[0, 0.2]} className="animate-pop" />
           </div>
           <p className="absolute inset-x-0 top-[490px] text-center text-[15px] font-semibold">{COLORS.find((c) => c.id === color)!.label}</p>
           <div className="absolute inset-x-0 top-[530px] flex justify-center gap-4" role="radiogroup" aria-label="몽글이 빛">
@@ -359,7 +350,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                 }}
                 className={`size-11 rounded-full p-1.5 ${color === c.id ? "ring-2 ring-white" : ""}`}
               >
-                <span className="block size-full rounded-full" style={{ background: `linear-gradient(135deg, #fff, ${c.tint})` }} />
+                <span className="block size-full rounded-full" style={{ background: `linear-gradient(160deg, ${c.light}, ${c.base} 70%, ${c.blob1})` }} />
               </button>
             ))}
           </div>
@@ -374,7 +365,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <Back onClick={() => go("color")} />
           <Title sub="언제든 바꿀 수 있어요.">어떤 목소리가 좋을까요?</Title>
           <div className="absolute inset-x-0 top-[250px] flex justify-center">
-            <Buddy tint={tint} size={140} bob />
+            <Buddy color={color} size={160} look={[0, 0.6]} mouth="o" bob />
           </div>
           <div className="absolute inset-x-6 top-[420px] flex items-end justify-between" role="radiogroup" aria-label="몽글이 목소리">
             {VOICES.map((v, i) => (
@@ -417,7 +408,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <Back onClick={() => go("voice")} />
           <Title sub="언제든 바꿀 수 있어요.">몽글이 이름은 뭐로 할까요?</Title>
           <div className="absolute inset-x-0 top-[330px] flex justify-center">
-            <Buddy tint={tint} size={150} />
+            <Buddy color={color} size={170} look={[0.1, 0.65]} />
           </div>
           <div className="absolute inset-x-5 bottom-10 flex h-[58px] items-center rounded-full bg-[#f4f2ea] pr-2 pl-6">
             <label htmlFor="companion" className="sr-only">몽글이 이름</label>
@@ -470,7 +461,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                   style={{ transition: `stroke-dashoffset ${holding ? HOLD_MS : 250}ms linear` }}
                 />
               </svg>
-              <Buddy tint={tint} size={200} />
+              <Buddy color={color} size={210} look={[0, holding ? -0.3 : 0.1]} mouth={holding ? "o" : "calm"} />
             </button>
           </div>
           <p className="absolute inset-x-0 top-[500px] flex items-center justify-center gap-2 text-[15px]">
@@ -489,7 +480,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <p className="absolute inset-x-0 top-[80px] text-center text-[13px] font-semibold tracking-[.12em] text-[#45434e]">처음 만나는</p>
           <h1 className="absolute inset-x-0 top-[104px] text-center font-serif text-[56px] font-bold">{cleanName(companion)}</h1>
           <div className="absolute inset-x-0 top-[280px] flex justify-center">
-            <Buddy tint={tint} size={200} bob />
+            <Buddy color={color} size={220} look={[0.25, 0.2]} mouth="tongue" bob />
           </div>
           <div className="absolute inset-x-5 bottom-28">
             <Caption>
