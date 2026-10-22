@@ -57,13 +57,14 @@ export function pick(i: number) {
   tone(scale[i % scale.length], { dur: 0.3, vol: 0.12, type: "triangle" });
 }
 
-// 배경음: 밝은 장조 화음(중간 음역)이 천천히 바뀌고, 그 위로 오르골 같은 맑은 음이 가끔 떨어진다.
-// 낮은 음을 오래 끌면 무섭게 들려서 피했다. C → G/B → Am → F (모두 add9로 부드럽게)
+// 배경음: 밑에는 도(C) 한 음을 고정으로 깔고, 위 화음만 겹쳐 사라지며 바뀐다(음이 미끄러져 내려가지 않게).
+// 그 위로 오르골 같은 맑은 음이 가끔 떨어진다. C → F/C → Am/C → G/C
+const BASS = 130.81;
 const CHORDS = [
   [261.63, 329.63, 392, 587.33],
-  [246.94, 293.66, 392, 440],
-  [220, 261.63, 329.63, 493.88],
-  [174.61, 261.63, 349.23, 392],
+  [261.63, 349.23, 440, 523.25],
+  [261.63, 329.63, 440, 493.88],
+  [293.66, 392, 493.88, 587.33],
 ];
 const CHORD_S = 6;
 const SPARKLE = [523.25, 587.33, 659.25, 783.99, 880, 1046.5]; // C 장조 5음계라 어떻게 겹쳐도 어울린다
@@ -90,17 +91,39 @@ export function startPad() {
   echo.connect(fb).connect(echo);
   echo.connect(wet).connect(master);
 
-  const voices = CHORDS[0].map((f, i) => {
-    const o = c.createOscillator();
+  // 고정 베이스
+  const bass = c.createOscillator();
+  const bassGain = c.createGain();
+  bass.type = "sine";
+  bass.frequency.value = BASS;
+  bassGain.gain.value = 0.6;
+  bass.connect(bassGain).connect(lp);
+  bass.start();
+
+  // 화음 한 벌을 띄우고 2초에 걸쳐 나타났다 사라진다
+  const live = new Set<OscillatorNode>();
+  function chord(notes: number[]) {
+    if (!c) return;
+    const t = c.currentTime;
     const g = c.createGain();
-    o.type = i === 0 ? "triangle" : "sine";
-    o.frequency.value = f;
-    o.detune.value = (i - 1.5) * 4;
-    g.gain.value = i === 3 ? 0.5 : 1; // 맨 위 음은 살짝 작게
-    o.connect(g).connect(lp);
-    o.start();
-    return o;
-  });
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.5, t + 2);
+    g.gain.setValueAtTime(0.5, t + CHORD_S);
+    g.gain.linearRampToValueAtTime(0, t + CHORD_S + 2);
+    g.connect(lp);
+    notes.forEach((f, i) => {
+      const o = c.createOscillator();
+      o.type = "sine";
+      o.frequency.value = f;
+      o.detune.value = (i - 1.5) * 4;
+      o.connect(g);
+      o.start(t);
+      o.stop(t + CHORD_S + 2.1);
+      live.add(o);
+      o.onended = () => live.delete(o);
+    });
+  }
+  chord(CHORDS[0]);
 
   function sparkle() {
     if (!c || !master) return;
@@ -123,7 +146,7 @@ export function startPad() {
   let n = 0;
   const chordTimer = setInterval(() => {
     n = (n + 1) % CHORDS.length;
-    voices.forEach((o, i) => o.frequency.setTargetAtTime(CHORDS[n][i], c.currentTime, 0.8));
+    chord(CHORDS[n]);
   }, CHORD_S * 1000);
   let sparkleTimer: ReturnType<typeof setTimeout>;
   const loop = () => {
@@ -137,7 +160,7 @@ export function startPad() {
       clearInterval(chordTimer);
       clearTimeout(sparkleTimer);
       out.gain.setTargetAtTime(0, c.currentTime, 0.6);
-      voices.forEach((o) => o.stop(c.currentTime + 3));
+      [bass, ...live].forEach((o) => o.stop(c.currentTime + 3));
     },
   };
 }
