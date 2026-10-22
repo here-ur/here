@@ -25,6 +25,7 @@ import Buddy from "./Buddy";
 type Step = "splash" | "name" | "safety" | "finding" | "match" | "shape" | "color" | "voice" | "naming" | "hold" | "burst" | "reveal";
 
 const HOLD_MS = 1400;
+const LEAVE_MS = 200;
 
 
 function Next({ onClick, label = "다음", disabled }: { onClick: () => void; label?: string; disabled?: boolean }) {
@@ -96,6 +97,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
   const [companion, setCompanion] = useState(DEFAULT_COMPANION);
   const [muted, setMuted] = useState(false);
   const [holding, setHolding] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stopRiser = useRef<() => void>(() => {});
 
@@ -112,9 +114,15 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
     setShape(SHAPES[i].id);
   }
 
-  function go(next: Step) {
-    sfx.tick();
-    setStep(next);
+  // 화면 전환: 지금 화면이 잠깐 흐려지며 사라지고(LEAVE_MS), 다음 화면이 위로 살짝 떠오르며 나타난다.
+  function go(next: Step, sound = true) {
+    if (leaving) return; // 전환 중에 한 번 더 누르면 무시
+    if (sound) sfx.tick();
+    setLeaving(true);
+    setTimeout(() => {
+      setStep(next);
+      setLeaving(false);
+    }, LEAVE_MS);
   }
 
   function start() {
@@ -127,7 +135,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
     sfx.pick(i);
     const next = { ...answers, [id]: value };
     setAnswers(next);
-    if (QUESTIONS.every((q) => next[q.id])) setTimeout(() => setStep("match"), 900);
+    if (QUESTIONS.every((q) => next[q.id])) setTimeout(() => go("match", false), 900);
   }
 
   function holdStart() {
@@ -161,6 +169,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
   }
 
   const dark = step !== "splash" && step !== "reveal";
+  const screen = leaving ? "screen-leave" : "screen-enter";
 
   return (
     <main
@@ -202,7 +211,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       )}
 
       {step === "splash" && (
-        <button onClick={start} className="absolute inset-0 grid place-items-center bg-[#f7f6f2]" aria-label="시작">
+        <button onClick={start} className={`absolute inset-0 grid place-items-center bg-[#f7f6f2] ${leaving ? "screen-leave" : ""}`} aria-label="시작">
           <span className="flex animate-fade items-center gap-2.5 text-[28px] font-bold tracking-[-0.02em] text-[#1e1d2b]">
             <Buddy size={52} look={[0.3, 0.1]} /> Here!
           </span>
@@ -212,7 +221,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
 
       {step === "name" && (
         <form
-          className="absolute inset-0 animate-fade"
+          className={`absolute inset-0 ${screen}`}
           onSubmit={(e) => {
             e.preventDefault();
             if (nickname.trim()) go("safety");
@@ -242,7 +251,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       )}
 
       {step === "safety" && (
-        <div className="absolute inset-0 animate-fade">
+        <div className={`absolute inset-0 ${screen}`}>
           <p className="absolute inset-x-0 top-[64px] flex justify-center">
             <span className="flex items-center gap-1.5 rounded-full bg-[#f4f2ea] py-2 pr-4 pl-3 text-sm font-semibold text-[#1e1d2b]">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -281,7 +290,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       )}
 
       {step === "finding" && (
-        <div className="absolute inset-0 animate-fade">
+        <div className={`absolute inset-0 ${screen}`}>
           <p className="absolute inset-x-0 top-[66px] text-center text-[13px] font-semibold tracking-[.12em] text-white/85">몽글이를 찾는 중</p>
           <div className="absolute inset-x-0 top-[150px] flex justify-center">
             {qIndex >= 0 ? (
@@ -319,7 +328,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       )}
 
       {step === "match" && (
-        <div className="absolute inset-0 animate-fade">
+        <div className={`absolute inset-0 ${screen}`}>
           <Title>이렇게 곁에 있을게요</Title>
           <div className="absolute inset-x-0 top-[196px] flex justify-center">
             <Buddy shape={shape} color={color} size={170} look={[0.2, 0.25]} bob />
@@ -336,7 +345,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       )}
 
       {step === "shape" && (
-        <div className="absolute inset-0 animate-fade">
+        <div className={`absolute inset-0 ${screen}`}>
           <Back onClick={() => go("match")} />
           <Title sub="언제든 바꿀 수 있어요.">몽글이는 어떤 모습이 좋을까요?</Title>
           <div className="absolute inset-x-0 top-[250px] flex items-center justify-between px-5">
@@ -375,7 +384,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       )}
 
       {step === "color" && (
-        <div className="absolute inset-0 animate-fade">
+        <div className={`absolute inset-0 ${screen}`}>
           <Back onClick={() => go("shape")} />
           <Title sub="언제든 바꿀 수 있어요.">몽글이는 어떤 빛이면 좋을까요?</Title>
           <div className="absolute inset-x-0 top-[290px] flex justify-center">
@@ -406,7 +415,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       )}
 
       {step === "voice" && (
-        <div className="absolute inset-0 animate-fade">
+        <div className={`absolute inset-0 ${screen}`}>
           <Back onClick={() => go("color")} />
           <Title sub="언제든 바꿀 수 있어요.">어떤 목소리가 좋을까요?</Title>
           <div className="absolute inset-x-0 top-[250px] flex justify-center">
@@ -444,7 +453,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
 
       {step === "naming" && (
         <form
-          className="absolute inset-0 animate-fade"
+          className={`absolute inset-0 ${screen}`}
           onSubmit={(e) => {
             e.preventDefault();
             go("hold");
@@ -475,7 +484,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       )}
 
       {step === "hold" && (
-        <div className="absolute inset-0 animate-fade">
+        <div className={`absolute inset-0 ${screen}`}>
           <div className="absolute inset-x-0 top-[200px] flex justify-center">
             <button
               aria-label={`${cleanName(companion)} 만나기`}
@@ -521,7 +530,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       {step === "burst" && <div aria-hidden="true" className="absolute inset-0 animate-burst bg-[radial-gradient(circle,#fff_0%,#fff_35%,#f3eefc_60%,#d9d4ea_100%)]" />}
 
       {step === "reveal" && (
-        <div className="absolute inset-0 animate-fade bg-[radial-gradient(circle_at_50%_45%,#efede8,#d2d0cb)] text-[#1e1d2b]">
+        <div className={`absolute inset-0 ${screen} bg-[radial-gradient(circle_at_50%_45%,#efede8,#d2d0cb)] text-[#1e1d2b]`}>
           <p className="absolute inset-x-0 top-[80px] text-center text-[13px] font-semibold tracking-[.12em] text-[#45434e]">처음 만나는</p>
           <h1 className="absolute inset-x-0 top-[104px] text-center font-serif text-[56px] font-bold">{cleanName(companion)}</h1>
           <div className="absolute inset-x-0 top-[280px] flex justify-center">
