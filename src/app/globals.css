@@ -26,6 +26,9 @@
   --animate-wave: wave 0.9s ease-in-out infinite;
   --animate-bob: bob 1.4s ease-in-out infinite;
   --animate-halo: halo 2s ease-out infinite;
+  --animate-breathe: breathe 6s ease-in-out infinite;
+  --animate-drift: drift 9s ease-in-out infinite;
+  --animate-burst: burst 1.3s ease-out both;
 
   @keyframes pop {
     from { transform: scale(0.94); opacity: 0; }
@@ -45,6 +48,18 @@
   @keyframes halo {
     from { transform: scale(0.85); opacity: 0.7; }
     to { transform: scale(1.35); opacity: 0; }
+  }
+  @keyframes breathe {
+    50% { transform: scale(1.04); }
+  }
+  @keyframes drift {
+    33% { transform: translate(6px, -8px) rotate(4deg); }
+    66% { transform: translate(-6px, 6px) rotate(-3deg); }
+  }
+  @keyframes burst {
+    from { transform: scale(0.2); opacity: 0; }
+    30% { opacity: 1; }
+    to { transform: scale(1.6); opacity: 1; }
   }
   @keyframes wave {
     50% { height: 12px; }
@@ -71,4 +86,13 @@ body {
   opacity: 0.35;
   mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.43 0 0 0 0 0.37 0 0 0 0 0.84 0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* 온보딩 우주 배경의 별 */
+.stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 9 -7.6'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
 }

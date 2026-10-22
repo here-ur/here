@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
 import { type Msg, type Session, saveSession } from "@/lib/log";
+import { type Profile, parseProfile, profileRaw, saveProfile } from "@/lib/onboarding";
 import { type Realtime, connectRealtime } from "@/lib/realtime";
 import { Hills, Icon, Mongle } from "./art";
 import Hospitals from "./Hospitals";
 import Log from "./Log";
+import Onboarding from "./Onboarding";
 import Sheet from "./Sheet";
 
 type Status = "connecting" | "idle" | "listening" | "thinking" | "speaking";
@@ -73,7 +75,14 @@ function CallButton({ label, pressed, danger, disabled, onClick, children }: { l
   );
 }
 
+const noSubscribe = () => () => {};
+
 export default function Home() {
+  // 첫 실행이면 온보딩부터. 서버 렌더에서는 localStorage를 모르니 undefined로 비워 둔다.
+  const storedProfile = useSyncExternalStore(noSubscribe, profileRaw, () => undefined);
+  const [newProfile, setNewProfile] = useState<Profile | null>(null);
+  const profile = newProfile ?? (storedProfile === undefined ? undefined : parseProfile(storedProfile));
+
   const [intro, setIntro] = useState(false);
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -144,7 +153,7 @@ export default function Home() {
         },
         onTool: (name) => (name === "show_crisis_help" ? setCrisis(true) : setSuggest(true)),
         onError: setError,
-      });
+      }, { name: profile?.companion, voice: profile?.voice });
       rt.current = conn;
       conn.setSound(sound);
       setHasMic(conn.hasMic);
@@ -183,6 +192,19 @@ export default function Home() {
     setMicOn(true);
     setError("");
     setStatus("idle");
+  }
+
+  if (profile === undefined) return <Stage splash>{null}</Stage>;
+
+  if (profile === null) {
+    return (
+      <Onboarding
+        onDone={(p) => {
+          saveProfile(p);
+          setNewProfile(p);
+        }}
+      />
+    );
   }
 
   if (showLog) {
