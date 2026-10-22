@@ -57,60 +57,87 @@ export function pick(i: number) {
   tone(scale[i % scale.length], { dur: 0.3, vol: 0.12, type: "triangle" });
 }
 
-// 배경음 화음 진행(낮은 음역). 8초마다 다음 화음으로 천천히 넘어간다: Fmaj7 → Am7 → Dm7 → Cmaj7
+// 배경음: 밝은 장조 화음(중간 음역)이 천천히 바뀌고, 그 위로 오르골 같은 맑은 음이 가끔 떨어진다.
+// 낮은 음을 오래 끌면 무섭게 들려서 피했다. C → G/B → Am → F (모두 add9로 부드럽게)
 const CHORDS = [
-  [174.61, 220, 261.63, 329.63],
-  [220, 261.63, 329.63, 392],
-  [146.83, 220, 261.63, 349.23],
-  [130.81, 196, 246.94, 329.63],
+  [261.63, 329.63, 392, 587.33],
+  [246.94, 293.66, 392, 440],
+  [220, 261.63, 329.63, 493.88],
+  [174.61, 261.63, 349.23, 392],
 ];
-const CHORD_S = 8;
+const CHORD_S = 6;
+const SPARKLE = [523.25, 587.33, 659.25, 783.99, 880, 1046.5]; // C 장조 5음계라 어떻게 겹쳐도 어울린다
 
-/** 잔잔한 배경음. 화음이 천천히 바뀌고 숨 쉬듯 커졌다 작아진다. 다시 불러도 하나만 돈다. */
+/** 잔잔한 배경음. 다시 불러도 하나만 돈다. */
 export function startPad() {
   const c = audio();
   if (!c || !master || pad) return;
   const out = c.createGain();
   const lp = c.createBiquadFilter();
   lp.type = "lowpass";
-  lp.frequency.value = 600;
-  lp.Q.value = 0.3;
+  lp.frequency.value = 1400;
   out.gain.value = 0;
-  out.gain.linearRampToValueAtTime(0.035, c.currentTime + 4);
+  out.gain.linearRampToValueAtTime(0.028, c.currentTime + 4);
+  lp.connect(out).connect(master);
 
-  // 아주 느린 흔들림: 음량과 밝기가 10초 주기로 오르내린다
-  const lfo = c.createOscillator();
-  const lfoVol = c.createGain();
-  const lfoTone = c.createGain();
-  lfo.frequency.value = 0.1;
-  lfoVol.gain.value = 0.012;
-  lfoTone.gain.value = 250;
-  lfo.connect(lfoVol).connect(out.gain);
-  lfo.connect(lfoTone).connect(lp.frequency);
-  lfo.start();
+  // 오르골 음에 걸 메아리(딜레이)
+  const echo = c.createDelay(1);
+  const fb = c.createGain();
+  const wet = c.createGain();
+  echo.delayTime.value = 0.42;
+  fb.gain.value = 0.35;
+  wet.gain.value = 0.5;
+  echo.connect(fb).connect(echo);
+  echo.connect(wet).connect(master);
 
   const voices = CHORDS[0].map((f, i) => {
     const o = c.createOscillator();
-    o.type = "sine";
+    const g = c.createGain();
+    o.type = i === 0 ? "triangle" : "sine";
     o.frequency.value = f;
-    o.detune.value = (i - 1.5) * 5;
-    o.connect(lp);
+    o.detune.value = (i - 1.5) * 4;
+    g.gain.value = i === 3 ? 0.5 : 1; // 맨 위 음은 살짝 작게
+    o.connect(g).connect(lp);
     o.start();
     return o;
   });
-  lp.connect(out).connect(master);
+
+  function sparkle() {
+    if (!c || !master) return;
+    const f = SPARKLE[Math.floor(Math.random() * SPARKLE.length)];
+    const t = c.currentTime;
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = "sine";
+    o.frequency.value = f;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.035, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
+    o.connect(g);
+    g.connect(master);
+    g.connect(echo);
+    o.start(t);
+    o.stop(t + 1.7);
+  }
 
   let n = 0;
-  const timer = setInterval(() => {
+  const chordTimer = setInterval(() => {
     n = (n + 1) % CHORDS.length;
-    voices.forEach((o, i) => o.frequency.setTargetAtTime(CHORDS[n][i], c.currentTime, 1.5)); // 미끄러지듯 넘어간다
+    voices.forEach((o, i) => o.frequency.setTargetAtTime(CHORDS[n][i], c.currentTime, 0.8));
   }, CHORD_S * 1000);
+  let sparkleTimer: ReturnType<typeof setTimeout>;
+  const loop = () => {
+    sparkle();
+    sparkleTimer = setTimeout(loop, 1800 + Math.random() * 2600);
+  };
+  sparkleTimer = setTimeout(loop, 1500);
 
   pad = {
     stop: () => {
-      clearInterval(timer);
+      clearInterval(chordTimer);
+      clearTimeout(sparkleTimer);
       out.gain.setTargetAtTime(0, c.currentTime, 0.6);
-      [...voices, lfo].forEach((o) => o.stop(c.currentTime + 3));
+      voices.forEach((o) => o.stop(c.currentTime + 3));
     },
   };
 }

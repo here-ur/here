@@ -39,12 +39,7 @@ function Orb({ light, hue = 0, size, className = "" }: { light?: boolean; hue?: 
 
 function Next({ onClick, label = "다음", disabled }: { onClick: () => void; label?: string; disabled?: boolean }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      className="grid size-[84px] place-items-center rounded-full border border-white/35 bg-linear-to-b from-white/30 to-white/[.08] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.5),0_8px_30px_rgba(0,0,0,.3)] backdrop-blur-xl transition active:scale-95 disabled:opacity-35"
-    >
+    <button onClick={onClick} disabled={disabled} aria-label={label} className="liquid-glass grid size-[84px] place-items-center rounded-full text-white transition active:scale-95 disabled:opacity-35">
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M9.5 5.5l6.5 6.5-6.5 6.5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -177,6 +172,14 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
         dark ? "bg-linear-to-b from-[#0b0a1a] via-[#141029] to-[#241d3d]" : ""
       }`}
     >
+      {/* Liquid Glass 굴절: 유리 뒤 배경을 가장자리에서 살짝 휘게 한다(크롬 계열만, 사파리는 흐림·반사광만) */}
+      <svg aria-hidden="true" className="absolute size-0">
+        <filter id="liquid-refract" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.012 0.012" numOctaves="2" seed="7" result="noise" />
+          <feGaussianBlur in="noise" stdDeviation="2" result="soft" />
+          <feDisplacementMap in="SourceGraphic" in2="soft" scale="38" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </svg>
       {dark && (
         <>
           <div className="stars" aria-hidden="true" />
