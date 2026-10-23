@@ -18,8 +18,12 @@ export type Realtime = {
   hasMic: boolean;
 };
 
-export async function connectRealtime(h: Handlers): Promise<Realtime> {
-  const res = await fetch("/api/realtime", { method: "POST" });
+export async function connectRealtime(h: Handlers, persona: { name?: string; voice?: string } = {}): Promise<Realtime> {
+  const res = await fetch("/api/realtime", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(persona), // 온보딩에서 고른 몽글이 이름·목소리. 서버가 다시 거른다.
+  });
   if (!res.ok) throw new Error("몽글이와 연결하지 못했어요. 조금 뒤에 다시 해 줘.");
   const { key } = await res.json();
 

@@ -161,6 +161,7 @@ const PATHS = {
       strokeLinejoin="round"
     />
   ),
+  close: <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />,
   pin: (
     <>
       <path d="M12 21s-6.6-5.6-6.6-11a6.6 6.6 0 0 1 13.2 0c0 5.4-6.6 11-6.6 11z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />

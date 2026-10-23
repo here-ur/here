@@ -1,4 +1,5 @@
 import { failed, openai } from "@/lib/openai";
+import { DEFAULT_COMPANION, VOICES, cleanName } from "@/lib/onboarding";
 
 // 브라우저가 OpenAI realtime에 직접 붙을 때 쓰는 임시 키를 발급한다. 진짜 키는 서버에만 있다.
 // 테스트용으로 Vercel 환경변수 REALTIME_MODEL에 "gpt-realtime-2.1"을 넣으면 큰 모델로 바뀐다(약 3배 비쌈).
@@ -16,8 +17,16 @@ const INSTRUCTIONS = `너는 "몽글이"야. 마음이 힘든 사람의 이야�
 - 어려움이 2주 넘게 이어지거나, 잠·식사·일상이 무너졌다고 하거나, 전문가 도움을 원하면 show_clinics를 부르고 "전문가와 이야기해 보는 것도 방법이야" 정도로만 가볍게 말해.
 - 대화를 시작하면 먼저 "안녕, 나는 몽글이야. 오늘은 어떤 하루였어?"라고 인사해.`;
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
+    const body = await req.json().catch(() => ({}));
+    const voice = VOICES.some((v) => v.id === body.voice) ? body.voice : "marin";
+    const name = typeof body.name === "string" ? cleanName(body.name) : DEFAULT_COMPANION;
+    // 이름은 cleanName이 한글·영문·숫자·띄어쓰기만 남긴 것이라 지시문에 넣어도 된다.
+    const instructions =
+      name === DEFAULT_COMPANION
+        ? INSTRUCTIONS
+        : `${INSTRUCTIONS}\n- 사용자가 너에게 "${name}"(이)라는 이름을 지어 줬어. 인사할 때도 "몽글이" 대신 이 이름으로 너를 소개해.`;
     const res = await openai("realtime/client_secrets", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -26,14 +35,14 @@ export async function POST() {
         session: {
           type: "realtime",
           model: MODEL,
-          instructions: INSTRUCTIONS,
+          instructions,
           audio: {
             input: {
               noise_reduction: { type: "near_field" },
               transcription: { model: "gpt-4o-mini-transcribe", language: "ko" },
               turn_detection: { type: "semantic_vad", eagerness: "low" },
             },
-            output: { voice: "marin" },
+            output: { voice },
           },
           tools: [
             { type: "function", name: "show_crisis_help", description: "화면에 자살예방상담전화 109 안내를 띄운다.", parameters: { type: "object", properties: {} } },
