@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { COLORS, type ColorId, type Profile, josa } from "@/lib/onboarding";
+import { COLORS, type ColorId, type Profile, accentButton, josa } from "@/lib/onboarding";
 import Buddy from "./Buddy";
 
 // 홈: 캔버스 v6 「라이트 + 입력창」 시안. 흰 바탕 아래로 오돌토돌한 보라·파랑 번짐이 올라오고,
@@ -124,7 +124,7 @@ export default function HomeScreen({
             if (draft.trim()) onText(draft.trim());
           }}
         >
-          <div className="liquid-glass relative flex h-[60px] min-w-0 flex-1 items-center rounded-full bg-[linear-gradient(180deg,rgba(40,56,140,.3),rgba(24,38,110,.42)_55%,rgba(60,90,200,.38))] px-6 focus-within:ring-2 focus-within:ring-white/60">
+          <div className="liquid-glass relative flex h-[60px] min-w-0 flex-1 items-center rounded-full bg-white/55 px-6 focus-within:ring-2 focus-within:ring-white">
             <label htmlFor="home-text" className="sr-only">
               {name}에게 글로 이야기하기
             </label>
@@ -136,7 +136,7 @@ export default function HomeScreen({
               placeholder="글로 적어도 돼요…"
               enterKeyHint="send"
               autoComplete="off"
-              className="min-w-0 flex-1 bg-transparent text-base text-white outline-0 placeholder:text-[#F4F6FF]"
+              className="min-w-0 flex-1 bg-transparent text-base text-[#1F2A55] outline-0 placeholder:text-[#5A6478]"
             />
           </div>
           <button
@@ -144,7 +144,8 @@ export default function HomeScreen({
             onClick={onVoice}
             aria-label={`${josa(name, "과", "와")} 통화하기`}
             aria-describedby="home-hint"
-            className="grid size-[60px] shrink-0 place-items-center rounded-full border border-[rgba(200,222,255,.55)] bg-[radial-gradient(circle_at_34%_26%,rgba(255,255,255,.3),rgba(255,255,255,0)_55%),linear-gradient(160deg,#2F6BFF,#1546C8)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.35),inset_0_-8px_14px_rgba(6,26,104,.3),0_10px_26px_rgba(22,70,220,.4)] transition active:scale-95"
+            style={accentButton(profile.color)}
+            className="grid size-[60px] shrink-0 place-items-center rounded-full border border-white/50 text-white transition active:scale-95"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <rect x="8.6" y="2.8" width="6.8" height="11.6" rx="3.4" stroke="currentColor" strokeWidth="1.8" />
@@ -152,7 +153,7 @@ export default function HomeScreen({
             </svg>
           </button>
         </form>
-        <p className="text-xs font-medium text-[#1F2A55]">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
+        <p className="text-[11px] text-[#5A6478]">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
       </div>
     </main>
   );

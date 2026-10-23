@@ -7,13 +7,23 @@ export const SHAPES = [
   { id: "round", label: "동글" },
 ] as const;
 
-// 몽글이 빛: 구름 몸 아래쪽 색(base)과 그 안에서 번지는 두 색(blob1·blob2), 위쪽 밝은 색(light)
+// 몽글이 빛: 구름 몸 아래쪽 색(base)과 그 안에서 번지는 두 색(blob1·blob2), 위쪽 밝은 색(light),
+// 버튼에 쓰는 짙은 색(deep, 흰 아이콘이 3:1 넘게 보이는 정도)
 export const COLORS = [
-  { id: "lavender", label: "라벤더", base: "#B7A6FF", blob1: "#8EB4FF", blob2: "#F6B4E4", light: "#EEE8FF" },
-  { id: "sky", label: "하늘", base: "#8CC4FF", blob1: "#6F86FF", blob2: "#9DEFE0", light: "#E2F4FF" },
-  { id: "mint", label: "민트", base: "#78D8BC", blob1: "#58BDEB", blob2: "#CDEE7C", light: "#E3FFF4" },
-  { id: "peach", label: "피치", base: "#FFB08A", blob1: "#FF7EA8", blob2: "#FFE27A", light: "#FFF1E4" },
+  { id: "lavender", label: "라벤더", base: "#B7A6FF", blob1: "#8EB4FF", blob2: "#F6B4E4", light: "#EEE8FF", deep: "#6A55E6" },
+  { id: "sky", label: "하늘", base: "#8CC4FF", blob1: "#6F86FF", blob2: "#9DEFE0", light: "#E2F4FF", deep: "#2F6BFF" },
+  { id: "mint", label: "민트", base: "#78D8BC", blob1: "#58BDEB", blob2: "#CDEE7C", light: "#E3FFF4", deep: "#128A73" },
+  { id: "peach", label: "피치", base: "#FFB08A", blob1: "#FF7EA8", blob2: "#FFE27A", light: "#FFF1E4", deep: "#D8573A" },
 ] as const;
+
+/** 몽글이 색으로 칠한 둥근 버튼(마이크·보내기) 배경과 그림자 */
+export function accentButton(color: ColorId) {
+  const c = COLORS.find((x) => x.id === color) ?? COLORS[0];
+  return {
+    background: `radial-gradient(circle at 34% 26%, rgba(255,255,255,.35), rgba(255,255,255,0) 55%), linear-gradient(160deg, ${c.base} 0%, ${c.deep} 70%)`,
+    boxShadow: `inset 0 1px 0 rgba(255,255,255,.4), inset 0 -8px 14px rgba(0,0,0,.12), 0 10px 26px ${c.deep}55`,
+  };
+}
 
 // OpenAI realtime 목소리 중 여섯. 서버도 이 목록에 있는 것만 받는다.
 export const VOICES = [

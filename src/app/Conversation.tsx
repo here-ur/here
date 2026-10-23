@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { Msg } from "@/lib/log";
-import { COLORS, type ColorId, type ShapeId, josa } from "@/lib/onboarding";
+import { COLORS, type ColorId, type ShapeId, accentButton, josa } from "@/lib/onboarding";
 import { Icon } from "./art";
 import Buddy from "./Buddy";
 import { Bloom } from "./HomeScreen";
@@ -251,7 +251,7 @@ export function TextScreen(p: {
           <Icon name="phone" size={20} />
         </button>
       </header>
-      <p className="absolute inset-x-0 top-[110px] text-center text-xs text-[#5F6675]">{josa(p.who.name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
+      <p className="absolute inset-x-0 top-[110px] text-center text-[11px] text-[#5A6478]">{josa(p.who.name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
 
       {p.crisis && <Crisis109 className="absolute inset-x-4 top-[136px] z-20" />}
 
@@ -273,7 +273,7 @@ export function TextScreen(p: {
       >
         {p.error && <p className="px-2 text-center text-[13px] font-medium text-[#C42A23]">{p.error}</p>}
         <div className="flex h-[58px] items-center gap-2.5">
-          <div className="liquid-glass relative flex h-full min-w-0 flex-1 items-center rounded-full bg-[linear-gradient(180deg,rgba(40,56,140,.3),rgba(24,38,110,.42)_55%,rgba(60,90,200,.38))] px-5 focus-within:ring-2 focus-within:ring-white/60">
+          <div className="liquid-glass relative flex h-full min-w-0 flex-1 items-center rounded-full bg-white/70 px-5 focus-within:ring-2 focus-within:ring-white">
             <label htmlFor="text-draft" className="sr-only">
               {p.who.name}에게 하고 싶은 말
             </label>
@@ -285,13 +285,14 @@ export function TextScreen(p: {
               placeholder={`${p.who.name}에게 하고 싶은 말`}
               enterKeyHint="send"
               autoComplete="off"
-              className="min-w-0 flex-1 bg-transparent text-base text-white outline-0 placeholder:text-[#F4F6FF]"
+              className="min-w-0 flex-1 bg-transparent text-base text-[#1F2A55] outline-0 placeholder:text-[#5A6478]"
             />
           </div>
           <button
             aria-label="보내기"
             disabled={!p.draft.trim() || p.connecting}
-            className="grid size-[58px] shrink-0 place-items-center rounded-full bg-linear-to-br from-[#2F6BFF] to-[#1546C8] text-white shadow-[0_10px_24px_rgba(22,70,220,.35)] transition active:scale-95 disabled:opacity-40"
+            style={accentButton(p.who.color)}
+            className="grid size-[58px] shrink-0 place-items-center rounded-full border border-white/50 text-white transition active:scale-95 disabled:opacity-40"
           >
             <Icon name="send" size={22} />
           </button>
