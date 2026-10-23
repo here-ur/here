@@ -128,6 +128,13 @@ export function loadProfile(): Profile | null {
   return parseProfile(profileRaw());
 }
 
+/** 처음부터 다시 하기: 몽글이 설정만 지운다(대화 기록은 log.ts가 따로 둔다) */
+export function clearProfile() {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {}
+}
+
 export function saveProfile(p: Profile) {
   try {
     localStorage.setItem(KEY, JSON.stringify(p));

@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
 import { type Msg, type Session, saveSession } from "@/lib/log";
-import { type Profile, josa, parseProfile, profileRaw, saveProfile } from "@/lib/onboarding";
+import { type Profile, clearProfile, josa, parseProfile, profileRaw, saveProfile } from "@/lib/onboarding";
 import { type Realtime, connectRealtime } from "@/lib/realtime";
 import { CallScreen, SummaryScreen, TextScreen } from "./Conversation";
+import Customize from "./Customize";
+import Drawer from "./Drawer";
 import HomeScreen from "./HomeScreen";
 import Hospitals from "./Hospitals";
 import Log from "./Log";
@@ -47,6 +49,8 @@ export default function Home() {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [showLog, setShowLog] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [customizing, setCustomizing] = useState(false);
   const [captions, setCaptions] = useState(false); // 자막: 소리가 안 들릴 때를 위해
   const [elapsed, setElapsed] = useState(0);
   const [ended, setEnded] = useState(false); // 통화를 끝내고 대화 내용을 보는 중
@@ -190,7 +194,45 @@ export default function Home() {
   if (showLog) return <Log who={who} onBack={() => setShowLog(false)} />;
 
   if (!started) {
-    return <HomeScreen profile={profile} greet={justMet} onVoice={() => begin()} onText={(t) => begin(t)} onLog={() => setShowLog(true)} />;
+    const me = { ...profile, shape: who.shape, color: who.color };
+    return (
+      <HomeScreen profile={me} greet={justMet} onVoice={() => begin()} onText={(t) => begin(t)} onLog={() => setShowLog(true)} onMenu={() => setShowMenu(true)}>
+        <Drawer
+          open={showMenu}
+          profile={me}
+          onClose={() => setShowMenu(false)}
+          onLog={() => {
+            setShowMenu(false);
+            setShowLog(true);
+          }}
+          onCustomize={() => {
+            setShowMenu(false);
+            setCustomizing(true);
+          }}
+          onClinics={() => {
+            setShowMenu(false);
+            setShowHospitals(true);
+          }}
+          onReset={() => {
+            if (!window.confirm(`${profile.companion} 설정을 지우고 처음부터 다시 할까요? 대화 기록은 그대로 남아요.`)) return;
+            clearProfile();
+            location.reload();
+          }}
+        />
+        {customizing && (
+          <Customize
+            profile={me}
+            onClose={() => setCustomizing(false)}
+            onSave={(p) => {
+              saveProfile(p);
+              setNewProfile(p);
+              setCustomizing(false);
+            }}
+          />
+        )}
+        {clinics}
+      </HomeScreen>
+    );
   }
 
   if (ended) {

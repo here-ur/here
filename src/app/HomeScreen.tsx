@@ -51,12 +51,16 @@ export default function HomeScreen({
   onVoice,
   onText,
   onLog,
+  onMenu,
+  children,
 }: {
   profile: Profile;
   greet: boolean; // 온보딩을 막 끝냈으면 몽글이가 처음 인사한다
   onVoice: () => void;
   onText: (text: string) => void;
   onLog: () => void;
+  onMenu: () => void;
+  children?: React.ReactNode; // 메뉴·시트처럼 홈 위에 겹치는 것
 }) {
   const [draft, setDraft] = useState("");
   const [greeting, setGreeting] = useState(greet);
@@ -75,10 +79,15 @@ export default function HomeScreen({
       {/* 온보딩의 빛이 하얗게 걷히며 홈이 나타난다 */}
       {greet && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 bg-white motion-safe:animate-unveil motion-reduce:hidden" />}
 
-      <header className="absolute inset-x-0 top-14 z-10 flex h-[54px] items-center justify-between pr-[18px] pl-5">
-        <span className="flex items-center gap-2">
-          <Buddy shape={profile.shape} color={profile.color} size={34} look={[0.2, 0.1]} />
-          <span className="text-[21px] font-medium tracking-[-0.025em]">Here!</span>
+      <header className="absolute inset-x-0 top-14 z-10 flex h-[54px] items-center justify-between px-[18px]">
+        <button onClick={onMenu} aria-label="메뉴" className="grid size-[54px] place-items-center rounded-full bg-white shadow-[0_3px_18px_rgba(28,38,80,.055),0_1px_2px_rgba(28,38,80,.03)]">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+            <path d="M4.5 7h15M4.5 12h15M4.5 17h9" />
+          </svg>
+        </button>
+        <span className="flex items-center gap-1.5">
+          <Buddy shape={profile.shape} color={profile.color} size={30} look={[0.2, 0.1]} />
+          <span className="text-[20px] font-medium tracking-[-0.025em]">Here!</span>
         </span>
         <button onClick={onLog} aria-label="내 기록" className="grid size-[54px] place-items-center rounded-full bg-white shadow-[0_3px_18px_rgba(28,38,80,.055),0_1px_2px_rgba(28,38,80,.03)]">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -155,6 +164,7 @@ export default function HomeScreen({
         </form>
         <p className="text-[11px] text-[#5A6478]">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
       </div>
+      {children}
     </main>
   );
 }

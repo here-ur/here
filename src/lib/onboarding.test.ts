@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanName, describeStyle, josa, loadProfile, matchStyle, saveProfile } from "./onboarding.ts";
+import { clearProfile, cleanName, describeStyle, josa, loadProfile, matchStyle, saveProfile } from "./onboarding.ts";
 
 const store = new Map<string, string>();
 globalThis.localStorage = {
@@ -40,4 +40,12 @@ test("프로필을 저장하고 다시 읽는다", () => {
   const p = { nickname: "하늘", companion: "몽글이", shape: "round", color: "sky", voice: "marin", style: "listen" } as const;
   saveProfile(p);
   assert.deepEqual(loadProfile(), p);
+});
+
+test("처음부터 다시 하기는 몽글이 설정만 지운다", () => {
+  store.set("here.log.v1", "[]");
+  saveProfile({ nickname: "하늘", companion: "구름", shape: "cloud", color: "mint", voice: "cedar", style: "sort" });
+  clearProfile();
+  assert.equal(loadProfile(), null);
+  assert.equal(store.get("here.log.v1"), "[]");
 });
