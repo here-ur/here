@@ -10,11 +10,11 @@ import { Bloom } from "./HomeScreen";
 // 대화 화면들: 통화(CallScreen), 글 대화(TextScreen), 끝난 뒤 요약(SummaryScreen).
 // 홈과 같은 라이트 톤(흰 바탕 + 아래 번짐)이고, 상태와 동작은 page.tsx가 들고 있다.
 
-type Who = { name: string; shape: ShapeId; color: ColorId };
+export type Who = { name: string; shape: ShapeId; color: ColorId };
 
 
 /** full: 홈과 같은 번짐(통화). soft: 글이 많은 화면이라 아래만 은은하게 물든다(번짐을 잘라 쓰면 위쪽에 딱딱한 경계가 생긴다). */
-function Shell({ children, color, bloom = "full" }: { children: React.ReactNode; color: ColorId; bloom?: "full" | "soft" }) {
+export function Shell({ children, color, bloom = "full" }: { children: React.ReactNode; color: ColorId; bloom?: "full" | "soft" }) {
   const c = COLORS.find((x) => x.id === color) ?? COLORS[0];
   return (
     <main className="relative mx-auto h-dvh min-h-[640px] w-full max-w-[430px] overflow-clip bg-[#FAFCFE] text-[#111318]">
@@ -65,12 +65,13 @@ function ClinicChip({ onClick }: { onClick: () => void }) {
 }
 
 /** 말풍선 목록: 몽글이는 왼쪽 흰 말풍선(첫 말에 작은 얼굴), 나는 오른쪽 파란 말풍선 */
-function Bubbles({ who, messages, live, thinking }: { who: Who; messages: Msg[]; live?: string; thinking?: boolean }) {
+export function Bubbles({ who, messages, live, thinking, follow = true }: { who: Who; messages: Msg[]; live?: string; thinking?: boolean; follow?: boolean }) {
   const end = useRef<HTMLLIElement>(null);
   useEffect(() => {
+    if (!follow) return;
     // 새 말이 오면 맨 아래로. (요즘 크롬은 scrollIntoView가 Promise를 돌려줘서, 이펙트가 그 값을 돌려주지 않게 감싼다)
     end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [messages.length, live, thinking]);
+  }, [follow, messages.length, live, thinking]);
   const rows: { role: Msg["role"]; content: string; typing?: boolean }[] = [...messages];
   if (live) rows.push({ role: "assistant", content: live });
   else if (thinking) rows.push({ role: "assistant", content: "", typing: true });

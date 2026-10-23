@@ -3,9 +3,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
 import { type Msg, type Session, saveSession } from "@/lib/log";
-import { type Profile, parseProfile, profileRaw, saveProfile } from "@/lib/onboarding";
+import { type Profile, josa, parseProfile, profileRaw, saveProfile } from "@/lib/onboarding";
 import { type Realtime, connectRealtime } from "@/lib/realtime";
-import { Hills } from "./art";
 import { CallScreen, SummaryScreen, TextScreen } from "./Conversation";
 import HomeScreen from "./HomeScreen";
 import Hospitals from "./Hospitals";
@@ -14,32 +13,16 @@ import Onboarding from "./Onboarding";
 
 type Status = "connecting" | "idle" | "listening" | "thinking" | "speaking";
 
-const HINT: Record<Status, string> = {
-  connecting: "몽글이와 연결하는 중…",
-  idle: "편하게 말해요. 몽글이가 듣고 있어요",
-  listening: "듣고 있어요",
-  thinking: "생각하는 중…",
-  speaking: "몽글이가 말하는 중",
-};
+const hint = (status: Status, name: string) =>
+  ({
+    connecting: `${josa(name, "과", "와")} 연결하는 중…`,
+    idle: `편하게 말해요. ${josa(name, "이", "가")} 듣고 있어요`,
+    listening: "듣고 있어요",
+    thinking: "생각하는 중…",
+    speaking: `${josa(name, "이", "가")} 말하는 중`,
+  })[status];
 
 const clock = (sec: number) => `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
-
-/** 하늘 배경 + 언덕. 폰 한 장 너비로 가운데에 둔다. */
-/** hills=false: 기록 화면처럼 하늘만 있는 배경 */
-function Stage({ splash = false, hills = true, children }: { splash?: boolean; hills?: boolean; children: React.ReactNode }) {
-  return (
-    <main className="relative mx-auto h-dvh min-h-[640px] w-full max-w-[430px] overflow-clip bg-linear-to-b from-sky-top to-sky-bot">
-      <div className="grain" />
-      {hills && (
-        <>
-          <div className={`absolute -inset-x-12 h-[180px] rounded-[50%] bg-glow opacity-85 blur-[55px] ${splash ? "bottom-[124px]" : "bottom-[178px]"}`} />
-          <Hills variant={splash ? "splash" : "talk"} className={`absolute inset-x-0 h-[324px] w-full ${splash ? "-bottom-[90px]" : "bottom-0"}`} />
-        </>
-      )}
-      {children}
-    </main>
-  );
-}
 
 const noSubscribe = () => () => {};
 
@@ -201,20 +184,14 @@ export default function Home() {
     );
   }
 
-  if (showLog) {
-    return (
-      <Stage hills={false}>
-        <Log onBack={() => setShowLog(false)} />
-      </Stage>
-    );
-  }
+  const who = { name: profile.companion, shape: profile.shape ?? "cloud", color: profile.color ?? "lavender" };
+  const clinics = showHospitals && <Hospitals color={who.color} onClose={() => setShowHospitals(false)} />;
+
+  if (showLog) return <Log who={who} onBack={() => setShowLog(false)} />;
 
   if (!started) {
     return <HomeScreen profile={profile} greet={justMet} onVoice={() => begin()} onText={(t) => begin(t)} onLog={() => setShowLog(true)} />;
   }
-
-  const who = { name: profile.companion, shape: profile.shape ?? "cloud", color: profile.color ?? "lavender" };
-  const clinics = showHospitals && <Hospitals onClose={() => setShowHospitals(false)} />;
 
   if (ended) {
     return (
@@ -255,7 +232,7 @@ export default function Home() {
 
   const listening = status === "listening" && micOn;
   const lastAssistant = live || messages.findLast((m) => m.role === "assistant")?.content;
-  const statusText = error || (!micOn && status === "idle" ? "마이크가 꺼져 있어요" : HINT[status]);
+  const statusText = error || (!micOn && status === "idle" ? "마이크가 꺼져 있어요" : hint(status, who.name));
 
   return (
     <>
