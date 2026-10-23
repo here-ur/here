@@ -40,6 +40,7 @@
   --animate-ring-once: ring-once 1.4s ease-out both;
   --animate-aurora-a: aurora-a 22s ease-in-out infinite alternate;
   --animate-unveil: unveil 1.4s ease-out forwards;
+  --animate-dot: dot 1s ease-in-out infinite;
   --animate-aurora-b: aurora-b 28s ease-in-out infinite alternate;
 
   @keyframes pop {
@@ -67,6 +68,9 @@
   @keyframes drift {
     33% { transform: translate(6px, -8px) rotate(4deg); }
     66% { transform: translate(-6px, 6px) rotate(-3deg); }
+  }
+  @keyframes dot {
+    50% { transform: translateY(-3px); opacity: 0.5; }
   }
   @keyframes unveil {
     to { opacity: 0; visibility: hidden; }

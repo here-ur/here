@@ -7,10 +7,10 @@ import Buddy from "./Buddy";
 // 홈: 캔버스 v6 「라이트 + 입력창」 시안. 흰 바탕 아래로 오돌토돌한 보라·파랑 번짐이 올라오고,
 // 고른 몽글이가 그 위에 떠 있다. 아래 한 자리에서 글로 쓰거나(칸) 바로 통화한다(파란 마이크).
 
-function Bloom() {
+export function Bloom({ className = "h-[66%]" }: { className?: string }) {
   const id = `bloom${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   return (
-    <svg aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[66%] w-full" viewBox="0 300 390 544" preserveAspectRatio="xMidYMax slice">
+    <svg aria-hidden="true" className={`absolute inset-x-0 bottom-0 w-full ${className}`} viewBox="0 300 390 544" preserveAspectRatio="xMidYMax slice">
       <defs>
         <radialGradient id={`${id}-g`} gradientUnits="userSpaceOnUse" cx="195" cy="857" r="475">
           <stop offset="0" stopColor="#8AA5EE" />
