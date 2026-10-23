@@ -1,45 +1,47 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { type Profile, josa } from "@/lib/onboarding";
+import { COLORS, type ColorId, type Profile, josa } from "@/lib/onboarding";
 import Buddy from "./Buddy";
 
 // 홈: 캔버스 v6 「라이트 + 입력창」 시안. 흰 바탕 아래로 오돌토돌한 보라·파랑 번짐이 올라오고,
 // 고른 몽글이가 그 위에 떠 있다. 아래 한 자리에서 글로 쓰거나(칸) 바로 통화한다(파란 마이크).
 
-export function Bloom({ className = "h-[66%]" }: { className?: string }) {
+/** 아래에서 올라오는 오돌토돌한 번짐. 고른 몽글이 빛의 색을 연하게 써서 캐릭터와 어울리게 하고,
+ * 천천히 숨 쉬듯 부풀며 그 안에서 두 색이 오로라처럼 흐른다. */
+export function Bloom({ color = "lavender", className = "h-[66%]" }: { color?: ColorId; className?: string }) {
   const id = `bloom${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+  const c = COLORS.find((x) => x.id === color) ?? COLORS[0];
   return (
-    <svg aria-hidden="true" className={`absolute inset-x-0 bottom-0 w-full ${className}`} viewBox="0 300 390 544" preserveAspectRatio="xMidYMax slice">
-      <defs>
-        <radialGradient id={`${id}-g`} gradientUnits="userSpaceOnUse" cx="195" cy="857" r="475">
-          <stop offset="0" stopColor="#8AA5EE" />
-          <stop offset="0.33" stopColor="#83A0ED" />
-          <stop offset="0.58" stopColor="#7B99EB" />
-          <stop offset="0.72" stopColor="#7D9BEB" />
-          <stop offset="0.79" stopColor="#819EEC" />
-          <stop offset="0.83" stopColor="#8C9FEC" />
-          <stop offset="0.865" stopColor="#A3A1EE" />
-          <stop offset="0.9" stopColor="#B8A3F0" stopOpacity="0.93" />
-          <stop offset="0.935" stopColor="#CDB0F3" stopOpacity="0.67" />
-          <stop offset="0.965" stopColor="#DFC5F5" stopOpacity="0.34" />
-          <stop offset="0.99" stopColor="#EDD9F8" stopOpacity="0.1" />
-          <stop offset="1" stopColor="#F2E4FA" stopOpacity="0" />
-        </radialGradient>
-        <linearGradient id={`${id}-b`} gradientUnits="userSpaceOnUse" x1="0" y1="750" x2="0" y2="844">
-          <stop offset="0" stopColor="#CBD2EA" stopOpacity="0" />
-          <stop offset="0.4" stopColor="#CBD2EA" stopOpacity="0.4" />
-          <stop offset="1" stopColor="#DADFF0" stopOpacity="0.64" />
-        </linearGradient>
-        {/* 번짐 가장자리를 오돌토돌하게: 노이즈로 픽셀을 살짝 흩뿌린다 */}
-        <filter id={`${id}-n`} filterUnits="userSpaceOnUse" x="-40" y="260" width="470" height="640" colorInterpolationFilters="sRGB">
-          <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" seed="11" result="n" />
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="50" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
-      </defs>
-      <rect x="-40" y="280" width="470" height="620" fill={`url(#${id}-g)`} filter={`url(#${id}-n)`} />
-      <rect x="0" y="750" width="390" height="94" fill={`url(#${id}-b)`} />
-    </svg>
+    <div aria-hidden="true" className={`pointer-events-none absolute inset-x-0 bottom-0 overflow-hidden ${className}`}>
+      <svg className="absolute inset-0 size-full origin-bottom motion-safe:animate-bloom" viewBox="0 300 390 544" preserveAspectRatio="xMidYMax slice">
+        <defs>
+          <radialGradient id={`${id}-g`} gradientUnits="userSpaceOnUse" cx="195" cy="857" r="475">
+            <stop offset="0" stopColor={c.blob1} stopOpacity="0.62" />
+            <stop offset="0.4" stopColor={c.base} stopOpacity="0.55" />
+            <stop offset="0.72" stopColor={c.base} stopOpacity="0.46" />
+            <stop offset="0.84" stopColor={c.blob2} stopOpacity="0.4" />
+            <stop offset="0.91" stopColor={c.blob2} stopOpacity="0.26" />
+            <stop offset="0.96" stopColor={c.light} stopOpacity="0.2" />
+            <stop offset="1" stopColor={c.light} stopOpacity="0" />
+          </radialGradient>
+          <linearGradient id={`${id}-b`} gradientUnits="userSpaceOnUse" x1="0" y1="750" x2="0" y2="844">
+            <stop offset="0" stopColor={c.light} stopOpacity="0" />
+            <stop offset="1" stopColor={c.light} stopOpacity="0.7" />
+          </linearGradient>
+          {/* 번짐 가장자리를 오돌토돌하게: 노이즈로 픽셀을 살짝 흩뿌린다 */}
+          <filter id={`${id}-n`} filterUnits="userSpaceOnUse" x="-40" y="260" width="470" height="640" colorInterpolationFilters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" seed="11" result="n" />
+            <feDisplacementMap in="SourceGraphic" in2="n" scale="50" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+        <rect x="-40" y="280" width="470" height="620" fill={`url(#${id}-g)`} filter={`url(#${id}-n)`} />
+        <rect x="0" y="750" width="390" height="94" fill={`url(#${id}-b)`} />
+      </svg>
+      {/* 번짐 안에서 아주 느리게 흐르는 두 색 */}
+      <div className="absolute -inset-x-1/4 bottom-[-15%] h-[80%] motion-safe:animate-aurora-a" style={{ background: `radial-gradient(38% 42% at 32% 62%, ${c.blob2}66, transparent 70%)` }} />
+      <div className="absolute -inset-x-1/4 bottom-[-15%] h-[80%] motion-safe:animate-aurora-b" style={{ background: `radial-gradient(36% 40% at 70% 70%, ${c.blob1}55, transparent 70%)` }} />
+    </div>
   );
 }
 
@@ -69,7 +71,7 @@ export default function HomeScreen({
 
   return (
     <main className="relative mx-auto h-dvh min-h-[640px] w-full max-w-[430px] overflow-clip bg-[#FAFCFE] text-[#111318]">
-      <Bloom />
+      <Bloom color={profile.color} />
       {/* 온보딩의 빛이 하얗게 걷히며 홈이 나타난다 */}
       {greet && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 bg-white motion-safe:animate-unveil motion-reduce:hidden" />}
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { Msg } from "@/lib/log";
-import { type ColorId, type ShapeId, josa } from "@/lib/onboarding";
+import { COLORS, type ColorId, type ShapeId, josa } from "@/lib/onboarding";
 import { Icon } from "./art";
 import Buddy from "./Buddy";
 import { Bloom } from "./HomeScreen";
@@ -14,13 +14,18 @@ type Who = { name: string; shape: ShapeId; color: ColorId };
 
 
 /** full: 홈과 같은 번짐(통화). soft: 글이 많은 화면이라 아래만 은은하게 물든다(번짐을 잘라 쓰면 위쪽에 딱딱한 경계가 생긴다). */
-function Shell({ children, bloom = "full" }: { children: React.ReactNode; bloom?: "full" | "soft" }) {
+function Shell({ children, color, bloom = "full" }: { children: React.ReactNode; color: ColorId; bloom?: "full" | "soft" }) {
+  const c = COLORS.find((x) => x.id === color) ?? COLORS[0];
   return (
     <main className="relative mx-auto h-dvh min-h-[640px] w-full max-w-[430px] overflow-clip bg-[#FAFCFE] text-[#111318]">
       {bloom === "full" ? (
-        <Bloom />
+        <Bloom color={color} />
       ) : (
-        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[45%] bg-[radial-gradient(110%_75%_at_50%_100%,rgba(131,160,237,.5),rgba(184,163,240,.22)_55%,transparent_80%)]" />
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 bottom-0 h-[45%] origin-bottom motion-safe:animate-bloom"
+          style={{ background: `radial-gradient(110% 75% at 50% 100%, ${c.base}77, ${c.blob2}33 55%, transparent 80%)` }}
+        />
       )}
       {children}
     </main>
@@ -159,7 +164,7 @@ export function CallScreen(p: {
 }) {
   const face = STATUS_FACE[p.status];
   return (
-    <Shell>
+    <Shell color={p.who.color}>
       <header className="absolute inset-x-0 top-14 z-10 text-center">
         <p className="flex items-center justify-center gap-1.5 text-[17px] font-semibold">
           {p.who.name} <AiBadge />
@@ -229,7 +234,7 @@ export function TextScreen(p: {
   onBack: () => void;
 }) {
   return (
-    <Shell bloom="soft">
+    <Shell color={p.who.color} bloom="soft">
       <header className="absolute inset-x-0 top-14 z-10 flex items-center justify-between px-5">
         <button onClick={p.onBack} aria-label="대화 마치기" className="grid size-11 place-items-center rounded-full bg-white text-[#1F2A55] shadow-[0_3px_14px_rgba(28,38,80,.08)]">
           <Icon name="back" size={20} />
@@ -298,7 +303,7 @@ export function TextScreen(p: {
 
 export function SummaryScreen(p: { who: Who; messages: Msg[]; clock: string; crisis: boolean; suggest: boolean; onClinics: () => void; onClose: () => void }) {
   return (
-    <Shell bloom="soft">
+    <Shell color={p.who.color} bloom="soft">
       <div className="absolute inset-x-0 top-0 bottom-[110px] overflow-y-auto px-4 pt-16 pb-4">
         <h1 className="px-1 text-2xl font-semibold tracking-[-0.03em]">오늘 나눈 이야기</h1>
         <p className="mt-1 px-1 text-sm text-[#5F6675]">{p.clock} · 기록은 이 기기의 브라우저에만 남아요</p>
