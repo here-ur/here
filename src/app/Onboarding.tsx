@@ -284,7 +284,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           }}
         >
           <Title>뭐라고 부르면 될까요?</Title>
-          <div className="liquid-glass absolute inset-x-8 top-[206px] h-[58px] rounded-full focus-within:ring-2 focus-within:ring-white/50">
+          <div className="liquid-glass glass-focus absolute inset-x-8 top-[206px] h-[58px] rounded-full" style={{ "--focus-fill": 0.14 } as React.CSSProperties}>
             <label htmlFor="nickname" className="sr-only">이름이나 별명</label>
             <input
               id="nickname"
@@ -524,7 +524,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <div className="absolute inset-x-0 top-[330px] flex justify-center">
             <Buddy shape={shape} color={color} size={170} look={[0.1, 0.65]} />
           </div>
-          <div className="liquid-glass absolute inset-x-5 bottom-10 flex h-[58px] items-center rounded-full pr-2 pl-6 focus-within:ring-2 focus-within:ring-white/50">
+          <div className="liquid-glass glass-focus absolute inset-x-5 bottom-10 flex h-[58px] items-center rounded-full pr-2 pl-6" style={{ "--focus-fill": 0.14 } as React.CSSProperties}>
             <label htmlFor="companion" className="sr-only">몽글이 이름</label>
             <input
               id="companion"

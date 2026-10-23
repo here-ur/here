@@ -124,7 +124,7 @@ export default function HomeScreen({
             if (draft.trim()) onText(draft.trim());
           }}
         >
-          <div className="liquid-glass relative flex h-[60px] min-w-0 flex-1 items-center rounded-full bg-white/55 px-6 focus-within:ring-2 focus-within:ring-white">
+          <div className="liquid-glass glass-focus relative flex h-[60px] min-w-0 flex-1 items-center rounded-full bg-white/55 px-6" style={{ "--accent": COLORS.find((x) => x.id === profile.color)?.deep } as React.CSSProperties}>
             <label htmlFor="home-text" className="sr-only">
               {name}에게 글로 이야기하기
             </label>

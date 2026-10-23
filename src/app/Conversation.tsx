@@ -273,7 +273,7 @@ export function TextScreen(p: {
       >
         {p.error && <p className="px-2 text-center text-[13px] font-medium text-[#C42A23]">{p.error}</p>}
         <div className="flex h-[58px] items-center gap-2.5">
-          <div className="liquid-glass relative flex h-full min-w-0 flex-1 items-center rounded-full bg-white/70 px-5 focus-within:ring-2 focus-within:ring-white">
+          <div className="liquid-glass glass-focus relative flex h-full min-w-0 flex-1 items-center rounded-full bg-white/70 px-5" style={{ "--accent": COLORS.find((x) => x.id === p.who.color)?.deep, "--focus-fill": 0.9 } as React.CSSProperties}>
             <label htmlFor="text-draft" className="sr-only">
               {p.who.name}에게 하고 싶은 말
             </label>
