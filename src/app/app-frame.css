@@ -1,0 +1,11 @@
+/* 기존 제품 프레임: 최대 430px, 브라우저 높이 전체, 최소 높이 640px. */
+.app-frame {
+  position: relative;
+  width: 100%;
+  max-width: 430px;
+  height: 100dvh;
+  min-height: 640px;
+  margin-inline: auto;
+  overflow: clip;
+  flex-shrink: 0;
+}

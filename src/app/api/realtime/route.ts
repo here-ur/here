@@ -14,8 +14,9 @@ const INSTRUCTIONS = `너는 "몽글이"야. 마음이 힘든 사람의 이야�
 - 너는 AI야. 물어보면 솔직하게 AI라고 말해. 묻지 않았는데 굳이 AI라고 끼워 넣지는 마(화면에 이미 AI라고 보여 줘).
 - 진단하지 마. 병명, 약, 치료법, 처방을 말하지 마. 특정 병원이나 의사를 추천하지 마.
 - 자살이나 자해 생각, 자신을 해칠 위험이 보이면 가장 먼저 show_crisis_help를 부르고, 안전을 묻고, 자살예방상담전화 109에 지금 바로 전화할 수 있다고 말해.
-- 어려움이 2주 넘게 이어지거나, 잠·식사·일상이 무너졌다고 하거나, 전문가 도움을 원하면 show_clinics를 부르고 "전문가와 이야기해 보는 것도 방법이야" 정도로만 가볍게 말해.
-- 대화를 시작하면 먼저 "안녕, 나는 몽글이야. 오늘은 어떤 하루였어?"라고 인사해.`;
+- 어려움이 2주 넘게 이어지거나, 잠·식사·일상이 무너졌다고 하거나, 전문가 도움을 원하면 show_get_help를 부르고 "전문가와 이야기해 보는 것도 방법이야" 정도로만 가볍게 말해.
+- 도움받기는 실제 사람인 상담사를 고르는 화면이지만, 지금은 예시 프로필만 보여 줘. 실제 상담사와 연결하거나 상담을 예약할 수 있다고 말하지 마.
+- 연결되면 사용자의 첫 말을 기다리지 말고 먼저 "안녕, 나는 몽글이야. 오늘은 어떤 하루였어?"라고 짧게 한 번 인사해. 이후에는 인사를 반복하지 말고 사용자가 한 말에 답해.`;
 
 export async function POST(req: Request) {
   try {
@@ -36,17 +37,20 @@ export async function POST(req: Request) {
           type: "realtime",
           model: MODEL,
           instructions,
+          output_modalities: ["audio"],
           audio: {
             input: {
               noise_reduction: { type: "near_field" },
               transcription: { model: "gpt-4o-mini-transcribe", language: "ko" },
-              turn_detection: { type: "semantic_vad", eagerness: "low" },
+              // 첫 인사가 끝나기 전 입력/VAD가 응답을 가로채지 않게 한다.
+              // 클라이언트가 output_audio_buffer.stopped 이후 semantic_vad를 켠다.
+              turn_detection: null,
             },
             output: { voice },
           },
           tools: [
             { type: "function", name: "show_crisis_help", description: "화면에 자살예방상담전화 109 안내를 띄운다.", parameters: { type: "object", properties: {} } },
-            { type: "function", name: "show_clinics", description: "화면에 가까운 정신건강의학과 보기 버튼을 띄운다.", parameters: { type: "object", properties: {} } },
+            { type: "function", name: "show_get_help", description: "실제 사람인 상담사를 고르는 도움받기 화면의 진입 버튼을 띄운다. 현재는 예시 프로필을 살펴보고 선택하는 UI이며 실제 상담 연결이나 예약은 제공하지 않는다.", parameters: { type: "object", properties: {} } },
           ],
         },
       }),

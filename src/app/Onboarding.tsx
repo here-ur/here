@@ -25,12 +25,12 @@ import Buddy from "./Buddy";
 type Step = "splash" | "name" | "safety" | "finding" | "match" | "shape" | "color" | "voice" | "naming" | "hold" | "burst";
 
 const HOLD_MS = 1400;
-const LEAVE_MS = 200;
+const LEAVE_MS = 150;
 
 
 function Next({ onClick, label = "다음", disabled }: { onClick: () => void; label?: string; disabled?: boolean }) {
   return (
-    <button onClick={onClick} disabled={disabled} aria-label={label} className="liquid-glass relative grid size-[84px] place-items-center rounded-full text-white transition active:scale-95 disabled:[&>svg]:opacity-40">
+    <button type="button" onClick={onClick} disabled={disabled} aria-label={label} className="ui-press liquid-glass relative grid size-20 place-items-center rounded-full text-white disabled:[&>svg]:opacity-40">
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M9.5 5.5l6.5 6.5-6.5 6.5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -40,7 +40,7 @@ function Next({ onClick, label = "다음", disabled }: { onClick: () => void; la
 
 function Back({ onClick }: { onClick: () => void }) {
   return (
-    <button onClick={onClick} aria-label="뒤로" className="absolute top-14 left-5 grid size-11 place-items-center rounded-full bg-white/15 text-white">
+    <button type="button" onClick={onClick} aria-label="뒤로" className="ui-press absolute top-14 left-5 grid size-11 place-items-center rounded-full bg-white/15 text-white">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M14.5 6l-6 6 6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -50,7 +50,7 @@ function Back({ onClick }: { onClick: () => void }) {
 
 function Caption({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mx-auto max-w-[320px] animate-fade rounded-xl bg-[#28263a]/85 px-4 py-2.5 text-center text-[15px] leading-[22px] font-medium text-white">
+    <p className="mx-auto max-w-80 motion-safe:animate-fade rounded-r3 bg-[#28263a]/85 px-4 py-2.5 text-center text-t5 font-medium text-white">
       {children}
     </p>
   );
@@ -58,9 +58,9 @@ function Caption({ children }: { children: React.ReactNode }) {
 
 function Title({ children, sub }: { children: React.ReactNode; sub?: string }) {
   return (
-    <div className="absolute inset-x-6 top-[112px] text-center">
-      <h1 className="text-[22px] leading-[1.35] font-bold tracking-[-0.02em] text-white">{children}</h1>
-      {sub && <p className="mt-2 text-sm text-[#a9a6ba]">{sub}</p>}
+    <div className="absolute inset-x-6 top-28 text-center">
+      <h1 className="text-t8 font-bold text-balance text-white">{children}</h1>
+      {sub && <p className="mt-2 text-t4 text-[#a9a6ba]">{sub}</p>}
     </div>
   );
 }
@@ -168,6 +168,10 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
   function go(next: Step, sound = true) {
     if (leaving) return; // 전환 중에 한 번 더 누르면 무시
     if (sound) sfx.tick();
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setStep(next);
+      return;
+    }
     setLeaving(true);
     setTimeout(() => {
       setStep(next);
@@ -209,6 +213,10 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
     sfx.buzz([40, 60, 120]);
     sfx.burst();
     sfx.stopPad();
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      finish();
+      return;
+    }
     setStep("burst");
     setTimeout(finish, 1300); // 하얀 빛이 걷히며 홈이 나타나고, 거기서 몽글이가 처음 인사한다
   }
@@ -225,10 +233,12 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
 
   return (
     <main
-      className={`relative mx-auto h-dvh min-h-[640px] w-full max-w-[430px] overflow-clip text-white ${
+      className={`app-frame text-white ${
         dark ? "bg-linear-to-b from-[#0b0a1a] via-[#141029] to-[#241d3d]" : ""
       }`}
     >
+      <div key={step} className="absolute inset-0 overflow-x-clip overflow-y-auto">
+      <div className="relative h-full min-h-200 overflow-clip">
       {/* Liquid Glass 굴절: 유리 뒤 배경을 가장자리에서 살짝 휘게 한다(크롬 계열만, 사파리는 흐림·반사광만) */}
       <svg aria-hidden="true" className="absolute size-0">
         <filter id="liquid-refract" x="0" y="0" width="100%" height="100%">
@@ -252,7 +262,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
             }}
             aria-pressed={muted}
             aria-label={muted ? "소리 켜기" : "소리 끄기"}
-            className="absolute top-14 right-5 z-10 grid size-11 place-items-center rounded-full bg-white/10 text-white/80"
+            className="ui-press absolute top-14 right-5 z-10 grid size-11 place-items-center rounded-full bg-white/10 text-white/80"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M3.6 9.6h3.1l4.4-3.6c.5-.4 1.2 0 1.2.6v10.8c0 .6-.7 1-1.2.6l-4.4-3.6H3.6c-.5 0-.9-.4-.9-.9v-3c0-.5.4-.9.9-.9z" fill="currentColor" />
@@ -268,10 +278,10 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
 
       {step === "splash" && (
         <button onClick={start} className={`absolute inset-0 grid place-items-center bg-[#f7f6f2] ${leaving ? "motion-safe:animate-screen-out" : ""}`} aria-label="시작">
-          <span className="flex animate-fade items-center gap-2.5 text-[28px] font-bold tracking-[-0.02em] text-[#1e1d2b]">
+          <span className="flex motion-safe:animate-fade items-center gap-2.5 text-t11 font-bold text-[#1e1d2b]">
             <LightCloud level={1} size={44} /> Here!
           </span>
-          <span className="absolute bottom-16 text-sm text-[#6e6c7e]">눌러서 시작하기</span>
+          <span className="absolute bottom-16 text-t4 text-[#6e6c7e]">눌러서 시작하기</span>
         </button>
       )}
 
@@ -284,7 +294,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           }}
         >
           <Title>뭐라고 부르면 될까요?</Title>
-          <div className="liquid-glass glass-focus absolute inset-x-8 top-[206px] h-[58px] rounded-full" style={{ "--focus-fill": 0.14 } as React.CSSProperties}>
+          <div className="liquid-glass glass-focus absolute inset-x-8 top-[206px] h-14 rounded-full" style={{ "--focus-fill": 0.14 } as React.CSSProperties}>
             <label htmlFor="nickname" className="sr-only">이름이나 별명</label>
             <input
               id="nickname"
@@ -294,10 +304,10 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
               placeholder="이름이나 별명"
               autoComplete="nickname"
               enterKeyHint="next"
-              className="size-full rounded-full bg-transparent text-center text-[19px] font-semibold tracking-[-0.02em] text-white outline-0 placeholder:text-[#b9b6c9]"
+              className="size-full rounded-full bg-transparent text-center text-t6 font-bold text-white outline-0 placeholder:text-[#b9b6c9]"
             />
           </div>
-          <p className="absolute inset-x-6 top-[282px] text-center text-xs leading-[1.6] text-[#8c89a0]">
+          <p className="absolute inset-x-6 top-[282px] text-center text-t2 text-[#8c89a0]">
             계속하면 이용약관과 개인정보 처리방침에 동의하게 돼요.
             <br />
             몽글이는 AI예요.
@@ -310,8 +320,8 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
 
       {step === "safety" && (
         <div className={`absolute inset-0 ${screen}`}>
-          <p className="absolute inset-x-0 top-[64px] flex justify-center">
-            <span className="flex items-center gap-1.5 rounded-full bg-[#f4f2ea] py-2 pr-4 pl-3 text-sm font-semibold text-[#1e1d2b]">
+          <p className="absolute inset-x-0 top-16 flex justify-center">
+            <span className="flex items-center gap-1.5 rounded-full bg-[#f4f2ea] py-2 pr-4 pl-3 text-t4 font-bold text-[#1e1d2b]">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" fill="#1e1d2b" />
                 <path d="M7.5 12.5l3 3 6-6.5" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -320,24 +330,24 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
             </span>
           </p>
           <Title>시작하기 전에 세 가지만요</Title>
-          <ul className="absolute inset-x-5 top-[236px] flex flex-col gap-1 rounded-[24px] border border-white/10 bg-white/[.06] p-2 backdrop-blur-md">
-            <li className="rounded-2xl px-4 py-3.5">
-              <b className="block text-[15px]">몽글이는 AI예요</b>
-              <span className="text-[13px] text-[#c4c1d4]">진단과 치료는 사람 전문가가 해요.</span>
+          <ul className="absolute inset-x-5 top-[236px] flex flex-col gap-1 rounded-r6 border border-white/10 bg-white/[.06] p-2 backdrop-blur-md">
+            <li className="rounded-r4 px-4 py-3.5">
+              <b className="block text-t5">몽글이는 AI예요</b>
+              <span className="text-t3 text-[#c4c1d4]">진단과 치료는 사람 전문가가 해요.</span>
             </li>
-            <li className="rounded-2xl px-4 py-3.5">
-              <b className="block text-[15px]">기록은 이 기기에만</b>
-              <span className="text-[13px] text-[#c4c1d4]">대화 기록은 이 기기의 브라우저에만 남아요.</span>
+            <li className="rounded-r4 px-4 py-3.5">
+              <b className="block text-t5">기록은 이 기기에만</b>
+              <span className="text-t3 text-[#c4c1d4]">내 기록은 이 브라우저에 보관해요. 답변을 만들 때는 대화 내용이 AI 서비스로 전송돼요.</span>
             </li>
             <li>
-              <a href="tel:109" className="flex items-center justify-between gap-3 rounded-2xl bg-[#c42a33]/20 px-4 py-3.5 ring-1 ring-[#ff8b92]/40 ring-inset">
+              <a href="tel:109" className="ui-press flex items-center justify-between gap-3 rounded-r4 bg-[#c42a33]/20 px-4 py-3.5 ring-1 ring-[#ff8b92]/40 ring-inset">
                 <span>
-                  <b className="block text-[15px]">
+                  <b className="block text-t5">
                     위급할 때는 <span className="text-[#ffb3b8]">109</span>
                   </b>
-                  <span className="text-[13px] text-[#e6c8cb]">24시간 사람과 이야기할 수 있어요</span>
+                  <span className="text-t3 text-[#e6c8cb]">24시간 사람과 이야기할 수 있어요</span>
                 </span>
-                <span className="shrink-0 rounded-full bg-[#c42a33] px-3.5 py-2 text-sm font-bold">전화</span>
+                <span className="shrink-0 rounded-full bg-[#c42a33] px-3.5 py-2 text-t4 font-bold">전화</span>
               </a>
             </li>
           </ul>
@@ -349,7 +359,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
 
       {step === "finding" && (
         <div className={`absolute inset-0 ${screen}`}>
-          <p className="absolute inset-x-0 top-[66px] text-center text-[13px] font-semibold tracking-[.12em] text-white/85">몽글이를 찾는 중</p>
+          <p className="absolute inset-x-0 top-16 text-center text-t3 font-bold text-white/85">몽글이를 찾는 중</p>
           <div className="absolute inset-x-0 top-[150px] flex justify-center">
             {qIndex >= 0 ? (
               <LightCloud level={Object.keys(answers).length} />
@@ -369,7 +379,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                     <button
                       key={o}
                       onClick={() => answer(QUESTIONS[qIndex].id, o, i)}
-                      className="h-11 rounded-full border border-white/20 bg-white/10 px-4 text-[15px] font-medium backdrop-blur-md transition active:scale-95"
+                      className="ui-press h-11 rounded-full border border-white/20 bg-white/10 px-4 text-t5 font-medium backdrop-blur-md"
                     >
                       {o}
                     </button>
@@ -389,10 +399,10 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <div className="absolute inset-x-0 top-[196px] flex justify-center">
             <LightCloud level={3} size={170} />
           </div>
-          <div className="absolute inset-x-6 top-[372px] rounded-[28px] border border-white/10 bg-white/[.07] px-6 py-6 text-center backdrop-blur-md">
-            <p className="text-sm text-[#c4c1d4]">{name}님에게 어울리는 몽글이는</p>
-            <p className="mt-1.5 text-[22px] font-bold tracking-[-0.02em]">{matched.name}</p>
-            <p className="mt-3 text-[15px] leading-relaxed text-[#e4e2ee]">{matched.summary}</p>
+          <div className="absolute inset-x-6 top-[372px] rounded-r6 border border-white/10 bg-white/[.07] px-6 py-6 text-center backdrop-blur-md">
+            <p className="text-t4 text-[#c4c1d4]">{name}님에게 어울리는 몽글이는</p>
+            <p className="mt-1.5 text-t8 font-bold">{matched.name}</p>
+            <p className="mt-3 text-t5 text-pretty text-[#e4e2ee]">{matched.summary}</p>
           </div>
           <div className="absolute inset-x-0 top-[640px] flex justify-center">
             <Next onClick={() => go("shape")} />
@@ -405,15 +415,15 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <Back onClick={() => go("match")} />
           <Title sub="언제든 바꿀 수 있어요.">몽글이는 어떤 모습이 좋을까요?</Title>
           <div className="absolute inset-x-0 top-[250px] flex items-center justify-between px-5">
-            <button onClick={() => switchShape(-1)} aria-label="이전 모습" className="grid size-11 place-items-center rounded-full bg-white/15 text-white">
+            <button onClick={() => switchShape(-1)} aria-label="이전 모습" className="ui-press grid size-11 place-items-center rounded-full bg-white/15 text-white">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M14.5 6l-6 6 6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
             <Appear color={color} size={210} key={shape}>
-              <Buddy shape={shape} color={color} size={210} look={[0, 0.2]} className="animate-pop" />
+              <Buddy shape={shape} color={color} size={210} look={[0, 0.2]} className="motion-safe:animate-pop" />
             </Appear>
-            <button onClick={() => switchShape(1)} aria-label="다음 모습" className="grid size-11 place-items-center rounded-full bg-white/15 text-white">
+            <button onClick={() => switchShape(1)} aria-label="다음 모습" className="ui-press grid size-11 place-items-center rounded-full bg-white/15 text-white">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M9.5 6l6 6-6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -429,7 +439,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                   sfx.pick(i);
                   setShape(x.id);
                 }}
-                className={`h-11 rounded-full px-5 text-[15px] font-semibold transition ${shape === x.id ? "bg-white text-[#1e1d2b]" : "bg-white/10 text-white"}`}
+                className={`ui-press h-11 rounded-full px-5 text-t5 font-bold ${shape === x.id ? "bg-white text-[#1e1d2b]" : "bg-white/10 text-white"}`}
               >
                 {x.label}
               </button>
@@ -447,10 +457,10 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <Title sub="언제든 바꿀 수 있어요.">몽글이는 어떤 빛이면 좋을까요?</Title>
           <div className="absolute inset-x-0 top-[290px] flex justify-center">
             <Appear color={color} size={210} key={color}>
-              <Buddy shape={shape} color={color} size={210} look={[0, 0.2]} className="animate-pop" />
+              <Buddy shape={shape} color={color} size={210} look={[0, 0.2]} className="motion-safe:animate-pop" />
             </Appear>
           </div>
-          <p className="absolute inset-x-0 top-[490px] text-center text-[15px] font-semibold">{COLORS.find((c) => c.id === color)!.label}</p>
+          <p className="absolute inset-x-0 top-[490px] text-center text-t5 font-bold">{COLORS.find((c) => c.id === color)!.label}</p>
           <div className="absolute inset-x-0 top-[530px] flex justify-center gap-4" role="radiogroup" aria-label="몽글이 빛">
             {COLORS.map((c, i) => (
               <button
@@ -462,7 +472,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                   sfx.pick(i);
                   setColor(c.id);
                 }}
-                className={`size-11 rounded-full p-1.5 ${color === c.id ? "ring-2 ring-white" : ""}`}
+                className={`ui-press size-11 rounded-full p-1.5 ${color === c.id ? "ring-2 ring-white" : ""}`}
               >
                 <span className="block size-full rounded-full" style={{ background: `linear-gradient(160deg, ${c.light}, ${c.base} 70%, ${c.blob1})` }} />
               </button>
@@ -492,16 +502,16 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                   sfx.pick(i);
                   setVoice(v.id);
                 }}
-                className="grid size-12 place-items-center"
+                className="ui-press grid size-12 place-items-center"
                 style={{ marginBottom: Math.round(Math.sin((i / 5) * Math.PI) * -30) + 30 }}
               >
                 <span
-                  className={`block size-9 rounded-[38%] transition ${voice === v.id ? "scale-110 bg-white shadow-[0_0_24px_rgba(255,255,255,.7)]" : "bg-white/35"}`}
+                  className={`block size-9 rounded-r3_5 ui-transition ${voice === v.id ? "scale-110 bg-white shadow-[0_0_24px_rgba(255,255,255,.7)]" : "bg-white/35"}`}
                 />
               </button>
             ))}
           </div>
-          <p className="absolute inset-x-0 top-[540px] text-center text-[15px]">
+          <p className="absolute inset-x-0 top-[540px] text-center text-t5">
             <b>{VOICES.find((v) => v.id === voice)!.label}</b>
             <span className="text-[#c4c1d4]"> · {VOICES.find((v) => v.id === voice)!.desc}</span>
           </p>
@@ -524,7 +534,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <div className="absolute inset-x-0 top-[330px] flex justify-center">
             <Buddy shape={shape} color={color} size={170} look={[0.1, 0.65]} />
           </div>
-          <div className="liquid-glass glass-focus absolute inset-x-5 bottom-10 flex h-[58px] items-center rounded-full pr-2 pl-6" style={{ "--focus-fill": 0.14 } as React.CSSProperties}>
+          <div className="liquid-glass glass-focus absolute inset-x-5 bottom-10 flex h-14 items-center rounded-full pr-2 pl-6" style={{ "--focus-fill": 0.14 } as React.CSSProperties}>
             <label htmlFor="companion" className="sr-only">몽글이 이름</label>
             <input
               id="companion"
@@ -532,9 +542,9 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
               onChange={(e) => setCompanion(e.target.value)}
               maxLength={10}
               enterKeyHint="done"
-              className="min-w-0 flex-1 bg-transparent text-[17px] font-semibold text-white outline-0"
+              className="min-w-0 flex-1 bg-transparent text-t5 font-bold text-white outline-0"
             />
-            <button aria-label="정하기" className="grid size-11 place-items-center rounded-full bg-white text-[#1e1d2b]">
+            <button aria-label="정하기" className="ui-press grid size-11 place-items-center rounded-full bg-white text-[#1e1d2b]">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M6 12.5l4 4 8-9" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -578,17 +588,19 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
               <Buddy shape={shape} color={color} size={210} look={[0, holding ? -0.3 : 0.1]} mouth={holding ? "o" : "calm"} />
             </button>
           </div>
-          <p className="absolute inset-x-0 top-[500px] flex items-center justify-center gap-2 text-[15px]">
+          <p className="absolute inset-x-0 top-[500px] flex items-center justify-center gap-2 text-t5">
             <span className="-rotate-6 rounded-full bg-white px-3 py-1 font-bold text-[#1e1d2b]">꾹</span>
             &amp;
             <span className="rounded-full bg-white px-3 py-1 font-bold text-[#1e1d2b] ring-4 ring-white/30">누르고</span>
           </p>
-          <p className="absolute inset-x-0 top-[546px] text-center text-[15px] font-medium">{josa(cleanName(companion), "을", "를")} 만나요</p>
+          <p className="absolute inset-x-0 top-[546px] text-center text-t5 font-medium">{josa(cleanName(companion), "을", "를")} 만나요</p>
         </div>
       )}
 
       {step === "burst" && <div aria-hidden="true" className="absolute inset-0 animate-burst bg-[radial-gradient(circle,#fff_0%,#fff_35%,#f3eefc_60%,#d9d4ea_100%)]" />}
 
+      </div>
+      </div>
     </main>
   );
 }

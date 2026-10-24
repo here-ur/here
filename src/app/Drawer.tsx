@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { COLORS, type Profile, josa } from "@/lib/onboarding";
 import { Icon } from "./art";
 import Buddy from "./Buddy";
@@ -13,7 +14,7 @@ function Row({ icon, label, onClick, current }: { icon: React.ReactNode; label: 
       <button
         onClick={onClick}
         aria-current={current ? "page" : undefined}
-        className="flex h-[52px] w-full items-center gap-3.5 rounded-2xl px-3.5 text-left text-[15.5px] font-medium text-[#1F2A55] transition hover:bg-[#F2F4F8] aria-[current=page]:bg-[#F2F4F8]"
+        className="ui-press flex h-13 w-full items-center gap-3.5 rounded-r4 px-3.5 text-left text-t5 font-medium text-[#1F2A55] hover:bg-[#F2F4F8] aria-[current=page]:bg-[#F2F4F8]"
       >
         <span className="grid size-6 place-items-center text-[#3D4559]">{icon}</span>
         {label}
@@ -30,7 +31,7 @@ export default function Drawer({
   onClose,
   onLog,
   onCustomize,
-  onClinics,
+  onHelp,
   onReset,
 }: {
   open: boolean;
@@ -38,34 +39,62 @@ export default function Drawer({
   onClose: () => void;
   onLog: () => void;
   onCustomize: () => void;
-  onClinics: () => void;
+  onHelp: () => void;
   onReset: () => void;
 }) {
+  const panelRef = useRef<HTMLElement>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const panel = panelRef.current;
+    const controls = () => Array.from(panel?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], [tabindex="0"]') ?? []);
+    controls()[0]?.focus({ preventScroll: true });
+    const trap = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); onCloseRef.current(); }
+      if (event.key !== "Tab") return;
+      const items = controls();
+      const first = items[0];
+      const last = items.at(-1);
+      if (event.shiftKey && (document.activeElement === first || !panel?.contains(document.activeElement))) {
+        event.preventDefault(); last?.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !panel?.contains(document.activeElement))) {
+        event.preventDefault(); first?.focus();
+      }
+    };
+    document.addEventListener("keydown", trap);
+    return () => {
+      document.removeEventListener("keydown", trap);
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
+    };
+  }, [open]);
   const name = profile.companion;
   const tile = COLORS.find((c) => c.id === profile.color)?.light;
   return (
     <div className={`absolute inset-0 z-40 ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
-      <div onClick={onClose} className={`absolute inset-0 bg-[rgba(20,28,60,.32)] backdrop-blur-[2px] transition-opacity duration-300 ${open ? "opacity-100" : "opacity-0"}`} />
+      <div onClick={onClose} className={`absolute inset-0 bg-[rgba(20,28,60,.32)] backdrop-blur-[2px] transition-opacity duration-300 ease-enter ${open ? "opacity-100" : "opacity-0"}`} />
       <nav
+        ref={panelRef}
         aria-label="메뉴"
         role="dialog"
         aria-modal="true"
         inert={!open}
-        className={`absolute inset-y-0 left-0 flex w-[82%] max-w-[340px] flex-col rounded-r-[32px] bg-white px-4 pt-14 pb-8 shadow-[10px_0_40px_rgba(20,28,60,.15)] transition-transform duration-300 ease-[cubic-bezier(.2,.8,.2,1)] ${
+        className={`absolute inset-y-0 left-0 flex w-[82%] max-w-[340px] flex-col overflow-y-auto rounded-r-r6 bg-white px-gutter pt-8 pb-6 shadow-[10px_0_40px_rgba(20,28,60,.15)] transition-transform duration-300 ease-enter ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3 px-1.5">
-            <span className="grid size-14 place-items-center rounded-2xl" style={{ background: tile }}>
+            <span className="grid size-14 place-items-center rounded-r4" style={{ background: tile }}>
               <Buddy shape={profile.shape} color={profile.color} size={50} look={[0.2, 0.2]} />
             </span>
             <span>
-              <b className="block text-lg font-semibold tracking-[-0.02em]">{name}</b>
-              <span className="text-[13px] text-[#5A6478]">{profile.nickname ? `${profile.nickname}님의 ${name}` : `나의 ${name}`}</span>
+              <b className="block text-t6 font-bold tracking-[-0.02em]">{name}</b>
+              <span className="text-t3 text-[#5A6478]">{profile.nickname ? `${profile.nickname}님의 ${name}` : `나의 ${name}`}</span>
             </span>
           </div>
-          <button onClick={onClose} aria-label="메뉴 닫기" className="grid size-11 place-items-center rounded-full bg-[#F2F4F8] text-[#3D4559]">
+          <button onClick={onClose} aria-label="메뉴 닫기" className="ui-press grid size-11 shrink-0 place-items-center rounded-full bg-[#F2F4F8] text-[#3D4559]">
             <Icon name="close" size={18} />
           </button>
         </div>
@@ -102,15 +131,15 @@ export default function Drawer({
               </svg>
             }
           />
-          <Row onClick={onClinics} label="가까운 정신건강의학과 찾기" icon={<Icon name="pin" size={22} />} />
+          <Row onClick={onHelp} label="도움받기" icon={<Icon name="help" size={22} />} />
         </ul>
 
-        <a href="tel:109" className="mt-6 flex items-center justify-between gap-3 rounded-[20px] bg-[#FFF3F2] p-4 ring-1 ring-[#F2B8B3] ring-inset">
+        <a href="tel:109" className="ui-press mt-6 flex items-center justify-between gap-3 rounded-r5 bg-[#FFF3F2] p-4 ring-1 ring-[#F2B8B3] ring-inset">
           <span>
-            <b className="block text-[15px] font-semibold text-[#111318]">
+            <b className="block text-t5 font-bold text-[#111318]">
               위급할 때는 <span className="text-[#C42A23]">109</span>
             </b>
-            <span className="text-[12.5px] text-[#55525F]">24시간 사람과 이야기할 수 있어요</span>
+            <span className="text-t2 text-[#55525F]">24시간 사람과 이야기할 수 있어요</span>
           </span>
           <span className="flex h-10 shrink-0 items-center gap-1 rounded-full bg-[#C42A23] px-3.5 text-sm font-bold text-white">
             <Icon name="phone" size={16} />
@@ -118,7 +147,7 @@ export default function Drawer({
           </span>
         </a>
 
-        <div className="mt-auto flex flex-col gap-3 px-2 text-[13px] text-[#5A6478]">
+        <div className="mt-auto flex flex-col gap-3 px-2 pt-6 text-t3 text-[#5A6478]">
           <p className="flex gap-3">
             {/* 문서가 아직 없어서 링크 자리만 둔다 */}
             <a href="#" className="underline-offset-4 hover:underline">
@@ -131,7 +160,7 @@ export default function Drawer({
           <p>{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
           <div className="flex items-center justify-between">
             <span>버전 0.1.0</span>
-            <button onClick={onReset} className="h-11 font-medium text-[#3D4559] underline underline-offset-4">
+            <button onClick={onReset} className="ui-press h-11 font-medium text-[#3D4559] underline underline-offset-4">
               처음부터 다시 하기
             </button>
           </div>

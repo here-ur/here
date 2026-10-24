@@ -1,4 +1,4 @@
-// 내 기록: 대화를 이 기기의 브라우저(localStorage)에만 남긴다. 서버로 보내지 않는다.
+// 내 기록 보관은 이 기기의 브라우저(localStorage)를 쓴다. 답변 생성용 전송과는 별개다.
 // ponytail: 기기를 바꾸거나 브라우저 데이터를 지우면 사라진다. 계정이 생기면 서버 저장을 검토한다.
 
 export type Msg = { role: "user" | "assistant"; content: string };

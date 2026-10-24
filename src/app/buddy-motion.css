@@ -1,0 +1,139 @@
+/* Each Buddy owns one body loop. UI state, not sentiment, selects its motion. */
+.buddy {
+  flex-shrink: 0;
+  --buddy-float-distance: -2px;
+}
+
+.buddy[data-bob="true"] {
+  --buddy-float-distance: -4px;
+}
+
+.buddy-pose,
+.buddy-body-motion {
+  transform-box: view-box;
+  transform-origin: 50% 55%;
+}
+
+.buddy-pose,
+.buddy-look-position {
+  transition: transform var(--seed-duration-d6, 300ms) var(--seed-timing-function-enter, cubic-bezier(0, 0, .15, 1));
+}
+
+.buddy-eye-blink,
+.buddy-mouth-motion {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.buddy[data-state="attentive"] .buddy-pose {
+  transform: translateY(2px) rotate(0.8deg);
+}
+
+.buddy[data-state="thinking"] .buddy-pose {
+  transform: rotate(-1deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .buddy .buddy-eye-blink {
+    animation: buddy-blink 6400ms linear infinite;
+  }
+
+  .buddy[data-state="idle"] .buddy-body-motion {
+    animation: buddy-idle 7200ms ease-in-out infinite;
+  }
+
+  .buddy[data-state="idle"]:not([data-look-override]) .buddy-gaze {
+    animation: buddy-idle-gaze 9600ms ease-in-out infinite;
+  }
+
+  .buddy[data-state="idle"][data-mouth="smile"] .buddy-mouth-motion {
+    animation: buddy-idle-smile 7200ms ease-in-out infinite;
+  }
+
+  .buddy[data-state="attentive"] .buddy-body-motion {
+    animation: buddy-attentive 5600ms ease-in-out infinite;
+  }
+
+  .buddy[data-state="listening"] .buddy-body-motion {
+    animation: buddy-listening-nod 3600ms ease-in-out infinite;
+  }
+
+  .buddy[data-state="thinking"] .buddy-body-motion {
+    animation: buddy-think 5200ms ease-in-out infinite;
+  }
+
+  .buddy[data-state="thinking"]:not([data-look-override]) .buddy-gaze {
+    animation: buddy-thinking-gaze 4200ms ease-in-out infinite;
+  }
+
+  .buddy[data-state="speaking"] .buddy-body-motion {
+    animation: buddy-speaking-body 2800ms ease-in-out infinite;
+  }
+
+  .buddy[data-state="speaking"] .buddy-mouth-motion {
+    animation: buddy-speaking-mouth 720ms ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .buddy-pose,
+  .buddy-look-position {
+    transition: none;
+  }
+}
+
+@keyframes buddy-idle {
+  0%, 100% { transform: translate(0, 0) scale(1) rotate(0); }
+  30% { transform: translate(1px, var(--buddy-float-distance)) scale(1.015) rotate(0.35deg); }
+  65% { transform: translate(-1px, -1px) scale(1.005) rotate(-0.3deg); }
+}
+
+@keyframes buddy-idle-gaze {
+  0%, 18%, 100% { transform: translate(0, 0); }
+  30%, 44% { transform: translate(-1.4px, -0.5px); }
+  62%, 78% { transform: translate(0.6px, 0.4px); }
+}
+
+@keyframes buddy-idle-smile {
+  0%, 20%, 80%, 100% { transform: scale(1); }
+  44%, 58% { transform: translateY(-0.3px) scale(1.08, 1.06); }
+}
+
+@keyframes buddy-blink {
+  0%, 37%, 41%, 86%, 90%, 100% { transform: scaleY(1); }
+  39%, 88% { transform: scaleY(0.12); }
+}
+
+@keyframes buddy-attentive {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-1px) scale(1.012); }
+}
+
+@keyframes buddy-listening-nod {
+  0%, 28%, 70%, 100% { transform: translateY(0) rotate(0); }
+  40% { transform: translateY(2px) rotate(0.6deg); }
+  52% { transform: translateY(-1px) rotate(-0.25deg); }
+}
+
+@keyframes buddy-think {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-1.5px) scale(1.012); }
+}
+
+@keyframes buddy-thinking-gaze {
+  0%, 24%, 100% { transform: translate(0, 0); }
+  45%, 72% { transform: translate(-1.2px, 0.5px); }
+}
+
+@keyframes buddy-speaking-body {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  35% { transform: translateY(-2px) rotate(0.4deg); }
+  68% { transform: translateY(-0.5px) rotate(-0.25deg); }
+}
+
+@keyframes buddy-speaking-mouth {
+  0%, 100% { transform: scale(1, 0.65); }
+  25% { transform: scale(1.08, 1.05); }
+  50% { transform: scale(0.95, 0.8); }
+  75% { transform: scale(1.04, 1.15); }
+}

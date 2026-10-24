@@ -24,21 +24,21 @@ export default function Log({ who, onBack }: { who: Who; onBack: () => void }) {
 
   return (
     <Shell color={who.color} bloom="soft">
-      <header className="absolute inset-x-0 top-14 z-10 flex items-center justify-between px-5">
-        <button onClick={onBack} aria-label="처음 화면으로" className="grid size-11 place-items-center rounded-full bg-white text-[#1F2A55] shadow-[0_3px_14px_rgba(28,38,80,.08)]">
+      <header className="absolute inset-x-0 top-12 z-10 flex items-center justify-between px-gutter">
+        <button onClick={onBack} aria-label="처음 화면으로" className="ui-press grid size-11 place-items-center rounded-full bg-white text-[#1F2A55] shadow-[0_3px_14px_rgba(28,38,80,.08)]">
           <Icon name="back" size={20} />
         </button>
-        <h1 className="text-[17px] font-semibold">내 기록</h1>
+        <h1 className="text-t6 font-bold">내 기록</h1>
         <span className="size-11" />
       </header>
 
-      <div className="absolute inset-x-0 top-[112px] bottom-0 overflow-y-auto px-4 pb-10">
-        <p className="mb-4 text-center text-xs text-[#5A6478]">지난 30일 동안 나눈 이야기</p>
+      <div className="absolute inset-x-0 top-28 bottom-0 overflow-y-auto px-gutter pb-10">
+        <p className="mb-4 text-center text-t2 text-[#5A6478]">지난 30일 동안 나눈 이야기</p>
 
         {sessions.length === 0 ? (
           <div className="mt-16 flex flex-col items-center text-center">
             <Buddy shape={who.shape} color={who.color} size={130} look={[0, 0.3]} mouth="calm" bob />
-            <p className="mt-4 text-[15px] leading-relaxed text-[#3D4559]">
+            <p className="mt-4 text-t5 text-pretty text-[#3D4559]">
               아직 기록이 없어요.
               <br />
               {josa(who.name, "과", "와")} 이야기하면 여기에 날짜별로 남아요.
@@ -53,24 +53,24 @@ export default function Log({ who, onBack }: { who: Who; onBack: () => void }) {
               return (
                 <li
                   key={s.id}
-                  className="rounded-[24px] bg-white p-5 shadow-[0_6px_20px_rgba(28,38,80,.07)]"
+                  className="rounded-r6 bg-white p-5 shadow-[0_6px_20px_rgba(28,38,80,.07)]"
                   style={isToday ? { boxShadow: `0 6px 20px rgba(28,38,80,.07), inset 0 0 0 2px ${deep}55` } : undefined}
                 >
                   <div className="flex items-baseline gap-2.5">
-                    <b className="text-[26px] leading-none font-semibold tracking-[-0.02em]">{d.getDate()}</b>
-                    <span className="text-[13px] font-medium text-[#3D4559]">{isToday ? "오늘" : `${d.getMonth() + 1}월 · ${WEEKDAY[d.getDay()]}`}</span>
-                    <span className="ml-auto text-xs text-[#5A6478]">{d.toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" })}</span>
+                    <b className="text-t10 font-bold tabular-nums">{d.getDate()}</b>
+                    <span className="text-t3 font-medium text-[#3D4559]">{isToday ? "오늘" : `${d.getMonth() + 1}월 · ${WEEKDAY[d.getDay()]}`}</span>
+                    <span className="ml-auto text-t2 tabular-nums text-[#5A6478]">{d.toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" })}</span>
                   </div>
                   {/* 옆에서 엿보는 노출을 줄이려고 첫 마디는 한 줄만 */}
-                  <p className="mt-3 truncate text-[15px] text-[#1F2A55]">{said[0]?.content}</p>
+                  <p className="mt-3 truncate text-t5 text-[#1F2A55]">{said[0]?.content}</p>
                   <details className="group mt-3">
-                    <summary className="flex cursor-pointer list-none items-center gap-1 text-sm font-semibold text-[#1F2A55] [&::-webkit-details-marker]:hidden">
+                    <summary className="ui-press flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-r2 text-t4 font-bold text-[#1F2A55] [&::-webkit-details-marker]:hidden">
                       대화 보기 · {said.length}번 말함
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="transition group-open:rotate-180">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="ui-transition group-open:rotate-180">
                         <path d="M6 9.5l6 6 6-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </summary>
-                    <div className="mt-3 rounded-[18px] bg-[#F5F7FB] p-3">
+                    <div className="mt-3 rounded-r4 bg-[#F5F7FB] p-3 motion-safe:animate-fade">
                       <Bubbles who={who} messages={s.messages} follow={false} />
                     </div>
                   </details>
@@ -80,12 +80,12 @@ export default function Log({ who, onBack }: { who: Who; onBack: () => void }) {
           </ul>
         )}
 
-        <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-[#5A6478]">
+        <p className="mt-6 flex items-center justify-center gap-text text-t2 text-pretty text-[#5A6478]">
           <Icon name="lock" size={14} />
-          기록은 이 기기의 브라우저에만 남고, 30일이 지나면 지워져요.
+          내 기록은 이 브라우저에 30일간 보관해요. 답변 생성 시에는 대화 내용이 AI 서비스로 전송돼요.
         </p>
         {sessions.length > 0 && (
-          <button onClick={clearAll} className="mx-auto mt-2 block h-11 px-3 text-sm font-medium text-[#3D4559] underline underline-offset-4">
+          <button onClick={clearAll} className="ui-press mx-auto mt-2 block h-11 rounded-r2 px-3 text-t4 font-medium text-[#3D4559] underline underline-offset-4">
             기록 모두 지우기
           </button>
         )}
