@@ -1,5 +1,6 @@
 import { useId } from "react";
 import { COLORS, type ColorId, type ShapeId } from "@/lib/onboarding";
+import "./buddy-motion.css";
 
 // 몽글이 두 가지 모습. 둘 다 검정 낙서(머리·입)가 들어간다. 표정은 눈동자 방향·입 모양·눈꺼풀로 만든다.
 // - cloud(구름): 광택 구름 + 왕눈
@@ -29,18 +30,23 @@ const ROUND_MOUTH = {
 
 export type Look = readonly [number, number]; // 눈동자 방향, -1..1
 export type Mouth = keyof typeof CLOUD_MOUTH;
+// 입력·연결 상태만 표현한다. 사용자가 쓴 내용으로 감정을 추측하지 않는다.
+export type BuddyState = "idle" | "attentive" | "listening" | "thinking" | "speaking";
 type Palette = (typeof COLORS)[number];
 type Face = { look: Look; mouth: Mouth; lid: boolean };
 
-const blink = { transformBox: "fill-box", transformOrigin: "center" } as const;
-const move = { transition: "cx .35s ease, cy .35s ease" };
+const STATE_FACE = {
+  idle: { look: [0.4, 0.3], mouth: "smile", lid: false },
+  attentive: { look: [0, 0.65], mouth: "calm", lid: false },
+  listening: { look: [0, 0.1], mouth: "calm", lid: false },
+  thinking: { look: [0.45, -0.4], mouth: "calm", lid: false },
+  speaking: { look: [0.15, 0.2], mouth: "o", lid: false },
+} as const satisfies Record<BuddyState, Face>;
 
 function GooglyEye({ cx, cy, look, lid, id }: { cx: number; cy: number; look: Look; lid?: boolean; id: string }) {
   const r = 19;
-  const px = cx + look[0] * r * 0.36;
-  const py = cy + look[1] * r * 0.36;
   return (
-    <g className="motion-safe:animate-blink" style={blink}>
+    <g className="buddy-eye-blink">
       {lid && (
         <clipPath id={`${id}-lid`}>
           <rect x={cx - r - 2} y={cy - r * 0.12} width={2 * r + 4} height={2 * r + 8} />
@@ -49,9 +55,13 @@ function GooglyEye({ cx, cy, look, lid, id }: { cx: number; cy: number; look: Lo
       <g clipPath={lid ? `url(#${id}-lid)` : undefined}>
         <circle cx={cx} cy={cy + r * 0.1} r={r} fill="#D3DEEC" />
         <circle cx={cx} cy={cy} r={r} fill="#FFFFFF" />
-        <circle cx={px} cy={py} r={r * 0.5} fill={INK} style={move} />
-        {/* 반짝임: 이게 없으면 눈동자가 빈 구멍처럼 보여서 징그럽다 */}
-        <circle cx={px - r * 0.17} cy={py - r * 0.2} r={r * 0.15} fill="#FFFFFF" style={move} />
+        <g className="buddy-look-position" style={{ transform: `translate(${look[0] * r * 0.36}px, ${look[1] * r * 0.36}px)` }}>
+          <g className="buddy-gaze">
+            <circle cx={cx} cy={cy} r={r * 0.5} fill={INK} />
+            {/* 반짝임: 이게 없으면 눈동자가 빈 구멍처럼 보여서 징그럽다 */}
+            <circle cx={cx - r * 0.17} cy={cy - r * 0.2} r={r * 0.15} fill="#FFFFFF" />
+          </g>
+        </g>
       </g>
       {lid && <path d={`M${cx - r + 1} ${cy - r * 0.12} H${cx + r - 1}`} stroke={INK} strokeWidth="3.6" strokeLinecap="round" />}
     </g>
@@ -86,7 +96,11 @@ function CloudBody({ c, face, id }: { c: Palette; face: Face; id: string }) {
       <path d={CLOUD_HAIR} fill="none" stroke={INK} strokeWidth="4.6" strokeLinecap="round" strokeLinejoin="round" />
       <GooglyEye cx={102} cy={138} look={face.look} id={`${id}-l`} />
       <GooglyEye cx={138} cy={136} look={face.look} lid={face.lid} id={`${id}-r`} />
-      <path d={CLOUD_MOUTH[face.mouth]} transform="translate(124 168)" fill="none" stroke={INK} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <g transform="translate(124 168)">
+        <g className="buddy-mouth-motion">
+          <path d={CLOUD_MOUTH[face.mouth]} fill="none" stroke={INK} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+      </g>
     </>
   );
 }
@@ -127,12 +141,18 @@ function RoundBody({ c, face, id }: { c: Palette; face: Face; id: string }) {
             <path d="M4 0 C7 3 11 3 14 0" {...stroke} />
           </>
         ) : (
-          <g className="motion-safe:animate-blink" style={blink}>
-            <circle cx={-9 + ex} cy={ey} r="3.6" fill={INK} style={move} />
-            <circle cx={9 + ex} cy={ey} r="3.6" fill={INK} style={move} />
+          <g className="buddy-eye-blink">
+            <g className="buddy-look-position" style={{ transform: `translate(${ex}px, ${ey}px)` }}>
+              <g className="buddy-gaze">
+                <circle cx="-9" cy="0" r="3.6" fill={INK} />
+                <circle cx="9" cy="0" r="3.6" fill={INK} />
+              </g>
+            </g>
           </g>
         )}
-        <path d={ROUND_MOUTH[face.mouth]} {...stroke} />
+        <g className="buddy-mouth-motion">
+          <path d={ROUND_MOUTH[face.mouth]} {...stroke} />
+        </g>
       </g>
     </>
   );
@@ -142,15 +162,17 @@ export default function Buddy({
   shape = "cloud",
   color = "lavender",
   size,
-  look = [0.4, 0.3],
-  mouth = "smile",
-  lid = false,
+  state = "idle",
+  look,
+  mouth,
+  lid,
   bob = false,
   className = "",
 }: {
   shape?: ShapeId;
   color?: ColorId;
   size: number;
+  state?: BuddyState;
   look?: Look;
   mouth?: Mouth;
   lid?: boolean;
@@ -159,7 +181,8 @@ export default function Buddy({
 }) {
   const id = `buddy${useId().replace(/[^a-zA-Z0-9]/g, "")}`; // useId의 특수문자는 url(#…)에서 깨질 수 있다
   const c = COLORS.find((x) => x.id === color) ?? COLORS[0];
-  const face = { look, mouth, lid };
+  const preset = STATE_FACE[state];
+  const face: Face = { look: look ?? preset.look, mouth: mouth ?? preset.mouth, lid: lid ?? preset.lid };
   return (
     <svg
       width={size}
@@ -167,7 +190,11 @@ export default function Buddy({
       viewBox="0 0 240 240"
       overflow="visible"
       aria-hidden="true"
-      className={`${bob ? "motion-safe:animate-float" : "motion-safe:animate-breathe"} ${className}`}
+      data-state={state}
+      data-mouth={face.mouth}
+      data-look-override={look !== undefined ? "true" : undefined}
+      data-bob={bob ? "true" : undefined}
+      className={`buddy ${className}`}
     >
       <defs>
         <filter id={`${id}-soft`} x="-60%" y="-60%" width="220%" height="220%">
@@ -177,7 +204,11 @@ export default function Buddy({
           <feGaussianBlur stdDeviation="16" />
         </filter>
       </defs>
-      {shape === "round" ? <RoundBody c={c} face={face} id={id} /> : <CloudBody c={c} face={face} id={id} />}
+      <g className="buddy-pose">
+        <g className="buddy-body-motion">
+          {shape === "round" ? <RoundBody c={c} face={face} id={id} /> : <CloudBody c={c} face={face} id={id} />}
+        </g>
+      </g>
     </svg>
   );
 }

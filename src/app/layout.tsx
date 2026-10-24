@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bagel_Fat_One } from "next/font/google";
 import "./globals.css";
+import "./app-frame.css";
 
 const display = Bagel_Fat_One({
   weight: "400",
@@ -10,7 +11,7 @@ const display = Bagel_Fat_One({
 
 export const metadata: Metadata = {
   title: "Here!",
-  description: "말로 이야기하고, 필요할 때 가까운 병원으로",
+  description: "말로 이야기하고, 필요할 때 나에게 맞는 상담사를 살펴보세요",
 };
 
 export const viewport: Viewport = {

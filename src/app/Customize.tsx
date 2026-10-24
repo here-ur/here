@@ -11,16 +11,16 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
   const [draft, setDraft] = useState(profile);
   const set = (patch: Partial<Profile>) => setDraft((d) => ({ ...d, ...patch }));
   const chip = (on: boolean) =>
-    `h-11 rounded-full px-4 text-[15px] font-semibold transition ${on ? "bg-[#1F2A55] text-white" : "bg-[#F2F4F8] text-[#1F2A55]"}`;
+    `ui-press h-11 rounded-full px-4 text-t5 font-medium ${on ? "bg-[#1F2A55] text-white" : "bg-[#F2F4F8] text-[#1F2A55]"}`;
 
   return (
     <Sheet title={`${profile.companion} 바꾸기`} onClose={onClose}>
       <div className="flex justify-center py-2">
-        <Buddy shape={draft.shape} color={draft.color} size={140} look={[0, 0.25]} key={`${draft.shape}-${draft.color}`} className="animate-pop" />
+        <Buddy shape={draft.shape} color={draft.color} size={140} look={[0, 0.25]} key={`${draft.shape}-${draft.color}`} className="motion-safe:animate-pop" />
       </div>
 
       <section className="mt-2">
-        <h3 className="mb-2 text-sm font-semibold text-[#3D4559]">모습</h3>
+        <h3 className="mb-2 text-t4 font-bold text-[#3D4559]">모습</h3>
         <div className="flex gap-2" role="radiogroup" aria-label="모습">
           {SHAPES.map((x, i) => (
             <button
@@ -40,7 +40,7 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
       </section>
 
       <section className="mt-5">
-        <h3 className="mb-2 text-sm font-semibold text-[#3D4559]">빛</h3>
+        <h3 className="mb-2 text-t4 font-bold text-[#3D4559]">빛</h3>
         <div className="flex gap-3" role="radiogroup" aria-label="빛">
           {COLORS.map((c, i) => (
             <button
@@ -52,7 +52,7 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
                 sfx.pick(i);
                 set({ color: c.id });
               }}
-              className={`size-11 rounded-full p-1 ring-offset-2 transition ${draft.color === c.id ? "ring-2 ring-[#1F2A55]" : ""}`}
+              className={`ui-press size-11 rounded-full p-1 ring-offset-2 ${draft.color === c.id ? "ring-2 ring-[#1F2A55]" : ""}`}
             >
               <span className="block size-full rounded-full" style={{ background: `linear-gradient(160deg, ${c.light}, ${c.base} 70%, ${c.blob1})` }} />
             </button>
@@ -61,7 +61,7 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
       </section>
 
       <section className="mt-5">
-        <h3 className="mb-2 text-sm font-semibold text-[#3D4559]">목소리</h3>
+        <h3 className="mb-2 text-t4 font-bold text-[#3D4559]">목소리</h3>
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="목소리">
           {VOICES.map((v, i) => (
             <button
@@ -79,11 +79,11 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
             </button>
           ))}
         </div>
-        <p className="mt-2 text-[13px] text-[#5A6478]">{VOICES.find((v) => v.id === draft.voice)?.desc} · 다음 대화부터 바뀌어요</p>
+        <p className="mt-2 text-t3 text-pretty text-[#5A6478]">{VOICES.find((v) => v.id === draft.voice)?.desc} · 다음 대화부터 바뀌어요</p>
       </section>
 
       <section className="mt-5">
-        <label htmlFor="companion-name" className="mb-2 block text-sm font-semibold text-[#3D4559]">
+        <label htmlFor="companion-name" className="mb-2 block text-t4 font-bold text-[#3D4559]">
           이름
         </label>
         <input
@@ -91,14 +91,14 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
           value={draft.companion}
           onChange={(e) => set({ companion: e.target.value })}
           maxLength={10}
-          className="h-12 w-full rounded-2xl bg-[#F2F4F8] px-4 text-base font-semibold text-[#111318] outline-0 focus:ring-2 focus:ring-[#1F2A55]/30"
+          className="ui-transition h-12 w-full rounded-r4 bg-[#F2F4F8] px-4 text-t5 font-medium text-[#111318] outline-0 focus:ring-2 focus:ring-[#1F2A55]/30"
         />
       </section>
 
       <button
         onClick={() => onSave({ ...draft, companion: cleanName(draft.companion) })}
         style={accentButton(draft.color)}
-        className="mt-6 h-14 w-full rounded-full text-[15px] font-bold text-white"
+        className="ui-press mt-6 h-14 w-full rounded-full text-t5 font-bold text-white"
       >
         이대로 할게요
       </button>

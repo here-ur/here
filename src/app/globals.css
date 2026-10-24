@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "@seed-design/css/recipes/text.css" layer(components);
+@import "./seed-foundation.css";
 
 /* 몽글이 프로토타입의 색: 밝은 하늘과 보라. 앱 전체를 이 한 가지 톤으로 고정한다. */
 @theme {
@@ -14,14 +16,13 @@
   --color-glow: #fff1d2;
   --color-danger: #c2362b;
   --color-danger-tint: #fff1ee;
-  --font-sans: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
   --font-display: var(--font-bagel), var(--font-sans);
   --shadow-violet: 0 14px 28px -14px rgb(74 47 181 / 0.65);
   --shadow-bubble: 0 8px 24px rgb(74 47 181 / 0.15);
 
-  --animate-pop: pop 0.22s cubic-bezier(0.3, 1.4, 0.6, 1);
-  --animate-rise: rise 0.26s cubic-bezier(0.2, 0.9, 0.3, 1);
-  --animate-fade: fade 0.18s ease-out;
+  --animate-pop: pop var(--seed-duration-d5) var(--seed-timing-function-enter) both;
+  --animate-rise: rise var(--seed-duration-d6) var(--seed-timing-function-enter) both;
+  --animate-fade: fade var(--seed-duration-d4) var(--seed-timing-function-enter) both;
   --animate-ring: ring 2.4s ease-in-out infinite;
   --animate-wave: wave 0.9s ease-in-out infinite;
   --animate-bob: bob 1.4s ease-in-out infinite;
@@ -31,8 +32,8 @@
   --animate-burst: burst 1.3s ease-out both;
   --animate-blink: blink 5s ease-in-out infinite;
   --animate-float: float 4.5s ease-in-out infinite;
-  --animate-screen-in: screen-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  --animate-screen-out: screen-out 0.2s ease-in forwards;
+  --animate-screen-in: screen-in var(--seed-duration-d6) var(--seed-timing-function-enter) both;
+  --animate-screen-out: screen-out var(--seed-duration-d3) var(--seed-timing-function-exit) forwards;
   --animate-blob: blob 7s ease-in-out infinite alternate;
   --animate-glow: glow 3.6s ease-in-out infinite;
   --animate-glow-pulse: glow-pulse 3.6s ease-in-out infinite;
@@ -48,7 +49,7 @@
     from { transform: scale(0.94); opacity: 0; }
   }
   @keyframes rise {
-    from { transform: translateY(40px); opacity: 0; }
+    from { transform: translateY(var(--seed-dimension-x5)); opacity: 0; }
   }
   @keyframes fade {
     from { opacity: 0; }
@@ -107,10 +108,10 @@
     to { opacity: 0; transform: scale(1.5); }
   }
   @keyframes screen-in {
-    from { opacity: 0; transform: translateY(12px); filter: blur(6px); }
+    from { opacity: 0; transform: translateY(var(--seed-dimension-x3)); }
   }
   @keyframes screen-out {
-    to { opacity: 0; transform: translateY(-6px); filter: blur(4px); }
+    to { opacity: 0; transform: translateY(calc(var(--seed-dimension-x1_5) * -1)); }
   }
   @keyframes float {
     50% { transform: translateY(-4px); }
@@ -132,11 +133,15 @@
 html {
   color-scheme: light;
   background: var(--color-paper);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   color: var(--color-ink);
   font-family: var(--font-sans);
+  font-size: var(--seed-font-size-t5);
+  line-height: var(--seed-line-height-t5);
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
@@ -195,9 +200,53 @@ body {
 @utility glass-focus {
   outline: 2px solid transparent;
   outline-offset: 3px;
-  transition: outline-color 0.2s ease, background-color 0.2s ease;
+  transition: outline-color var(--seed-duration-color-transition) var(--seed-timing-function-easing), background-color var(--seed-duration-color-transition) var(--seed-timing-function-easing);
   &:focus-within {
     outline-color: color-mix(in srgb, var(--accent, #ffffff) 45%, transparent);
     background-color: rgba(255, 255, 255, var(--focus-fill, 0.8));
+  }
+}
+
+/* Shared interaction treatment; opt in so character artwork stays untouched. */
+@layer components {
+  .ui-transition,
+  .ui-press {
+    transition-property: transform, translate, scale, rotate, opacity, filter, color, background-color, border-color, box-shadow, outline-color;
+    transition-duration: var(--seed-duration-d3);
+    transition-timing-function: var(--seed-timing-function-easing);
+  }
+
+  .ui-press:not(:disabled):not([aria-disabled="true"]):active {
+    scale: 0.96;
+    transition-timing-function: var(--seed-timing-function-pressed-scale);
+  }
+
+  .ui-press:disabled,
+  .ui-press[aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
+@layer base {
+  :where(button, a, input, textarea, select, [tabindex]):focus-visible {
+    outline: 2px solid var(--accent, var(--color-violet));
+    outline-offset: var(--seed-dimension-x0_5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-frame,
+  .app-frame *,
+  .app-frame *::before,
+  .app-frame *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .ui-press:not(:disabled):not([aria-disabled="true"]):active {
+    scale: 1;
   }
 }

@@ -1,0 +1,257 @@
+/*
+ * SEED Design non-color foundations, @seed-design/css 3.0.3.
+ * Source: @seed-design/css/base.css — https://github.com/daangn/seed-design
+ * Copyright 2025 주식회사 당근마켓. Apache-2.0 (LICENSE/NOTICE in the package).
+ *
+ * This local subset intentionally omits color, gradient, and component skin
+ * declarations. Keep values in sync with the pinned package when upgrading;
+ * importing base.css/all.css would also introduce SEED's product palette.
+ */
+
+:root {
+  --seed-font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard Variable", Pretendard, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --seed-font-size-multiplier: 1;
+  --seed-font-size-limit-min: .8;
+  --seed-font-size-limit-max: 1.5;
+  --seed-line-height-limit-min: .8;
+  --seed-line-height-limit-max: 1.5;
+  --seed-static-font-scale: 1;
+  --seed-dimension-x0_5: 2px;
+  --seed-dimension-x1: 4px;
+  --seed-dimension-x1_5: 6px;
+  --seed-dimension-x2: 8px;
+  --seed-dimension-x2_5: 10px;
+  --seed-dimension-x3: 12px;
+  --seed-dimension-x3_5: 14px;
+  --seed-dimension-x4: 16px;
+  --seed-dimension-x4_5: 18px;
+  --seed-dimension-x5: 20px;
+  --seed-dimension-x6: 24px;
+  --seed-dimension-x7: 28px;
+  --seed-dimension-x8: 32px;
+  --seed-dimension-x9: 36px;
+  --seed-dimension-x10: 40px;
+  --seed-dimension-x12: 48px;
+  --seed-dimension-x13: 52px;
+  --seed-dimension-x14: 56px;
+  --seed-dimension-x16: 64px;
+  --seed-dimension-spacing-x-between-chips: var(--seed-dimension-x2);
+  --seed-dimension-spacing-x-global-gutter: var(--seed-dimension-x4);
+  --seed-dimension-spacing-y-component-default: var(--seed-dimension-x3);
+  --seed-dimension-spacing-y-nav-to-title: var(--seed-dimension-x5);
+  --seed-dimension-spacing-y-screen-bottom: var(--seed-dimension-x14);
+  --seed-dimension-spacing-y-between-text: var(--seed-dimension-x1_5);
+  --seed-duration-d1: 50ms;
+  --seed-duration-d2: .1s;
+  --seed-duration-d3: .15s;
+  --seed-duration-d4: .2s;
+  --seed-duration-d5: .25s;
+  --seed-duration-d6: .3s;
+  --seed-duration-color-transition: var(--seed-duration-d3);
+  --seed-duration-pressed-scale: var(--seed-duration-d3);
+  --seed-font-size-t1: clamp(calc(var(--seed-font-size-t1-static) * var(--seed-font-size-limit-min, 1)), calc(.6875rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-font-size-t1-static) * var(--seed-font-size-limit-max, 1)));
+  --seed-font-size-t2: clamp(calc(var(--seed-font-size-t2-static) * var(--seed-font-size-limit-min, 1)), calc(.75rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-font-size-t2-static) * var(--seed-font-size-limit-max, 1)));
+  --seed-font-size-t3: clamp(calc(var(--seed-font-size-t3-static) * var(--seed-font-size-limit-min, 1)), calc(.8125rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-font-size-t3-static) * var(--seed-font-size-limit-max, 1)));
+  --seed-font-size-t4: clamp(calc(var(--seed-font-size-t4-static) * var(--seed-font-size-limit-min, 1)), calc(.875rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-font-size-t4-static) * var(--seed-font-size-limit-max, 1)));
+  --seed-font-size-t5: clamp(calc(var(--seed-font-size-t5-static) * var(--seed-font-size-limit-min, 1)), calc(1rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-font-size-t5-static) * var(--seed-font-size-limit-max, 1)));
+  --seed-font-size-t6: clamp(calc(var(--seed-font-size-t6-static) * var(--seed-font-size-limit-min, 1)), calc(1.125rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-font-size-t6-static) * var(--seed-font-size-limit-max, 1)));
+  --seed-font-size-t7: clamp(calc(var(--seed-font-size-t7-static) * var(--seed-font-size-limit-min, 1)), calc(1.25rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-font-size-t7-static) * var(--seed-font-size-limit-max, 1)));
+  --seed-font-size-t8: clamp(calc(var(--seed-font-size-t8-static) * var(--seed-font-size-limit-min, 1)), calc(1.375rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-font-size-t8-static) * var(--seed-font-size-limit-max, 1)));
+  --seed-font-size-t9: clamp(calc(var(--seed-font-size-t9-static) * var(--seed-font-size-limit-min, 1)), calc(1.5rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-font-size-t9-static) * var(--seed-font-size-limit-max, 1)));
+  --seed-font-size-t10: clamp(calc(var(--seed-font-size-t10-static) * var(--seed-font-size-limit-min, 1)), calc(1.625rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-font-size-t10-static) * var(--seed-font-size-limit-max, 1)));
+  --seed-font-size-t11: clamp(calc(var(--seed-font-size-t11-static) * var(--seed-font-size-limit-min, 1)), calc(1.75rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-font-size-t11-static) * var(--seed-font-size-limit-max, 1)));
+  --seed-font-size-t12: clamp(calc(var(--seed-font-size-t12-static) * var(--seed-font-size-limit-min, 1)), calc(2rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-font-size-t12-static) * var(--seed-font-size-limit-max, 1)));
+  --seed-font-size-t13: clamp(calc(var(--seed-font-size-t13-static) * var(--seed-font-size-limit-min, 1)), calc(2.5rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-font-size-t13-static) * var(--seed-font-size-limit-max, 1)));
+  --seed-font-size-t14: clamp(calc(var(--seed-font-size-t14-static) * var(--seed-font-size-limit-min, 1)), calc(3rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-font-size-t14-static) * var(--seed-font-size-limit-max, 1)));
+  --seed-font-size-t1-static: calc(11px / var(--seed-static-font-scale, 1));
+  --seed-font-size-t2-static: calc(12px / var(--seed-static-font-scale, 1));
+  --seed-font-size-t3-static: calc(13px / var(--seed-static-font-scale, 1));
+  --seed-font-size-t4-static: calc(14px / var(--seed-static-font-scale, 1));
+  --seed-font-size-t5-static: calc(16px / var(--seed-static-font-scale, 1));
+  --seed-font-size-t6-static: calc(18px / var(--seed-static-font-scale, 1));
+  --seed-font-size-t7-static: calc(20px / var(--seed-static-font-scale, 1));
+  --seed-font-size-t8-static: calc(22px / var(--seed-static-font-scale, 1));
+  --seed-font-size-t9-static: calc(24px / var(--seed-static-font-scale, 1));
+  --seed-font-size-t10-static: calc(26px / var(--seed-static-font-scale, 1));
+  --seed-font-size-t11-static: calc(28px / var(--seed-static-font-scale, 1));
+  --seed-font-size-t12-static: calc(32px / var(--seed-static-font-scale, 1));
+  --seed-font-size-t13-static: calc(40px / var(--seed-static-font-scale, 1));
+  --seed-font-size-t14-static: calc(48px / var(--seed-static-font-scale, 1));
+  --seed-font-weight-regular: 400;
+  --seed-font-weight-medium: 500;
+  --seed-font-weight-bold: 700;
+  --seed-line-height-t1: clamp(calc(var(--seed-line-height-t1-static) * var(--seed-line-height-limit-min, 1)), calc(.9375rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-line-height-t1-static) * var(--seed-line-height-limit-max, 1)));
+  --seed-line-height-t2: clamp(calc(var(--seed-line-height-t2-static) * var(--seed-line-height-limit-min, 1)), calc(1rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-line-height-t2-static) * var(--seed-line-height-limit-max, 1)));
+  --seed-line-height-t3: clamp(calc(var(--seed-line-height-t3-static) * var(--seed-line-height-limit-min, 1)), calc(1.125rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-line-height-t3-static) * var(--seed-line-height-limit-max, 1)));
+  --seed-line-height-t4: clamp(calc(var(--seed-line-height-t4-static) * var(--seed-line-height-limit-min, 1)), calc(1.1875rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-line-height-t4-static) * var(--seed-line-height-limit-max, 1)));
+  --seed-line-height-t5: clamp(calc(var(--seed-line-height-t5-static) * var(--seed-line-height-limit-min, 1)), calc(1.375rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-line-height-t5-static) * var(--seed-line-height-limit-max, 1)));
+  --seed-line-height-t6: clamp(calc(var(--seed-line-height-t6-static) * var(--seed-line-height-limit-min, 1)), calc(1.5rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-line-height-t6-static) * var(--seed-line-height-limit-max, 1)));
+  --seed-line-height-t7: clamp(calc(var(--seed-line-height-t7-static) * var(--seed-line-height-limit-min, 1)), calc(1.6875rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-line-height-t7-static) * var(--seed-line-height-limit-max, 1)));
+  --seed-line-height-t8: clamp(calc(var(--seed-line-height-t8-static) * var(--seed-line-height-limit-min, 1)), calc(1.875rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-line-height-t8-static) * var(--seed-line-height-limit-max, 1)));
+  --seed-line-height-t9: clamp(calc(var(--seed-line-height-t9-static) * var(--seed-line-height-limit-min, 1)), calc(2rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-line-height-t9-static) * var(--seed-line-height-limit-max, 1)));
+  --seed-line-height-t10: clamp(calc(var(--seed-line-height-t10-static) * var(--seed-line-height-limit-min, 1)), calc(2.1875rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-line-height-t10-static) * var(--seed-line-height-limit-max, 1)));
+  --seed-line-height-t11: clamp(calc(var(--seed-line-height-t11-static) * var(--seed-line-height-limit-min, 1)), calc(2.375rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-line-height-t11-static) * var(--seed-line-height-limit-max, 1)));
+  --seed-line-height-t12: clamp(calc(var(--seed-line-height-t12-static) * var(--seed-line-height-limit-min, 1)), calc(2.625rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-line-height-t12-static) * var(--seed-line-height-limit-max, 1)));
+  --seed-line-height-t13: clamp(calc(var(--seed-line-height-t13-static) * var(--seed-line-height-limit-min, 1)), calc(3.25rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-line-height-t13-static) * var(--seed-line-height-limit-max, 1)));
+  --seed-line-height-t14: clamp(calc(var(--seed-line-height-t14-static) * var(--seed-line-height-limit-min, 1)), calc(3.75rem * var(--seed-font-size-multiplier, 1)), calc(var(--seed-line-height-t14-static) * var(--seed-line-height-limit-max, 1)));
+  --seed-line-height-t1-static: calc(15px / var(--seed-static-font-scale, 1));
+  --seed-line-height-t2-static: calc(16px / var(--seed-static-font-scale, 1));
+  --seed-line-height-t3-static: calc(18px / var(--seed-static-font-scale, 1));
+  --seed-line-height-t4-static: calc(19px / var(--seed-static-font-scale, 1));
+  --seed-line-height-t5-static: calc(22px / var(--seed-static-font-scale, 1));
+  --seed-line-height-t6-static: calc(24px / var(--seed-static-font-scale, 1));
+  --seed-line-height-t7-static: calc(27px / var(--seed-static-font-scale, 1));
+  --seed-line-height-t8-static: calc(30px / var(--seed-static-font-scale, 1));
+  --seed-line-height-t9-static: calc(32px / var(--seed-static-font-scale, 1));
+  --seed-line-height-t10-static: calc(35px / var(--seed-static-font-scale, 1));
+  --seed-line-height-t11-static: calc(38px / var(--seed-static-font-scale, 1));
+  --seed-line-height-t12-static: calc(42px / var(--seed-static-font-scale, 1));
+  --seed-line-height-t13-static: calc(52px / var(--seed-static-font-scale, 1));
+  --seed-line-height-t14-static: calc(60px / var(--seed-static-font-scale, 1));
+  --seed-radius-r0_5: 2px;
+  --seed-radius-r1: 4px;
+  --seed-radius-r1_5: 6px;
+  --seed-radius-r2: 8px;
+  --seed-radius-r2_5: 10px;
+  --seed-radius-r3: 12px;
+  --seed-radius-r3_5: 14px;
+  --seed-radius-r4: 16px;
+  --seed-radius-r5: 20px;
+  --seed-radius-r6: 24px;
+  --seed-radius-full: 9999px;
+  --seed-timing-function-linear: cubic-bezier(0, 0, 1, 1);
+  --seed-timing-function-easing: cubic-bezier(.35, 0, .35, 1);
+  --seed-timing-function-enter: cubic-bezier(0, 0, .15, 1);
+  --seed-timing-function-exit: cubic-bezier(.35, 0, 1, 1);
+  --seed-timing-function-enter-expressive: cubic-bezier(.03, .4, .1, 1);
+  --seed-timing-function-exit-expressive: cubic-bezier(.35, 0, .95, .55);
+  --seed-timing-function-pressed-scale: cubic-bezier(0, 0, .15, 1);
+}
+
+/* Native SEED scales plus compatibility aliases for existing Tailwind UI. */
+@theme inline {
+  --font-sans: var(--seed-font-family);
+  --spacing: var(--seed-dimension-x1);
+  --spacing-x0_5: var(--seed-dimension-x0_5);
+  --spacing-x1: var(--seed-dimension-x1);
+  --spacing-x1_5: var(--seed-dimension-x1_5);
+  --spacing-x2: var(--seed-dimension-x2);
+  --spacing-x2_5: var(--seed-dimension-x2_5);
+  --spacing-x3: var(--seed-dimension-x3);
+  --spacing-x3_5: var(--seed-dimension-x3_5);
+  --spacing-x4: var(--seed-dimension-x4);
+  --spacing-x4_5: var(--seed-dimension-x4_5);
+  --spacing-x5: var(--seed-dimension-x5);
+  --spacing-x6: var(--seed-dimension-x6);
+  --spacing-x7: var(--seed-dimension-x7);
+  --spacing-x8: var(--seed-dimension-x8);
+  --spacing-x9: var(--seed-dimension-x9);
+  --spacing-x10: var(--seed-dimension-x10);
+  --spacing-x12: var(--seed-dimension-x12);
+  --spacing-x13: var(--seed-dimension-x13);
+  --spacing-x14: var(--seed-dimension-x14);
+  --spacing-x16: var(--seed-dimension-x16);
+  --spacing-gutter: var(--seed-dimension-spacing-x-global-gutter);
+  --spacing-chips: var(--seed-dimension-spacing-x-between-chips);
+  --spacing-component: var(--seed-dimension-spacing-y-component-default);
+  --spacing-nav-title: var(--seed-dimension-spacing-y-nav-to-title);
+  --spacing-screen-bottom: var(--seed-dimension-spacing-y-screen-bottom);
+  --spacing-text: var(--seed-dimension-spacing-y-between-text);
+  --text-t1: var(--seed-font-size-t1);
+  --text-t1--line-height: var(--seed-line-height-t1);
+  --text-t2: var(--seed-font-size-t2);
+  --text-t2--line-height: var(--seed-line-height-t2);
+  --text-t3: var(--seed-font-size-t3);
+  --text-t3--line-height: var(--seed-line-height-t3);
+  --text-t4: var(--seed-font-size-t4);
+  --text-t4--line-height: var(--seed-line-height-t4);
+  --text-t5: var(--seed-font-size-t5);
+  --text-t5--line-height: var(--seed-line-height-t5);
+  --text-t6: var(--seed-font-size-t6);
+  --text-t6--line-height: var(--seed-line-height-t6);
+  --text-t7: var(--seed-font-size-t7);
+  --text-t7--line-height: var(--seed-line-height-t7);
+  --text-t8: var(--seed-font-size-t8);
+  --text-t8--line-height: var(--seed-line-height-t8);
+  --text-t9: var(--seed-font-size-t9);
+  --text-t9--line-height: var(--seed-line-height-t9);
+  --text-t10: var(--seed-font-size-t10);
+  --text-t10--line-height: var(--seed-line-height-t10);
+  --text-t11: var(--seed-font-size-t11);
+  --text-t11--line-height: var(--seed-line-height-t11);
+  --text-t12: var(--seed-font-size-t12);
+  --text-t12--line-height: var(--seed-line-height-t12);
+  --text-t13: var(--seed-font-size-t13);
+  --text-t13--line-height: var(--seed-line-height-t13);
+  --text-t14: var(--seed-font-size-t14);
+  --text-t14--line-height: var(--seed-line-height-t14);
+  --text-xs: var(--seed-font-size-t2);
+  --text-xs--line-height: var(--seed-line-height-t2);
+  --text-sm: var(--seed-font-size-t4);
+  --text-sm--line-height: var(--seed-line-height-t4);
+  --text-base: var(--seed-font-size-t5);
+  --text-base--line-height: var(--seed-line-height-t5);
+  --text-lg: var(--seed-font-size-t6);
+  --text-lg--line-height: var(--seed-line-height-t6);
+  --text-xl: var(--seed-font-size-t7);
+  --text-xl--line-height: var(--seed-line-height-t7);
+  --text-2xl: var(--seed-font-size-t9);
+  --text-2xl--line-height: var(--seed-line-height-t9);
+  --text-3xl: var(--seed-font-size-t12);
+  --text-3xl--line-height: var(--seed-line-height-t12);
+  --text-4xl: var(--seed-font-size-t13);
+  --text-4xl--line-height: var(--seed-line-height-t13);
+  --text-5xl: var(--seed-font-size-t14);
+  --text-5xl--line-height: var(--seed-line-height-t14);
+  --font-weight-normal: var(--seed-font-weight-regular);
+  --font-weight-medium: var(--seed-font-weight-medium);
+  --font-weight-semibold: var(--seed-font-weight-bold);
+  --font-weight-bold: var(--seed-font-weight-bold);
+  --font-weight-extrabold: var(--seed-font-weight-bold);
+  --font-weight-black: var(--seed-font-weight-bold);
+  --radius-r0_5: var(--seed-radius-r0_5);
+  --radius-r1: var(--seed-radius-r1);
+  --radius-r1_5: var(--seed-radius-r1_5);
+  --radius-r2: var(--seed-radius-r2);
+  --radius-r2_5: var(--seed-radius-r2_5);
+  --radius-r3: var(--seed-radius-r3);
+  --radius-r3_5: var(--seed-radius-r3_5);
+  --radius-r4: var(--seed-radius-r4);
+  --radius-r5: var(--seed-radius-r5);
+  --radius-r6: var(--seed-radius-r6);
+  --radius-full: var(--seed-radius-full);
+  --radius-xs: var(--seed-radius-r0_5);
+  --radius-sm: var(--seed-radius-r1);
+  --radius-md: var(--seed-radius-r1_5);
+  --radius-lg: var(--seed-radius-r2);
+  --radius-xl: var(--seed-radius-r3);
+  --radius-2xl: var(--seed-radius-r4);
+  --radius-3xl: var(--seed-radius-r6);
+  --radius-4xl: var(--seed-radius-r6);
+  --ease-in: var(--seed-timing-function-exit);
+  --ease-out: var(--seed-timing-function-enter);
+  --ease-in-out: var(--seed-timing-function-easing);
+  --ease-seed: var(--seed-timing-function-easing);
+  --ease-enter: var(--seed-timing-function-enter);
+  --ease-exit: var(--seed-timing-function-exit);
+  --default-transition-duration: var(--seed-duration-d3);
+  --default-transition-timing-function: var(--seed-timing-function-easing);
+}
+
+@utility text-screen-title {
+  font-size: var(--seed-font-size-t10);
+  line-height: var(--seed-line-height-t10);
+  font-weight: var(--seed-font-weight-bold);
+}
+
+@utility text-article-body {
+  font-size: var(--seed-font-size-t5);
+  line-height: var(--seed-line-height-t6);
+  font-weight: var(--seed-font-weight-regular);
+}
+
+@utility text-article-note {
+  font-size: var(--seed-font-size-t4);
+  line-height: var(--seed-line-height-t5);
+  font-weight: var(--seed-font-weight-regular);
+}
