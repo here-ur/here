@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     if (error || !data?.length) return json(null);
     const headline = await greeting(access.userId, data, {
       apiKey: process.env.RUNYOUR_API_KEY, baseUrl: process.env.RUNYOUR_BASE_URL,
-      model: process.env.MEMORY_SUMMARY_MODEL || process.env.CHAT_MODEL,
+      model: process.env.CHAT_MODEL,
     });
     // Consent can be withdrawn while the model is selecting a topic.
     const revoked = await requireMemoryConsent(access.supabase);

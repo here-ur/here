@@ -106,7 +106,7 @@ export default function MemoryConsentGate({ children, signOut, userId = "", prev
           <dl className="mt-3 space-y-3 text-t3 leading-relaxed text-[#5A6478]">
             <div><dt className="font-semibold text-[#1F2A55]">목적</dt><dd>회원 확인과 사용자별 대화 기억·맞춤 답변 제공</dd></div>
             <div><dt className="font-semibold text-[#1F2A55]">항목</dt><dd>계정 식별자, 대화 요약, 기억 검색용 임베딩, 생성 시점과 동의 이력. 휴대폰 번호는 로그인에 이용해요.</dd></div>
-            <div><dt className="font-semibold text-[#1F2A55]">처리 방식</dt><dd>텍스트는 Runyour AI로 답변·요약을 만들고, 요약과 검색 문장은 OpenAI로 임베딩해요. 기억은 Supabase에 저장해요. 대화 원문·음성 파일을 기억 DB에 저장하지 않아요. 현재 음성 기억은 준비 중이에요.</dd></div>
+            <div><dt className="font-semibold text-[#1F2A55]">처리 방식</dt><dd>텍스트 답변은 Runyour AI, 음성 대화와 받아쓰기는 OpenAI로 처리해요. 텍스트와 받아쓰기의 사용자 발언을 Runyour AI로 요약하고, 요약과 검색 문장은 OpenAI로 임베딩해요. 기억은 Supabase에 저장해요. 대화 원문·음성 파일을 기억 DB에 저장하지 않아요.</dd></div>
             <div><dt className="font-semibold text-[#1F2A55]">보관기간 초안</dt><dd>회원 탈퇴 전까지 보유하고 탈퇴 후 1년 보관하는 정책을 검토 중이에요. 탈퇴 후 보관 목적·근거, 자동 파기와 국외 처리 고지는 운영 전 확정해야 해요.</dd></div>
           </dl>
           </details>

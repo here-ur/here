@@ -1,4 +1,5 @@
 import { cleanName, DEFAULT_COMPANION, josa } from "./onboarding.ts";
+import { requestVoiceMemory, VoiceMemoryAccessError } from "./voice-memory-client.ts";
 
 // 브라우저 ↔ OpenAI realtime (WebRTC). 진짜 키는 서버에만 있고, 여기서는 /api/realtime이 준 임시 키만 쓴다.
 export type Handlers = {
@@ -9,6 +10,7 @@ export type Handlers = {
   onAssistantText: (text: string) => void;
   onTool: (name: "show_crisis_help" | "show_get_help") => void;
   onError: (message: string) => void;
+  onMemoryWarning?: (message: string) => void;
 };
 
 export type Realtime = {
@@ -44,6 +46,52 @@ export async function connectRealtime(
   let currentStatus: Parameters<Handlers["onStatus"]>[0] = "connecting";
   let assistant = "";
   const userParts = new Map<string, string>();
+  let memoryEnabled = false;
+  const memorySessionId = crypto.randomUUID();
+  const transcripts = new Set<string>();
+  const toolResults = new Map<string, Promise<void>>();
+  const handledResponses = new Set<string>();
+  const responseTurns = new Map<string, number>();
+  let turn = 0;
+  let toolRounds = 0;
+
+  function boundedAdd(set: Set<string>, key: string) {
+    set.add(key);
+    if (set.size > 256) set.delete(set.values().next().value!);
+  }
+
+  function memoryError(error: unknown, saving: boolean) {
+    if (closed) return;
+    if (error instanceof VoiceMemoryAccessError) fail("회원·이용 동의를 다시 확인하려면 새로고침해 주세요.");
+    else if (saving) h.onMemoryWarning?.("이번 발언의 기억 저장을 요청하지 못했어요. 음성 대화는 계속할 수 있어요.");
+  }
+
+  function processTool(call: { name?: string; call_id?: string; arguments?: string }): Promise<void> {
+    const id = call.call_id;
+    if (!id || !/^[\w-]{1,200}$/.test(id)) return Promise.resolve();
+    const existing = toolResults.get(id);
+    if (existing) return existing;
+    const task = (async () => {
+      let output: object = { error: "unsupported_tool" };
+      if (call.name === "show_crisis_help" || call.name === "show_get_help") {
+        h.onTool(call.name);
+        output = { shown: true };
+      } else if (call.name === "recall_memories" && memoryEnabled && accessToken) {
+        output = { context: "", available: false };
+        try {
+          const args = JSON.parse(call.arguments || "{}");
+          if (typeof args.query === "string" && args.query.trim() && args.query.length <= 1000 && toolRounds < 4) {
+            const context = await requestVoiceMemory({ action: "recall", text: args.query }, accessToken, controller.signal);
+            output = { context, available: Boolean(context) };
+          }
+        } catch (error) { memoryError(error, false); }
+      }
+      if (!closed) send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: id, output: JSON.stringify(output) } });
+    })();
+    toolResults.set(id, task);
+    if (toolResults.size > 256) toolResults.delete(toolResults.keys().next().value!);
+    return task;
+  }
 
   function updateStatus(status: Parameters<Handlers["onStatus"]>[0]) {
     currentStatus = status;
@@ -74,6 +122,10 @@ export async function connectRealtime(
       audioEl.srcObject = null;
     }
     userParts.clear();
+    transcripts.clear();
+    toolResults.clear();
+    handledResponses.clear();
+    responseTurns.clear();
   }
 
   function abort() {
@@ -129,7 +181,8 @@ export async function connectRealtime(
       signal: controller.signal,
     });
     if (!res.ok) throw new Error(CONNECTION_ERROR);
-    const { key } = await res.json();
+    const { key, memory } = await res.json();
+    memoryEnabled = memory === true && Boolean(accessToken);
     controller.signal.throwIfAborted();
     if (typeof key !== "string" || !key) throw new Error(CONNECTION_ERROR);
 
@@ -171,7 +224,7 @@ export async function connectRealtime(
     channel.onopen = () => {
       if (closed || greetingRequested) return;
       greetingRequested = true;
-      updateStatus("thinking");
+      // Keep the quiet preparation state until greeting audio actually starts.
       const name = cleanName(persona.name ?? DEFAULT_COMPANION);
       send({
         type: "response.create",
@@ -193,9 +246,14 @@ export async function connectRealtime(
       if (!event || typeof event !== "object") { fail(CONNECTION_ERROR); return; }
       switch (event.type) {
         case "response.created":
+          if (typeof event.response?.id === "string") {
+            responseTurns.set(event.response.id, turn);
+            if (responseTurns.size > 256) responseTurns.delete(responseTurns.keys().next().value!);
+          }
           if (greetingPending && greetingRequested && !greetingResponseId) greetingResponseId = event.response?.id ?? null;
           return;
         case "input_audio_buffer.speech_started":
+          if (!greetingPending) { turn++; toolRounds = 0; }
           if (!greetingPending && micRequested) updateStatus("listening");
           return;
         case "input_audio_buffer.speech_stopped":
@@ -208,10 +266,24 @@ export async function connectRealtime(
           h.onUserPartial(text);
           return;
         }
-        case "conversation.item.input_audio_transcription.completed":
+        case "conversation.item.input_audio_transcription.completed": {
           userParts.delete(event.item_id);
-          if (!greetingPending && typeof event.transcript === "string" && event.transcript.trim()) h.onUserText(event.transcript.trim());
+          if (greetingPending || typeof event.transcript !== "string" || !event.transcript.trim()) return;
+          const id = typeof event.item_id === "string" ? event.item_id : "";
+          if (id && transcripts.has(id)) return;
+          if (id) boundedAdd(transcripts, id);
+          const text = event.transcript.trim();
+          h.onUserText(text);
+          if (memoryEnabled && accessToken) {
+            if (!/^[\w-]{1,150}$/.test(id) || text.length > 8000) {
+              memoryError(new Error("invalid_transcript"), true);
+            } else {
+              void requestVoiceMemory({ action: "remember", text, sourceId: `${memorySessionId}:${id}` }, accessToken)
+                .catch(error => memoryError(error, true));
+            }
+          }
           return;
+        }
         case "response.output_audio_transcript.delta":
           if (typeof event.delta !== "string") return;
           assistant += event.delta;
@@ -243,18 +315,30 @@ export async function connectRealtime(
           return;
         case "response.function_call_arguments.done":
           if (greetingPending) return;
-          if (event.name === "show_crisis_help" || event.name === "show_get_help") h.onTool(event.name);
-          send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: event.call_id, output: '{"shown":true}' } });
+          void processTool(event);
           return;
         case "response.done": {
           if (greetingPending) {
             if (event.response?.id === greetingResponseId && event.response?.status !== "completed") fail(GREETING_ERROR);
             return; // 오디오 버퍼가 빌 때까지 마이크와 사용자 발화 안내를 열지 않는다.
           }
-          const output: { type: string }[] = event.response?.output ?? [];
-          if (output.some((item) => item.type === "function_call") && !output.some((item) => item.type === "message")) {
+          if (event.response?.status !== "completed") { if (!playing) readyStatus(); return; }
+          const id = event.response?.id;
+          if (typeof id !== "string" || handledResponses.has(id)) return;
+          boundedAdd(handledResponses, id);
+          const output: { type: string; name?: string; call_id?: string; arguments?: string }[] = Array.isArray(event.response?.output) ? event.response.output : [];
+          const calls = output.filter(item => item.type === "function_call");
+          if (calls.length) {
+            const responseTurn = responseTurns.get(id) ?? turn;
             updateStatus("thinking");
-            send({ type: "response.create" });
+            void Promise.all(calls.map(processTool)).then(() => {
+              // Never speak a late tool result over a newer user turn or a closed call.
+              if (closed || responseTurn !== turn) return;
+              if (!output.some(item => item.type === "message") || calls.some(item => item.name === "recall_memories")) {
+                toolRounds++;
+                send({ type: "response.create", ...(toolRounds >= 4 ? { response: { tool_choice: "none" } } : {}) });
+              } else if (!playing) readyStatus();
+            });
           } else if (!playing) readyStatus();
           return;
         }
@@ -284,6 +368,7 @@ export async function connectRealtime(
       hasMic: !!mic,
       sendText(text) {
         if (closed || greetingPending || !text.trim()) return;
+        turn++; toolRounds = 0;
         send({ type: "conversation.item.create", item: { type: "message", role: "user", content: [{ type: "input_text", text }] } });
         updateStatus("thinking");
         send({ type: "response.create" });

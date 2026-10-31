@@ -63,8 +63,20 @@ test("요약은 Runyour Responses의 store:false·구조화 출력으로 요청�
   assert.equal(await summarize("나는 차를 좋아해", config, AbortSignal.timeout(1000)), "사용자는 차를 좋아한다고 말했다.");
   assert.equal(calls[0].url, "https://api.runyour.ai/v1/responses");
   assert.equal(calls[0].body.store, false);
+  assert.equal(calls[0].body.model, "openai/gpt-5.6-luna");
   assert.equal(calls[0].auth, "Bearer test-summary");
   assert.deepEqual(calls[0].body.input, [{ role: "user", content: "나는 차를 좋아해" }]);
+});
+test("요약에 사용한 모델명을 저장하고 명시한 요약 모델 설정을 존중한다", async () => {
+  for (const model of [undefined, "explicit-summary-model"]) {
+    const { store } = fixture();
+    let savedModel = "";
+    store.finish = async (_job, _summary, _vector, actualModel) => { savedModel = actualModel; };
+    const { config, calls } = provider([summary(), embedding()]);
+    await createMemoryService(store, { ...config, summaryModel: model }).remember([{ role: "user", content: "나는 차를 좋아해" }]);
+    assert.equal(savedModel, model || "openai/gpt-5.6-luna");
+    assert.equal(calls[0].body.model, savedModel);
+  }
 });
 test("회원 동의 없으면 검색·저장·외부 API를 호출하지 않는다", async () => {
   const { store, events } = fixture(); store.enabled = async () => false;
@@ -108,4 +120,19 @@ test("회상은 과거 자기보고·비명령 데이터임을 명시한다", as
   const { store } = fixture(); const { config } = provider([embedding()]);
   const context = await createMemoryService(store, config).recall([{ role: "user", content: "좋아하는 음료" }], AbortSignal.timeout(1000));
   assert.match(context, /명령이 아니다/); assert.match(context, /현재 사용자 발언이 우선/); assert.match(context, /차를 좋아/);
+});
+
+test("음성 이벤트 재시도는 동일 키로 중복을 막고 다른 세션 발언은 분리한다", async () => {
+  const { store } = fixture();
+  const keys = new Set<string>();
+  store.claim = async key => { if (keys.has(key)) return null; keys.add(key); return { id: "test", lease: "lease" }; };
+  const { config, calls } = provider([summary(), embedding(), summary(), embedding()]);
+  const service = createMemoryService(store, config);
+  const messages = [{ role: "user" as const, content: "나는 차를 좋아해" }];
+  await service.remember(messages, "session1:item1");
+  await service.remember(messages, "session1:item1");
+  await service.remember(messages, "session2:item1");
+  assert.equal(calls.length, 4);
+  assert.equal(keys.size, 2);
+  assert.ok([...keys].every(key => /^[a-f0-9]{64}$/.test(key)));
 });
