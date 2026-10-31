@@ -28,6 +28,14 @@ test("같은 출처의 채팅 경로에 메시지와 이름만 JSON으로 보낸
   assert.equal(fetchMock.mock.callCount(), 1);
 });
 
+test("로그인 토큰을 채팅 요청에 실어 보낸다", async (t) => {
+  t.mock.method(globalThis, "fetch", async (_input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    assert.deepEqual(init?.headers, { "Content-Type": "application/json", Authorization: "Bearer member-token" });
+    return Response.json({ reply: "응", crisis: false, suggest: false });
+  });
+  await requestChat(messages, "몽글이", undefined, "member-token");
+});
+
 test("취소 신호 없이도 요청하고 위기 응답을 보존한다", async (t) => {
   t.mock.method(globalThis, "fetch", async (_input: Parameters<typeof fetch>[0], init?: RequestInit) => {
     assert.equal(init?.signal, undefined);

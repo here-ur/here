@@ -13,7 +13,18 @@ npm install
 npm run dev
 ```
 
-`.env.example`을 참고해 필요한 서버 환경변수를 `.env.local`에 설정한다. 실제 키는 커밋하거나 `NEXT_PUBLIC_*`로 노출하지 않는다.
+`.env.example`을 참고해 필요한 서버 환경변수를 `.env.local`에 설정한다. 비밀 키는 커밋하거나 `NEXT_PUBLIC_*`로 노출하지 않는다. Supabase publishable key만 브라우저용 공개 키로 사용한다.
+
+### 초대·휴대폰 로그인(구현 중)
+
+현재 가입 순서는 초대코드 → 휴대폰 번호 → SMS 인증번호다. 기존 회원의 로그인은 휴대폰 번호 → SMS 인증번호 순서다. 초대코드를 등록한 회원만 앱에 들어갈 수 있고, 회원은 메뉴에서 최대 3명이 사용할 수 있는 초대코드를 발급할 수 있다. `/api/chat`과 `/api/realtime`도 회원 토큰을 확인한다. Supabase 연결값이 없는 환경에서는 로그인 준비 안내만 표시된다.
+
+1. Supabase 프로젝트를 만든다. Authentication에서 Phone 로그인을 켜고 [SMS 제공업체를 연결](https://supabase.com/docs/guides/auth/phone-login)한다. 가입 화면에서 초대코드를 먼저 확인하지만, 실제 배포 전에는 문자 발송 제한과 CAPTCHA도 설정한다.
+2. Supabase SQL Editor에서 `supabase/migrations/20261029000000_invite_auth.sql`을 실행한다. 서울 리전의 `jtgdmuenwsvjhnugytfa` 프로젝트에는 2026-10-31에 적용해 `members`·`invite_codes` 테이블과 접근 권한을 확인했다. 기존 프랑크푸르트 프로젝트 `tobijrfilxoqhvemamuw`는 그대로 두었으며, 두 프로젝트의 데이터는 자동으로 동기화되지 않는다.
+3. `supabase/migrations/20261031000000_invite_three_uses.sql`도 적용한다. 이미 사용한 코드는 첫 사용자를 포함해 최대 3명이 사용할 수 있도록 이관된다. SQL Editor에서 `select public.bootstrap_invite_code();`를 실행해 첫 초대코드를 받는다. 서울 프로젝트에는 2026-10-31에 첫 코드를 한 번 발급했고, 결과는 해당 프로젝트의 SQL Editor 탭에 남겨 두었다. 기존 프로젝트의 코드는 새 프로젝트에서 사용할 수 없다. 다시 실행하면 새로운 코드가 추가로 발급되므로 필요할 때만 실행한다. 발급 결과를 공개 저장소에 기록하지 않는다.
+4. Project URL과 publishable key를 로컬 환경의 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`에 넣고 개발 서버를 재시작한다. 현재 개발 환경은 Git에 올라가지 않는 `.env.development`로 서울 프로젝트에 연결했다. 이 키는 브라우저 공개용이며, 기존 `OPENAI_API_KEY`나 `RUNYOUR_API_KEY`를 바꾸지 않는다. service role/secret key는 브라우저에 넣지 않는다.
+
+프로필과 대화 기록은 현재 **계정별 브라우저 저장소**에만 남는다. 로그인 이전에 이 브라우저에 있던 기록은 다른 계정에 자동 연결하지 않는다. 서버 저장·요약·임베딩·학습 파이프라인·탈퇴 후 보존/삭제 정책은 아직 구현되지 않았다. 이 단계에서는 대화 데이터가 계정 간 섞이지 않도록 분리하는 데까지만 작업했다.
 
 - 글 대화: `RUNYOUR_API_KEY`. 기본 API 주소는 `https://api.runyour.ai/v1`, 모델은 `openai/gpt-5.6-sol`이다. Responses API(`/responses`)와 `reasoning.effort: medium`으로 추론·함수 도구를 함께 사용한다. `RUNYOUR_BASE_URL`·`CHAT_MODEL`로 변경할 수 있다.
 - 음성 대화: `OPENAI_API_KEY`. `REALTIME_MODEL` 기본값은 `gpt-realtime-2.1-mini`다. 글 대화 키와 별도로 설정한다.

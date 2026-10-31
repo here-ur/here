@@ -7,6 +7,8 @@ import { ChatRequestError, requestChat } from "@/lib/chat";
 import { type Msg, type Session, saveSession } from "@/lib/log";
 import { DEFAULT_COMPANION, type Profile, clearProfile, josa, parseProfile, profileRaw, saveProfile } from "@/lib/onboarding";
 import { type Realtime, connectRealtime } from "@/lib/realtime";
+import { browserSupabase } from "@/lib/supabase";
+import AuthGate from "./AuthGate";
 import { Crisis109 } from "./Conversation";
 import Customize from "./Customize";
 import Drawer from "./Drawer";
@@ -34,7 +36,11 @@ const DEV_PROFILE: Profile | null =
     ? { nickname: "", companion: DEFAULT_COMPANION, shape: "cloud", color: "lavender", voice: "marin", style: "listen" }
     : null;
 
-export default function Home() {
+export default function Page() {
+  return <AuthGate>{(userId, signOut) => <Home key={userId} signOut={signOut} />}</AuthGate>;
+}
+
+function Home({ signOut }: { signOut: () => Promise<void> }) {
   // 저장된 프로필을 우선 사용하고, 개발용 건너뛰기가 켜져 있으면 기본 프로필로 홈을 연다.
   // 서버 렌더에서는 localStorage를 모르니 undefined로 비워 둔다.
   const storedProfile = useSyncExternalStore(noSubscribe, profileRaw, () => undefined);
@@ -59,6 +65,9 @@ export default function Home() {
   const [showLog, setShowLog] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [customizing, setCustomizing] = useState(false);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState("");
+  const [inviteBusy, setInviteBusy] = useState(false);
   const [captions, setCaptions] = useState(false); // 자막: 소리가 안 들릴 때를 위해
 
   const rt = useRef<Realtime | null>(null);
@@ -87,6 +96,22 @@ export default function Home() {
     setStatus("idle");
   }
 
+  async function accessToken(): Promise<string> {
+    const { data } = await browserSupabase()!.auth.getSession();
+    if (!data.session?.access_token) throw new Error("로그인이 만료됐어요. 다시 로그인해 주세요.");
+    return data.session.access_token;
+  }
+
+  async function createInvite() {
+    if (inviteBusy) return;
+    setInviteBusy(true);
+    setInviteError("");
+    const { data, error: inviteIssue } = await browserSupabase()!.rpc("create_invite_code");
+    setInviteBusy(false);
+    if (inviteIssue || typeof data !== "string") { setInviteError("초대코드를 만들지 못했어요. 다시 시도해 주세요."); return; }
+    setInviteCode(data);
+  }
+
   /** 글 대화는 마이크 연결 없이 서버의 Runyour AI 경로로만 보낸다. */
   async function sendChat() {
     const text = draft.trim();
@@ -100,7 +125,8 @@ export default function Home() {
     setError("");
     setStatus("thinking");
     try {
-      const result = await requestChat(next.slice(-60), profile?.companion ?? DEFAULT_COMPANION, controller.signal);
+      const token = await accessToken();
+      const result = await requestChat(next.slice(-60), profile?.companion ?? DEFAULT_COMPANION, controller.signal, token);
       if (chatRequest.current !== controller) return;
       const completed: Msg[] = [...next, { role: "assistant", content: result.reply }];
       setMessages(completed);
@@ -144,6 +170,7 @@ export default function Home() {
     setStatus("connecting");
     setError("");
     try {
+      const token = await accessToken();
       const conn = await connectRealtime({
         onStatus: (next) => { if (current()) setStatus(next); },
         onUserPartial: (text) => current() && hasCrisisSignal(text) && setCrisis(true),
@@ -164,7 +191,7 @@ export default function Home() {
           else setSuggest(true);
         },
         onError: (message) => { if (current()) setError(message); },
-      }, { name: profile?.companion, voice: profile?.voice }, controller.signal);
+      }, { name: profile?.companion, voice: profile?.voice }, controller.signal, token);
       if (!current()) { conn.close(); return; }
       rt.current = conn;
       conn.setSound(true);
@@ -324,12 +351,32 @@ export default function Home() {
             setShowMenu(false);
             openHelp();
           }}
+          onInvite={() => {
+            setShowMenu(false);
+            setInviteCode(null);
+            setInviteError("");
+            void createInvite();
+          }}
+          onSignOut={() => { void signOut(); }}
           onReset={() => {
             if (!window.confirm(`${profile.companion} 설정을 지우고 처음부터 다시 할까요? 대화 기록은 그대로 남아요.`)) return;
             clearProfile();
             location.reload();
           }}
         />
+        {(inviteBusy || inviteCode || inviteError) && <div className="absolute inset-0 z-50 grid place-items-center bg-[#141C3C]/40 px-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="친구 초대">
+          <div className="w-full max-w-sm rounded-[28px] bg-white p-7 text-[#1F2A55] shadow-xl">
+            <h2 className="text-xl font-bold">친구 초대</h2>
+            <p className="mt-2 text-sm text-[#5A6478]">이 코드는 최대 3명이 사용할 수 있어요.</p>
+            {inviteCode && <p className="mt-6 rounded-2xl bg-[#F0F2FB] px-4 py-5 text-center font-mono text-lg font-bold tracking-wider">{inviteCode}</p>}
+            {inviteBusy && <p className="mt-6 text-sm">초대코드를 만드는 중이에요…</p>}
+            {inviteError && <p role="alert" className="mt-6 text-sm text-[#C2362B]">{inviteError}</p>}
+            <div className="mt-6 flex gap-3">
+              <button onClick={() => { setInviteCode(null); setInviteError(""); setInviteBusy(false); }} className="min-h-12 flex-1 rounded-full bg-[#F0F2FB] font-semibold">닫기</button>
+              {inviteCode && <button onClick={() => { void navigator.clipboard.writeText(inviteCode).catch(() => setInviteError("복사하지 못했어요. 코드를 직접 선택해 주세요.")); }} className="min-h-12 flex-1 rounded-full bg-[#6F4FF0] font-semibold text-white">코드 복사</button>}
+            </div>
+          </div>
+        </div>}
         {customizing && (
           <Customize
             profile={me}

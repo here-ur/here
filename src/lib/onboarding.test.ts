@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { clearProfile, cleanName, describeStyle, josa, loadProfile, matchStyle, saveProfile } from "./onboarding.ts";
+import { setLocalOwner } from "./local-scope.ts";
 
 const store = new Map<string, string>();
 globalThis.localStorage = {
@@ -8,6 +9,7 @@ globalThis.localStorage = {
   setItem: (k: string, v: string) => void store.set(k, v),
   removeItem: (k: string) => void store.delete(k),
 } as Storage;
+setLocalOwner("member-a");
 
 test("힘들다고 하면 수다를 골라도 들어 주는 쪽으로", () => {
   assert.equal(matchStyle({ lately: "많이 힘들어요", want: "가볍게 수다 떨기" }), "listen");
@@ -43,9 +45,17 @@ test("프로필을 저장하고 다시 읽는다", () => {
 });
 
 test("처음부터 다시 하기는 몽글이 설정만 지운다", () => {
-  store.set("here.log.v1", "[]");
+  store.set("here.log.v1.member-a", "[]");
   saveProfile({ nickname: "하늘", companion: "구름", shape: "cloud", color: "mint", voice: "cedar", style: "sort" });
   clearProfile();
   assert.equal(loadProfile(), null);
-  assert.equal(store.get("here.log.v1"), "[]");
+  assert.equal(store.get("here.log.v1.member-a"), "[]");
+});
+
+test("다른 계정의 프로필은 보이지 않는다", () => {
+  saveProfile({ nickname: "하늘", companion: "구름", shape: "cloud", color: "mint", voice: "cedar", style: "sort" });
+  setLocalOwner("member-b");
+  assert.equal(loadProfile(), null);
+  setLocalOwner("member-a");
+  assert.equal(loadProfile()?.companion, "구름");
 });
