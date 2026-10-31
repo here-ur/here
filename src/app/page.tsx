@@ -9,6 +9,7 @@ import { DEFAULT_COMPANION, type Profile, clearProfile, josa, parseProfile, prof
 import { type Realtime, connectRealtime } from "@/lib/realtime";
 import { browserSupabase } from "@/lib/supabase";
 import AuthGate from "./AuthGate";
+import MicrophonePermissionGate from "./MicrophonePermissionGate";
 import { Crisis109 } from "./Conversation";
 import Customize from "./Customize";
 import Drawer from "./Drawer";
@@ -21,7 +22,7 @@ type Status = "connecting" | "idle" | "listening" | "thinking" | "speaking";
 
 const hint = (status: Status, name: string) =>
   ({
-    connecting: `${josa(name, "과", "와")} 연결하는 중…`,
+    connecting: "",
     idle: `편하게 말해요. ${josa(name, "이", "가")} 듣고 있어요`,
     listening: "듣고 있어요",
     thinking: "생각하는 중…",
@@ -37,7 +38,7 @@ const DEV_PROFILE: Profile | null =
     : null;
 
 export default function Page() {
-  return <AuthGate>{(userId, signOut) => <Home key={userId} signOut={signOut} />}</AuthGate>;
+  return <AuthGate>{(userId, signOut) => <MicrophonePermissionGate key={userId}><Home signOut={signOut} /></MicrophonePermissionGate>}</AuthGate>;
 }
 
 function Home({ signOut }: { signOut: () => Promise<void> }) {
@@ -62,6 +63,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   const [draft, setDraft] = useState("");
   const [pendingText, setPendingText] = useState("");
   const [error, setError] = useState("");
+  const [memoryWarning, setMemoryWarning] = useState("");
   const [showLog, setShowLog] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [customizing, setCustomizing] = useState(false);
@@ -191,6 +193,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
     setLive("");
     setStatus("connecting");
     setError("");
+    setMemoryWarning("");
     try {
       const token = await accessToken();
       const conn = await connectRealtime({
@@ -213,6 +216,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
           else setSuggest(true);
         },
         onError: (message) => { if (current()) setError(message); },
+        onMemoryWarning: (message) => { if (current()) setMemoryWarning(message); },
       }, { name: profile?.companion, voice: profile?.voice }, controller.signal, token);
       if (!current()) { conn.close(); return; }
       rt.current = conn;
@@ -345,6 +349,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
           statusText,
           error,
           caption: captions ? lastAssistant : undefined,
+          warning: memoryWarning,
           onEnd: stopVoice,
           onMic: () => {
             if (error) { rt.current?.close(); rt.current = null; void begin(); return; }

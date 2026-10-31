@@ -7,7 +7,7 @@ export class JsonRequestError extends Error {
 }
 
 // Bound bytes and time, including chunked bodies without Content-Length.
-export async function readSmallJson(request: Request, timeoutMs = 5000): Promise<unknown> {
+export async function readSmallJson(request: Request, timeoutMs = 5000, maxBytes = 1024): Promise<unknown> {
   if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type") || "")) {
     throw new JsonRequestError(415, "JSON 형식이 필요해요.");
   }
@@ -29,7 +29,7 @@ export async function readSmallJson(request: Request, timeoutMs = 5000): Promise
       signal.throwIfAborted();
       if (done) break;
       size += value.byteLength;
-      if (size > 1024) throw new JsonRequestError(413, "요청이 너무 커요.");
+      if (size > maxBytes) throw new JsonRequestError(413, "요청이 너무 커요.");
       raw += decoder.decode(value, { stream: true });
     }
     return JSON.parse(raw + decoder.decode());

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     openaiKey: process.env.OPENAI_API_KEY || "",
     summaryKey: process.env.RUNYOUR_API_KEY || "",
     summaryBaseUrl: process.env.RUNYOUR_BASE_URL,
-    summaryModel: process.env.MEMORY_SUMMARY_MODEL || process.env.CHAT_MODEL,
+    summaryModel: process.env.MEMORY_SUMMARY_MODEL,
   }) : null;
   return chatResponse(request, {
     apiKey: process.env.RUNYOUR_API_KEY,

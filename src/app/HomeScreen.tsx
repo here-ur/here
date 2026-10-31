@@ -24,6 +24,7 @@ export type HomeVoiceControls = {
   statusText: string;
   error: string;
   caption?: string;
+  warning?: string;
   onEnd: () => void;
   onMic: () => void;
 };
@@ -261,6 +262,7 @@ export default function HomeScreen({
       </div>
 
       <div className="home-bottom absolute inset-x-5 bottom-[max(32px,env(safe-area-inset-bottom))] flex flex-col gap-3">
+        {voice?.warning && !voice.error && <p role="status" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#5A6478]">{voice.warning}</p>}
         {voice?.error && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{voice.error}</p>}
         {chat.error && !voice && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{chat.error}</p>}
         {files.length > 0 && (

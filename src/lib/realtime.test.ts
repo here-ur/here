@@ -77,6 +77,8 @@ function setup(t: TestContext, options: {
   failure?: SetupFailure;
   sessionStatus?: number;
   playError?: Error;
+  memory?: boolean;
+  memoryRequest?: (body: Record<string, unknown>) => Promise<Response>;
 } = {}) {
   const stream = new MockStream();
   const mediaRequested = deferred<void>();
@@ -147,7 +149,11 @@ function setup(t: TestContext, options: {
   t.mock.method(globalThis, "fetch", async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
     requests.push({ input, init });
     if (input === "/api/realtime") {
-      return Response.json({ key: "mock-ephemeral-key" }, { status: options.sessionStatus ?? 200 });
+      return Response.json({ key: "mock-ephemeral-key", memory: options.memory ?? false }, { status: options.sessionStatus ?? 200 });
+    }
+    if (input === "/api/voice-memory") {
+      const body = JSON.parse(String(init?.body));
+      return options.memoryRequest?.(body) ?? (body.action === "remember" ? Response.json({ accepted: true }, { status: 202 }) : Response.json({ context: "사용자는 아줄을 좋아한다고 말했다." }));
     }
     assert.equal(input, "https://api.openai.com/v1/realtime/calls", "모든 네트워크 요청은 스텁 내부에서 처리한다");
     if (options.failure === "answer-network") throw new TypeError("mock network failed");
@@ -203,7 +209,7 @@ test("데이터 채널이 열리면 음성 인사를 도구 호출 없이 한 �
   assert.equal(greeting.response?.tool_choice, "none");
   assert.ok(greeting.response?.instructions?.trim());
   assert.ok(Object.keys(greeting.response?.metadata ?? {}).length > 0);
-  assert.equal(m.statuses.at(-1), "thinking");
+  assert.equal(m.statuses.at(-1), "connecting");
 });
 
 test("인사 생성 완료나 다른 응답의 재생 완료로는 마이크 잠금을 풀지 않는다", async (t) => {
@@ -415,4 +421,115 @@ test("연결 완료 후에도 취소 신호가 마이크와 피어를 닫는다"
   assert.equal(m.peers[0].channel.readyState, "closed");
   assert.equal(m.audios[0].srcObject, null);
   realtime.close();
+});
+
+test("음성 기억은 확정된 사용자 발언만 한 번 저장하고 부분 인식·AI 인사는 제외한다", async t => {
+  const m = setup(t, { memory: true });
+  const rt = await connectRealtime(m.handlers, {}, undefined, "test-member-token");
+  t.after(() => rt.close());
+  const c = m.peers[0].channel;
+  beginGreeting(c);
+  c.emit({ type: "conversation.item.input_audio_transcription.completed", item_id: "early", transcript: "인사 중" });
+  c.emit({ type: "response.output_audio_transcript.done", transcript: "안녕" });
+  finishGreeting(c);
+  c.emit({ type: "conversation.item.input_audio_transcription.delta", item_id: "user-1", delta: "나는" });
+  const event = { type: "conversation.item.input_audio_transcription.completed", item_id: "user-1", transcript: "나는 아줄을 좋아해" };
+  c.emit(event); c.emit(event);
+  await new Promise<void>(r => setImmediate(r));
+  const saves = m.requests.filter(r => r.input === "/api/voice-memory");
+  assert.equal(saves.length, 1);
+  assert.deepEqual(m.userTexts, ["나는 아줄을 좋아해"]);
+  const body = JSON.parse(String(saves[0].init?.body));
+  assert.equal(body.text, "나는 아줄을 좋아해");
+  assert.equal(body.action, "remember");
+  assert.match(body.sourceId, /^[\w-]+:user-1$/);
+  assert.equal(saves[0].init?.keepalive, true);
+  assert.equal(new Headers(saves[0].init?.headers).get("authorization"), "Bearer test-member-token");
+});
+
+test("기억 도구 결과를 돌려준 다음에만 후속 음성 응답을 요청하며 중복 이벤트는 무시한다", async t => {
+  const pending = deferred<Response>();
+  const m = setup(t, { memory: true, memoryRequest: () => pending.promise });
+  const rt = await connectRealtime(m.handlers, {}, undefined, "test-member-token");
+  t.after(() => rt.close());
+  const c = m.peers[0].channel;
+  beginGreeting(c); finishGreeting(c);
+  c.emit({ type: "response.created", response: { id: "r1" } });
+  const call = { type: "function_call", name: "recall_memories", call_id: "call1", arguments: JSON.stringify({ query: "좋아하는 보드게임" }) };
+  c.emit({ ...call, type: "response.function_call_arguments.done" });
+  c.emit({ ...call, type: "response.function_call_arguments.done" });
+  const done = { type: "response.done", response: { id: "r1", status: "completed", output: [call] } };
+  c.emit(done);
+  assert.equal(c.sent.filter(e => e.type === "response.create").length, 1);
+  pending.resolve(Response.json({ context: "사용자는 아줄을 좋아한다고 말했다." }));
+  await new Promise<void>(r => setImmediate(r));
+  c.emit(done);
+  assert.equal(m.requests.filter(r => r.input === "/api/voice-memory").length, 1);
+  const outputIndex = c.sent.findIndex(e => e.type === "conversation.item.create");
+  assert.match(JSON.stringify(c.sent[outputIndex]), /아줄/);
+  assert.equal(c.sent[outputIndex + 1].type, "response.create");
+  assert.equal(c.sent.filter(e => e.type === "response.create").length, 2);
+});
+
+test("음성 저장 요청 실패는 통화를 끊거나 연결 오류로 표시하지 않는다", async t => {
+  const m = setup(t, { memory: true, memoryRequest: async () => new Response(null, { status: 503 }) });
+  const warnings: string[] = [];
+  const rt = await connectRealtime({ ...m.handlers, onMemoryWarning: text => warnings.push(text) }, {}, undefined, "test-member-token");
+  t.after(() => rt.close());
+  const c = m.peers[0].channel;
+  beginGreeting(c); finishGreeting(c);
+  c.emit({ type: "conversation.item.input_audio_transcription.completed", item_id: "user-1", transcript: "차를 좋아해" });
+  await new Promise<void>(r => setImmediate(r));
+  assert.equal(warnings.length, 1);
+  assert.equal(m.errors.length, 0);
+  assert.notEqual(m.peers[0].connectionState, "closed");
+  assert.equal(m.statuses.at(-1), "listening");
+});
+
+test("기억 검색 중 새 발언·종료가 오면 늦은 결과로 음성을 재시작하지 않는다", async t => {
+  for (const action of ["interrupt", "close"]) await t.test(action, async st => {
+    const pending = deferred<Response>();
+    const m = setup(st, { memory: true, memoryRequest: () => pending.promise });
+    const rt = await connectRealtime(m.handlers, {}, undefined, "test-member-token");
+    st.after(() => rt.close());
+    const c = m.peers[0].channel;
+    beginGreeting(c); finishGreeting(c);
+    c.emit({ type: "response.created", response: { id: "r1" } });
+    c.emit({ type: "response.done", response: { id: "r1", status: "completed", output: [{ type: "function_call", name: "recall_memories", call_id: "call1", arguments: '{"query":"취향"}' }] } });
+    if (action === "close") rt.close(); else c.emit({ type: "input_audio_buffer.speech_started", item_id: "new-turn" });
+    pending.resolve(Response.json({ context: "늦게 온 기억" }));
+    await new Promise<void>(r => setImmediate(r));
+    assert.equal(c.sent.filter(e => e.type === "response.create").length, 1);
+  });
+});
+
+test("검색 장애는 기억 없이 대화를 이어가되 동의 거부는 통화를 정리한다", async t => {
+  for (const status of [503, 403, 401]) await t.test(String(status), async st => {
+    const m = setup(st, { memory: true, memoryRequest: async () => Response.json({ error: "private" }, { status }) });
+    const rt = await connectRealtime(m.handlers, {}, undefined, "test-member-token");
+    st.after(() => rt.close());
+    const c = m.peers[0].channel;
+    beginGreeting(c); finishGreeting(c);
+    c.emit({ type: "response.done", response: { id: "r1", status: "completed", output: [{ type: "function_call", name: "recall_memories", call_id: "call1", arguments: '{"query":"취향"}' }] } });
+    await new Promise<void>(r => setImmediate(r));
+    if (status === 503) {
+      assert.equal(c.readyState, "open");
+      assert.equal(c.sent.filter(e => e.type === "response.create").length, 2);
+      assert.match(JSON.stringify(c.sent), /available\\\":false/);
+    } else {
+      assert.equal(c.readyState, "closed");
+      assert.ok(m.errors[0].includes("동의"));
+    }
+    assert.ok(!m.errors.join().includes("private"));
+  });
+});
+
+test("운영처럼 기억이 비활성이면 음성 발언을 기억 API에 보내지 않는다", async t => {
+  const m = setup(t);
+  const rt = await connectRealtime(m.handlers, {}, undefined, "test-member-token");
+  t.after(() => rt.close());
+  const c = m.peers[0].channel;
+  beginGreeting(c); finishGreeting(c);
+  c.emit({ type: "conversation.item.input_audio_transcription.completed", item_id: "user-1", transcript: "차를 좋아해" });
+  assert.equal(m.requests.filter(r => r.input === "/api/voice-memory").length, 0);
 });
