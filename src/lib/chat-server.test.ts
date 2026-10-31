@@ -72,9 +72,11 @@ test("채팅은 Runyour 키와 확정한 모델·endpoint만 사용한다", asyn
   assert.equal(tools.every((item) => item.type === "function" && item.strict === true && !("function" in item)), true);
 });
 
-test("환경값은 Runyour 세 항목만 연결하며 OpenAI 키로 대체하지 않는다", async () => {
+test("답변 모델은 Runyour 키만 쓰고 임베딩 키로 대체하지 않는다", async () => {
   const route = readFileSync(new URL("../app/api/chat/route.ts", import.meta.url), "utf8");
-  assert.deepEqual([...route.matchAll(/process\.env\.([A-Z_]+)/g)].map((match) => match[1]), ["RUNYOUR_API_KEY", "RUNYOUR_BASE_URL", "CHAT_MODEL"]);
+  const chatConfig = route.slice(route.indexOf("return chatResponse"));
+  assert.deepEqual([...chatConfig.matchAll(/process\.env\.([A-Z_]+)/g)].map((match) => match[1]), ["RUNYOUR_API_KEY", "RUNYOUR_BASE_URL", "CHAT_MODEL"]);
+  assert.match(route, /openaiKey: process\.env\.OPENAI_API_KEY/);
   const { config, calls } = provider();
   const response = await chatResponse(request(), { ...config, apiKey: undefined });
   assert.equal(response.status, 503);
@@ -294,6 +296,28 @@ test("사용자가 취소하면 제공자 요청에 취소를 전달한다", asy
   const response = await chatResponse(request(basic, { signal: controller.signal }), { apiKey: TEST_KEY, fetch: fetchMock });
   assert.equal(response.status, 499);
   assert.equal(aborted, true);
+});
+
+test("기억은 검증된 요청에만 검색하고 성공 답변 이후에만 저장 예약한다", async () => {
+  const events: string[] = [];
+  const { config, calls } = provider();
+  const memory = { recall: async () => { events.push("recall"); return "\n과거 기억: 차를 좋아한다고 말했다."; }, schedule: () => { events.push("save"); } };
+  assert.equal((await chatResponse(request({ messages: [] }), { ...config, memory })).status, 400);
+  assert.deepEqual(events, []);
+  assert.equal((await chatResponse(request(), { ...config, memory })).status, 200);
+  assert.deepEqual(events, ["recall", "save"]);
+  assert.match(String(calls[0].body.instructions), /과거 기억/);
+  const failed = provider([new Response("failure", { status: 500 })]);
+  events.length = 0;
+  await chatResponse(request(), { ...failed.config, memory });
+  assert.deepEqual(events, ["recall"]);
+});
+
+test("기억 검색·저장 예약 오류에도 정상 채팅을 유지한다", async () => {
+  const { config } = provider();
+  const response = await chatResponse(request(), { ...config, memory: { recall: async () => { throw new Error("secret"); }, schedule: () => { throw new Error("secret"); } } });
+  assert.equal(response.status, 200);
+  assert.doesNotMatch(await response.text(), /secret/);
 });
 
 test("이미 취소한 요청은 제공자에 전달하지 않는다", async () => {

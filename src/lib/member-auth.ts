@@ -1,6 +1,7 @@
 import { requestSupabase } from "./supabase.ts";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-type Allowed = { userId: string; response?: never };
+type Allowed = { userId: string; supabase: SupabaseClient; response?: never };
 type Denied = { userId?: never; response: Response };
 
 export async function requireMember(request: Request): Promise<Allowed | Denied> {
@@ -21,5 +22,5 @@ export async function requireMember(request: Request): Promise<Allowed | Denied>
     .maybeSingle();
   if (memberError) return { response: Response.json({ error: "계정 상태를 확인하지 못했어요." }, { status: 503 }) };
   if (!member) return { response: Response.json({ error: "초대받은 계정만 이용할 수 있어요." }, { status: 403 }) };
-  return { userId: auth.user.id };
+  return { userId: auth.user.id, supabase };
 }
