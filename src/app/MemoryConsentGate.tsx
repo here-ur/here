@@ -1,60 +1,95 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { browserSupabase } from "@/lib/supabase";
 import { MEMORY_CONSENT_VERSION } from "@/lib/memory-consent";
+import { consentDisplayKey, consentDisplayStorage, hasConsentDisplayHint, setConsentDisplayHint } from "@/lib/consent-display-cache";
 
 async function consentRequest(method: "GET" | "POST") {
-  const client = browserSupabase();
-  const session = await client?.auth.getSession();
-  const token = session?.data.session?.access_token;
-  if (!token) throw new Error("다시 로그인해 주세요.");
-  const response = await fetch("/api/memory-consent", {
-    method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    ...(method === "POST" ? { body: JSON.stringify({ version: MEMORY_CONSENT_VERSION, privacy: true, sensitive: true }) } : {}),
-    cache: "no-store", signal: AbortSignal.timeout(10000),
+  // Bound session refresh as well as the HTTP request, not just fetch.
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => { controller.abort(); reject(new Error("consent_timeout")); }, 10000);
   });
-  const body = await response.json();
-  if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "동의 상태를 확인하지 못했어요.");
-  return body;
+  try { return await Promise.race([timeout, (async () => {
+    const client = browserSupabase();
+    const session = await client?.auth.getSession();
+    const token = session?.data.session?.access_token;
+    if (!token) throw new Error("다시 로그인해 주세요.");
+    const response = await fetch("/api/memory-consent", {
+      method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      ...(method === "POST" ? { body: JSON.stringify({ version: MEMORY_CONSENT_VERSION, privacy: true, sensitive: true }) } : {}),
+      cache: "no-store", signal: controller.signal,
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "동의 상태를 확인하지 못했어요.");
+    return body;
+  })()]); } finally { clearTimeout(timer!); }
 }
 
-export default function MemoryConsentGate({ children, signOut, preview = false }: { children: React.ReactNode; signOut: () => Promise<void>; preview?: boolean }) {
-  const [status, setStatus] = useState<"checking" | "required" | "ready" | "error">(preview ? "required" : "checking");
+export default function MemoryConsentGate({ children, signOut, userId = "", preview = false }: { children: React.ReactNode; signOut: () => Promise<void>; userId?: string; preview?: boolean }) {
+  const [status, setStatus] = useState<"checking" | "required" | "ready" | "error">(() => preview ? "required" : hasConsentDisplayHint(consentDisplayStorage(), userId) ? "ready" : "checking");
   const [privacy, setPrivacy] = useState(false);
   const [sensitive, setSensitive] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
+  const generation = useRef(0);
+  const accepting = useRef(false);
   useEffect(() => {
     if (preview) return;
     let active = true;
-    consentRequest("GET").then(body => {
+    const check = () => {
+      if (accepting.current) return;
+      const request = ++generation.current;
+      void consentRequest("GET").then(body => {
+        if (!active || request !== generation.current) return;
+        if (typeof body.required !== "boolean") throw new Error("동의 상태를 확인하지 못했어요.");
+        setConsentDisplayHint(consentDisplayStorage(), userId, !body.required);
+        setStatus(body.required ? "required" : "ready");
+      }).catch(() => {
+        if (!active || request !== generation.current) return;
+        // Keep an already-confirmed user's home visible during transient failures.
+        // This never bypasses API-side authorization or consent enforcement.
+        setStatus(current => current === "ready" ? current : "error");
+        setError("연결을 확인하지 못했어요. 다시 시도해 주세요.");
+      });
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== null && event.key !== consentDisplayKey(userId)) return;
       if (!active) return;
-      if (typeof body.required !== "boolean") throw new Error("동의 상태를 확인하지 못했어요.");
-      setStatus(body.required ? "required" : "ready");
-    }).catch(() => { if (active) { setStatus("error"); setError("동의 상태를 확인하지 못했어요. 다시 시도해 주세요."); } });
-    return () => { active = false; };
-  }, [retry, preview]);
+      if (!hasConsentDisplayHint(consentDisplayStorage(), userId)) setStatus("checking");
+      check();
+    };
+    check();
+    window.addEventListener("focus", check);
+    window.addEventListener("storage", onStorage);
+    return () => { active = false; window.removeEventListener("focus", check); window.removeEventListener("storage", onStorage); };
+  }, [retry, preview, userId]);
 
   async function accept(event: React.FormEvent) {
     event.preventDefault();
     if (!privacy || !sensitive || busy) return;
     if (preview) { setError("화면 미리보기예요. 실제 동의나 데이터 저장은 하지 않아요."); return; }
+    accepting.current = true;
+    generation.current++;
     setBusy(true); setError("");
     try {
       const body = await consentRequest("POST");
       if (body.ok !== true) throw new Error("동의를 저장하지 못했어요.");
+      setConsentDisplayHint(consentDisplayStorage(), userId, true);
       setStatus("ready");
     } catch { setError("동의를 저장하지 못했어요. 다시 시도해 주세요."); }
-    finally { setBusy(false); }
+    finally { accepting.current = false; setBusy(false); }
   }
 
   if (status === "ready") return children;
+  if (status === "checking") return <main className="app-frame bg-[#FAFCFE]" aria-busy="true" aria-label="앱 준비 중" />;
   return <main className="app-frame app-frame-scrollable bg-[#FAFCFE] px-gutter py-8 text-[#1F2A55]">
     <div className="mx-auto w-full max-w-sm">
       <p className="mb-6 text-t5 font-bold">Here!</p>
-      {status === "checking" ? <p role="status">이용 동의를 확인하고 있어요…</p> : status === "error" ? <>
+      {status === "error" ? <>
         <p role="alert" className="text-t4">{error}</p>
         <button className="ui-press mt-5 min-h-12 rounded-full bg-[#1E4FE0] px-6 text-white" onClick={() => { setStatus("checking"); setError(""); setRetry(n => n + 1); }}>다시 확인</button>
       </> : <form onSubmit={accept} className="space-y-5">
