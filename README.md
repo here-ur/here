@@ -32,11 +32,11 @@ npm run dev
 | 팀 개발 | `dev` 및 작업 브랜치 / Preview | `here-dev` — `mwjwfumpxdlllikcdvkh` |
 | 로컬 개발 | `localhost:3000` / Development | `here-dev` — `mwjwfumpxdlllikcdvkh` |
 
-운영 주소는 https://here-prod.vercel.app/ 이고, 개발 고정 주소는 https://dev-here.vercel.app/ 이다. 개발 주소는 `dev`의 최신 Preview 배포를 가리킨다. QA 환경은 별도로 만들지 않는다.
+운영 주소는 https://here-prod.vercel.app/ 이고, 개발 고정 주소는 https://here-dev.vercel.app/ 이다. 개발 주소는 `dev`의 최신 Preview 배포를 가리킨다. QA 환경은 별도로 만들지 않는다.
 
-기존 운영 주소 https://here-mauve.vercel.app/ 은 유지한다. 대화·프로필이 브라우저 저장소에 있으므로 주소가 바뀌면 자동으로 이전되지 않고 재로그인이 필요하다. 기존 주소에서 기록을 확인할 수 있도록 강제 리디렉션하지 않는다.
+2026-10-31에 기존 `here-mauve.vercel.app`과 `dev-here.vercel.app` 연결을 제거했다. 두 주소는 더 이상 앱을 제공하지 않는다. DB와 회원 데이터는 유지한다. 대화·프로필은 브라우저 저장소에 있으므로 새 주소로 자동 이전되지 않으며 재로그인이 필요하다.
 
-`dev-here.vercel.app`만 Vercel 추가 로그인 보호의 예외로 등록했다. 다른 Preview 주소의 보호는 유지한다. 개발·운영 모두 Here의 초대코드·SMS 인증과 서버 API 회원 확인은 유지된다. 개발용 첫 초대코드는 개발 DB SQL Editor에서 별도로 발급하며 운영 코드와 공유하지 않는다.
+`here-dev.vercel.app`만 Vercel 추가 로그인 보호의 예외로 등록했다. 다른 Preview 주소의 보호는 유지한다. 개발·운영 모두 Here의 초대코드·SMS 인증과 서버 API 회원 확인은 유지된다. 개발용 첫 초대코드는 개발 DB SQL Editor에서 별도로 발급하며 운영 코드와 공유하지 않는다.
 
 - 기능 작업은 `dev`에서 분기하고 PR을 `dev`로 병합한다. 개발 사이트에서 확인한 뒤 `dev` → `main` PR을 만들고, 사용자가 운영 반영을 명시적으로 승인했을 때만 병합한다. `main`에 직접 push하거나 개발 배포를 운영으로 Promote하지 않는다.
 - Vercel의 Supabase URL·publishable key는 Production과 Preview/Development에 별도 값으로 저장한다. 공개 값은 빌드 시 포함되므로 환경별로 새로 빌드한다. 운영 회원·초대코드를 개발로 복사하거나 개발 테스트 데이터를 운영으로 옮기지 않는다.
