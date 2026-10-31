@@ -9,3 +9,13 @@
   overflow: clip;
   flex-shrink: 0;
 }
+
+/* Long consent content must scroll within the viewport. Keep this outside
+   Tailwind layers so the unlayered .app-frame overflow cannot override it. */
+.app-frame.app-frame-scrollable {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
+}

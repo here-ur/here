@@ -51,7 +51,7 @@ export default function MemoryConsentGate({ children, signOut, preview = false }
   }
 
   if (status === "ready") return children;
-  return <main className="app-frame overflow-y-auto bg-[#FAFCFE] px-gutter py-8 text-[#1F2A55]">
+  return <main className="app-frame app-frame-scrollable bg-[#FAFCFE] px-gutter py-8 text-[#1F2A55]">
     <div className="mx-auto w-full max-w-sm">
       <p className="mb-6 text-t5 font-bold">Here!</p>
       {status === "checking" ? <p role="status">이용 동의를 확인하고 있어요…</p> : status === "error" ? <>
