@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { normalizeInviteCode, normalizePhone } from "@/lib/invite";
 import { setLocalOwner } from "@/lib/local-scope";
 import { browserSupabase } from "@/lib/supabase";
+import MemoryConsentGate from "./MemoryConsentGate";
 
 type Mode = "login" | "signup";
 type Step = "phone" | "otp" | "invite";
@@ -162,7 +163,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   }
 
   if (loading) return <main className="app-frame bg-[#FAFCFE]" />;
-  if (userId) return <>{children(userId, signOut)}</>;
+  if (userId) return <MemoryConsentGate key={userId} signOut={signOut}>{children(userId, signOut)}</MemoryConsentGate>;
 
   const currentSteps: Step[] = mode === "login" ? ["phone", "otp"] : ["invite", "phone", "otp"];
   const stepNumber = currentSteps.indexOf(step) + 1;

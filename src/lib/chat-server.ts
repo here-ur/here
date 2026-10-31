@@ -22,6 +22,10 @@ export type ChatServerConfig = {
   model?: string;
   fetch?: typeof fetch;
   timeoutMs?: number;
+  memory?: {
+    recall(messages: Message[], signal: AbortSignal): Promise<string>;
+    schedule(messages: Message[]): void;
+  };
 };
 
 class ChatFailure extends Error {
@@ -207,6 +211,8 @@ export async function chatResponse(request: Request, config: ChatServerConfig): 
     const url = endpoint(config.baseUrl?.trim() || DEFAULT_BASE_URL);
     const model = config.model?.trim() || DEFAULT_MODEL;
     const history: ProviderItem[] = [...messages];
+    let remembered = "";
+    try { remembered = await config.memory?.recall(messages, controller.signal) ?? ""; } catch { /* Chat still works without memory. */ }
     const call = async (followUp: boolean) => {
       controller.signal.throwIfAborted();
       const response = await (config.fetch ?? fetch)(url, {
@@ -215,7 +221,7 @@ export async function chatResponse(request: Request, config: ChatServerConfig): 
         // Responses에서 추론과 function tools를 함께 쓴다. 답변·추론을 합쳐 4,096토큰으로 제한한다.
         body: JSON.stringify({
           model,
-          instructions: instructions(name),
+          instructions: instructions(name) + remembered,
           input: history,
           stream: false,
           store: false,
@@ -245,6 +251,7 @@ export async function chatResponse(request: Request, config: ChatServerConfig): 
       result = await call(true); // 도구만 답했을 때 문장 응답을 한 번만 더 요청한다.
     }
     if (!result.reply) throw new ChatFailure(502, INVALID_RESPONSE);
+    try { config.memory?.schedule(messages); } catch { /* Saving memory must not fail a successful reply. */ }
     return json({ reply: result.reply, ...flags });
   } catch (error) {
     if (request.signal.aborted) return json({ error: "요청을 취소했어요.", ...flags }, 499);
