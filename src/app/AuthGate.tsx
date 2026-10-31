@@ -163,7 +163,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   }
 
   if (loading) return <main className="app-frame bg-[#FAFCFE]" />;
-  if (userId) return <MemoryConsentGate key={userId} signOut={signOut}>{children(userId, signOut)}</MemoryConsentGate>;
+  if (userId) return <MemoryConsentGate key={userId} userId={userId} signOut={signOut}>{children(userId, signOut)}</MemoryConsentGate>;
 
   const currentSteps: Step[] = mode === "login" ? ["phone", "otp"] : ["invite", "phone", "otp"];
   const stepNumber = currentSteps.indexOf(step) + 1;
