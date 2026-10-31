@@ -32,7 +32,7 @@ npm run dev
 | 팀 개발 | `dev` 및 작업 브랜치 / Preview | `here-dev` — `mwjwfumpxdlllikcdvkh` |
 | 로컬 개발 | `localhost:3000` / Development | `here-dev` — `mwjwfumpxdlllikcdvkh` |
 
-운영 주소는 https://here-mauve.vercel.app/ 이다. QA 환경은 별도로 만들지 않는다.
+운영 주소는 https://here-mauve.vercel.app/ 이고, 개발 고정 주소는 https://here-git-dev-here23.vercel.app/ 이다. 개발 주소는 `dev`의 최신 배포를 가리킨다. QA 환경은 별도로 만들지 않는다.
 
 - 기능 작업은 `dev`에서 분기하고 PR을 `dev`로 병합한다. 개발 사이트에서 확인한 뒤 `dev` → `main` PR을 만들고, 사용자가 운영 반영을 명시적으로 승인했을 때만 병합한다. `main`에 직접 push하거나 개발 배포를 운영으로 Promote하지 않는다.
 - Vercel의 Supabase URL·publishable key는 Production과 Preview/Development에 별도 값으로 저장한다. 공개 값은 빌드 시 포함되므로 환경별로 새로 빌드한다. 운영 회원·초대코드를 개발로 복사하거나 개발 테스트 데이터를 운영으로 옮기지 않는다.
