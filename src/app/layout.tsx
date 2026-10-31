@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bagel_Fat_One } from "next/font/google";
 import "./globals.css";
 import "./app-frame.css";
+import "./chat-markdown.css";
 
 const display = Bagel_Fat_One({
   weight: "400",

@@ -69,6 +69,28 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   const [inviteError, setInviteError] = useState("");
   const [inviteBusy, setInviteBusy] = useState(false);
   const [captions, setCaptions] = useState(false); // 자막: 소리가 안 들릴 때를 위해
+  const [headline, setHeadline] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    // Home is keyed by the authenticated account. Do not persist personalised copy on the device.
+    void (async () => {
+      try {
+        const client = browserSupabase();
+        if (!client) return;
+        const { data } = await client.auth.getSession();
+        if (!data.session) return;
+        const response = await fetch("/api/home-greeting", {
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+          signal: controller.signal, cache: "no-store",
+        });
+        if (!response.ok) return;
+        const result = await response.json();
+        if (!controller.signal.aborted && typeof result.headline === "string" && result.headline.length <= 100) setHeadline(result.headline);
+      } catch { /* The default greeting keeps the home usable when personalisation is unavailable. */ }
+    })();
+    return () => controller.abort();
+  }, []);
 
   const rt = useRef<Realtime | null>(null);
   const session = useRef<Session | null>(null);
@@ -298,6 +320,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
       <HomeScreen
         profile={me}
         greet={justMet}
+        headline={headline}
         onVoice={toVoice}
         onText={openText}
         onLog={openLog}
