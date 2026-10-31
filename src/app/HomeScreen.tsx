@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { Msg } from "@/lib/log";
+import { ChatMarkdown } from "@/lib/chat-markdown";
 import { COLORS, type ColorId, type Profile, josa } from "@/lib/onboarding";
 import Buddy, { type BuddyState } from "./Buddy";
 import { Icon } from "./art";
@@ -80,6 +81,7 @@ export function Bloom({ color = "lavender", className = "h-[66%]" }: { color?: C
 export default function HomeScreen({
   profile,
   greet,
+  headline,
   onVoice,
   onText,
   onLog,
@@ -91,6 +93,7 @@ export default function HomeScreen({
 }: {
   profile: Profile;
   greet: boolean; // 온보딩을 막 끝냈으면 몽글이가 처음 인사한다
+  headline?: string | null;
   onVoice: () => void;
   onText: () => void;
   onLog: () => void;
@@ -221,10 +224,8 @@ export default function HomeScreen({
         <span className="inline-flex h-8 items-center rounded-full bg-white px-4 text-t4 text-[#2A2E36] shadow-[0_2px_12px_rgba(28,38,80,.05),0_0_0_1px_rgba(28,38,80,.03)]">
           AI 이야기 친구
         </span>
-        <h1 className="text-t12 font-medium text-balance">
-          오늘 하루,
-          <br />
-          어떤 이야기를 해 볼까?
+        <h1 className="min-h-[2.6em] whitespace-pre-line text-t12 font-medium text-balance">
+          {headline || "오늘 하루,\n어떤 이야기를 해 볼까?"}
         </h1>
       </div>
 
@@ -233,7 +234,7 @@ export default function HomeScreen({
       {hasMessages && <div ref={messageListRef} className="home-messages" role="log" aria-label="대화 내용" aria-live="polite" aria-relevant="additions text">
         {chat.messages.map((message, index) => <div key={index} className="home-message" data-role={message.role}>
           <span className="sr-only">{message.role === "user" ? "나" : name}: </span>
-          <p>{message.content}</p>
+          {message.role === "assistant" ? <div className="home-message-bubble"><ChatMarkdown content={message.content} /></div> : <p>{message.content}</p>}
         </div>)}
         {chat.sending && <div className="home-message" data-role="assistant">
           <span className="sr-only">{name}가 생각하는 중</span>

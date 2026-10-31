@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { companionState } from "@/lib/companion-state";
 import type { Msg } from "@/lib/log";
+import { ChatMarkdown } from "@/lib/chat-markdown";
 import { COLORS, type ColorId, type ShapeId, accentButton, josa } from "@/lib/onboarding";
 import { Icon } from "./art";
 import Buddy from "./Buddy";
@@ -85,8 +86,8 @@ export function Bubbles({ who, messages, live, thinking, follow = true }: { who:
           <li key={i} className={`flex items-end gap-2 ${mine ? "justify-end" : "justify-start"}`}>
             {!mine && (first ? <Buddy shape={who.shape} color={who.color} size={30} look={[0.3, 0.2]} /> : <span className="w-[30px] shrink-0" />)}
             <span className="sr-only">{mine ? "나:" : `${who.name}:`}</span>
-            <p
-              className={`max-w-[78%] whitespace-pre-wrap px-4 py-2.5 text-article-body motion-safe:animate-fade ${
+            <div
+              className={`min-w-0 max-w-[78%] whitespace-pre-wrap px-4 py-2.5 text-article-body motion-safe:animate-fade ${
                 mine
                   ? "rounded-r5 rounded-br-r1_5 bg-linear-to-b from-[#3B76FF] to-[#1E4FE0] text-white shadow-[0_6px_16px_rgba(30,79,224,.25)]"
                   : "rounded-r5 rounded-bl-r1_5 bg-white text-[#111318] shadow-[0_4px_14px_rgba(28,38,80,.08)]"
@@ -99,9 +100,9 @@ export function Bubbles({ who, messages, live, thinking, follow = true }: { who:
                   ))}
                 </span>
               ) : (
-                m.content
+                mine ? m.content : <ChatMarkdown content={m.content} />
               )}
-            </p>
+            </div>
           </li>
         );
       })}

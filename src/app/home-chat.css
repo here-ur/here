@@ -59,9 +59,9 @@
   mask-image: linear-gradient(to bottom, transparent, black 12px, black calc(100% - 8px), transparent);
 }
 .home-message { display: flex; margin-top: 12px; }
-.home-message p { max-width: 90%; padding: 13px 16px; border-radius: 22px 22px 22px 5px; background: #fff; box-shadow: 0 3px 16px rgb(28 38 80 / 5%); color: #1f2a55; font-size: 16px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.home-message > p, .home-message-bubble { min-width: 0; max-width: 90%; padding: 13px 16px; border-radius: 22px 22px 22px 5px; background: #fff; box-shadow: 0 3px 16px rgb(28 38 80 / 5%); color: #1f2a55; font-size: 16px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .home-message[data-role="user"] { justify-content: flex-end; }
-.home-message[data-role="user"] p { max-width: 85%; border-radius: 22px 22px 5px 22px; background: #e6edff; }
+.home-message[data-role="user"] > p { max-width: 85%; border-radius: 22px 22px 5px 22px; background: #e6edff; }
 .home-character-wrap { transition: top 320ms cubic-bezier(.2,0,0,1), translate 320ms cubic-bezier(.2,0,0,1); }
 .home-screen[data-has-messages="true"] .home-character-wrap { top: calc(100% - 310px); translate: calc(-50% + 95px) 0; }
 .home-screen:has(.home-safety) .home-messages { top: 255px; }

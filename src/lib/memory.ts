@@ -32,7 +32,7 @@ export function memoryKey(messages: MemoryMessage[]): string {
   return createHash("sha256").update(JSON.stringify(messages)).digest("hex");
 }
 
-async function readProvider(response: Response, signal: AbortSignal): Promise<unknown> {
+export async function readProvider(response: Response, signal: AbortSignal): Promise<unknown> {
   if (!response.ok || !response.body) {
     void response.body?.cancel();
     throw new Error("memory_provider_failed");
