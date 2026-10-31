@@ -1,5 +1,7 @@
-// 온보딩에서 정한 것(부르는 이름, 몽글이 이름·빛·목소리, 곁에 있는 방식)을 이 기기의 localStorage에만 남긴다.
+// 온보딩 설정은 계정별로 이 기기의 localStorage에만 남긴다.
 // 프로필 중 이름은 채팅·음성 설정에, 목소리는 음성 설정에 사용한다. 대화 내용은 답변 생성을 위해 별도로 전송한다.
+
+import { accountKey } from "./local-scope.ts";
 
 // 몽글이 모습: 광택 구름 + 왕눈, 또는 여러 색이 번진 동그라미 + 낙서 얼굴
 export const SHAPES = [
@@ -108,8 +110,10 @@ export function josa(word: string, withFinal: string, without: string) {
 
 /** 저장된 원문(없으면 null). useSyncExternalStore가 같은 값을 돌려받도록 문자열 그대로 준다. */
 export function profileRaw(): string | null {
+  const key = accountKey(KEY);
+  if (!key) return null;
   try {
-    return localStorage.getItem(KEY);
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
@@ -130,14 +134,18 @@ export function loadProfile(): Profile | null {
 
 /** 처음부터 다시 하기: 몽글이 설정만 지운다(대화 기록은 log.ts가 따로 둔다) */
 export function clearProfile() {
+  const key = accountKey(KEY);
+  if (!key) return;
   try {
-    localStorage.removeItem(KEY);
+    localStorage.removeItem(key);
   } catch {}
 }
 
 export function saveProfile(p: Profile) {
+  const key = accountKey(KEY);
+  if (!key) return;
   try {
-    localStorage.setItem(KEY, JSON.stringify(p));
+    localStorage.setItem(key, JSON.stringify(p));
   } catch {
     // 저장소를 못 쓰면 다음에 열 때 온보딩을 다시 본다.
   }

@@ -32,6 +32,8 @@ export default function Drawer({
   onLog,
   onCustomize,
   onHelp,
+  onInvite,
+  onSignOut,
   onReset,
 }: {
   open: boolean;
@@ -40,6 +42,8 @@ export default function Drawer({
   onLog: () => void;
   onCustomize: () => void;
   onHelp: () => void;
+  onInvite: () => void;
+  onSignOut: () => void;
   onReset: () => void;
 }) {
   const panelRef = useRef<HTMLElement>(null);
@@ -132,6 +136,7 @@ export default function Drawer({
             }
           />
           <Row onClick={onHelp} label="도움받기" icon={<Icon name="help" size={22} />} />
+          <Row onClick={onInvite} label="친구 초대" icon={<span aria-hidden="true" className="text-2xl leading-none">＋</span>} />
         </ul>
 
         <a href="tel:109" className="ui-press mt-6 flex items-center justify-between gap-3 rounded-r5 bg-[#FFF3F2] p-4 ring-1 ring-[#F2B8B3] ring-inset">
@@ -164,6 +169,7 @@ export default function Drawer({
               처음부터 다시 하기
             </button>
           </div>
+          <button onClick={onSignOut} className="ui-press self-start py-2 text-sm font-medium text-[#5A6478] underline underline-offset-4">로그아웃</button>
         </div>
       </nav>
     </div>

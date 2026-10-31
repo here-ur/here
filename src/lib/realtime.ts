@@ -27,6 +27,7 @@ export async function connectRealtime(
   h: Handlers,
   persona: { name?: string; voice?: string } = {},
   signal?: AbortSignal,
+  accessToken?: string,
 ): Promise<Realtime> {
   const controller = new AbortController();
   let pc: RTCPeerConnection | null = null;
@@ -123,7 +124,7 @@ export async function connectRealtime(
     updateStatus("connecting");
     const res = await fetch("/api/realtime", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
       body: JSON.stringify(persona),
       signal: controller.signal,
     });

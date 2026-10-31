@@ -1,4 +1,5 @@
 import { failed, openai } from "@/lib/openai";
+import { requireMember } from "@/lib/member-auth";
 import { DEFAULT_COMPANION, VOICES, cleanName } from "@/lib/onboarding";
 
 // 브라우저가 OpenAI realtime에 직접 붙을 때 쓰는 임시 키를 발급한다. 진짜 키는 서버에만 있다.
@@ -19,6 +20,8 @@ const INSTRUCTIONS = `너는 "몽글이"야. 마음이 힘든 사람의 이야�
 - 연결되면 사용자의 첫 말을 기다리지 말고 먼저 "안녕, 나는 몽글이야. 오늘은 어떤 하루였어?"라고 짧게 한 번 인사해. 이후에는 인사를 반복하지 말고 사용자가 한 말에 답해.`;
 
 export async function POST(req: Request) {
+  const access = await requireMember(req);
+  if (access.response) return access.response;
   try {
     const body = await req.json().catch(() => ({}));
     const voice = VOICES.some((v) => v.id === body.voice) ? body.voice : "marin";

@@ -33,13 +33,14 @@ export async function requestChat(
   messages: Msg[],
   name: string,
   signal?: AbortSignal,
+  accessToken?: string,
 ): Promise<ChatReply> {
   let response: Response;
   try {
     response = await fetch("/api/chat", {
       method: "POST",
       credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
       body: JSON.stringify({ messages, name }),
       signal,
     });

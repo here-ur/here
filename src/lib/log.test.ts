@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { clearLog, loadLog, saveSession } from "./log.ts";
+import { setLocalOwner } from "./local-scope.ts";
 
 const store = new Map<string, string>();
 globalThis.localStorage = {
@@ -10,6 +11,7 @@ globalThis.localStorage = {
 } as Storage;
 
 const msg = [{ role: "user" as const, content: "안녕" }];
+setLocalOwner("member-a");
 
 test("같은 대화는 덮어쓰고 최신이 앞에 온다", () => {
   clearLog();
@@ -28,4 +30,14 @@ test("30일 지난 기록과 빈 대화는 빠진다", () => {
   saveSession({ id: "empty", startedAt: Date.now(), messages: [] });
   saveSession({ id: "new", startedAt: Date.now() - 29 * day, messages: msg });
   assert.deepEqual(loadLog().map((s) => s.id), ["new"]);
+});
+
+test("다른 계정의 기록은 보이지 않는다", () => {
+  setLocalOwner("member-a");
+  clearLog();
+  saveSession({ id: "private", startedAt: Date.now(), messages: msg });
+  setLocalOwner("member-b");
+  assert.deepEqual(loadLog(), []);
+  setLocalOwner("member-a");
+  assert.equal(loadLog()[0]?.id, "private");
 });
