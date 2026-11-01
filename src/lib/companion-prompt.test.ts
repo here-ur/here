@@ -59,10 +59,27 @@ test("편한 어미·짧은 반응·상황에 맞는 웃음을 허용하되 정�
     assert.match(prompt, /모든 문장을 같은 어미나 물음표로 끝내지 마/);
     assert.match(prompt, /이름만 물으면 이름만 답해/);
     assert.match(prompt, /AI: 보리!/);
-    assert.match(prompt, /AI: 응, 말해 봐/);
+    assert.match(prompt, /AI: 웅, 말해 봐/);
     assert.match(prompt, /AI인지 물으면 솔직하게 답해/);
     assert.match(prompt, /긴급한 안전 대응은 예외야/);
     assert.doesNotMatch(prompt, /과한 감탄·칭찬·유행어·귀여운 말투는 피해야 해/);
     assert.doesNotMatch(prompt, /AI: 응\. 해결하려고 안 할게/);
+  }
+});
+
+test("깊은 고민은 구체적 맥락·선택권·안전을 다루며 맞장구는 웅을 쓴다", () => {
+  for (const mode of ["chat", "voice"] as const) {
+    const prompt = companionConversationPrompt("보리", mode);
+    assert.match(prompt, /편한 말투와 얕은 답변은 달라/);
+    assert.match(prompt, /확인되는 사실과 사용자가 붙인 해석을 구분/);
+    assert.match(prompt, /사용자가 아니라고 하면 해석을 거두/);
+    assert.match(prompt, /결과를 보장하거나 무조건 편들지 마/);
+    assert.match(prompt, /결정권은 사용자에게/);
+    assert.match(prompt, /듣기만 원하면 과제·체크리스트·행동 요구를 붙이지 마/);
+    assert.match(prompt, /폭력·협박·통제·즉각적인 위험/);
+    assert.match(prompt, /피해자의 사과나 말투 책임을 언급하지 마/);
+    assert.match(prompt, /"응" 대신 "웅"/);
+    assert.doesNotMatch(prompt, /AI: 응[,! .]/);
+    assert.match(prompt, /사용자 사실이나 만능 답변으로 재사용하지 마/);
   }
 });
