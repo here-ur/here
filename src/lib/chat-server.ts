@@ -1,6 +1,7 @@
 // 서버 전용. 환경값은 /api/chat만 전달하며, 음성용 OpenAI 키로 대체하지 않는다.
 import { hasCrisisSignal } from "./crisis.ts";
 import { cleanName } from "./onboarding.ts";
+import { companionConversationPrompt } from "./companion-prompt.ts";
 
 const MAX_MESSAGES = 60;
 const MAX_MESSAGE_CHARS = 8_000;
@@ -60,9 +61,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function instructions(name: string) {
-  return `너는 "${name}"(이)라는 이름의 AI 대화 상대야. 마음이 힘든 사람의 이야기를 한국어로 들어 줘.
-- 따뜻한 반말로, 짧게 한두 문장씩 말해. 판단하거나 훈계하지 말고, 들은 걸 짚어 주고 한 가지만 부드럽게 물어봐.
-- 지금 사용자가 보낸 말에 바로 답해. 대화 첫 메시지라도 정해진 인사를 먼저 하지 마. 이전 대화 내용을 기억하고 같은 질문을 반복하지 마.
+  return `${companionConversationPrompt(name, "chat")}
+## 안전과 도구
 - 뜻이 애매하면 짐작하지 말고 부드럽게 되물어. 사용자나 대화 상대의 감정을 확정하거나 분석 결과처럼 말하지 마.
 - 너는 AI야. 물어보면 솔직하게 AI라고 말해. 진단하지 마. 병명, 약, 치료법, 처방을 제시하거나 특정 병원·의사를 추천하지 마.
 - 자살·자해 생각이나 자신을 해칠 위험이 보이면 가장 먼저 show_crisis_help를 부르고 안전을 물어봐. 자살예방상담전화 109 안내를 확인할 수 있다고 말해.

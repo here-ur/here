@@ -1,4 +1,4 @@
-import { cleanName, DEFAULT_COMPANION } from "./onboarding.ts";
+import { homeEntryGreetingPrompt } from "./companion-prompt.ts";
 import { requestVoiceMemory, VoiceMemoryAccessError } from "./voice-memory-client.ts";
 
 // 브라우저 ↔ OpenAI realtime (WebRTC). 진짜 키는 서버에만 있고, 여기서는 /api/realtime이 준 임시 키만 쓴다.
@@ -191,10 +191,9 @@ export async function connectRealtime(
       readyStatus();
       return;
     }
-    const name = cleanName(persona.name ?? DEFAULT_COMPANION);
     send({ type: "response.create", response: {
       output_modalities: ["audio"],
-      instructions: `사용자가 홈에 처음 들어왔어. 너는 "${name}"이라는 AI 이야기 친구야. 따뜻한 반말로 "안녕! 오늘은 어떤 하루였어?"라고 짧게 한 번만 인사해. 진단하거나 사용자의 감정을 추측하지 마.`,
+      instructions: homeEntryGreetingPrompt(persona.name),
       tool_choice: "none", metadata: { phase: "greeting" },
     } });
     greetingTimer = setTimeout(() => fail(GREETING_ERROR), 30_000);
