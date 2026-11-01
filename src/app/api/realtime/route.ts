@@ -4,15 +4,14 @@ import { requireMemoryConsent } from "@/lib/memory-access";
 import { DEFAULT_COMPANION, VOICES, cleanName } from "@/lib/onboarding";
 import { memoryEnabled } from "@/lib/memory";
 import { VOICE_MEMORY_INSTRUCTIONS, VOICE_MEMORY_TOOL } from "@/lib/voice-memory-protocol";
+import { companionConversationPrompt } from "@/lib/companion-prompt";
 
 // 브라우저가 OpenAI realtime에 직접 붙을 때 쓰는 임시 키를 발급한다. 진짜 키는 서버에만 있다.
 // 테스트용으로 Vercel 환경변수 REALTIME_MODEL에 "gpt-realtime-2.1"을 넣으면 큰 모델로 바뀐다(약 3배 비쌈).
 const MODEL = process.env.REALTIME_MODEL || "gpt-realtime-2.1-mini";
 
-const INSTRUCTIONS = `너는 "몽글이"야. 마음이 힘든 사람의 이야기를 들어 주는 AI 대화 상대야. 한국어로 말해.
-
-- 따뜻한 반말로, 짧게 한두 문장씩 말해. 천천히, 차분한 목소리로.
-- 판단하거나 훈계하지 말고, 들은 걸 짚어 주고 한 가지만 부드럽게 물어봐.
+const SAFETY_INSTRUCTIONS = `
+## 안전과 도구
 - 상대가 방금 한 말에 답해. 잘 안 들렸거나, 말이 끊겼거나, 무슨 뜻인지 애매하면 짐작하지 말고 "미안, 잘 못 들었어. 한 번만 다시 말해 줄래?"처럼 되물어.
 - 앞에서 들은 이야기를 기억하고 이어서 말해. 같은 질문을 반복하지 마.
 - 너는 AI야. 물어보면 솔직하게 AI라고 말해. 묻지 않았는데 굳이 AI라고 끼워 넣지는 마(화면에 이미 AI라고 보여 줘).
@@ -33,10 +32,7 @@ export async function POST(req: Request) {
     const name = typeof body.name === "string" ? cleanName(body.name) : DEFAULT_COMPANION;
     // 이름은 cleanName이 한글·영문·숫자·띄어쓰기만 남긴 것이라 지시문에 넣어도 된다.
     const memory = memoryEnabled(process.env);
-    const instructions = (
-      name === DEFAULT_COMPANION
-        ? INSTRUCTIONS
-        : `${INSTRUCTIONS}\n- 사용자가 너에게 "${name}"(이)라는 이름을 지어 줬어. 인사할 때도 "몽글이" 대신 이 이름으로 너를 소개해.`) + (memory ? VOICE_MEMORY_INSTRUCTIONS : "");
+    const instructions = companionConversationPrompt(name, "voice") + SAFETY_INSTRUCTIONS + (memory ? VOICE_MEMORY_INSTRUCTIONS : "");
     const res = await openai("realtime/client_secrets", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
