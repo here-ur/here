@@ -14,6 +14,7 @@ import { Crisis109 } from "./Conversation";
 import Customize from "./Customize";
 import Drawer from "./Drawer";
 import HomeScreen from "./HomeScreen";
+import HomeEntryGreeting from "./HomeEntryGreeting";
 import GetHelp from "./GetHelp";
 import Log from "./Log";
 import Onboarding from "./Onboarding";
@@ -72,6 +73,8 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   const [inviteBusy, setInviteBusy] = useState(false);
   const [captions, setCaptions] = useState(false); // 자막: 소리가 안 들릴 때를 위해
   const [headline, setHeadline] = useState<string | null>(null);
+  const [homeGreetingDone, setHomeGreetingDone] = useState(false);
+  const [homeSpeaking, setHomeSpeaking] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -177,6 +180,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
 
   /** 음성 대화만 기존 OpenAI Realtime 연결을 사용한다. */
   async function begin() {
+    setHomeGreetingDone(true);
     cancelChat();
     const attempt = ++connectionAttempt.current;
     voiceRequest.current?.abort();
@@ -217,7 +221,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
         },
         onError: (message) => { if (current()) setError(message); },
         onMemoryWarning: (message) => { if (current()) setMemoryWarning(message); },
-      }, { name: profile?.companion, voice: profile?.voice }, controller.signal, token);
+      }, { name: profile?.companion, voice: profile?.voice }, controller.signal, token, { greeting: false });
       if (!current()) { conn.close(); return; }
       rt.current = conn;
       conn.setSound(true);
@@ -237,6 +241,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
 
   /** 채팅 진입 시 음성 연결은 닫고, 첫 전송 전에는 API를 호출하지 않는다. */
   function openText() {
+    setHomeGreetingDone(true);
     connectionAttempt.current += 1;
     voiceRequest.current?.abort();
     voiceRequest.current = null;
@@ -283,12 +288,14 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   }
 
   function openLog() {
+    setHomeGreetingDone(true);
     cancelChat();
     stopVoice();
     setShowLog(true);
   }
 
   function openHelp() {
+    setHomeGreetingDone(true);
     cancelChat();
     // 사람 상담 화면에서는 AI가 계속 듣거나 말하지 않게 한다.
     stopVoice();
@@ -328,14 +335,14 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
         onVoice={toVoice}
         onText={openText}
         onLog={openLog}
-        onMenu={() => setShowMenu(true)}
+        onMenu={() => { setHomeGreetingDone(true); setShowMenu(true); }}
         chat={{
           open: typing,
           messages: pendingText ? [...messages, { role: "user", content: pendingText }] : messages,
           draft,
           sending: Boolean(pendingText),
           error: voiceMode ? "" : error,
-          state: companionState({ error: Boolean(error), thinking: Boolean(pendingText), composing: typing && Boolean(draft.trim()) }),
+          state: companionState({ error: Boolean(error), speaking: !homeGreetingDone && homeSpeaking, thinking: Boolean(pendingText), composing: typing && Boolean(draft.trim()) }),
           onDraft: setDraft,
           onSend: () => { void sendChat(); },
           onClose: closeText,
@@ -363,6 +370,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
           {suggest && <button onClick={openHelp} className="ui-press h-11 rounded-full bg-white px-5 text-t4 font-bold text-[#1F2A55]">도움받기</button>}
         </div> : undefined}
       >
+        {!homeGreetingDone && <HomeEntryGreeting name={profile.companion} voice={profile.voice} onSpeaking={setHomeSpeaking} onDone={setHomeGreetingDone} />}
         <Drawer
           open={showMenu}
           profile={me}

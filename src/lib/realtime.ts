@@ -1,4 +1,4 @@
-import { cleanName, DEFAULT_COMPANION, josa } from "./onboarding.ts";
+import { cleanName, DEFAULT_COMPANION } from "./onboarding.ts";
 import { requestVoiceMemory, VoiceMemoryAccessError } from "./voice-memory-client.ts";
 
 // 브라우저 ↔ OpenAI realtime (WebRTC). 진짜 키는 서버에만 있고, 여기서는 /api/realtime이 준 임시 키만 쓴다.
@@ -30,6 +30,7 @@ export async function connectRealtime(
   persona: { name?: string; voice?: string } = {},
   signal?: AbortSignal,
   accessToken?: string,
+  options: { greeting?: boolean; microphone?: boolean; onGreetingEnd?: () => void } = {},
 ): Promise<Realtime> {
   const controller = new AbortController();
   let pc: RTCPeerConnection | null = null;
@@ -37,7 +38,10 @@ export async function connectRealtime(
   let mic: MediaStream | null = null;
   let dc: RTCDataChannel | null = null;
   let closed = false;
-  let greetingPending = true;
+  let greetingPending = options.greeting !== false;
+  let channelReady = false;
+  let playbackReady = options.microphone !== false;
+  let resumePlayback: (() => void) | undefined;
   let greetingRequested = false;
   let greetingResponseId: string | null = null;
   let greetingTimer: ReturnType<typeof setTimeout> | undefined;
@@ -103,6 +107,10 @@ export async function connectRealtime(
     closed = true;
     controller.abort(reason);
     clearTimeout(greetingTimer);
+    if (resumePlayback) {
+      document.removeEventListener("pointerdown", resumePlayback);
+      document.removeEventListener("keydown", resumePlayback);
+    }
     signal?.removeEventListener("abort", abort);
     if (dc) {
       dc.onopen = null;
@@ -146,7 +154,7 @@ export async function connectRealtime(
   }
 
   function applyMic() {
-    const enabled = !closed && !greetingPending && micRequested;
+    const enabled = !closed && channelReady && !greetingPending && micRequested;
     mic?.getTracks().forEach((track) => { track.enabled = enabled; });
   }
 
@@ -157,6 +165,12 @@ export async function connectRealtime(
   function finishGreeting() {
     if (!greetingPending || closed) return;
     clearTimeout(greetingTimer);
+    if (options.microphone === false) {
+      close();
+      updateStatus("idle");
+      options.onGreetingEnd?.();
+      return;
+    }
     // WebRTC의 response.done은 재생 완료가 아니다. output_audio_buffer.stopped 뒤에만 입력을 연다.
     send({ type: "input_audio_buffer.clear" });
     send({
@@ -166,6 +180,24 @@ export async function connectRealtime(
     greetingPending = false;
     applyMic();
     readyStatus();
+  }
+
+  function startChannel() {
+    if (closed || !channelReady || greetingRequested || !playbackReady) return;
+    greetingRequested = true;
+    if (!greetingPending) {
+      send({ type: "session.update", session: { type: "realtime", audio: { input: { turn_detection: { type: "semantic_vad", eagerness: "low" } } } } });
+      applyMic();
+      readyStatus();
+      return;
+    }
+    const name = cleanName(persona.name ?? DEFAULT_COMPANION);
+    send({ type: "response.create", response: {
+      output_modalities: ["audio"],
+      instructions: `사용자가 홈에 처음 들어왔어. 너는 "${name}"이라는 AI 이야기 친구야. 따뜻한 반말로 "안녕! 오늘은 어떤 하루였어?"라고 짧게 한 번만 인사해. 진단하거나 사용자의 감정을 추측하지 마.`,
+      tool_choice: "none", metadata: { phase: "greeting" },
+    } });
+    greetingTimer = setTimeout(() => fail(GREETING_ERROR), 30_000);
   }
 
   signal?.addEventListener("abort", abort, { once: true });
@@ -190,17 +222,42 @@ export async function connectRealtime(
     pc = peer;
     const audio = new Audio();
     audioEl = audio;
-    audio.autoplay = true;
+    audio.autoplay = false;
     peer.ontrack = (event) => {
       if (closed) return;
       audio.srcObject = event.streams[0];
-      void audio.play().catch(() => fail("소리를 재생할 수 없어요. 음성 버튼을 다시 눌러 주세요."));
+      const play = () => {
+        if (closed) return;
+        void audio.play().then(() => {
+          if (closed) return;
+          playbackReady = true;
+          if (resumePlayback) {
+            document.removeEventListener("pointerdown", resumePlayback);
+            document.removeEventListener("keydown", resumePlayback);
+            resumePlayback = undefined;
+          }
+          startChannel();
+        }).catch((error: unknown) => {
+          if (closed) return;
+          if (options.microphone === false && error instanceof DOMException && error.name === "NotAllowedError") {
+            // Respect autoplay policy. Request the greeting only after playback is unlocked.
+            if (!resumePlayback) {
+              resumePlayback = play;
+              document.addEventListener("pointerdown", play);
+              document.addEventListener("keydown", play);
+            }
+          } else fail("소리를 재생할 수 없어요. 음성 버튼을 다시 눌러 주세요.");
+        });
+      };
+      play();
     };
     peer.onconnectionstatechange = () => {
       if (peer.connectionState === "failed") fail(CONNECTION_ERROR);
     };
 
-    try {
+    if (options.microphone === false) {
+      peer.addTransceiver("audio", { direction: "recvonly" });
+    } else try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
@@ -222,20 +279,8 @@ export async function connectRealtime(
     const channel = peer.createDataChannel("oai-events");
     dc = channel;
     channel.onopen = () => {
-      if (closed || greetingRequested) return;
-      greetingRequested = true;
-      // Keep the quiet preparation state until greeting audio actually starts.
-      const name = cleanName(persona.name ?? DEFAULT_COMPANION);
-      send({
-        type: "response.create",
-        response: {
-          output_modalities: ["audio"],
-          instructions: `너는 "${name}"이라는 AI 이야기 친구야. 사용자가 먼저 말하기를 기다리지 말고 한국어로 먼저 인사해. 차분하고 따뜻한 반말로 "안녕, 나는 ${josa(name, "이야", "야")}. 오늘은 어떤 하루였어?"라고 짧게 한 번만 말해. 진단하거나 사용자의 감정을 추측하지 마.`,
-          tool_choice: "none",
-          metadata: { phase: "greeting" },
-        },
-      });
-      greetingTimer = setTimeout(() => fail(GREETING_ERROR), 30_000);
+      channelReady = true;
+      startChannel();
     };
     channel.onerror = () => fail(CONNECTION_ERROR);
     channel.onclose = () => fail(CONNECTION_ERROR);
