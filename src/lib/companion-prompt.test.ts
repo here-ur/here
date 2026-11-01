@@ -50,3 +50,19 @@ test("각 요청 경로가 같은 이름·말투 빌더를 사용하며 안전 �
     assert.match(source, /show_get_help/);
   }
 });
+
+test("편한 어미·짧은 반응·상황에 맞는 웃음을 허용하되 정직함은 유지한다", () => {
+  for (const mode of ["chat", "voice"] as const) {
+    const prompt = companionConversationPrompt("보리", mode);
+    assert.match(prompt, /웃음·감탄사·유행어·이모지는 상황에 맞게 써도 돼/);
+    assert.match(prompt, /"발표 준비하던 거\?"/);
+    assert.match(prompt, /모든 문장을 같은 어미나 물음표로 끝내지 마/);
+    assert.match(prompt, /이름만 물으면 이름만 답해/);
+    assert.match(prompt, /AI: 보리!/);
+    assert.match(prompt, /AI: 응, 말해 봐/);
+    assert.match(prompt, /AI인지 물으면 솔직하게 답해/);
+    assert.match(prompt, /긴급한 안전 대응은 예외야/);
+    assert.doesNotMatch(prompt, /과한 감탄·칭찬·유행어·귀여운 말투는 피해야 해/);
+    assert.doesNotMatch(prompt, /AI: 응\. 해결하려고 안 할게/);
+  }
+});
