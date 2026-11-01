@@ -177,6 +177,66 @@ function finishGreeting(channel: MockChannel) {
   channel.emit({ type: "output_audio_buffer.stopped", response_id: "greeting-1" });
 }
 
+test("마이크 연결·재연결은 인사 없이 VAD를 켜고 바로 듣는다", async t => {
+  const m = setup(t);
+  for (let i = 0; i < 2; i++) {
+    const rt = await connectRealtime(m.handlers, {}, undefined, undefined, { greeting: false });
+    const c = m.peers[i].channel;
+    assert.ok(m.peers[i].addedTracks.every(track => !track.enabledAtAdd));
+    c.open(); c.open();
+    assert.equal(c.sent.filter(event => event.type === "response.create").length, 0);
+    assert.equal(c.sent.filter(event => event.type === "session.update").length, 1);
+    assert.equal(m.statuses.at(-1), "listening");
+    assert.ok(m.stream.tracks.every(track => track.enabled));
+    rt.close();
+  }
+});
+
+test("홈 인사는 마이크 요청 없이 재생하고 완료되면 연결을 닫는다", async t => {
+  const m = setup(t);
+  let completed = 0;
+  const rt = await connectRealtime(m.handlers, {}, undefined, undefined, { microphone: false, onGreetingEnd: () => completed++ });
+  t.after(() => rt.close());
+  const peer = m.peers[0];
+  peer.channel.open();
+  assert.equal(peer.channel.sent.length, 0, "재생 허용 전에 인사를 생성하지 않는다");
+  assert.equal(m.mediaRequests.length, 0);
+  assert.equal(rt.hasMic, false);
+  assert.deepEqual(peer.transceivers, [{ kind: "audio", options: { direction: "recvonly" } }]);
+  peer.ontrack?.({ streams: [m.stream] });
+  await new Promise<void>(resolve => setImmediate(resolve));
+  beginGreeting(peer.channel);
+  finishGreeting(peer.channel);
+  assert.equal(completed, 1);
+  assert.equal(peer.connectionState, "closed");
+  assert.equal(peer.channel.sent.filter(event => event.type === "response.create").length, 1);
+});
+
+test("홈 자동재생이 막히면 첫 제스처에서만 재시도하고 종료 시 리스너를 제거한다", async t => {
+  const listeners = new Map<string, () => void>();
+  replaceGlobal(t, "document", {
+    addEventListener: (name: string, fn: () => void) => listeners.set(name, fn),
+    removeEventListener: (name: string) => listeners.delete(name),
+  });
+  const m = setup(t, { playError: new DOMException("blocked", "NotAllowedError") });
+  const rt = await connectRealtime(m.handlers, {}, undefined, undefined, { microphone: false });
+  t.after(() => rt.close());
+  const peer = m.peers[0];
+  peer.channel.open(); peer.ontrack?.({ streams: [m.stream] });
+  await new Promise<void>(r => setImmediate(r));
+  assert.equal(m.errors.length, 0);
+  assert.equal(peer.channel.sent.length, 0);
+  assert.equal(m.mediaRequests.length, 0);
+  assert.equal(listeners.size, 2);
+  m.audios[0].playError = null;
+  listeners.get("pointerdown")!();
+  await new Promise<void>(r => setImmediate(r));
+  assert.equal(listeners.size, 0);
+  assert.equal(peer.channel.sent.filter(e => e.type === "response.create").length, 1);
+  rt.close();
+  assert.equal(peer.connectionState, "closed");
+});
+
 test("연결 요청과 마이크는 모두 스텁으로 처리하고 트랙을 추가하기 전에 음소거한다", async (t) => {
   const m = setup(t);
   const controller = new AbortController();
