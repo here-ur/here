@@ -14,7 +14,8 @@ export function supabaseMemoryStore(client: SupabaseClient): MemoryStore {
       return data && typeof data.id === "string" && typeof data.lease === "string" ? data : null;
     },
     finish: async (job, summary, vector, model, signal) => {
-      await rpc("finish_memory", { p_id: job.id, p_lease: job.lease, p_summary: summary, p_embedding: vector ? JSON.stringify(vector) : null, p_summary_model: model, p_prompt_version: MEMORY_PROMPT_VERSION }, signal);
+      const saved = await rpc("finish_memory", { p_id: job.id, p_lease: job.lease, p_summary: summary, p_embedding: vector ? JSON.stringify(vector) : null, p_summary_model: model, p_prompt_version: MEMORY_PROMPT_VERSION }, signal);
+      if (saved !== true) throw new Error("memory_save_rejected");
     },
     fail: async (job, signal) => { await rpc("fail_memory", { p_id: job.id, p_lease: job.lease }, signal); },
     search: async (vector, signal) => {

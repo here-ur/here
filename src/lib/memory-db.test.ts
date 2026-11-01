@@ -39,6 +39,15 @@ test("실제 PostgreSQL RLS·동의·중복·삭제 경쟁·회상 격리", asyn
     assert.equal(await value("select public.accept_memory_consent('old',true,true) as value"), false);
     assert.equal(await value("select public.accept_memory_consent('2026-10-31-dev-v1',true,false) as value"), false);
     assert.equal(await accept(), true);
+    await db.exec("reset role");
+    await db.exec(readFileSync(new URL("../../supabase/migrations/20261101020000_consent_events.sql", import.meta.url), "utf8"));
+    await asUser(a);
+    assert.deepEqual((await db.query("select event_type from public.memory_consent_events")).rows, [{ event_type: "snapshot" }]);
+    await accept(); // Repeated acceptance must not manufacture new events.
+    assert.equal((await db.query("select * from public.memory_consent_events")).rows.length, 1);
+    await assert.rejects(db.exec("delete from public.memory_consent_events"), /permission denied/);
+    await assert.rejects(db.exec("update public.memory_consent_events set version='forged'"), /permission denied/);
+    await assert.rejects(db.exec("insert into public.memory_consent_events select * from public.memory_consent_events"), /permission denied/);
     const job = await claim(key); assert.ok(job);
     assert.equal(await claim(key), null);
     assert.equal(await finish(job), true);
@@ -47,6 +56,7 @@ test("실제 PostgreSQL RLS·동의·중복·삭제 경쟁·회상 격리", asyn
     await assert.rejects(db.exec("insert into public.conversation_memories(user_id,source_key) values('" + b + "','" + key + "')"), /permission denied/);
 
     await asUser(b); await accept();
+    assert.deepEqual((await db.query("select event_type from public.memory_consent_events")).rows, [{ event_type: "accepted" }]);
     assert.equal((await db.query("select * from public.conversation_memories")).rows.length, 0);
     assert.equal((await search()).rows.length, 0);
     assert.equal(await value("select public.forget_memory($1) as value", [job.id]), false);
@@ -65,8 +75,11 @@ test("실제 PostgreSQL RLS·동의·중복·삭제 경쟁·회상 격리", asyn
     assert.equal(await finish(race), false);
     const pending = await claim("c".repeat(64)); assert.ok(pending);
     assert.equal(await value("select public.withdraw_memory_consent() as value"), true);
+    await value("select public.withdraw_memory_consent() as value"); // Repeated withdrawal is not a new state transition.
     assert.equal(await finish(pending), false);
     await accept();
+    const consentEvents = (await db.query<{ event_type: string }>("select event_type from public.memory_consent_events order by recorded_at")).rows;
+    assert.deepEqual(consentEvents.map(r => r.event_type), ["snapshot", "revoked", "accepted"]);
     assert.equal(await claim("c".repeat(64)), null);
     assert.equal((await search()).rows.length, 0);
     const rows = await db.query<{ summary: string; embedding: unknown }>("select summary,embedding from public.conversation_memories");
@@ -81,5 +94,6 @@ test("실제 PostgreSQL RLS·동의·중복·삭제 경쟁·회상 격리", asyn
     await asUser("", "anon");
     await assert.rejects(search(), /permission denied/);
     await assert.rejects(db.query("select * from public.memory_consents"), /permission denied/);
+    await assert.rejects(db.query("select * from public.memory_consent_events"), /permission denied/);
   } finally { await db.close(); }
 });

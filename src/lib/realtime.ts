@@ -1,5 +1,6 @@
 import { homeEntryGreetingPrompt } from "./companion-prompt.ts";
 import { requestVoiceMemory, VoiceMemoryAccessError } from "./voice-memory-client.ts";
+import { voiceTiming } from "./voice-timing.ts";
 
 // 브라우저 ↔ OpenAI realtime (WebRTC). 진짜 키는 서버에만 있고, 여기서는 /api/realtime이 준 임시 키만 쓴다.
 export type Handlers = {
@@ -32,6 +33,7 @@ export async function connectRealtime(
   accessToken?: string,
   options: { greeting?: boolean; microphone?: boolean; onGreetingEnd?: () => void } = {},
 ): Promise<Realtime> {
+  const markTiming = voiceTiming();
   const controller = new AbortController();
   let pc: RTCPeerConnection | null = null;
   let audioEl: HTMLAudioElement | null = null;
@@ -216,6 +218,7 @@ export async function connectRealtime(
     memoryEnabled = memory === true && Boolean(accessToken);
     controller.signal.throwIfAborted();
     if (typeof key !== "string" || !key) throw new Error(CONNECTION_ERROR);
+    markTiming("session_key");
 
     const peer = new RTCPeerConnection();
     pc = peer;
@@ -275,9 +278,12 @@ export async function connectRealtime(
       peer.addTransceiver("audio", { direction: "recvonly" });
     }
 
+    markTiming("media_ready");
     const channel = peer.createDataChannel("oai-events");
     dc = channel;
     channel.onopen = () => {
+      if (closed) return;
+      markTiming("channel_ready");
       channelReady = true;
       startChannel();
     };
@@ -338,6 +344,7 @@ export async function connectRealtime(
           if (typeof event.transcript === "string" && event.transcript.trim()) h.onAssistantText(event.transcript.trim());
           return;
         case "output_audio_buffer.started":
+          markTiming("first_audio");
           playing = true;
           updateStatus("speaking");
           return;

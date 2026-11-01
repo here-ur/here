@@ -2,6 +2,7 @@
 import { hasCrisisSignal } from "./crisis.ts";
 import { cleanName } from "./onboarding.ts";
 import { companionConversationPrompt } from "./companion-prompt.ts";
+import { operationMetric, usageMetric } from "./ai-operations.ts";
 
 const MAX_MESSAGES = 60;
 const MAX_MESSAGE_CHARS = 8_000;
@@ -193,6 +194,7 @@ function completion(data: unknown, flags: Flags) {
 
 /** fetch/config 주입으로 실제 키·네트워크 없이 전체 서버 경로를 검증한다. */
 export async function chatResponse(request: Request, config: ChatServerConfig): Promise<Response> {
+  const started = Date.now();
   const flags: Flags = { crisis: false, suggest: false };
   const controller = new AbortController();
   let timedOut = false;
@@ -200,7 +202,10 @@ export async function chatResponse(request: Request, config: ChatServerConfig): 
   request.signal.addEventListener("abort", abort, { once: true });
   if (request.signal.aborted) abort();
   const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, config.timeoutMs ?? 45_000);
-  const json = (body: object, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
+  const json = (body: object, status = 200) => {
+    operationMetric({ operation: "chat", outcome: status === 200 ? "ok" : "failed", status, durationMs: Date.now() - started });
+    return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
+  };
   try {
     controller.signal.throwIfAborted();
     if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type") ?? "")) throw new ChatFailure(415, "JSON 형식의 메시지를 보내 주세요.");
@@ -241,7 +246,9 @@ export async function chatResponse(request: Request, config: ChatServerConfig): 
         void response.body?.cancel().catch(() => {});
         throw providerFailure(response.status);
       }
-      return completion(await readJson(response, MAX_RESPONSE_BYTES, controller.signal, true), flags);
+      const body = await readJson(response, MAX_RESPONSE_BYTES, controller.signal, true);
+      usageMetric("chat", body);
+      return completion(body, flags);
     };
     let result = await call(false);
     if (!result.reply && result.calls.length) {
