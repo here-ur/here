@@ -1,6 +1,8 @@
 import { homeEntryGreetingPrompt } from "./companion-prompt.ts";
 import { requestVoiceMemory, VoiceMemoryAccessError } from "./voice-memory-client.ts";
 import { voiceTiming } from "./voice-timing.ts";
+import { requestWebSearch } from "./web-search-client.ts";
+import { parseSearchQuery, searchCitations, SEARCH_UNAVAILABLE, type SearchSource } from "./web-search-protocol.ts";
 
 // 브라우저 ↔ OpenAI realtime (WebRTC). 진짜 키는 서버에만 있고, 여기서는 /api/realtime이 준 임시 키만 쓴다.
 export type Handlers = {
@@ -12,6 +14,7 @@ export type Handlers = {
   onTool: (name: "show_crisis_help" | "show_get_help") => void;
   onError: (message: string) => void;
   onMemoryWarning?: (message: string) => void;
+  onSearchSources?: (sources: SearchSource[]) => void;
 };
 
 export type Realtime = {
@@ -53,6 +56,9 @@ export async function connectRealtime(
   let assistant = "";
   const userParts = new Map<string, string>();
   let memoryEnabled = false;
+  let webSearchEnabled = false;
+  let searchCount = 0;
+  const turnSources = new Map<number, SearchSource[]>();
   const memorySessionId = crypto.randomUUID();
   const transcripts = new Set<string>();
   const toolResults = new Map<string, Promise<void>>();
@@ -78,6 +84,7 @@ export async function connectRealtime(
     const existing = toolResults.get(id);
     if (existing) return existing;
     const task = (async () => {
+      const startedTurn = turn;
       let output: object = { error: "unsupported_tool" };
       if (call.name === "show_crisis_help" || call.name === "show_get_help") {
         h.onTool(call.name);
@@ -89,6 +96,20 @@ export async function connectRealtime(
           if (typeof args.query === "string" && args.query.trim() && args.query.length <= 1000 && toolRounds < 4) {
             const context = await requestVoiceMemory({ action: "recall", text: args.query }, accessToken, controller.signal);
             output = { context, available: Boolean(context) };
+          }
+        } catch (error) { memoryError(error, false); }
+      } else if (call.name === "search_web" && webSearchEnabled && accessToken) {
+        output = SEARCH_UNAVAILABLE;
+        try {
+          const query = parseSearchQuery(JSON.parse(call.arguments || "{}"));
+          if (query && searchCount < 2 && toolRounds < 4) {
+            searchCount++;
+            const result = await requestWebSearch(query, accessToken, controller.signal);
+            output = result;
+            if (!closed && startedTurn === turn && result.available) {
+              turnSources.set(turn, [...(turnSources.get(turn) ?? []), ...result.sources].slice(0, 5));
+              h.onSearchSources?.(turnSources.get(turn)!);
+            }
           }
         } catch (error) { memoryError(error, false); }
       }
@@ -136,6 +157,7 @@ export async function connectRealtime(
     toolResults.clear();
     handledResponses.clear();
     responseTurns.clear();
+    turnSources.clear();
   }
 
   function abort() {
@@ -214,8 +236,9 @@ export async function connectRealtime(
       signal: controller.signal,
     });
     if (!res.ok) throw new Error(CONNECTION_ERROR);
-    const { key, memory } = await res.json();
+    const { key, memory, webSearch } = await res.json();
     memoryEnabled = memory === true && Boolean(accessToken);
+    webSearchEnabled = webSearch === true && Boolean(accessToken);
     controller.signal.throwIfAborted();
     if (typeof key !== "string" || !key) throw new Error(CONNECTION_ERROR);
     markTiming("session_key");
@@ -303,7 +326,7 @@ export async function connectRealtime(
           if (greetingPending && greetingRequested && !greetingResponseId) greetingResponseId = event.response?.id ?? null;
           return;
         case "input_audio_buffer.speech_started":
-          if (!greetingPending) { turn++; toolRounds = 0; }
+          if (!greetingPending) { turn++; toolRounds = 0; searchCount = 0; turnSources.clear(); h.onSearchSources?.([]); }
           if (!greetingPending && micRequested) updateStatus("listening");
           return;
         case "input_audio_buffer.speech_stopped":
@@ -341,7 +364,10 @@ export async function connectRealtime(
           return;
         case "response.output_audio_transcript.done":
           assistant = "";
-          if (typeof event.transcript === "string" && event.transcript.trim()) h.onAssistantText(event.transcript.trim());
+          if (typeof event.transcript === "string" && event.transcript.trim()) {
+            const responseTurn = responseTurns.get(event.response_id) ?? turn;
+            h.onAssistantText(event.transcript.trim() + searchCitations(turnSources.get(responseTurn) ?? []));
+          }
           return;
         case "output_audio_buffer.started":
           markTiming("first_audio");
@@ -385,7 +411,7 @@ export async function connectRealtime(
             void Promise.all(calls.map(processTool)).then(() => {
               // Never speak a late tool result over a newer user turn or a closed call.
               if (closed || responseTurn !== turn) return;
-              if (!output.some(item => item.type === "message") || calls.some(item => item.name === "recall_memories")) {
+              if (!output.some(item => item.type === "message") || calls.some(item => item.name === "recall_memories" || item.name === "search_web")) {
                 toolRounds++;
                 send({ type: "response.create", ...(toolRounds >= 4 ? { response: { tool_choice: "none" } } : {}) });
               } else if (!playing) readyStatus();
@@ -419,7 +445,7 @@ export async function connectRealtime(
       hasMic: !!mic,
       sendText(text) {
         if (closed || greetingPending || !text.trim()) return;
-        turn++; toolRounds = 0;
+        turn++; toolRounds = 0; searchCount = 0; turnSources.clear(); h.onSearchSources?.([]);
         send({ type: "conversation.item.create", item: { type: "message", role: "user", content: [{ type: "input_text", text }] } });
         updateStatus("thinking");
         send({ type: "response.create" });

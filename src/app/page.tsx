@@ -8,6 +8,7 @@ import { type Msg, type Session, saveSession } from "@/lib/log";
 import { DEFAULT_COMPANION, type Profile, clearProfile, josa, parseProfile, profileRaw, saveProfile } from "@/lib/onboarding";
 import { type Realtime, connectRealtime } from "@/lib/realtime";
 import { browserSupabase } from "@/lib/supabase";
+import type { SearchSource } from "@/lib/web-search-protocol";
 import AuthGate from "./AuthGate";
 import MicrophonePermissionGate from "./MicrophonePermissionGate";
 import { Crisis109 } from "./Conversation";
@@ -65,6 +66,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   const [pendingText, setPendingText] = useState("");
   const [error, setError] = useState("");
   const [memoryWarning, setMemoryWarning] = useState("");
+  const [searchSources, setSearchSources] = useState<SearchSource[]>([]);
   const [showLog, setShowLog] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [customizing, setCustomizing] = useState(false);
@@ -221,6 +223,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
         },
         onError: (message) => { if (current()) setError(message); },
         onMemoryWarning: (message) => { if (current()) setMemoryWarning(message); },
+        onSearchSources: (sources) => { if (current()) setSearchSources(sources); },
       }, { name: profile?.companion, voice: profile?.voice }, controller.signal, token, { greeting: false });
       if (!current()) { conn.close(); return; }
       rt.current = conn;
@@ -274,6 +277,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   }
 
   function stopVoice() {
+    setSearchSources([]);
     connectionAttempt.current += 1;
     voiceRequest.current?.abort();
     voiceRequest.current = null;
@@ -356,6 +360,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
           statusText,
           error,
           caption: captions ? lastAssistant : undefined,
+          sources: searchSources,
           warning: memoryWarning,
           onEnd: stopVoice,
           onMic: () => {

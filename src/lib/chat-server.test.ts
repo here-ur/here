@@ -4,6 +4,31 @@ import test from "node:test";
 import { chatResponse, type ChatServerConfig } from "./chat-server.ts";
 
 const TEST_KEY = "test-runyour-credential-not-a-real-key";
+test("웹검색 도구 실행 후 답변 생성·출처 표시, 검색 내용은 개인 기억에 저장하지 않는다", async () => {
+  const searchCall = { ...tool("search_web"), arguments: JSON.stringify({ query: "공식 도서관 운영 시간" }) };
+  const { config, calls } = provider([answer("확인해 볼게", [searchCall]), answer("공식 안내를 확인했어.")]);
+  let searched = 0;
+  const response = await chatResponse(request(), { ...config,
+    search: async query => { searched++; assert.equal(query, "공식 도서관 운영 시간"); return { available: true, text: "외부 자료", sources: [{ title: "공식 안내", url: "https://example.com/library" }] }; },
+    memory: { recall: async () => "", schedule: messages => assert.deepEqual(messages, basic.messages) },
+  });
+  assert.equal(response.status, 200); assert.equal(searched, 1); assert.equal(calls.length, 2);
+  assert.equal(calls[1].body.tool_choice, "none");
+  const body = await response.json();
+  assert.match(body.reply, /공식 안내.*https:\/\/example.com\/library/);
+  assert.ok(JSON.stringify(calls[1].body.input).includes("function_call_output"));
+});
+
+test("검색 실패·잘못된 인자는 unavailable로 이어가고 검색 호출은 발언당 최대 2회", async () => {
+  const tools = [0,1,2].map(n => ({ ...tool("search_web", `call_${n}`), arguments: JSON.stringify({ query: "공개 일정" }) }));
+  const { config, calls } = provider([answer(null, tools), answer("지금은 확인하지 못했어.")]);
+  let count = 0;
+  const response = await chatResponse(request(), { ...config, search: async () => { count++; throw Error("private_failure"); } });
+  assert.equal(count, 2); assert.equal(response.status, 200);
+  assert.doesNotMatch(JSON.stringify(calls[1].body), /private_failure/);
+  assert.match(JSON.stringify(calls[1].body), /available/);
+  assert.doesNotMatch((await response.json()).reply, /출처:/);
+});
 const basic = { messages: [{ role: "user", content: "오늘 좀 지쳤어" }] };
 type Call = { url: string; init: RequestInit; body: Record<string, unknown> };
 

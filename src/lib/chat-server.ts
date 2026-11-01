@@ -3,6 +3,7 @@ import { hasCrisisSignal } from "./crisis.ts";
 import { cleanName } from "./onboarding.ts";
 import { companionConversationPrompt } from "./companion-prompt.ts";
 import { operationMetric, usageMetric } from "./ai-operations.ts";
+import { parseSearchQuery, searchCitations, SEARCH_UNAVAILABLE, WEB_SEARCH_TOOL, WEB_SEARCH_INSTRUCTIONS, type WebSearchResult, type SearchSource } from "./web-search-protocol.ts";
 
 const MAX_MESSAGES = 60;
 const MAX_MESSAGE_CHARS = 8_000;
@@ -13,8 +14,8 @@ const DEFAULT_BASE_URL = "https://api.runyour.ai/v1";
 const DEFAULT_MODEL = "openai/gpt-5.6-sol";
 
 type Message = { role: "user" | "assistant"; content: string };
-type ToolName = "show_crisis_help" | "show_get_help";
-type ToolCall = { call_id: string; name: ToolName };
+type ToolName = "show_crisis_help" | "show_get_help" | "search_web";
+type ToolCall = { call_id: string; name: ToolName; arguments: string };
 type ProviderItem = Record<string, unknown>;
 type Flags = { crisis: boolean; suggest: boolean };
 
@@ -24,6 +25,7 @@ export type ChatServerConfig = {
   model?: string;
   fetch?: typeof fetch;
   timeoutMs?: number;
+  search?: (query: string, signal: AbortSignal) => Promise<WebSearchResult>;
   memory?: {
     recall(messages: Message[], signal: AbortSignal): Promise<string>;
     schedule(messages: Message[]): void;
@@ -165,12 +167,12 @@ function completion(data: unknown, flags: Flags) {
         throw new ChatFailure(502, INVALID_RESPONSE);
       }
       const name = item.name;
-      if (name !== "show_crisis_help" && name !== "show_get_help") throw new ChatFailure(502, INVALID_RESPONSE);
+      if (name !== "show_crisis_help" && name !== "show_get_help" && name !== "search_web") throw new ChatFailure(502, INVALID_RESPONSE);
       if (name === "show_crisis_help") flags.crisis = true;
       if (name === "show_get_help") flags.suggest = true;
       if (calls.length >= 4 || calls.some((call) => call.call_id === item.call_id)) throw new ChatFailure(502, INVALID_RESPONSE);
       // 도구는 UI 신호뿐이며 인자를 코드로 실행하지 않는다.
-      calls.push({ call_id: item.call_id, name });
+      calls.push({ call_id: item.call_id, name, arguments: item.arguments });
     } else if (item.type === "message") {
       if (item.role !== "assistant" || !Array.isArray(item.content) || (item.status !== undefined && item.status !== "completed")) {
         throw new ChatFailure(502, INVALID_RESPONSE);
@@ -226,14 +228,14 @@ export async function chatResponse(request: Request, config: ChatServerConfig): 
         // Responses에서 추론과 function tools를 함께 쓴다. 답변·추론을 합쳐 4,096토큰으로 제한한다.
         body: JSON.stringify({
           model,
-          instructions: instructions(name) + remembered,
+          instructions: instructions(name) + remembered + (config.search ? WEB_SEARCH_INSTRUCTIONS : ""),
           input: history,
           stream: false,
           store: false,
           reasoning: { effort: "medium" },
           include: ["reasoning.encrypted_content"],
           max_output_tokens: 4_096,
-          tools: TOOLS,
+          tools: [...TOOLS, ...(config.search ? [WEB_SEARCH_TOOL] : [])],
           tool_choice: followUp ? "none" : "auto",
         }),
         signal: controller.signal,
@@ -251,15 +253,32 @@ export async function chatResponse(request: Request, config: ChatServerConfig): 
       return completion(body, flags);
     };
     let result = await call(false);
-    if (!result.reply && result.calls.length) {
+    const sources: SearchSource[] = [];
+    if (result.calls.some(tool => tool.name === "search_web") || (!result.reply && result.calls.length)) {
       // store:false이므로 reasoning/function_call 항목까지 보존해 한 번의 도구 후속을 이어 간다.
       history.push(...result.output);
-      for (const tool of result.calls) history.push({ type: "function_call_output", call_id: tool.call_id, output: '{"shown":true}' });
+      let searches = 0;
+      for (const tool of result.calls) {
+        let output: object = { shown: true };
+        if (tool.name === "search_web") {
+          output = SEARCH_UNAVAILABLE;
+          try {
+            const query = parseSearchQuery(JSON.parse(tool.arguments));
+            if (query && config.search && searches < 2) {
+              searches++;
+              const searched = await config.search(query, controller.signal);
+              output = searched;
+              if (searched.available) sources.push(...searched.sources);
+            }
+          } catch { /* Tell the model search failed, never invent a result. */ }
+        }
+        history.push({ type: "function_call_output", call_id: tool.call_id, output: JSON.stringify(output) });
+      }
       result = await call(true); // 도구만 답했을 때 문장 응답을 한 번만 더 요청한다.
     }
     if (!result.reply) throw new ChatFailure(502, INVALID_RESPONSE);
     try { config.memory?.schedule(messages); } catch { /* Saving memory must not fail a successful reply. */ }
-    return json({ reply: result.reply, ...flags });
+    return json({ reply: result.reply + searchCitations(sources), ...flags });
   } catch (error) {
     if (request.signal.aborted) return json({ error: "요청을 취소했어요.", ...flags }, 499);
     if (timedOut) return json({ error: "답변 시간이 길어졌어요. 잠시 뒤 다시 보내 주세요.", ...flags }, 504);
