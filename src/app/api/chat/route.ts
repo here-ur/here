@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { createMemoryService, memoryEnabled } from "@/lib/memory";
 import { supabaseMemoryStore } from "@/lib/memory-store";
 import { requireMemoryConsent } from "@/lib/memory-access";
+import { requireApiQuota } from "@/lib/api-quota";
 
 export const maxDuration = 120;
 
@@ -12,6 +13,8 @@ export async function POST(request: Request) {
   if (access.response) return access.response;
   const consentError = await requireMemoryConsent(access.supabase);
   if (consentError) return consentError;
+  const quotaError = await requireApiQuota(access.supabase, "chat");
+  if (quotaError) return quotaError;
   const memory = memoryEnabled(process.env) ? createMemoryService(supabaseMemoryStore(access.supabase), {
     openaiKey: process.env.OPENAI_API_KEY || "",
     summaryKey: process.env.RUNYOUR_API_KEY || "",

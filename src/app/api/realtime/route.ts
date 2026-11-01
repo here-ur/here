@@ -5,6 +5,8 @@ import { DEFAULT_COMPANION, VOICES, cleanName } from "@/lib/onboarding";
 import { memoryEnabled } from "@/lib/memory";
 import { VOICE_MEMORY_INSTRUCTIONS, VOICE_MEMORY_TOOL } from "@/lib/voice-memory-protocol";
 import { companionConversationPrompt } from "@/lib/companion-prompt";
+import { requireApiQuota } from "@/lib/api-quota";
+import { JsonRequestError, readSmallJson } from "@/lib/request-json";
 
 // 브라우저가 OpenAI realtime에 직접 붙을 때 쓰는 임시 키를 발급한다. 진짜 키는 서버에만 있다.
 // 테스트용으로 Vercel 환경변수 REALTIME_MODEL에 "gpt-realtime-2.1"을 넣으면 큰 모델로 바뀐다(약 3배 비쌈).
@@ -26,8 +28,11 @@ export async function POST(req: Request) {
   if (access.response) return access.response;
   const consentError = await requireMemoryConsent(access.supabase);
   if (consentError) return consentError;
+  const quotaError = await requireApiQuota(access.supabase, "realtime");
+  if (quotaError) return quotaError;
   try {
-    const body = await req.json().catch(() => ({}));
+    const parsed = await readSmallJson(req, 5000, 4096);
+    const body = parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {};
     const voice = VOICES.some((v) => v.id === body.voice) ? body.voice : "marin";
     const name = typeof body.name === "string" ? cleanName(body.name) : DEFAULT_COMPANION;
     // 이름은 cleanName이 한글·영문·숫자·띄어쓰기만 남긴 것이라 지시문에 넣어도 된다.
@@ -64,6 +69,7 @@ export async function POST(req: Request) {
     const { value } = await res.json();
     return Response.json({ key: value, model: MODEL, memory }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
-    return failed("realtime", err);
+    if (err instanceof JsonRequestError) return Response.json({ error: err.message }, { status: err.status, headers: { "Cache-Control": "no-store" } });
+    return failed();
   }
 }

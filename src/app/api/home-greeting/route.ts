@@ -2,6 +2,7 @@ import { requireMember } from "@/lib/member-auth";
 import { memoryEnabled } from "@/lib/memory";
 import { requireMemoryConsent } from "@/lib/memory-access";
 import { createGreetingCache } from "@/lib/home-greeting";
+import { requireApiQuota } from "@/lib/api-quota";
 
 export const maxDuration = 30;
 const greeting = createGreetingCache();
@@ -13,6 +14,8 @@ export async function GET(request: Request) {
   if (!memoryEnabled(process.env)) return json(null);
   const consentError = await requireMemoryConsent(access.supabase);
   if (consentError) return consentError;
+  const quotaError = await requireApiQuota(access.supabase, "home_greeting");
+  if (quotaError) return quotaError;
   try {
     // Always recheck current ready rows BEFORE cache lookup: deleted memories must not survive in the greeting.
     const { data, error } = await access.supabase.from("conversation_memories")

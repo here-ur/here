@@ -1,5 +1,6 @@
 // Server-only usage: keys are passed by route handlers, never exported to clients.
 import { createHash } from "node:crypto";
+import { memoryRetryFetch, operationMetric, usageMetric } from "./ai-operations.ts";
 
 export const EMBEDDING_MODEL = "text-embedding-3-large";
 export const EMBEDDING_DIMENSIONS = 1536;
@@ -72,6 +73,7 @@ export async function embed(text: string, config: MemoryConfig, signal: AbortSig
     signal, cache: "no-store", redirect: "error",
   });
   const body = await readProvider(response, signal);
+  usageMetric("embedding", body);
   if (!record(body) || body.model !== EMBEDDING_MODEL || !Array.isArray(body.data) || body.data.length !== 1) throw new Error("invalid_embedding");
   const item = body.data[0];
   const vector = record(item) ? item.embedding : null;
@@ -121,6 +123,7 @@ export async function summarize(source: string, config: MemoryConfig, signal: Ab
       texts.push(part.text);
     }
   }
+  usageMetric("summary", body);
   return parseMemoryFacts(JSON.parse(texts.join("")), source);
 }
 
@@ -142,6 +145,7 @@ export function createMemoryService(store: MemoryStore, config: MemoryConfig) {
       } catch { return ""; } // Memory failure never stops chat or leaks provider details.
     },
     async remember(messages: MemoryMessage[], sourceId?: string): Promise<void> {
+      const started = Date.now();
       const signal = AbortSignal.timeout(35_000);
       let job: MemoryLease | null = null;
       try {
@@ -151,10 +155,13 @@ export function createMemoryService(store: MemoryStore, config: MemoryConfig) {
         // Only the latest user message: never re-ingest old deleted memories from client history.
         const source = messages.at(-1);
         if (source?.role !== "user") throw new Error("invalid_memory_source");
-        const summary = await summarize(source.content, config, signal);
-        const vector = summary ? await embed(summary, config, signal) : null;
+        const retryConfig = { ...config, fetch: memoryRetryFetch(config.fetch) };
+        const summary = await summarize(source.content, retryConfig, signal);
+        const vector = summary ? await embed(summary, retryConfig, signal) : null;
         await store.finish(job, summary, vector, config.summaryModel || DEFAULT_SUMMARY_MODEL, signal);
+        operationMetric({ operation: "memory_save", outcome: summary ? "ok" : "skipped", durationMs: Date.now() - started });
       } catch {
+        operationMetric({ operation: "memory_save", outcome: "failed", durationMs: Date.now() - started });
         if (job) await store.fail(job, AbortSignal.timeout(3000)).catch(() => {});
         // Do not log keys, original text, embeddings, summaries, or raw upstream errors.
       }
