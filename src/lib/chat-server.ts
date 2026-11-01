@@ -278,7 +278,7 @@ export async function chatResponse(request: Request, config: ChatServerConfig): 
     }
     if (!result.reply) throw new ChatFailure(502, INVALID_RESPONSE);
     try { config.memory?.schedule(messages); } catch { /* Saving memory must not fail a successful reply. */ }
-    return json({ reply: result.reply + searchCitations(sources), ...flags });
+    return json({ reply: result.reply + searchCitations(sources, result.reply), ...flags });
   } catch (error) {
     if (request.signal.aborted) return json({ error: "요청을 취소했어요.", ...flags }, 499);
     if (timedOut) return json({ error: "답변 시간이 길어졌어요. 잠시 뒤 다시 보내 주세요.", ...flags }, 504);

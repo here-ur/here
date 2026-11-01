@@ -39,8 +39,8 @@ export function safeSearchSource(value: unknown): SearchSource | null {
   } catch { return null; }
 }
 
-export function searchCitations(sources: SearchSource[]): string {
+export function searchCitations(sources: SearchSource[], existingText = ""): string {
   const clean = sources.map(safeSearchSource).filter((s): s is SearchSource => Boolean(s));
-  const unique = [...new Map(clean.map(s => [s.url, s])).values()].slice(0, 5);
+  const unique = [...new Map(clean.map(s => [s.url, s])).values()].filter(s => !existingText.includes(s.url)).slice(0, 5);
   return unique.length ? "\n\n출처: " + unique.map(s => `[${s.title}](<${s.url.replace(/[<>]/g, c => encodeURIComponent(c))}>)`).join(" · ") : "";
 }
