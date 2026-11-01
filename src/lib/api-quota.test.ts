@@ -56,7 +56,7 @@ test("PostgreSQL 공유 한도: 회원별 격리·분/일 한도·고정 행·�
 });
 
 test("비용 발생 API는 회원/동의 확인 뒤 공유 한도를 검사한다", () => {
-  for (const route of ["chat", "realtime", "voice-memory", "home-greeting"]) {
+  for (const route of ["chat", "realtime", "voice-memory", "home-greeting", "web-search"]) {
     const source = readFileSync(new URL(`../app/api/${route}/route.ts`, import.meta.url), "utf8");
     const quota = source.indexOf("await requireApiQuota(");
     assert.ok(quota > source.indexOf("await requireMember("));

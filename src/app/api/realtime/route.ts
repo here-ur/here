@@ -7,6 +7,7 @@ import { VOICE_MEMORY_INSTRUCTIONS, VOICE_MEMORY_TOOL } from "@/lib/voice-memory
 import { companionConversationPrompt } from "@/lib/companion-prompt";
 import { requireApiQuota } from "@/lib/api-quota";
 import { JsonRequestError, readSmallJson } from "@/lib/request-json";
+import { VOICE_WEB_SEARCH_TOOL, WEB_SEARCH_INSTRUCTIONS } from "@/lib/web-search-protocol";
 
 // 브라우저가 OpenAI realtime에 직접 붙을 때 쓰는 임시 키를 발급한다. 진짜 키는 서버에만 있다.
 // 테스트용으로 Vercel 환경변수 REALTIME_MODEL에 "gpt-realtime-2.1"을 넣으면 큰 모델로 바뀐다(약 3배 비쌈).
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
     const name = typeof body.name === "string" ? cleanName(body.name) : DEFAULT_COMPANION;
     // 이름은 cleanName이 한글·영문·숫자·띄어쓰기만 남긴 것이라 지시문에 넣어도 된다.
     const memory = memoryEnabled(process.env);
-    const instructions = companionConversationPrompt(name, "voice") + SAFETY_INSTRUCTIONS + (memory ? VOICE_MEMORY_INSTRUCTIONS : "");
+    const instructions = companionConversationPrompt(name, "voice") + SAFETY_INSTRUCTIONS + (memory ? VOICE_MEMORY_INSTRUCTIONS + WEB_SEARCH_INSTRUCTIONS : "");
     const res = await openai("realtime/client_secrets", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
             output: { voice },
           },
           tools: [
-            ...(memory ? [VOICE_MEMORY_TOOL] : []),
+            ...(memory ? [VOICE_MEMORY_TOOL, VOICE_WEB_SEARCH_TOOL] : []),
             { type: "function", name: "show_crisis_help", description: "화면에 자살예방상담전화 109 안내를 띄운다.", parameters: { type: "object", properties: {} } },
             { type: "function", name: "show_get_help", description: "실제 사람인 상담사를 고르는 도움받기 화면의 진입 버튼을 띄운다. 현재는 예시 프로필을 살펴보고 선택하는 UI이며 실제 상담 연결이나 예약은 제공하지 않는다.", parameters: { type: "object", properties: {} } },
           ],
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
       }),
     });
     const { value } = await res.json();
-    return Response.json({ key: value, model: MODEL, memory }, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ key: value, model: MODEL, memory, webSearch: memory }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     if (err instanceof JsonRequestError) return Response.json({ error: err.message }, { status: err.status, headers: { "Cache-Control": "no-store" } });
     return failed();

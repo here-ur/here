@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { Msg } from "@/lib/log";
 import { ChatMarkdown } from "@/lib/chat-markdown";
+import { safeSearchSource, type SearchSource } from "@/lib/web-search-protocol";
 import { COLORS, type ColorId, type Profile, josa } from "@/lib/onboarding";
 import Buddy, { type BuddyState } from "./Buddy";
 import { Icon } from "./art";
@@ -24,6 +25,7 @@ export type HomeVoiceControls = {
   statusText: string;
   error: string;
   caption?: string;
+  sources?: SearchSource[];
   warning?: string;
   onEnd: () => void;
   onMic: () => void;
@@ -257,11 +259,14 @@ export default function HomeScreen({
         </div>
         {voice && <div className="mt-5 max-w-full px-4 text-center">
           <p role="status" className="text-t4 font-medium text-[#1F2A55]">{voice.error ? "연결하지 못했어요" : voice.statusText}</p>
-          {voice.caption && !voice.error && <p className="mt-2 line-clamp-2 text-t3 text-[#5A6478]">{voice.caption}</p>}
+          {voice.caption && !voice.error && <div className="mt-2 line-clamp-2 text-t3 text-[#5A6478]"><ChatMarkdown content={voice.caption.split("\n\n출처:")[0]} /></div>}
         </div>}
       </div>
 
       <div className="home-bottom absolute inset-x-5 bottom-[max(32px,env(safe-area-inset-bottom))] flex flex-col gap-3">
+        {voice?.sources && voice.sources.length > 0 && <nav aria-label="검색 출처" className="flex max-h-24 gap-2 overflow-auto rounded-r3 bg-white/90 px-3 py-2">
+          {voice.sources.map(safeSearchSource).filter((source): source is SearchSource => Boolean(source)).map((source, index) => <a key={`${source.url}-${index}`} href={source.url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="inline-flex min-h-10 max-w-48 shrink-0 items-center rounded-r2 px-2 text-t3 text-[#1F2A55] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"><span className="truncate">{source.title}</span></a>)}
+        </nav>}
         {voice?.warning && !voice.error && <p role="status" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#5A6478]">{voice.warning}</p>}
         {voice?.error && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{voice.error}</p>}
         {chat.error && !voice && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{chat.error}</p>}
