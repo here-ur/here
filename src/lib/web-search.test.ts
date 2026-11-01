@@ -62,4 +62,5 @@ test("출처는 안전한 HTTPS만 표시하며 중복·마크다운 삽입을 �
   const text = searchCitations([source, source]);
   assert.equal((text.match(/https:\/\/example.com/g) || []).length, 1);
   assert.doesNotMatch(text, /\[클릭\]/);
+  assert.equal(searchCitations([{ title: "공식", url: "https://example.com/docs" }], "[공식](https://example.com/docs)"), "");
 });
