@@ -1,5 +1,13 @@
 import { createHash } from "node:crypto";
 import { readProvider } from "./memory.ts";
+import { CASUAL_HOME_OPENERS } from "./home-opener.ts";
+
+// Stable per account and Korean calendar day; revisiting a menu must not shuffle the opener.
+export function homeGreetingPlan(userId: string, now = Date.now()) {
+  const day = Math.floor((now + 9 * 60 * 60_000) / 86_400_000);
+  const seed = createHash("sha256").update(`${userId}:${day}`).digest().readUInt32BE(0);
+  return { day, useMemory: seed % 3 !== 0, fallback: CASUAL_HOME_OPENERS[seed % CASUAL_HOME_OPENERS.length] };
+}
 
 export type GreetingMemory = { id: string; summary: string; updated_at: string };
 export type GreetingConfig = { apiKey?: string; baseUrl?: string; model?: string; fetch?: typeof fetch };
@@ -23,13 +31,13 @@ export function topicGreeting(value: unknown, memories: GreetingMemory[], day: n
   if (!memory) return null;
   // Only the grounded, non-sensitive topic enters the copy. Never display arbitrary model instructions.
   const lines: Record<Category, string[]> = {
-    game: [`${topic} 한 판 대신,\n이야기 한 판 어때?`, `${topic} 얘기부터\n슬쩍 꺼내 볼까?`],
-    music: [`오늘 대화의 첫 곡은\n${topic} 이야기 어때?`, `${topic} 얘기라면,\n귀 기울일 준비 완료!`],
-    book: [`${topic} 이야기로\n오늘의 첫 장을 열어볼까?`, `${topic} 얘기부터\n천천히 펼쳐 볼까?`],
-    food: [`${topic} 얘기라면,\n오늘도 환영이야.`, `오늘의 이야기 메뉴는\n${topic} 어때?`],
-    outdoors: [`${topic} 이야기로\n잠깐 쉬어 갈까?`, `${topic} 얘기부터\n가볍게 시작해 볼까?`],
-    creative: [`${topic} 이야기,\n오늘도 한 스푼 어때?`, `${topic} 얘기부터\n같이 풀어 볼까?`],
-    pet: [`${topic} 얘기라면,\n내 귀는 활짝 열려 있어!`, `${topic} 이야기로\n오늘을 시작해 볼까?`],
+    game: [`요즘 ${topic} 어때?\n재밌는 일 있었어?`, `${topic} 얘기 좀 해줘.\n어떤 점이 제일 재밌어?`],
+    music: [`요즘도 ${topic} 자주 들어?`, `${topic} 좋아한다고 했지?\n나한테도 하나 추천해줘.`],
+    book: [`${topic} 얘기 좀 해줘.\n어떤 점이 좋았어?`, `${topic}에서\n기억에 남는 부분 있어?`],
+    food: [`${topic} 좋아한다고 했지?\n같이 먹으면 좋은 것도 있어?`, `${topic} 말고도\n요즘 좋아하는 거 있어?`],
+    outdoors: [`요즘 ${topic} 할 시간 있어?`, `${topic} 얘기 좀 해줘.\n어떤 점이 좋아?`],
+    creative: [`요즘 ${topic} 어때?\n새로 해보고 싶은 거 있어?`, `${topic} 하다가\n재밌었던 일 있어?`],
+    pet: [`${topic} 얘기 좀 해줘.\n어떤 모습이 제일 귀여워?`, `${topic} 좋아한다고 했지?\n기억에 남는 순간 있어?`],
   };
   return lines[category as Category][Math.abs(day) % 2];
 }
@@ -58,7 +66,7 @@ async function generate(memories: GreetingMemory[], config: GreetingConfig): Pro
   if (body.status !== "completed" || !Array.isArray(body.output)) return null;
   const text = body.output.filter(item => item.type === "message" && item.role === "assistant")
     .flatMap(item => item.content ?? []).filter(part => part.type === "output_text").map(part => part.text ?? "").join("");
-  return topicGreeting(JSON.parse(text), memories, Math.floor(Date.now() / 86_400_000));
+  return topicGreeting(JSON.parse(text), memories, homeGreetingPlan("").day);
 }
 
 export function createGreetingCache() {
@@ -66,7 +74,7 @@ export function createGreetingCache() {
   return async (userId: string, memories: GreetingMemory[], config: GreetingConfig): Promise<string | null> => {
     const candidates = greetingCandidates(memories);
     if (!candidates.length) return null;
-    const key = createHash("sha256").update(JSON.stringify([userId, candidates, config.model])).digest("hex");
+    const key = createHash("sha256").update(JSON.stringify([userId, candidates, config.model, homeGreetingPlan(userId).day])).digest("hex");
     const previous = entries.get(key);
     if (previous && previous.expires > Date.now()) return previous.value;
     for (const [id, entry] of entries) if (entry.expires <= Date.now()) entries.delete(id);

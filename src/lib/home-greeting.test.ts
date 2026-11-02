@@ -1,19 +1,52 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createGreetingCache, greetingCandidates, topicGreeting } from "./home-greeting.ts";
+import { createGreetingCache, greetingCandidates, topicGreeting, homeGreetingPlan } from "./home-greeting.ts";
+import { FIRST_HOME_OPENER, DEFAULT_HOME_OPENER, CASUAL_HOME_OPENERS, safeHomeOpener, withHomeOpener } from "./home-opener.ts";
 
 const memory = { id: "test-a", summary: "사용자는 보드게임 아줄을 가장 좋아한다고 말했다.", updated_at: "2026-10-31" };
 const selection = { memory_id: "test-a", topic: "아줄", category: "game" };
 const provider = (selection: unknown) => Response.json({ status: "completed", output: [{ type: "message", role: "assistant", content: [{ type: "output_text", text: JSON.stringify(selection) }] }] });
 
 test("저장된 취향에서만 짧은 홈 문구를 만들고 날짜별로 변주한다", () => {
-  assert.equal(topicGreeting(selection, [memory], 0), "아줄 한 판 대신,\n이야기 한 판 어때?");
+  assert.equal(topicGreeting(selection, [memory], 0), "요즘 아줄 어때?\n재밌는 일 있었어?");
   assert.notEqual(topicGreeting(selection, [memory], 0), topicGreeting(selection, [memory], 1));
   assert.equal(topicGreeting({ ...selection, topic: "체스" }, [memory], 0), null);
   assert.equal(topicGreeting({ ...selection, memory_id: "other" }, [memory], 0), null);
   assert.equal(topicGreeting({ ...selection, category: "health" }, [memory], 0), null);
   assert.equal(topicGreeting({ ...selection, topic: "<script>" }, [memory], 0), null);
+});
+
+test("첫 만남·가벼운 재방문·기억 문구는 분리하고 한국 날짜 안에서 유지한다", () => {
+  assert.equal(FIRST_HOME_OPENER, "너와 친해지고 싶어!\n너에 대해 알려줘.");
+  assert.notEqual(FIRST_HOME_OPENER, DEFAULT_HOME_OPENER);
+  const morning = Date.parse("2026-11-02T00:00:00+09:00");
+  assert.deepEqual(homeGreetingPlan("a", morning), homeGreetingPlan("a", morning + 86_399_999));
+  assert.notEqual(homeGreetingPlan("a", morning).day, homeGreetingPlan("a", morning - 1).day);
+  const plans = Array.from({ length: 30 }, (_, i) => homeGreetingPlan("a", morning + i * 86_400_000));
+  assert.ok(plans.some(p => p.useMemory));
+  assert.ok(plans.some(p => !p.useMemory));
+  for (const p of plans) assert.ok(CASUAL_HOME_OPENERS.includes(p.fallback));
+  for (const line of [...CASUAL_HOME_OPENERS, FIRST_HOME_OPENER]) assert.ok(line.length <= 100);
+});
+
+test("홈 문구를 대화 맥락에 한 번만 넣고 기존 대화를 덮어쓰지 않는다", () => {
+  const initial = withHomeOpener([], FIRST_HOME_OPENER);
+  assert.deepEqual(initial, [{ role: "assistant", content: "너와 친해지고 싶어! 너에 대해 알려줘." }]);
+  assert.equal(withHomeOpener(initial, DEFAULT_HOME_OPENER), initial);
+  assert.equal(safeHomeOpener("<script>"), DEFAULT_HOME_OPENER);
+  assert.equal(safeHomeOpener("x".repeat(101)), DEFAULT_HOME_OPENER);
+});
+
+test("모든 허용 분류의 문구는 광고식 비유나 확인되지 않은 일정이 없다", () => {
+  for (const category of ["game", "music", "book", "food", "outdoors", "creative", "pet"]) {
+    for (const day of [0, 1]) {
+      const line = topicGreeting({ ...selection, category }, [memory], day)!;
+      assert.ok(line.length <= 100);
+      assert.match(line, /아줄/);
+      assert.doesNotMatch(line, /한 스푼|첫 장|준비 완료|한 판 대신|어제|주말|면접/);
+    }
+  }
 });
 
 test("민감한 맥락·부정 취향은 홈 소재에서 제외한다", () => {

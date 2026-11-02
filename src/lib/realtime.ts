@@ -1,4 +1,5 @@
 import { homeEntryGreetingPrompt } from "./companion-prompt.ts";
+import { safeHomeOpener } from "./home-opener.ts";
 import { requestVoiceMemory, VoiceMemoryAccessError } from "./voice-memory-client.ts";
 import { voiceTiming } from "./voice-timing.ts";
 import { requestWebSearch } from "./web-search-client.ts";
@@ -34,7 +35,7 @@ export async function connectRealtime(
   persona: { name?: string; voice?: string } = {},
   signal?: AbortSignal,
   accessToken?: string,
-  options: { greeting?: boolean; microphone?: boolean; onGreetingEnd?: () => void } = {},
+  options: { greeting?: boolean; microphone?: boolean; opener?: string; onGreetingEnd?: () => void } = {},
 ): Promise<Realtime> {
   const markTiming = voiceTiming();
   const controller = new AbortController();
@@ -210,6 +211,8 @@ export async function connectRealtime(
     if (closed || !channelReady || greetingRequested || !playbackReady) return;
     greetingRequested = true;
     if (!greetingPending) {
+      // Context only: the home opener was already shown/spoken. Do not generate another greeting.
+      if (options.opener) send({ type: "conversation.item.create", item: { type: "message", role: "assistant", content: [{ type: "output_text", text: safeHomeOpener(options.opener).replace(/\n/g, " ") }] } });
       send({ type: "session.update", session: { type: "realtime", audio: { input: { turn_detection: { type: "semantic_vad", eagerness: "low" } } } } });
       applyMic();
       readyStatus();
@@ -217,7 +220,7 @@ export async function connectRealtime(
     }
     send({ type: "response.create", response: {
       output_modalities: ["audio"],
-      instructions: homeEntryGreetingPrompt(persona.name),
+      instructions: homeEntryGreetingPrompt(persona.name, options.opener),
       tool_choice: "none", metadata: { phase: "greeting" },
     } });
     greetingTimer = setTimeout(() => fail(GREETING_ERROR), 30_000);

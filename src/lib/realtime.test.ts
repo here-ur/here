@@ -330,6 +330,19 @@ test("데이터 채널이 열리면 음성 인사를 도구 호출 없이 한 �
   assert.equal(m.statuses.at(-1), "connecting");
 });
 
+test("마이크 진입은 홈 문구를 맥락으로만 전달하고 다시 인사하지 않는다", async (t) => {
+  const m = setup(t);
+  const realtime = await connectRealtime(m.handlers, {}, undefined, "fake-token", { greeting: false, opener: "요즘 아줄 어때?" });
+  t.after(() => realtime.close());
+  const channel = m.peers[0].channel;
+  channel.open();
+  channel.open();
+  assert.equal(channel.sent.filter(event => event.type === "response.create").length, 0);
+  const context = channel.sent.filter(event => event.type === "conversation.item.create");
+  assert.equal(context.length, 1);
+  assert.match(JSON.stringify(context[0]), /요즘 아줄 어때/);
+});
+
 test("인사 생성 완료나 다른 응답의 재생 완료로는 마이크 잠금을 풀지 않는다", async (t) => {
   const m = setup(t);
   const realtime = await connectRealtime(m.handlers);

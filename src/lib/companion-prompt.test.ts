@@ -42,13 +42,20 @@ test("각 요청 경로가 같은 이름·말투 빌더를 사용하며 안전 �
   const client = readFileSync(new URL("./realtime.ts", import.meta.url), "utf8");
   assert.match(chat, /companionConversationPrompt\(name, "chat"\)/);
   assert.match(voice, /companionConversationPrompt\(name, "voice"\)/);
-  assert.match(client, /homeEntryGreetingPrompt\(persona.name\)/);
+  assert.match(client, /homeEntryGreetingPrompt\(persona.name, options.opener\)/);
   assert.doesNotMatch(voice, /너는 "몽글이"|"몽글이" 대신/);
   for (const source of [chat, voice]) {
     assert.match(source, /진단하지 마/);
     assert.match(source, /show_crisis_help/);
     assert.match(source, /show_get_help/);
   }
+});
+
+test("음성 인사는 화면 문구만 읽고 별도 질문이나 자기소개를 붙이지 않는다", () => {
+  const prompt = homeEntryGreetingPrompt("보리", "너와 친해지고 싶어!\n너에 대해 알려줘.");
+  assert.match(prompt, /너와 친해지고 싶어! 너에 대해 알려줘\./);
+  assert.match(prompt, /이 문구만 한 번 말해/);
+  assert.doesNotMatch(prompt, /오늘은 어떤 하루였어/);
 });
 
 test("편한 어미·짧은 반응·상황에 맞는 웃음을 허용하되 정직함은 유지한다", () => {
