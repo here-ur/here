@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { Msg } from "@/lib/log";
 import { ChatMarkdown } from "@/lib/chat-markdown";
+import { DEFAULT_HOME_OPENER, FIRST_HOME_OPENER } from "@/lib/home-opener";
 import { safeSearchSource, type SearchSource } from "@/lib/web-search-protocol";
 import { COLORS, type ColorId, type Profile, josa } from "@/lib/onboarding";
 import Buddy, { type BuddyState } from "./Buddy";
@@ -228,7 +229,7 @@ export default function HomeScreen({
           AI 이야기 친구
         </span>
         <h1 className="min-h-[2.6em] whitespace-pre-line text-t12 font-medium text-balance">
-          {headline || "오늘 하루,\n어떤 이야기를 해 볼까?"}
+          {headline || (greet ? FIRST_HOME_OPENER : DEFAULT_HOME_OPENER)}
         </h1>
       </div>
 

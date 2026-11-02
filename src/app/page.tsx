@@ -1,5 +1,7 @@
 "use client";
 
+import { DEFAULT_HOME_OPENER, FIRST_HOME_OPENER, withHomeOpener } from "@/lib/home-opener";
+
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
 import { companionState } from "@/lib/companion-state";
@@ -75,6 +77,9 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   const [inviteBusy, setInviteBusy] = useState(false);
   const [captions, setCaptions] = useState(false); // 자막: 소리가 안 들릴 때를 위해
   const [headline, setHeadline] = useState<string | null>(null);
+  const [headlineReady, setHeadlineReady] = useState(false);
+  const headlineLocked = useRef(false);
+  const openingLine = headline || DEFAULT_HOME_OPENER;
   const [homeGreetingDone, setHomeGreetingDone] = useState(false);
   const [homeSpeaking, setHomeSpeaking] = useState(false);
 
@@ -89,12 +94,13 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
         if (!data.session) return;
         const response = await fetch("/api/home-greeting", {
           headers: { Authorization: `Bearer ${data.session.access_token}` },
-          signal: controller.signal, cache: "no-store",
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(5000)]), cache: "no-store",
         });
         if (!response.ok) return;
         const result = await response.json();
-        if (!controller.signal.aborted && typeof result.headline === "string" && result.headline.length <= 100) setHeadline(result.headline);
+        if (!controller.signal.aborted && !headlineLocked.current && typeof result.headline === "string" && result.headline.length <= 100) setHeadline(result.headline);
       } catch { /* The default greeting keeps the home usable when personalisation is unavailable. */ }
+      finally { if (!controller.signal.aborted) setHeadlineReady(true); }
     })();
     return () => controller.abort();
   }, []);
@@ -112,7 +118,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
 
   function add(msg: Msg) {
     setMessages((prev) => {
-      const next = [...prev, msg];
+      const next = [...withHomeOpener(prev, openingLine), msg];
       if (session.current) saveSession({ ...session.current, messages: next });
       return next;
     });
@@ -149,7 +155,8 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
     session.current ??= { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, startedAt: Date.now(), messages: [] };
     const controller = new AbortController();
     chatRequest.current = controller;
-    const next: Msg[] = [...messages, { role: "user", content: text }];
+    headlineLocked.current = true;
+    const next: Msg[] = [...withHomeOpener(messages, openingLine), { role: "user", content: text }];
     setPendingText(text);
     setError("");
     setStatus("thinking");
@@ -182,6 +189,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
 
   /** 음성 대화만 기존 OpenAI Realtime 연결을 사용한다. */
   async function begin() {
+    headlineLocked.current = true;
     setHomeGreetingDone(true);
     cancelChat();
     const attempt = ++connectionAttempt.current;
@@ -224,7 +232,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
         onError: (message) => { if (current()) setError(message); },
         onMemoryWarning: (message) => { if (current()) setMemoryWarning(message); },
         onSearchSources: (sources) => { if (current()) setSearchSources(sources); },
-      }, { name: profile?.companion, voice: profile?.voice }, controller.signal, token, { greeting: false });
+      }, { name: profile?.companion, voice: profile?.voice }, controller.signal, token, { greeting: false, opener: messages.length ? undefined : openingLine });
       if (!current()) { conn.close(); return; }
       rt.current = conn;
       conn.setSound(true);
@@ -244,6 +252,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
 
   /** 채팅 진입 시 음성 연결은 닫고, 첫 전송 전에는 API를 호출하지 않는다. */
   function openText() {
+    headlineLocked.current = true;
     setHomeGreetingDone(true);
     connectionAttempt.current += 1;
     voiceRequest.current?.abort();
@@ -315,6 +324,9 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
           saveProfile(p);
           setNewProfile(p);
           setJustMet(true);
+          headlineLocked.current = true;
+          setHeadline(FIRST_HOME_OPENER);
+          setHeadlineReady(true);
         }}
       />
     );
@@ -335,7 +347,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
       <HomeScreen
         profile={me}
         greet={justMet}
-        headline={headline}
+        headline={openingLine}
         onVoice={toVoice}
         onText={openText}
         onLog={openLog}
@@ -375,7 +387,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
           {suggest && <button onClick={openHelp} className="ui-press h-11 rounded-full bg-white px-5 text-t4 font-bold text-[#1F2A55]">도움받기</button>}
         </div> : undefined}
       >
-        {!homeGreetingDone && <HomeEntryGreeting name={profile.companion} voice={profile.voice} onSpeaking={setHomeSpeaking} onDone={setHomeGreetingDone} />}
+        {!homeGreetingDone && headlineReady && <HomeEntryGreeting name={profile.companion} voice={profile.voice} opener={openingLine} onSpeaking={setHomeSpeaking} onDone={setHomeGreetingDone} />}
         <Drawer
           open={showMenu}
           profile={me}
