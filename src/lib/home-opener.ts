@@ -1,6 +1,6 @@
 // Shared display/audio copy. No account data or server-only imports in this module.
 export const FIRST_HOME_OPENER = "너와 친해지고 싶어!\n너에 대해 알려줘.";
-export const DEFAULT_HOME_OPENER = "왔네!\n편하게 얘기하자.";
+export const DEFAULT_HOME_OPENER = "왔네!\n요즘 어떻게 지내?";
 export const CASUAL_HOME_OPENERS = [
   DEFAULT_HOME_OPENER,
   "오늘 뭐 할까?\n아직 안 정했어도 괜찮아.",

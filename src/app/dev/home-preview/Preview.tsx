@@ -8,7 +8,7 @@ export default function Preview() {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [mode, setMode] = useState<"first" | "return" | "memory">("first");
-  const headline = mode === "first" ? FIRST_HOME_OPENER : mode === "return" ? DEFAULT_HOME_OPENER : "요즘 아줄 어때?\n재밌는 일 있었어?";
+  const headline = mode === "first" ? FIRST_HOME_OPENER : mode === "return" ? DEFAULT_HOME_OPENER : "요즘도 종이접기 해?\n최근엔 뭐 만들었어?";
   return <><div className="fixed left-2 top-2 z-50 flex gap-2 rounded-xl bg-white p-2 text-sm text-black shadow">
     {([ ["first", "첫 만남"], ["return", "재방문"], ["memory", "기억 연결"] ] as const).map(([value, label]) => <button key={value} aria-pressed={mode === value} onClick={() => setMode(value)} className="rounded-lg border px-3 py-2 aria-pressed:bg-slate-200">{label}</button>)}
   </div><HomeScreen
