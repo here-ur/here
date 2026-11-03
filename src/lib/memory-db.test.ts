@@ -28,7 +28,7 @@ test("실제 PostgreSQL RLS·동의·중복·삭제 경쟁·회상 격리", asyn
       grant usage on schema auth,public,extensions to authenticated,anon;
       create table public.members(user_id uuid primary key);
       insert into public.members values('${a}'),('${b}');`);
-    await db.exec(readFileSync(new URL("../../supabase/migrations/20261031010000_conversation_memory.sql", import.meta.url), "utf8"));
+    await db.exec(readFileSync(new URL("../../supabase/migrations/0003_conversation_memory.sql", import.meta.url), "utf8"));
     await asUser("");
     assert.equal(await claim(key), null);
     await asUser(outsider);
@@ -40,7 +40,7 @@ test("실제 PostgreSQL RLS·동의·중복·삭제 경쟁·회상 격리", asyn
     assert.equal(await value("select public.accept_memory_consent('2026-10-31-dev-v1',true,false) as value"), false);
     assert.equal(await accept(), true);
     await db.exec("reset role");
-    await db.exec(readFileSync(new URL("../../supabase/migrations/20261101020000_consent_events.sql", import.meta.url), "utf8"));
+    await db.exec(readFileSync(new URL("../../supabase/migrations/0005_consent_events.sql", import.meta.url), "utf8"));
     await asUser(a);
     assert.deepEqual((await db.query("select event_type from public.memory_consent_events")).rows, [{ event_type: "snapshot" }]);
     await accept(); // Repeated acceptance must not manufacture new events.

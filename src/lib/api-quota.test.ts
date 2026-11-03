@@ -33,7 +33,7 @@ test("PostgreSQL 공유 한도: 회원별 격리·분/일 한도·고정 행·�
       create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
       grant usage on schema auth,public to authenticated,anon;
       create table public.members(user_id uuid primary key); insert into public.members values('${a}'),('${b}');`);
-    await db.exec(readFileSync(new URL("../../supabase/migrations/20261101010000_api_limits.sql", import.meta.url), "utf8"));
+    await db.exec(readFileSync(new URL("../../supabase/migrations/0004_api_limits.sql", import.meta.url), "utf8"));
     await asUser(a);
     const results = await Promise.all(Array.from({ length: 21 }, take));
     assert.equal(results.filter(r => r.allowed).length, 20);

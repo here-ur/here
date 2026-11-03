@@ -91,6 +91,8 @@ const Header = ({ title, back, onBack, headingRef }: { title: string; back: stri
 );
 
 const card = "rounded-r6 bg-white p-5 shadow-[0_6px_20px_rgba(28,38,80,.07)]";
+// 리포트가 열리거나 탭을 바꿀 때 카드가 위에서부터 차례로 올라온다(동작 줄이기에서는 움직이지 않는다).
+const STAGGER = "motion-safe:[&>*]:animate-screen-in [&>*:nth-child(2)]:[animation-delay:50ms] [&>*:nth-child(3)]:[animation-delay:100ms] [&>*:nth-child(4)]:[animation-delay:150ms] [&>*:nth-child(n+5)]:[animation-delay:200ms]";
 
 // 리포트 안의 탭. 마음 점검·상담 같은 탭은 팀 결정 전이라 넣지 않는다.
 const TABS = [
@@ -187,7 +189,13 @@ export function ReportView({ who, days, sessions, now, choice, skyState, onBack,
   return (
     <Shell color={who.color} bloom="soft">
       <Header title="리포트" back="처음 화면으로" onBack={onBack} headingRef={headingRef} />
-      <div role="tablist" aria-label="리포트 종류" className="absolute inset-x-gutter top-[calc(env(safe-area-inset-top)+80px)] z-10 grid grid-cols-3 gap-1 rounded-r4 bg-white/70 p-1 backdrop-blur-md">
+      <div role="tablist" aria-label="리포트 종류" className="absolute inset-x-gutter top-[calc(env(safe-area-inset-top)+80px)] z-10 grid grid-cols-3 gap-1 rounded-r4 bg-white/70 p-1 backdrop-blur-md motion-safe:animate-screen-in">
+        {/* 고른 탭 뒤의 흰 칸이 탭 사이를 미끄러지듯 옮겨 간다 */}
+        <span
+          aria-hidden="true"
+          className="absolute inset-y-1 left-1 w-[calc((100%-1rem)/3)] rounded-r3 bg-white shadow-[0_2px_8px_rgba(28,38,80,.08)] transition-transform duration-[var(--seed-duration-d6)] ease-[var(--seed-timing-function-enter)]"
+          style={{ transform: `translateX(calc(${TABS.findIndex((t) => t.id === tab)} * (100% + 0.25rem)))` }}
+        />
         {TABS.map((t, index) => (
           <button
             key={t.id}
@@ -204,14 +212,14 @@ export function ReportView({ who, days, sessions, now, choice, skyState, onBack,
               showTab(next.id);
               document.getElementById(`${tabId}-${next.id}`)?.focus();
             }}
-            className="ui-press h-10 rounded-r3 text-t4 font-medium text-[#5A6478] aria-selected:bg-white aria-selected:font-bold aria-selected:text-[#1F2A55] aria-selected:shadow-[0_2px_8px_rgba(28,38,80,.08)]"
+            className="ui-press relative h-10 rounded-r3 text-t4 font-medium text-[#5A6478] aria-selected:font-bold aria-selected:text-[#1F2A55]"
           >
             {t.label}
           </button>
         ))}
       </div>
       <div ref={scrollRef} className="absolute inset-x-0 top-[calc(env(safe-area-inset-top)+140px)] bottom-0 overflow-y-auto px-gutter pb-10">
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2 motion-safe:animate-screen-in">
           <button onClick={() => setMonthIndex((i) => Math.max(0, i - 1))} disabled={monthIndex <= 0} aria-label="이전 달" className="ui-press grid size-11 place-items-center rounded-full text-[#1F2A55] disabled:opacity-30">
             <Icon name="back" size={18} />
           </button>
@@ -221,7 +229,7 @@ export function ReportView({ who, days, sessions, now, choice, skyState, onBack,
           </button>
         </div>
 
-        <div id={`${tabId}-panel`} role="tabpanel" aria-labelledby={`${tabId}-${tab}`}>
+        <div key={tab} id={`${tabId}-panel`} role="tabpanel" aria-labelledby={`${tabId}-${tab}`} className={STAGGER}>
         {tab === "sky" && <>
         <p className="mt-2 flex items-center justify-center gap-2 text-t4 text-[#3D4559]">
           <Buddy shape={who.shape} color={who.color} size={32} look={[0.2, 0.2]} />

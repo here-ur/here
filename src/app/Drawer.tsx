@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { COLORS, type Profile, josa } from "@/lib/onboarding";
+import { type Profile, josa } from "@/lib/onboarding";
+import { type QuotaStatus, quotaSummary } from "@/lib/quota-status";
 import { type DayStat, effectiveSky, loadReport, localDate, monthView } from "@/lib/report";
 import { Icon } from "./art";
-import Buddy from "./Buddy";
 import { SkyDot } from "./Report";
 
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
@@ -72,6 +72,26 @@ function ReportCard({ days, onClick }: { days: DayStat[]; onClick: () => void })
   );
 }
 
+/** 오늘 남은 대화량 한 줄. 평소엔 조용히, 적게 남으면 주황으로, 다 쓰면 다시 채워지는 시각을 알려 준다. */
+function QuotaLine({ status }: { status: QuotaStatus }) {
+  const { chatLeft, voiceLeft, ratio, state } = quotaSummary(status);
+  const reset = new Date(status.resetAt * 1000);
+  const resetText = `${reset.getHours() < 12 ? "오전" : "오후"} ${reset.getHours() % 12 || 12}시${reset.getMinutes() ? ` ${reset.getMinutes()}분` : ""}에 다시 채워져요`;
+  const counts = `글 ${chatLeft}번 · 음성 ${voiceLeft}번`;
+  return (
+    <div role="group" aria-label={state === "out" ? `오늘 대화를 다 했어요. ${resetText}` : `오늘 남은 대화: ${counts}`} className="px-3 pt-1 pb-2">
+      <div aria-hidden="true" className="flex items-baseline justify-between gap-2">
+        <span className="text-t4 font-medium text-[#1F2A55]">{state === "out" ? "오늘 대화를 다 했어요" : "오늘 남은 대화"}</span>
+        {state !== "out" && <span className={`text-t2 tabular-nums ${state === "low" ? "text-[#B06A00]" : "text-[#5A6478]"}`}>{counts}</span>}
+      </div>
+      <span aria-hidden="true" className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-[#E9ECF3]">
+        <span className="block h-full rounded-full transition-[width] duration-[var(--seed-duration-d6)]" style={{ width: `${Math.round(ratio * 100)}%`, background: state === "low" ? "#E8A23C" : "#8EA3E8" }} />
+      </span>
+      {state !== "ok" && <p aria-hidden="true" className="mt-1.5 text-t1 text-[#8A91A3]">{resetText}</p>}
+    </div>
+  );
+}
+
 /** 리포트 진입 아이콘. 리포트가 하늘 달력이라 홈 헤더와 메뉴에서 같은 달력 모양을 쓴다. */
 export function CalendarIcon({ size = 20 }: { size?: number }) {
   return (
@@ -91,9 +111,10 @@ export default function Drawer({
   onReport,
   onCustomize,
   onHelp,
-  onInvite,
+  onFriends,
   onSignOut,
   onReset,
+  loadQuota,
 }: {
   open: boolean;
   profile: Profile;
@@ -101,14 +122,16 @@ export default function Drawer({
   onReport: () => void;
   onCustomize: () => void;
   onHelp: () => void;
-  onInvite: () => void;
+  onFriends: () => void;
   onSignOut: () => void;
   onReset: () => void;
+  loadQuota?: (signal: AbortSignal) => Promise<QuotaStatus | null>;
 }) {
   const panelRef = useRef<HTMLElement>(null);
   const [view, setView] = useState<"menu" | "settings">("menu");
   const [wasOpen, setWasOpen] = useState(false);
   const [days, setDays] = useState<DayStat[]>([]);
+  const [quota, setQuota] = useState<QuotaStatus | null>(null);
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) setDays(loadReport()); // 열 때마다 이 기기의 리포트 숫자를 다시 읽는다
@@ -116,6 +139,8 @@ export default function Drawer({
   }
   const onCloseRef = useRef(onClose);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  const loadQuotaRef = useRef(loadQuota);
+  useEffect(() => { loadQuotaRef.current = loadQuota; }, [loadQuota]);
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -141,12 +166,19 @@ export default function Drawer({
     };
   }, [open]);
   useEffect(() => {
+    // 열 때마다 서버에서 오늘 남은 대화량을 새로 읽는다. 실패하면 줄을 감춘다.
+    const load = loadQuotaRef.current;
+    if (!open || !load) return;
+    const controller = new AbortController();
+    load(controller.signal).then((next) => { if (!controller.signal.aborted) setQuota(next); }, () => {});
+    return () => controller.abort();
+  }, [open]);
+  useEffect(() => {
     // 메뉴 ↔ 설정을 오갈 때 바뀐 화면의 첫 버튼으로 포커스를 옮긴다.
     if (!open) return;
     panelRef.current?.querySelector<HTMLElement>("button:not(:disabled), a[href]")?.focus({ preventScroll: true });
   }, [view, open]);
   const name = profile.companion;
-  const tile = COLORS.find((c) => c.id === profile.color)?.light;
   return (
     <div className={`absolute inset-0 z-40 ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
       <div onClick={onClose} className={`absolute inset-0 bg-[rgba(20,28,60,.32)] backdrop-blur-[2px] transition-opacity duration-300 ease-enter ${open ? "opacity-100" : "opacity-0"}`} />
@@ -161,17 +193,8 @@ export default function Drawer({
         }`}
       >
         {view === "menu" ? <>
-          <div className="flex items-start gap-2">
-            <button onClick={onCustomize} aria-label={`${name} 모습·목소리 바꾸기`} className="ui-press flex min-w-0 flex-1 items-center gap-2.5 rounded-r4 p-1.5 pr-2 text-left hover:brightness-[.98]" style={{ background: tile }}>
-              <span className="grid size-11 shrink-0 place-items-center rounded-r3 bg-white">
-                <Buddy shape={profile.shape} color={profile.color} size={38} look={[0.2, 0.2]} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <b className="block truncate text-t5 font-bold text-[#1F2A55]">{name}</b>
-                <span className="text-t2 text-[#5A6478]">모습·목소리 바꾸기</span>
-              </span>
-              {chevron}
-            </button>
+          <div className="flex items-center justify-between pl-3">
+            <span className="text-t7 font-bold text-[#1F2A55]">Here!</span>
             <button onClick={onClose} aria-label="메뉴 닫기" className="ui-press grid size-10 shrink-0 place-items-center rounded-full bg-[#F2F4F8] text-[#3D4559]">
               <Icon name="close" size={18} />
             </button>
@@ -181,20 +204,32 @@ export default function Drawer({
 
           <ul className="mt-3 flex flex-col gap-0.5">
             <Row
-              onClick={onInvite}
-              label="친구 초대"
+              onClick={onFriends}
+              label="친구"
               icon={
                 <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
-                  <circle cx="10" cy="8" r="3.5" />
-                  <path d="M3.5 19.5c.8-3.4 3.3-5.5 6.5-5.5 1.5 0 2.9.5 4 1.3M18 13v6M15 16h6" />
+                  <circle cx="9" cy="8.5" r="3.2" />
+                  <path d="M3.5 19c.7-3.2 2.9-5 5.5-5s4.8 1.8 5.5 5" />
+                  <path d="M15.5 5.6a3.2 3.2 0 0 1 0 5.8M17.5 14.4c1.6.7 2.6 2.3 3 4.6" />
                 </svg>
               }
             />
             <Row onClick={onHelp} label="도움받기" icon={<Icon name="help" size={20} />} />
+            <Row
+              onClick={onCustomize}
+              label="캐릭터"
+              icon={
+                <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+                  <path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6L5.5 10l4.6-1.9z" />
+                  <path d="M18.5 15.5l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z" />
+                </svg>
+              }
+            />
           </ul>
 
 
           <div className="mt-auto border-t border-[#E6E8EF] pt-2">
+            {quota && <QuotaLine status={quota} />}
             <ul className="flex flex-col gap-0.5">
               <li>
                 <a href="tel:109" className="ui-press flex h-11 w-full items-center gap-3 rounded-r3 px-3 text-t4 font-medium text-[#1F2A55] hover:bg-[#FFF3F2]">

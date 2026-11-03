@@ -5,7 +5,7 @@
 ## 적용 상태
 
 - PR #8(기억·동의), #9(동의 화면 수정)을 `dev`에 병합했다. 운영 코드는 변경하지 않는다.
-- `20261031010000_conversation_memory.sql`을 서울 `here-dev`에만 SQL Editor로 적용했다. `here-prod`에는 적용하지 않았다.
+- `0003_conversation_memory.sql`을 서울 `here-dev`에만 SQL Editor로 적용했다. `here-prod`에는 적용하지 않았다.
 - `MEMORY_ENABLED=false`가 기본값이다. Vercel Preview의 `dev` 브랜치에만 true로 설정하고 `https://here-dev.vercel.app`에서 활성화했다.
 - `MEMORY_ENABLED=true`, 정확한 `here-dev` Supabase URL, Production이 아닌 환경을 모두 만족해야 작동한다. 환경변수만 바꿔 운영에서 활성화할 수 없다.
 - 초기 SQL 파일은 이미 수동 적용했다. migration 이력 동기화 없이 `supabase db push` 또는 기존 테이블 생성 SQL을 재실행하지 않는다.
@@ -107,7 +107,7 @@
 
 ## 2026-11-01 운영 안전장치 — 개발 우선
 
-- DB 적용: `20261101010000_api_limits.sql`, `20261101020000_consent_events.sql` → here-dev만 적용. 운영 DB 미적용.
+- DB 적용: `0004_api_limits.sql`, `0005_consent_events.sql` → here-dev만 적용. 운영 DB 미적용.
 - 앱 배포 순서: DB 마이그레이션 → 자동 테스트·lint·build → PR → dev 병합 → 개발 배포 검증. main 병합은 별도 승인.
 - `api_usage_windows`: 회원·API·시간창별 사용 횟수. 본문·전화번호·IP·키 미저장. 고정 행 재사용, 회원당 최대 8행.
 - 서버 인스턴스가 달라도 동일 DB에서 원자적 차감. 회원 인증·동의 확인 후 적용. DB 장애·마이그레이션 누락은 503, 한도 초과는 429 + Retry-After. 오류 요청도 차감, 자동 환급 없음.
