@@ -33,7 +33,7 @@ import Log from "./Log";
 import Garden from "./Garden";
 import SkyBackdrop from "./SkyBackdrop";
 import Sheet from "./Sheet";
-import { SKY_LOOK, SkyDot } from "./sky";
+import { SKY_LOOK, SkyDot, SkyIcon } from "./sky";
 
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 const WEEKDAY_FULL = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
@@ -89,7 +89,7 @@ function busiestHour(hours: number[]) {
   const max = Math.max(0, ...hours);
   return max ? hours.indexOf(max) : null;
 }
-const AI_NOTE = "하늘은 AI가 그날 내가 한 말을 보고 골랐어요 · 진단이 아니에요 · 눌러서 고칠 수 있어요";
+const AI_NOTE = "AI가 고른 하늘 · 진단이 아니에요 · 눌러서 바꿀 수 있어요";
 
 export type ReportViewProps = {
   mode: ReportMode;
@@ -254,8 +254,13 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
                     const date = `${current.year}-${pad(current.month)}-${pad(d)}`;
                     const day = byDate.get(date);
                     const sky = day && effectiveSky(day);
-                    if (!day) return <td key={di} className={`h-12 align-top text-t3 tabular-nums ${date === today ? "font-bold text-[#1F2A55]" : "text-[#A3AABB]"}`} aria-current={date === today ? "date" : undefined}><span className="inline-grid size-7 place-items-center">{d}</span></td>;
+                    // 모든 날은 숫자가 든 원 하나다. 하늘이 있으면 원을 그 색으로 칠하고 오른쪽 아래에 작은 하늘 배지를 단다.
+                    const ring = date === today ? " ring-2 ring-[#1F2A55] ring-offset-2 ring-offset-white" : "";
+                    if (!day) return <td key={di} className="h-12 align-top" aria-current={date === today ? "date" : undefined}><span className={`mx-auto grid size-9 place-items-center rounded-full text-t2 tabular-nums ${date === today ? "font-bold text-[#1F2A55]" : "text-[#A3AABB]"}${ring}`}>{d}</span></td>;
                     const state = day.crisis ? "109 안내가 있었던 날" : sky ? `${skyLabel(sky)}, ${day.mine ? "내가 고친 하늘" : "AI가 고른 하늘"}` : "하늘을 아직 고르지 않음";
+                    const circle = day.crisis
+                      ? { background: "#FFE8E6", color: "#C42A23" }
+                      : sky ? { background: SKY_LOOK[sky].tint, color: SKY_LOOK[sky].ink } : undefined;
                     return (
                       <td key={di} className="h-12 align-top">
                         <button
@@ -263,17 +268,16 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
                           onClick={() => { returnDate.current = date; setOpenDate(date); }}
                           aria-current={date === today ? "date" : undefined}
                           aria-label={`${current.month}월 ${d}일 ${WEEKDAY_FULL[di]}, ${state}`}
-                          className="ui-press relative mx-auto flex min-h-11 w-full flex-col items-center gap-0.5 rounded-r3 py-0.5"
+                          className="ui-press mx-auto grid size-11 place-items-center rounded-full"
                         >
-                          {day.crisis ? (
-                            <span className="grid h-7 place-items-center rounded-full bg-[#FFE8E6] px-1.5 text-t1 font-bold text-[#C42A23]">109</span>
-                          ) : sky ? (
-                            <SkyDot id={sky} />
-                          ) : (
-                            <span className="size-7 rounded-full border-[1.5px] border-dashed border-[#B8BFCC]" />
-                          )}
-                          <span className={`text-t1 tabular-nums ${date === today ? "font-bold" : ""} text-[#3D4559]`}>{d}</span>
-                          {day.mine && <span aria-hidden="true" className="absolute top-0 right-1 size-1.5 rounded-full bg-[#1F2A55]" />}
+                          <span className={`relative grid size-9 place-items-center rounded-full text-t2 font-bold tabular-nums ${!circle ? "border-[1.5px] border-dashed border-[#B8BFCC] text-[#3D4559]" : ""}${ring}`} style={circle}>
+                            {d}
+                            {day.crisis ? (
+                              <span aria-hidden="true" className="absolute -right-1.5 -bottom-1 rounded-full bg-white px-1 text-[9px] leading-4 font-bold text-[#C42A23] shadow-[0_1px_3px_rgba(28,38,80,.15)]">109</span>
+                            ) : sky ? (
+                              <span aria-hidden="true" className="absolute -right-1.5 -bottom-1 grid size-[18px] place-items-center rounded-full bg-white shadow-[0_1px_3px_rgba(28,38,80,.15)]"><SkyIcon id={sky} size={13} /></span>
+                            ) : null}
+                          </span>
                         </button>
                       </td>
                     );
@@ -282,14 +286,9 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
               ))}
             </tbody>
           </table>
-          <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-t2 text-[#5A6478]">
-            <li className="flex items-center gap-1.5"><span aria-hidden="true" className="size-1.5 rounded-full bg-[#1F2A55]" />내가 고친 하늘</li>
-            <li className="flex items-center gap-1.5"><span aria-hidden="true" className="rounded-full bg-[#FFE8E6] px-1 text-t1 font-bold text-[#C42A23]">109</span>109 안내가 나왔던 날</li>
-          </ul>
-          <p className="mt-3 rounded-r3 bg-[#F2F4F8] p-3 text-t2 text-pretty text-[#3D4559]">
+          <p className="mt-2 text-t1 text-[#8A91A3]">
             {AI_NOTE}
-            {choice === "on" && <><br />하늘을 고를 때 그날 내가 한 말을 AI 서비스로 한 번 더 보내요. 오늘 하늘은 하루가 지나면 골라요.</>}
-            {choice === "off" && <><br />AI로 고르기를 꺼 두었어요. 날짜를 눌러 직접 고를 수 있어요. <button onClick={() => onChoice("on")} className="ui-press font-bold text-[#1F2A55] underline underline-offset-4">AI로 고르기 켜기</button></>}
+            {choice === "off" && <> · <button onClick={() => onChoice("on")} className="ui-press font-medium text-[#1F2A55] underline underline-offset-4">AI로 고르기 켜기</button></>}
           </p>
         </section>
 
@@ -308,7 +307,6 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
                 </li>
               ))}
             </ul>
-            {view.noSky > 0 && <p className="mt-3 text-t2 text-[#5A6478]">하늘이 없는 {view.noSky}일은 빼고 셌어요.</p>}
           </section>
         )}
         </>}
