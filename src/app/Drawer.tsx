@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { COLORS, type Profile, josa } from "@/lib/onboarding";
 import { type QuotaStatus, quotaSummary } from "@/lib/quota-status";
 import { type DayStat, effectiveSky, loadReport, localDate, monthView } from "@/lib/report";
 import { Icon } from "./art";
 import Buddy from "./Buddy";
 import { SkyDot } from "./sky";
+import { getSfxEnabled, setSfxEnabled, subscribeSfx } from "@/lib/sfx";
 
 
 // 왼쪽에서 열리는 메뉴. Tolan 메뉴 구조를 참고하되, 성격 인사이트·먼저 연락하기는 넣지 않았다
@@ -39,6 +40,21 @@ function SettingRow({ children, onClick, href, danger, trailing }: { children: R
   if (href) return <li><a href={href} className={`ui-press ${className} hover:bg-[#F7F8FB]`}>{children}{trailing}</a></li>;
   if (onClick) return <li><button onClick={onClick} className={`ui-press ${className} hover:bg-[#F7F8FB]`}>{children}{trailing}</button></li>;
   return <li className={className}>{children}{trailing}</li>;
+}
+
+/** 효과음 켬/끔. 이 기기에만 저장한다. 음성 대화 중에는 설정과 상관없이 쉰다. */
+function SfxRow() {
+  const on = useSyncExternalStore(subscribeSfx, getSfxEnabled, () => true);
+  return (
+    <li>
+      <button role="switch" aria-checked={on} onClick={() => setSfxEnabled(!on)} data-sfx="none" className="ui-press flex min-h-11 w-full items-center justify-between gap-3 px-3.5 text-left text-t4 text-[#1F2A55] hover:bg-[#F7F8FB]">
+        <span>효과음<span className="ml-2 text-t2 text-[#8A91A3]">버튼·화면 전환</span></span>
+        <span aria-hidden="true" className={`relative h-6 w-10 shrink-0 rounded-full transition-colors duration-[var(--seed-duration-d4)] ${on ? "bg-[#1F2A55]" : "bg-[#D9DDE7]"}`}>
+          <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform duration-[var(--seed-duration-d4)] ${on ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+        </span>
+      </button>
+    </li>
+  );
 }
 
 /** 내가 고른 몽글이의 프로필. 처음 이야기한 날부터 며칠째인지는 이 기기의 기록으로만 센다. */
@@ -272,6 +288,10 @@ export default function Drawer({
             <SettingRow href="#" trailing={chevron}>이용약관</SettingRow>
             <SettingRow href="#" trailing={chevron}>개인정보 처리방침</SettingRow>
             <SettingRow trailing={<span className="text-t3 tabular-nums text-[#8A91A3]">0.1.0</span>}>앱 버전</SettingRow>
+          </ul>
+
+          <ul className="mt-3 overflow-hidden rounded-r3 bg-white">
+            <SfxRow />
           </ul>
 
           <ul className="mt-3 overflow-hidden rounded-r3 bg-white">

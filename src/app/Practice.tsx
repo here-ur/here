@@ -89,7 +89,7 @@ export function PracticeSheet({ practice, color, done, onDone, onClose }: { prac
       footer={done
         ? <button type="button" onClick={onClose} className="ui-press h-14 w-full rounded-full bg-[#F2F4F8] text-t5 font-bold text-[#1F2A55]">닫기</button>
         : <div className="flex flex-col gap-2">
-          <button type="button" onClick={onDone} className="ui-press h-14 w-full rounded-full bg-[#1F2A55] text-t5 font-bold text-white">다 했어요</button>
+          <button type="button" onClick={onDone} data-sfx="success" className="ui-press h-14 w-full rounded-full bg-[#1F2A55] text-t5 font-bold text-white">다 했어요</button>
           <button type="button" onClick={onClose} className="ui-press h-11 w-full rounded-full text-t4 font-medium text-[#5A6478]">다음에 할게요</button>
         </div>}
     >

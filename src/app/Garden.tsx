@@ -182,6 +182,7 @@ export default function Garden({ who, days, now, onSeed, splineUrl = GARDEN_SPLI
                 <button
                   onClick={() => { pickSeed(seed.id, now); setSeeds(loadSeeds()); onSeed?.(seed.opener); }}
                   aria-pressed={picked}
+                  data-sfx={picked ? "tap" : "success"}
                   className={`ui-press flex h-full min-h-20 w-full flex-col justify-between rounded-r4 p-3 text-left ${picked ? "bg-[#1F2A55] text-white" : "bg-[#F4F6FB] text-[#1F2A55] hover:bg-[#EEF1F8]"}`}
                 >
                   <span className="text-t3 font-bold leading-snug">{seed.label}</span>

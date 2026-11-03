@@ -7,6 +7,7 @@ import { ChatRequestError, requestChat } from "@/lib/chat";
 import { type Msg, type Session, loadStoredSessions, pruneLog, saveSession } from "@/lib/log";
 import { DEFAULT_COMPANION, type Profile, clearProfile, josa, parseProfile, profileRaw, saveProfile } from "@/lib/onboarding";
 import { type Realtime, connectRealtime } from "@/lib/realtime";
+import { muteSfx } from "@/lib/sfx";
 import { displayNameForServer } from "@/lib/friends";
 import { requestQuotaStatus } from "@/lib/quota-status";
 import { syncReport } from "@/lib/report";
@@ -80,6 +81,8 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   const [headline, setHeadline] = useState<string | null>(null);
   const [homeGreetingDone, setHomeGreetingDone] = useState(false);
   const [homeSpeaking, setHomeSpeaking] = useState(false);
+  // 음성 대화 중에는 효과음이 마이크에 섞이지 않게 모두 쉰다.
+  useEffect(() => { muteSfx(voiceMode); return () => muteSfx(false); }, [voiceMode]);
 
   useEffect(() => {
     const controller = new AbortController();
