@@ -4,9 +4,10 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
 import { companionState } from "@/lib/companion-state";
 import { ChatRequestError, requestChat } from "@/lib/chat";
-import { type Msg, type Session, saveSession } from "@/lib/log";
+import { type Msg, type Session, loadStoredSessions, pruneLog, saveSession } from "@/lib/log";
 import { DEFAULT_COMPANION, type Profile, clearProfile, josa, parseProfile, profileRaw, saveProfile } from "@/lib/onboarding";
 import { type Realtime, connectRealtime } from "@/lib/realtime";
+import { syncReport } from "@/lib/report";
 import { browserSupabase } from "@/lib/supabase";
 import AuthGate from "./AuthGate";
 import MicrophonePermissionGate from "./MicrophonePermissionGate";
@@ -16,7 +17,7 @@ import Drawer from "./Drawer";
 import HomeScreen from "./HomeScreen";
 import HomeEntryGreeting from "./HomeEntryGreeting";
 import GetHelp from "./GetHelp";
-import Log from "./Log";
+import Report from "./Report";
 import Onboarding from "./Onboarding";
 
 type Status = "connecting" | "idle" | "listening" | "thinking" | "speaking";
@@ -58,6 +59,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   const [suggest, setSuggest] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [micOn, setMicOn] = useState(true);
+  const [hearing, setHearing] = useState(false); // 음성에서 사용자가 말하는 중(몽글이 반응용)
   const [hasMic, setHasMic] = useState(false);
   const [typing, setTyping] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
@@ -65,7 +67,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   const [pendingText, setPendingText] = useState("");
   const [error, setError] = useState("");
   const [memoryWarning, setMemoryWarning] = useState("");
-  const [showLog, setShowLog] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [customizing, setCustomizing] = useState(false);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
@@ -96,6 +98,13 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
     })();
     return () => controller.abort();
   }, []);
+
+  // 원문이 30일이 지나 지워지기 전에 날짜별 숫자로 옮겨 두고, 그다음에 오래된 원문을 지운다.
+  const companionName = profile?.companion;
+  useEffect(() => {
+    syncReport(loadStoredSessions(), Date.now(), companionName ? [companionName] : []);
+    pruneLog();
+  }, [companionName]);
 
   const rt = useRef<Realtime | null>(null);
   const session = useRef<Session | null>(null);
@@ -147,7 +156,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
     session.current ??= { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, startedAt: Date.now(), messages: [] };
     const controller = new AbortController();
     chatRequest.current = controller;
-    const next: Msg[] = [...messages, { role: "user", content: text }];
+    const next: Msg[] = [...messages, { role: "user", content: text, at: Date.now() }];
     setPendingText(text);
     setError("");
     setStatus("thinking");
@@ -155,7 +164,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
       const token = await accessToken();
       const result = await requestChat(next.slice(-60), profile?.companion ?? DEFAULT_COMPANION, controller.signal, token);
       if (chatRequest.current !== controller) return;
-      const completed: Msg[] = [...next, { role: "assistant", content: result.reply }];
+      const completed: Msg[] = [...next, { role: "assistant", content: result.reply, at: Date.now() }];
       setMessages(completed);
       if (session.current) saveSession({ ...session.current, messages: completed });
       if (result.crisis) setCrisis(true);
@@ -194,6 +203,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
     setStarted(true);
     setVoiceMode(true);
     setTyping(false);
+    setHearing(false);
     setLive("");
     setStatus("connecting");
     setError("");
@@ -202,17 +212,22 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
       const token = await accessToken();
       const conn = await connectRealtime({
         onStatus: (next) => { if (current()) setStatus(next); },
-        onUserPartial: (text) => current() && hasCrisisSignal(text) && setCrisis(true),
+        onUserPartial: (text) => {
+          if (!current()) return;
+          setHearing(true);
+          if (hasCrisisSignal(text)) setCrisis(true);
+        },
         onUserText: (text) => {
           if (!current()) return;
+          setHearing(false);
           if (hasCrisisSignal(text)) setCrisis(true);
-          add({ role: "user", content: text });
+          add({ role: "user", content: text, at: Date.now() });
         },
         onAssistantPartial: (text) => { if (current()) setLive(text); },
         onAssistantText: (text) => {
           if (!current()) return;
           setLive("");
-          add({ role: "assistant", content: text });
+          add({ role: "assistant", content: text, at: Date.now() });
         },
         onTool: (name) => {
           if (!current()) return;
@@ -242,6 +257,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   /** 채팅 진입 시 음성 연결은 닫고, 첫 전송 전에는 API를 호출하지 않는다. */
   function openText() {
     setHomeGreetingDone(true);
+    setHearing(false);
     connectionAttempt.current += 1;
     voiceRequest.current?.abort();
     voiceRequest.current = null;
@@ -274,6 +290,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   }
 
   function stopVoice() {
+    setHearing(false);
     connectionAttempt.current += 1;
     voiceRequest.current?.abort();
     voiceRequest.current = null;
@@ -287,11 +304,11 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
     setError("");
   }
 
-  function openLog() {
+  function openReport() {
     setHomeGreetingDone(true);
     cancelChat();
     stopVoice();
-    setShowLog(true);
+    setShowReport(true);
   }
 
   function openHelp() {
@@ -319,7 +336,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   const who = { name: profile.companion, shape: profile.shape ?? "cloud", color: profile.color ?? "lavender" };
   if (showHelp) return <GetHelp color={who.color} crisis={crisis} onBack={() => setShowHelp(false)} />;
 
-  if (showLog) return <Log who={who} onBack={() => setShowLog(false)} />;
+  if (showReport) return <Report who={who} accessToken={accessToken} onBack={() => setShowReport(false)} />;
 
   const listening = !error && hasMic && micOn && (status === "listening" || status === "idle");
   const lastAssistant = live || messages.findLast((m) => m.role === "assistant")?.content;
@@ -334,7 +351,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
         headline={headline}
         onVoice={toVoice}
         onText={openText}
-        onLog={openLog}
+        onReport={openReport}
         onMenu={() => { setHomeGreetingDone(true); setShowMenu(true); }}
         chat={{
           open: typing,
@@ -357,6 +374,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
           error,
           caption: captions ? lastAssistant : undefined,
           warning: memoryWarning,
+          hearing,
           onEnd: stopVoice,
           onMic: () => {
             if (error) { rt.current?.close(); rt.current = null; void begin(); return; }
@@ -375,9 +393,9 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
           open={showMenu}
           profile={me}
           onClose={() => setShowMenu(false)}
-          onLog={() => {
+          onReport={() => {
             setShowMenu(false);
-            openLog();
+            openReport();
           }}
           onCustomize={() => {
             setShowMenu(false);

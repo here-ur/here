@@ -1,4 +1,5 @@
 // 서버 전용. 환경값은 /api/chat만 전달하며, 음성용 OpenAI 키로 대체하지 않는다.
+// 요청 읽기·주소·오류 변환은 리포트 하늘 고르기(report-sky-server.ts)도 함께 쓴다.
 import { hasCrisisSignal } from "./crisis.ts";
 import { cleanName } from "./onboarding.ts";
 import { companionConversationPrompt } from "./companion-prompt.ts";
@@ -8,9 +9,9 @@ const MAX_MESSAGES = 60;
 const MAX_MESSAGE_CHARS = 8_000;
 const MAX_TOTAL_CHARS = 60_000;
 const MAX_REQUEST_BYTES = 256 * 1024;
-const MAX_RESPONSE_BYTES = 1024 * 1024;
-const DEFAULT_BASE_URL = "https://api.runyour.ai/v1";
-const DEFAULT_MODEL = "openai/gpt-5.6-sol";
+export const MAX_RESPONSE_BYTES = 1024 * 1024;
+export const DEFAULT_BASE_URL = "https://api.runyour.ai/v1";
+export const DEFAULT_MODEL = "openai/gpt-5.6-sol";
 
 type Message = { role: "user" | "assistant"; content: string };
 type ToolName = "show_crisis_help" | "show_get_help";
@@ -30,7 +31,7 @@ export type ChatServerConfig = {
   };
 };
 
-class ChatFailure extends Error {
+export class ChatFailure extends Error {
   status: number;
   constructor(status: number, message: string) {
     super(message);
@@ -57,7 +58,7 @@ const TOOLS = [
   },
 ];
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
@@ -73,7 +74,7 @@ function instructions(name: string) {
 }
 
 /** Content-Length가 없거나 잘못돼도 실제 읽은 바이트 수로 제한한다. */
-async function readJson(source: Request | Response, limit: number, signal: AbortSignal, upstream = false): Promise<unknown> {
+export async function readJson(source: Request | Response, limit: number, signal: AbortSignal, upstream = false): Promise<unknown> {
   const fail = () => new ChatFailure(upstream ? 502 : 400, upstream ? INVALID_RESPONSE : INVALID_REQUEST);
   const tooLarge = () => new ChatFailure(upstream ? 502 : 413, upstream ? INVALID_RESPONSE : "대화 내용이 너무 길어요. 내용을 줄여서 다시 보내 주세요.");
   const length = source.headers.get("content-length");
@@ -134,7 +135,7 @@ function validateInput(body: unknown): { messages: Message[]; name: string } {
   return { messages, name: cleanName(typeof body.name === "string" ? body.name : "") };
 }
 
-function endpoint(baseUrl: string) {
+export function endpoint(baseUrl: string) {
   try {
     const url = new URL(baseUrl);
     if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) throw new Error();
@@ -145,7 +146,7 @@ function endpoint(baseUrl: string) {
   }
 }
 
-function providerFailure(status: number) {
+export function providerFailure(status: number) {
   if (status === 401 || status === 403) return new ChatFailure(503, "채팅 연결 인증을 확인해 주세요.");
   if (status === 429) return new ChatFailure(429, "지금은 요청이 많아요. 잠시 뒤 다시 보내 주세요.");
   if (status === 408 || status === 504) return new ChatFailure(504, "답변 시간이 길어졌어요. 잠시 뒤 다시 보내 주세요.");

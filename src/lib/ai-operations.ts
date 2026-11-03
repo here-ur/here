@@ -1,6 +1,6 @@
 import { setTimeout as delay } from "node:timers/promises";
 
-type Operation = "chat" | "summary" | "embedding" | "realtime_session" | "memory_save";
+type Operation = "chat" | "report_sky" | "summary" | "embedding" | "realtime_session" | "memory_save";
 type Outcome = "ok" | "failed" | "retry" | "skipped" | "usage";
 type Metric = { operation: Operation; outcome: Outcome; durationMs?: number; status?: number; attempt?: number; inputTokens?: number; outputTokens?: number; cachedTokens?: number };
 const integer = (v: unknown): v is number => typeof v === "number" && Number.isSafeInteger(v) && v >= 0 && v <= 1_000_000_000;
@@ -12,7 +12,7 @@ export function operationMetric(metric: Metric, sink: (line: string) => void = c
   }
   try { sink(JSON.stringify(event)); } catch { /* Observability must not break a request. */ }
 }
-export function usageMetric(operation: "chat" | "summary" | "embedding", body: unknown) {
+export function usageMetric(operation: "chat" | "report_sky" | "summary" | "embedding", body: unknown) {
   if (!body || typeof body !== "object" || !("usage" in body)) return;
   const usage = body.usage;
   if (!usage || typeof usage !== "object") return;

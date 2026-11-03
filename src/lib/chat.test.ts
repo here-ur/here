@@ -28,6 +28,14 @@ test("같은 출처의 채팅 경로에 메시지와 이름만 JSON으로 보낸
   assert.equal(fetchMock.mock.callCount(), 1);
 });
 
+test("메시지 시각 같은 기기 전용 정보는 빼고 role·content만 보낸다", async (t) => {
+  t.mock.method(globalThis, "fetch", async (_input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    assert.deepEqual(JSON.parse(init?.body as string), { messages, name: "몽글이" });
+    return Response.json({ reply: "응", crisis: false, suggest: false });
+  });
+  await requestChat(messages.map((m, i) => ({ ...m, at: i + 1 })), "몽글이");
+});
+
 test("로그인 토큰을 채팅 요청에 실어 보낸다", async (t) => {
   t.mock.method(globalThis, "fetch", async (_input: Parameters<typeof fetch>[0], init?: RequestInit) => {
     assert.deepEqual(init?.headers, { "Content-Type": "application/json", Authorization: "Bearer member-token" });

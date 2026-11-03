@@ -20,3 +20,8 @@ const PATTERNS = [
 export function hasCrisisSignal(text: string): boolean {
   return PATTERNS.some((p) => p.test(text));
 }
+
+/** AI가 이미 109 안내로 위기 대응을 한 답변. 사용자 말이 키워드에 걸리지 않아도 위기 대화로 본다. */
+export function hasAssistantCrisis(text: string): boolean {
+  return /109|자살\s*예방/.test(text);
+}

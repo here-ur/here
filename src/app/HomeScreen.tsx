@@ -25,6 +25,7 @@ export type HomeVoiceControls = {
   error: string;
   caption?: string;
   warning?: string;
+  hearing?: boolean; // 사용자가 말하는 중(받아쓰기 중간 결과가 오는 동안)
   onEnd: () => void;
   onMic: () => void;
 };
@@ -85,7 +86,7 @@ export default function HomeScreen({
   headline,
   onVoice,
   onText,
-  onLog,
+  onReport,
   onMenu,
   voice,
   chat,
@@ -97,7 +98,7 @@ export default function HomeScreen({
   headline?: string | null;
   onVoice: () => void;
   onText: () => void;
-  onLog: () => void;
+  onReport: () => void;
   onMenu: () => void;
   voice?: HomeVoiceControls;
   chat: HomeChatControls;
@@ -212,11 +213,9 @@ export default function HomeScreen({
           <Buddy shape={profile.shape} color={profile.color} size={30} look={[0.2, 0.1]} />
           <span className="text-t7 font-medium">Here!</span>
         </span>
-        <button onClick={onLog} aria-label="내 기록" className="ui-press grid size-14 place-items-center rounded-full bg-white shadow-[0_3px_18px_rgba(28,38,80,.055),0_1px_2px_rgba(28,38,80,.03)]">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M3.6 12.2A8.5 8.5 0 1 0 6.2 5.9" />
-            <path d="M3.4 4.6v4h4" />
-            <path d="M12 7.6V12l3 2" />
+        <button onClick={onReport} aria-label="리포트" className="ui-press grid size-14 place-items-center rounded-full bg-white shadow-[0_3px_18px_rgba(28,38,80,.055),0_1px_2px_rgba(28,38,80,.03)]">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M5 19V11M12 19V5M19 19v-6" />
           </svg>
         </button>
       </header>
@@ -253,7 +252,17 @@ export default function HomeScreen({
           </button>
         )}
         <div className={`home-buddy ${voice ? "home-buddy-expanded" : ""}`}>
-          <Buddy shape={profile.shape} color={profile.color} size={170} state={voice?.state ?? chat.state} mouth={greeting && !voice && !chat.open ? "tongue" : undefined} bob />
+          <Buddy
+            shape={profile.shape}
+            color={profile.color}
+            size={170}
+            state={voice?.state ?? chat.state}
+            mouth={greeting && !voice && !chat.open ? "tongue" : undefined}
+            bob
+            tap={chat.open && !voice ? chat.draft.length : undefined}
+            hearing={voice ? Boolean(voice.hearing) : undefined}
+            voice={Boolean(voice)}
+          />
         </div>
         {voice && <div className="mt-5 max-w-full px-4 text-center">
           <p role="status" className="text-t4 font-medium text-[#1F2A55]">{voice.error ? "연결하지 못했어요" : voice.statusText}</p>

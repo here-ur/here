@@ -5,8 +5,8 @@ import { COLORS, type Profile, josa } from "@/lib/onboarding";
 import { Icon } from "./art";
 import Buddy from "./Buddy";
 
-// 왼쪽에서 열리는 메뉴. Tolan 메뉴 구조를 참고하되, 성격 인사이트·먼저 연락하기·하루 대화량은 넣지 않았다
-// (진단처럼 읽힐 수 있거나, 서버 저장이 필요하거나, 아직 정하지 않은 것).
+// 왼쪽에서 열리는 메뉴. Tolan 메뉴 구조를 참고하되, 성격 인사이트·먼저 연락하기는 넣지 않았다
+// (진단처럼 읽힐 수 있거나, 서버 저장이 필요한 것). 대화량·하늘 같은 숫자는 기기에만 두는 리포트에서 보여 준다.
 
 function Row({ icon, label, onClick, current }: { icon: React.ReactNode; label: string; onClick: () => void; current?: boolean }) {
   return (
@@ -29,7 +29,7 @@ export default function Drawer({
   open,
   profile,
   onClose,
-  onLog,
+  onReport,
   onCustomize,
   onHelp,
   onInvite,
@@ -39,7 +39,7 @@ export default function Drawer({
   open: boolean;
   profile: Profile;
   onClose: () => void;
-  onLog: () => void;
+  onReport: () => void;
   onCustomize: () => void;
   onHelp: () => void;
   onInvite: () => void;
@@ -115,13 +115,11 @@ export default function Drawer({
             }
           />
           <Row
-            onClick={onLog}
-            label="내 기록"
+            onClick={onReport}
+            label="리포트"
             icon={
-              <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
-                <path d="M3.6 12.2A8.5 8.5 0 1 0 6.2 5.9" />
-                <path d="M3.4 4.6v4h4" />
-                <path d="M12 7.6V12l3 2" />
+              <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" {...stroke} strokeWidth={2}>
+                <path d="M5 19V11M12 19V5M19 19v-6" />
               </svg>
             }
           />

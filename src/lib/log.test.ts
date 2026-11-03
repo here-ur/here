@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clearLog, loadLog, saveSession } from "./log.ts";
+import { KEEP_MS, clearLog, loadLog, loadStoredSessions, pruneLog, saveSession } from "./log.ts";
 import { setLocalOwner } from "./local-scope.ts";
 
 const store = new Map<string, string>();
@@ -40,4 +40,23 @@ test("다른 계정의 기록은 보이지 않는다", () => {
   assert.deepEqual(loadLog(), []);
   setLocalOwner("member-a");
   assert.equal(loadLog()[0]?.id, "private");
+});
+
+test("메시지 시각은 저장·불러오기 후에도 남는다", () => {
+  clearLog();
+  saveSession({ id: "t", startedAt: Date.now(), messages: [{ role: "user", content: "안녕", at: 123 }] });
+  assert.equal(loadLog()[0].messages[0].at, 123);
+});
+
+test("30일 지난 원문은 숨겨도 리포트 동기화용으로는 읽고, pruneLog가 실제로 지운다", () => {
+  clearLog();
+  const now = Date.now();
+  saveSession({ id: "new", startedAt: now, messages: msg });
+  const key = "here.log.v1.member-a";
+  const stored = JSON.parse(store.get(key) ?? "[]");
+  store.set(key, JSON.stringify([...stored, { id: "old", startedAt: now - KEEP_MS - 1000, messages: msg }]));
+  assert.deepEqual(loadLog(now).map((s) => s.id), ["new"]);
+  assert.deepEqual(loadStoredSessions().map((s) => s.id), ["new", "old"]);
+  pruneLog(now);
+  assert.deepEqual(loadStoredSessions().map((s) => s.id), ["new"]);
 });

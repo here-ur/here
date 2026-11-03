@@ -1,4 +1,5 @@
-import { useId } from "react";
+import { useId, useState } from "react";
+import { type TransitionCue, transitionCue } from "@/lib/buddy-cues";
 import { COLORS, type ColorId, type ShapeId } from "@/lib/onboarding";
 import "./buddy-motion.css";
 
@@ -57,9 +58,11 @@ function GooglyEye({ cx, cy, look, lid, id }: { cx: number; cy: number; look: Lo
         <circle cx={cx} cy={cy} r={r} fill="#FFFFFF" />
         <g className="buddy-look-position" style={{ transform: `translate(${look[0] * r * 0.36}px, ${look[1] * r * 0.36}px)` }}>
           <g className="buddy-gaze">
-            <circle cx={cx} cy={cy} r={r * 0.5} fill={INK} />
-            {/* 반짝임: 이게 없으면 눈동자가 빈 구멍처럼 보여서 징그럽다 */}
-            <circle cx={cx - r * 0.17} cy={cy - r * 0.2} r={r * 0.15} fill="#FFFFFF" />
+            <g className="buddy-glance">
+              <circle cx={cx} cy={cy} r={r * 0.5} fill={INK} />
+              {/* 반짝임: 이게 없으면 눈동자가 빈 구멍처럼 보여서 징그럽다 */}
+              <circle cx={cx - r * 0.17} cy={cy - r * 0.2} r={r * 0.15} fill="#FFFFFF" />
+            </g>
           </g>
         </g>
       </g>
@@ -144,8 +147,10 @@ function RoundBody({ c, face, id }: { c: Palette; face: Face; id: string }) {
           <g className="buddy-eye-blink">
             <g className="buddy-look-position" style={{ transform: `translate(${ex}px, ${ey}px)` }}>
               <g className="buddy-gaze">
-                <circle cx="-9" cy="0" r="3.6" fill={INK} />
-                <circle cx="9" cy="0" r="3.6" fill={INK} />
+                <g className="buddy-glance">
+                  <circle cx="-9" cy="0" r="3.6" fill={INK} />
+                  <circle cx="9" cy="0" r="3.6" fill={INK} />
+                </g>
               </g>
             </g>
           </g>
@@ -168,6 +173,9 @@ export default function Buddy({
   lid,
   bob = false,
   className = "",
+  tap,
+  hearing,
+  voice,
 }: {
   shape?: ShapeId;
   color?: ColorId;
@@ -178,11 +186,25 @@ export default function Buddy({
   lid?: boolean;
   bob?: boolean;
   className?: string;
+  tap?: number; // 글을 칠 때마다 바뀌는 값(글자 수). 주목 상태에서 아주 작게 반응한다
+  hearing?: boolean; // 음성에서 사용자가 말하는 중. 말을 시작·멈추는 순간에 반응한다
+  voice?: boolean; // 음성 대화 중. 끝나는 순간 짧게 작별 몸짓을 한다
 }) {
   const id = `buddy${useId().replace(/[^a-zA-Z0-9]/g, "")}`; // useId의 특수문자는 url(#…)에서 깨질 수 있다
   const c = COLORS.find((x) => x.id === color) ?? COLORS[0];
   const preset = STATE_FACE[state];
   const face: Face = { look: look ?? preset.look, mouth: mouth ?? preset.mouth, lid: lid ?? preset.lid };
+  // 상태·입력이 바뀐 순간에만 한 번 움직인다. 렌더 중에 이전 값과 비교하고, 동작이 끝나면 지운다.
+  const [prev, setPrev] = useState({ state, tap, hearing, voice });
+  const [cue, setCue] = useState<TransitionCue | "bye" | null>(null);
+  const [react, setReact] = useState<string | null>(null);
+  if (prev.state !== state || prev.tap !== tap || prev.hearing !== hearing || prev.voice !== voice) {
+    if (prev.voice && !voice) setCue("bye");
+    else if (prev.state !== state) setCue(transitionCue(prev.state, state));
+    if (prev.hearing !== hearing && hearing !== undefined && prev.hearing !== undefined && state === "listening") setReact(hearing ? "hear-start" : "hear-stop");
+    else if (prev.tap !== tap && tap !== undefined && prev.tap !== undefined && state === "attentive") setReact(react === "tap-a" ? "tap-b" : "tap-a");
+    setPrev({ state, tap, hearing, voice });
+  }
   return (
     <svg
       width={size}
@@ -204,9 +226,16 @@ export default function Buddy({
           <feGaussianBlur stdDeviation="16" />
         </filter>
       </defs>
-      <g className="buddy-pose">
-        <g className="buddy-body-motion">
-          {shape === "round" ? <RoundBody c={c} face={face} id={id} /> : <CloudBody c={c} face={face} id={id} />}
+      {/* 늦게 도착한 이전 동작의 끝 신호가 다음 동작을 지우지 않게, 지금 붙은 동작이 끝났을 때만 지운다. */}
+      <g className="buddy-cue" data-cue={cue ?? undefined} onAnimationEnd={(event) => { if (event.target === event.currentTarget && event.animationName === `buddy-cue-${cue}`) setCue(null); }}>
+        <g className="buddy-react" data-react={react ?? undefined} onAnimationEnd={(event) => { if (event.target === event.currentTarget && react?.startsWith("hear") && event.animationName === `buddy-${react}`) setReact(null); }}>
+          <g className="buddy-pose">
+            <g className="buddy-wait">
+              <g className="buddy-body-motion">
+                {shape === "round" ? <RoundBody c={c} face={face} id={id} /> : <CloudBody c={c} face={face} id={id} />}
+              </g>
+            </g>
+          </g>
         </g>
       </g>
     </svg>
