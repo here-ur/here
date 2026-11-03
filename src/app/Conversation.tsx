@@ -12,7 +12,7 @@ import { Bloom } from "./HomeScreen";
 // 대화 화면들: 글 대화(TextScreen), 끝난 뒤 요약(SummaryScreen).
 // 홈과 같은 라이트 톤(흰 바탕 + 아래 번짐)이고, 상태와 동작은 page.tsx가 들고 있다.
 
-export type Who = { name: string; shape: ShapeId; color: ColorId };
+export type Who = { name: string; shape: ShapeId; color: ColorId; accessory?: string };
 
 
 /** full: 홈과 같은 번짐(통화). soft: 글이 많은 화면이라 아래만 은은하게 물든다(번짐을 잘라 쓰면 위쪽에 딱딱한 경계가 생긴다). */

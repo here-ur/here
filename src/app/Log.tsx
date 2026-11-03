@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { clearLog, loadLog } from "@/lib/log";
 import { COLORS, josa } from "@/lib/onboarding";
+import { clearSeeds } from "@/lib/garden";
 import { clearReport } from "@/lib/report";
 import { Icon } from "./art";
 import Buddy from "./Buddy";
@@ -11,16 +12,17 @@ import { Bubbles, Shell, type Who } from "./Conversation";
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 
 /** 대화 기록(리포트 안): 대화를 날짜별 카드로 보여 준다. 기록은 이 기기의 브라우저에만 있다. */
-export default function Log({ who, onBack, title = "대화 기록", back = "리포트로", onCleared }: { who: Who; onBack: () => void; title?: string; back?: string; onCleared?: () => void }) {
+export default function Log({ who, onBack, title = "대화 기록", back = "라이브러리로", onCleared }: { who: Who; onBack: () => void; title?: string; back?: string; onCleared?: () => void }) {
   // 몽글이 인사만 있고 내가 한 말이 없는 대화(마이크가 막혔을 때 등)는 보여 주지 않는다. 저장된 건 그대로 둔다.
   const [sessions, setSessions] = useState(() => loadLog().filter((s) => s.messages.some((m) => m.role === "user")));
   const today = new Date().toDateString();
   const deep = COLORS.find((c) => c.id === who.color)?.deep;
 
   function clearAll() {
-    if (!window.confirm("이 기기에 남은 대화 기록과 리포트 숫자(하늘·자주 한 말)를 모두 지울까요? 되돌릴 수 없어요.")) return;
+    if (!window.confirm("이 기기에 남은 대화 기록과 날짜별 숫자(하늘·자주 한 말·구름 정원)를 모두 지울까요? 되돌릴 수 없어요.")) return;
     clearLog();
     clearReport();
+    clearSeeds();
     setSessions([]);
     onCleared?.();
   }

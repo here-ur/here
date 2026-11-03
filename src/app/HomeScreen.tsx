@@ -94,19 +94,23 @@ export default function HomeScreen({
   headline,
   onVoice,
   onText,
-  onReport,
+  onLibrary,
   onMenu,
   voice,
   chat,
   notice,
+  spotlight,
+  nudge,
   children,
 }: {
   profile: Profile;
   greet: boolean; // 온보딩을 막 끝냈으면 몽글이가 처음 인사한다
   headline?: string | null;
+  spotlight?: React.ReactNode; // 기본 홈 위쪽에 작게 두는 것(오늘 해 볼 만한 것 시안). 대화 중에는 감춘다
+  nudge?: React.ReactNode; // 대화를 마친 뒤 하단 버튼 위에 한 번 보여 주는 카드 시안
   onVoice: () => void;
   onText: () => void;
-  onReport: () => void;
+  onLibrary: () => void;
   onMenu: () => void;
   voice?: HomeVoiceControls;
   chat: HomeChatControls;
@@ -268,8 +272,7 @@ export default function HomeScreen({
             <path d="M4.5 7h15M4.5 12h15M4.5 17h9" />
           </svg>
         </button>
-        <span className="text-t7 font-bold">Here!</span>
-        <button onClick={onReport} aria-label="리포트" className="home-chrome-button ui-press grid size-12 place-items-center rounded-full">
+        <button onClick={onLibrary} aria-label="라이브러리" className="home-chrome-button ui-press grid size-12 place-items-center rounded-full">
           <CalendarIcon />
         </button>
       </header>
@@ -280,6 +283,7 @@ export default function HomeScreen({
       </div>
 
       {notice && <div className="home-safety absolute inset-x-gutter top-[18%] z-10">{notice}</div>}
+      {spotlight && resting && !notice && <div className="absolute inset-x-gutter top-[calc(env(safe-area-inset-top)+76px)] z-10">{spotlight}</div>}
 
       {hasMessages && <div ref={messageListRef} className="home-messages" role="log" aria-label="대화 내용" aria-live="polite" aria-relevant="additions text">
         <p className="pt-1 text-center text-t1 text-[#5A6478]/80">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
@@ -307,6 +311,7 @@ export default function HomeScreen({
           <Buddy
             shape={profile.shape}
             color={profile.color}
+            accessory={profile.accessory}
             size={170}
             state={voice?.state ?? chat.state}
             mouth={greeting && !voice && !chat.open ? "tongue" : undefined}
@@ -340,9 +345,10 @@ export default function HomeScreen({
             선택한 파일 {files.length}개 · 기기에서만
           </button>
         )}
+        {nudge && resting && <div>{nudge}</div>}
         {chatting && (
           <div aria-hidden="true" className="home-chat-buddy">
-            <Buddy shape={profile.shape} color={profile.color} size={68} state={chat.state} tap={chat.draft.length} />
+            <Buddy shape={profile.shape} color={profile.color} accessory={profile.accessory} size={68} state={chat.state} tap={chat.draft.length} />
           </div>
         )}
         <div role="group" aria-label={voice ? "음성 대화" : chat.open ? "메시지 작성" : "대화 시작"} className="home-actions">

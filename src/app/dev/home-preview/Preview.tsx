@@ -11,7 +11,7 @@ export default function Preview() {
   return <HomeScreen
     profile={{ nickname: "", companion: DEFAULT_COMPANION, shape: "cloud", color: "lavender", voice: "marin", style: "listen" }}
     greet={false} headline={"아줄 한 판 대신,\n이야기 한 판 어때?"}
-    onVoice={() => { setOpen(false); setMicOn(true); setVoice(true); }} onText={() => setOpen(true)} onReport={() => {}} onMenu={() => {}}
+    onVoice={() => { setOpen(false); setMicOn(true); setVoice(true); }} onText={() => setOpen(true)} onLibrary={() => {}} onMenu={() => {}}
     voice={voice ? { state: micOn ? "listening" : "idle", connecting: false, listening: micOn, micOn, hasMic: true, statusText: micOn ? "듣고 있어요" : "마이크가 꺼져 있어요", error: "", onEnd: () => setVoice(false), onMic: () => setMicOn(!micOn) } : undefined}
     chat={{ open, draft, sending: false, error: "", state: "idle", onDraft: setDraft, onClose: () => setOpen(false), onSend: () => {}, messages: [
       { role: "user", content: "테스트 화면: 내가 좋아하는 게임과 음료는?" },

@@ -1,0 +1,6 @@
+/* 정원 화면 바탕의 날씨 빛. 섬 뒤에서 천천히 숨 쉰다. 동작 줄이기에서는 멈춘다. */
+.sky-horizon { position: absolute; left: 50%; top: 6%; width: 140%; height: 40%; translate: -50% 0; border-radius: 9999px; filter: blur(40px); opacity: .8; }
+@media (prefers-reduced-motion: no-preference) {
+  .sky-horizon { animation: sky-breathe 12s ease-in-out infinite alternate; }
+}
+@keyframes sky-breathe { from { transform: scale(1); opacity: .65; } to { transform: scale(1.07); opacity: .9; } }

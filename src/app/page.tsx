@@ -14,13 +14,14 @@ import { browserSupabase } from "@/lib/supabase";
 import AuthGate from "./AuthGate";
 import MicrophonePermissionGate from "./MicrophonePermissionGate";
 import { Crisis109 } from "./Conversation";
+import ComingSoon from "./ComingSoon";
 import Customize from "./Customize";
 import Drawer from "./Drawer";
 import Friends from "./Friends";
 import HomeScreen from "./HomeScreen";
 import HomeEntryGreeting from "./HomeEntryGreeting";
 import GetHelp from "./GetHelp";
-import Report from "./Report";
+import Report, { type ReportMode } from "./Report";
 import Onboarding from "./Onboarding";
 
 type Status = "connecting" | "idle" | "listening" | "thinking" | "speaking";
@@ -61,6 +62,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   const [crisis, setCrisis] = useState(false);
   const [suggest, setSuggest] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [helpSoon, setHelpSoon] = useState(false); // 도움받기는 준비 중: 화면은 두고 안내 창만 띄운다
   const [micOn, setMicOn] = useState(true);
   const [hearing, setHearing] = useState(false); // 음성에서 사용자가 말하는 중(몽글이 반응용)
   const [hasMic, setHasMic] = useState(false);
@@ -70,7 +72,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   const [pendingText, setPendingText] = useState("");
   const [error, setError] = useState("");
   const [memoryWarning, setMemoryWarning] = useState("");
-  const [showReport, setShowReport] = useState(false);
+  const [reportMode, setReportMode] = useState<ReportMode | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const [customizing, setCustomizing] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
@@ -303,11 +305,11 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
     setError("");
   }
 
-  function openReport() {
+  function openReport(mode: ReportMode) {
     setHomeGreetingDone(true);
     cancelChat();
     stopVoice();
-    setShowReport(true);
+    setReportMode(mode);
   }
 
   function openFriends() {
@@ -317,6 +319,21 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
     setShowFriends(true);
   }
 
+  /** 인사이트에서 고른 이야기 씨앗: 홈의 글 대화를 열고 몽글이가 그 주제로 먼저 말을 건다. */
+  function startSeed(opener: string) {
+    setReportMode(null);
+    openText();
+    session.current ??= { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, startedAt: Date.now(), messages: [] };
+    add({ role: "assistant", content: opener, at: Date.now() });
+  }
+
+  // 도움받기 화면(GetHelp)은 남겨 두고, 출시 전까지는 들어가는 대신 '준비 중' 안내만 보여 준다.
+  function openHelpSoon() {
+    setHomeGreetingDone(true);
+    setHelpSoon(true);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 도움받기를 다시 열 때 쓴다
   function openHelp() {
     setHomeGreetingDone(true);
     cancelChat();
@@ -339,12 +356,12 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
     );
   }
 
-  const who = { name: profile.companion, shape: profile.shape ?? "cloud", color: profile.color ?? "lavender" };
+  const who = { name: profile.companion, shape: profile.shape ?? "cloud", color: profile.color ?? "lavender", accessory: profile.accessory };
   if (showHelp) return <GetHelp color={who.color} crisis={crisis} onBack={() => setShowHelp(false)} />;
 
   if (showFriends) return <Friends who={who} onBack={() => setShowFriends(false)} />;
 
-  if (showReport) return <Report who={who} accessToken={accessToken} onBack={() => setShowReport(false)} />;
+  if (reportMode) return <Report key={reportMode} mode={reportMode} who={who} accessToken={accessToken} onBack={() => setReportMode(null)} onSeed={startSeed} onDecorate={() => { setReportMode(null); setCustomizing(true); }} />;
 
   const listening = !error && hasMic && micOn && (status === "listening" || status === "idle");
   const lastAssistant = live || messages.findLast((m) => m.role === "assistant")?.content;
@@ -359,7 +376,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
         headline={headline}
         onVoice={toVoice}
         onText={openText}
-        onReport={openReport}
+        onLibrary={() => openReport("library")}
         onMenu={() => { setHomeGreetingDone(true); setShowMenu(true); }}
         chat={{
           open: typing,
@@ -393,7 +410,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
         } : undefined}
         notice={started && (crisis || suggest) ? <div className="flex flex-col items-center gap-3">
           {crisis && <Crisis109 className="w-full" />}
-          {suggest && <button onClick={openHelp} className="ui-press h-11 rounded-full bg-white px-5 text-t4 font-bold text-[#1F2A55]">도움받기</button>}
+          {suggest && <button onClick={openHelpSoon} className="ui-press h-11 rounded-full bg-white px-5 text-t4 font-bold text-[#1F2A55]">도움받기</button>}
         </div> : undefined}
       >
         {!homeGreetingDone && <HomeEntryGreeting name={profile.companion} voice={profile.voice} onSpeaking={setHomeSpeaking} onDone={setHomeGreetingDone} />}
@@ -401,9 +418,13 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
           open={showMenu}
           profile={me}
           onClose={() => setShowMenu(false)}
-          onReport={() => {
+          onInsight={() => {
             setShowMenu(false);
-            openReport();
+            openReport("insight");
+          }}
+          onLibrary={() => {
+            setShowMenu(false);
+            openReport("library");
           }}
           onCustomize={() => {
             setShowMenu(false);
@@ -411,7 +432,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
           }}
           onHelp={() => {
             setShowMenu(false);
-            openHelp();
+            openHelpSoon();
           }}
           onFriends={() => {
             setShowMenu(false);
@@ -425,6 +446,13 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
             location.reload();
           }}
         />
+        {helpSoon && (
+          <ComingSoon
+            title="도움받기를 준비하고 있어요"
+            body="실제 상담사와 이야기할 수 있는 방법을 준비 중이에요. 열리면 이곳에서 알려 드릴게요."
+            onClose={() => setHelpSoon(false)}
+          />
+        )}
         {customizing && (
           <Customize
             profile={me}

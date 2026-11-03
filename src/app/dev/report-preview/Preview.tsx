@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { Session } from "@/lib/log";
 import { type DayStat, type SkyId, setMySky } from "@/lib/report";
 import { DEFAULT_COMPANION } from "@/lib/onboarding";
-import { ReportView } from "../../Report";
+import { type ReportMode, ReportView } from "../../Report";
 
 // API·저장소 없이 리포트 화면을 확인하는 개발용 미리보기. 시안과 같은 2026년 10월·11월 예시다.
 const NOW = new Date(2026, 10, 1, 21, 30).getTime();
@@ -45,15 +45,19 @@ const SESSIONS: Session[] = [
 export default function Preview() {
   const [days, setDays] = useState(DAYS);
   const [choice, setChoice] = useState<"on" | "off" | null>(null);
+  // 뒤로 버튼을 누르면 인사이트 ↔ 라이브러리를 바꿔 본다.
+  const [mode, setMode] = useState<ReportMode>("library");
   return (
     <ReportView
+      key={mode}
+      mode={mode}
       who={{ name: DEFAULT_COMPANION, shape: "cloud", color: "lavender" }}
       days={days}
       sessions={SESSIONS}
       now={NOW}
       choice={choice}
       skyState="idle"
-      onBack={() => {}}
+      onBack={() => setMode((m) => (m === "library" ? "insight" : "library"))}
       onArchive={() => {}}
       onChoice={setChoice}
       onPickSky={(date, sky) => setDays((current) => setMySky(current, date, sky))}

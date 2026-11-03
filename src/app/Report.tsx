@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { type Session, loadLog, loadStoredSessions } from "@/lib/log";
+import { gardenWeather } from "@/lib/garden";
 import { COLORS, josa } from "@/lib/onboarding";
 import {
   type DayStat,
@@ -29,38 +30,15 @@ import { Icon } from "./art";
 import Buddy from "./Buddy";
 import { Bubbles, Crisis109, Shell, type Who } from "./Conversation";
 import Log from "./Log";
+import Garden from "./Garden";
+import SkyBackdrop from "./SkyBackdrop";
 import Sheet from "./Sheet";
+import { SKY_LOOK, SkyDot } from "./sky";
 
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 const WEEKDAY_FULL = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
 
-// 하늘은 색뿐 아니라 모양으로도 구분한다. 시안(R1~R6)과 같은 그림이다.
-const SKY_LOOK: Record<SkyId, { tint: string; ink: string; paths: React.ReactNode }> = {
-  sunny: { tint: "#FFF1C2", ink: "#B07A00", paths: <><circle cx="12" cy="12" r="4.2" /><path d="M12 2.8v2.2M12 19v2.2M2.8 12h2.2M19 12h2.2M5.5 5.5l1.6 1.6M16.9 16.9l1.6 1.6M5.5 18.5l1.6-1.6M16.9 7.1l1.6-1.6" /></> },
-  cozy: { tint: "#FFE3D3", ink: "#C4572E", paths: <><circle cx="9" cy="9" r="3.4" /><path d="M9 2.6v1.6M2.6 9h1.6M4.5 4.5l1.1 1.1M13.5 4.5l-1.1 1.1" /><path d="M8 19.5h9a3.5 3.5 0 0 0 .4-7A5 5 0 0 0 8.2 13 3.3 3.3 0 0 0 8 19.5Z" /></> },
-  cloudy: { tint: "#E6EAF2", ink: "#5B677E", paths: <path d="M7 18.5h10a4 4 0 0 0 .5-8 5.5 5.5 0 0 0-10.6 1.4A3.4 3.4 0 0 0 7 18.5Z" /> },
-  rain: { tint: "#DCE8FF", ink: "#2F62C9", paths: <><path d="M7 14.5h10a3.6 3.6 0 0 0 .4-7.2 5 5 0 0 0-9.6 1.2A3 3 0 0 0 7 14.5Z" /><path d="M8.5 17.5l-1 2.5M12.5 17.5l-1 2.5M16.5 17.5l-1 2.5" /></> },
-  thunder: { tint: "#EAE2FF", ink: "#5E49D8", paths: <><path d="M7 14.5h10a3.6 3.6 0 0 0 .4-7.2 5 5 0 0 0-9.6 1.2A3 3 0 0 0 7 14.5Z" /><path d="M12.5 15.5l-2 3.5h3l-2 3.5" /></> },
-  wind: { tint: "#DDF4EE", ink: "#0F7A66", paths: <path d="M3 9h11a2.5 2.5 0 1 0-2.5-2.5M3 13h15a2.5 2.5 0 1 1-2.5 2.5M3 17h7" /> },
-};
-
 const skyLabel = (id: SkyId) => SKIES.find((s) => s.id === id)?.label ?? "";
-
-function SkyIcon({ id, size = 18 }: { id: SkyId; size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={SKY_LOOK[id].ink} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {SKY_LOOK[id].paths}
-    </svg>
-  );
-}
-
-export function SkyDot({ id, size = 28 }: { id: SkyId; size?: number }) {
-  return (
-    <span className="grid shrink-0 place-items-center rounded-full" style={{ width: size, height: size, background: SKY_LOOK[id].tint }}>
-      <SkyIcon id={id} size={Math.round(size * 0.64)} />
-    </span>
-  );
-}
 
 function hourLabel(hour: number) {
   const h = hour % 24;
@@ -91,16 +69,20 @@ const Header = ({ title, back, onBack, headingRef }: { title: string; back: stri
 );
 
 const card = "rounded-r6 bg-white p-5 shadow-[0_6px_20px_rgba(28,38,80,.07)]";
-// 리포트가 열리거나 탭을 바꿀 때 카드가 위에서부터 차례로 올라온다(동작 줄이기에서는 움직이지 않는다).
+// 화면이 열리거나 탭을 바꿀 때 카드가 위에서부터 차례로 올라온다(동작 줄이기에서는 움직이지 않는다).
 const STAGGER = "motion-safe:[&>*]:animate-screen-in [&>*:nth-child(2)]:[animation-delay:50ms] [&>*:nth-child(3)]:[animation-delay:100ms] [&>*:nth-child(4)]:[animation-delay:150ms] [&>*:nth-child(n+5)]:[animation-delay:200ms]";
 
-// 리포트 안의 탭. 마음 점검·상담 같은 탭은 팀 결정 전이라 넣지 않는다.
-const TABS = [
+// 기기에 둔 대화 숫자를 두 화면으로 나눠 보여 준다.
+// 구름 정원(예전 인사이트): 쌓이는 이야기·씨앗·도감·앨범. 탭 없이 한 화면.
+// 라이브러리: 보관함(하늘 달력, 하루하루와 대화 기록, 이번 달 숫자). 마음 점검·상담 같은 탭은 팀 결정 전이라 넣지 않는다.
+export type ReportMode = "insight" | "library";
+const LIBRARY_TABS = [
   { id: "sky", label: "하늘" },
-  { id: "talk", label: "이야기" },
   { id: "days", label: "하루하루" },
+  { id: "talk", label: "숫자" },
 ] as const;
-type Tab = (typeof TABS)[number]["id"];
+type Tab = "sky" | "talk" | "days";
+const TITLE: Record<ReportMode, string> = { insight: "구름 정원", library: "라이브러리" };
 
 /** 하루 중 내가 가장 많이 말한 시각. 말한 시각이 없으면 null. */
 function busiestHour(hours: number[]) {
@@ -110,6 +92,7 @@ function busiestHour(hours: number[]) {
 const AI_NOTE = "하늘은 AI가 그날 내가 한 말을 보고 골랐어요 · 진단이 아니에요 · 눌러서 고칠 수 있어요";
 
 export type ReportViewProps = {
+  mode: ReportMode;
   who: Who;
   days: DayStat[];
   sessions: Session[];
@@ -120,10 +103,12 @@ export type ReportViewProps = {
   onPickSky: (date: string, sky: SkyId | undefined) => void;
   onChoice: (choice: "on" | "off") => void;
   onArchive: () => void;
+  onSeed?: (opener: string) => void;
+  onDecorate?: () => void;
 };
 
-/** 리포트 화면(달·하루·하늘 바꾸기). 저장·요청은 하지 않아서 개발 미리보기에서도 그대로 쓴다. */
-export function ReportView({ who, days, sessions, now, choice, skyState, onBack, onPickSky, onChoice, onArchive }: ReportViewProps) {
+/** 인사이트·라이브러리 화면(달·하루·하늘 바꾸기). 저장·요청은 하지 않아서 개발 미리보기에서도 그대로 쓴다. */
+export function ReportView({ mode, who, days, sessions, now, choice, skyState, onBack, onPickSky, onChoice, onArchive, onSeed, onDecorate }: ReportViewProps) {
   const months = reportMonths(days, now);
   const [monthIndex, setMonthIndex] = useState(months.length - 1);
   const [tab, setTab] = useState<Tab>("sky");
@@ -188,15 +173,17 @@ export function ReportView({ who, days, sessions, now, choice, skyState, onBack,
 
   return (
     <Shell color={who.color} bloom="soft">
-      <Header title="리포트" back="처음 화면으로" onBack={onBack} headingRef={headingRef} />
-      <div role="tablist" aria-label="리포트 종류" className="absolute inset-x-gutter top-[calc(env(safe-area-inset-top)+80px)] z-10 grid grid-cols-3 gap-1 rounded-r4 bg-white/70 p-1 backdrop-blur-md motion-safe:animate-screen-in">
+      {/* 인사이트(정원)는 화면 전체에 움직이는 하늘을 깔고, 카드를 반투명하게 띄운다. */}
+      {mode === "insight" && <SkyBackdrop weather={gardenWeather(days, now)} color={who.color} />}
+      <Header title={TITLE[mode]} back="처음 화면으로" onBack={onBack} headingRef={headingRef} />
+      {mode === "library" && <div role="tablist" aria-label="라이브러리 종류" className="absolute inset-x-gutter top-[calc(env(safe-area-inset-top)+80px)] z-10 grid grid-cols-3 gap-1 rounded-r4 bg-white/70 p-1 backdrop-blur-md motion-safe:animate-screen-in">
         {/* 고른 탭 뒤의 흰 칸이 탭 사이를 미끄러지듯 옮겨 간다 */}
         <span
           aria-hidden="true"
           className="absolute inset-y-1 left-1 w-[calc((100%-1rem)/3)] rounded-r3 bg-white shadow-[0_2px_8px_rgba(28,38,80,.08)] transition-transform duration-[var(--seed-duration-d6)] ease-[var(--seed-timing-function-enter)]"
-          style={{ transform: `translateX(calc(${TABS.findIndex((t) => t.id === tab)} * (100% + 0.25rem)))` }}
+          style={{ transform: `translateX(calc(${LIBRARY_TABS.findIndex((t) => t.id === tab)} * (100% + 0.25rem)))` }}
         />
-        {TABS.map((t, index) => (
+        {LIBRARY_TABS.map((t, index) => (
           <button
             key={t.id}
             id={`${tabId}-${t.id}`}
@@ -208,7 +195,7 @@ export function ReportView({ who, days, sessions, now, choice, skyState, onBack,
             onKeyDown={(event) => {
               if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
               event.preventDefault();
-              const next = TABS[(index + (event.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length];
+              const next = LIBRARY_TABS[(index + (event.key === "ArrowRight" ? 1 : LIBRARY_TABS.length - 1)) % LIBRARY_TABS.length];
               showTab(next.id);
               document.getElementById(`${tabId}-${next.id}`)?.focus();
             }}
@@ -217,8 +204,11 @@ export function ReportView({ who, days, sessions, now, choice, skyState, onBack,
             {t.label}
           </button>
         ))}
-      </div>
-      <div ref={scrollRef} className="absolute inset-x-0 top-[calc(env(safe-area-inset-top)+140px)] bottom-0 overflow-y-auto px-gutter pb-10">
+      </div>}
+      <div ref={scrollRef} className={`absolute inset-x-0 ${mode === "library" ? "top-[calc(env(safe-area-inset-top)+140px)]" : "top-[calc(env(safe-area-inset-top)+80px)]"} bottom-0 overflow-y-auto px-gutter pb-10`}>
+        {/* 인사이트는 쌓이는 정원을 먼저 보여 주고, 달마다 보는 숫자는 그 아래에 둔다. */}
+        {mode === "insight" && <div className={STAGGER}><Garden who={who} days={days} now={now} onSeed={onSeed} onDecorate={onDecorate} /></div>}
+        {mode === "library" && <>
         <div className="flex items-center justify-center gap-2 motion-safe:animate-screen-in">
           <button onClick={() => setMonthIndex((i) => Math.max(0, i - 1))} disabled={monthIndex <= 0} aria-label="이전 달" className="ui-press grid size-11 place-items-center rounded-full text-[#1F2A55] disabled:opacity-30">
             <Icon name="back" size={18} />
@@ -231,22 +221,6 @@ export function ReportView({ who, days, sessions, now, choice, skyState, onBack,
 
         <div key={tab} id={`${tabId}-panel`} role="tabpanel" aria-labelledby={`${tabId}-${tab}`} className={STAGGER}>
         {tab === "sky" && <>
-        <p className="mt-2 flex items-center justify-center gap-2 text-t4 text-[#3D4559]">
-          <Buddy shape={who.shape} color={who.color} size={32} look={[0.2, 0.2]} />
-          {view.talked ? `${current.month}월엔 ${view.talked}일 이야기했어` : `${current.month}월엔 아직 이야기하지 않았어`}
-        </p>
-
-        <dl className="mt-4 grid grid-cols-2 gap-2">
-          {[
-            ["대화한 날", view.talked, "일"],
-            ["내가 한 말", view.said, "번"],
-          ].map(([label, value, unit]) => (
-            <div key={label} className="rounded-r5 bg-white px-3 py-4 text-center shadow-[0_4px_16px_rgba(28,38,80,.05)]">
-              <dt className="text-t2 text-[#5A6478]">{label}</dt>
-              <dd className="mt-1 text-t8 font-bold tabular-nums text-[#1F2A55]">{value}<span className="ml-0.5 text-t3 font-medium">{unit}</span></dd>
-            </div>
-          ))}
-        </dl>
 
         {choice === null && (
           <section className={`${card} mt-4`} aria-labelledby="report-sky-choice">
@@ -340,6 +314,22 @@ export function ReportView({ who, days, sessions, now, choice, skyState, onBack,
         </>}
 
         {tab === "talk" && <>
+        <p className="mt-2 flex items-center justify-center gap-2 text-t4 text-[#3D4559]">
+          <Buddy shape={who.shape} color={who.color} size={32} look={[0.2, 0.2]} />
+          {view.talked ? `${current.month}월엔 ${view.talked}일 이야기했어` : `${current.month}월엔 아직 이야기하지 않았어`}
+        </p>
+
+        <dl className="mt-4 grid grid-cols-2 gap-2">
+          {[
+            ["대화한 날", view.talked, "일"],
+            ["내가 한 말", view.said, "번"],
+          ].map(([label, value, unit]) => (
+            <div key={label} className="rounded-r5 bg-white px-3 py-4 text-center shadow-[0_4px_16px_rgba(28,38,80,.05)]">
+              <dt className="text-t2 text-[#5A6478]">{label}</dt>
+              <dd className="mt-1 text-t8 font-bold tabular-nums text-[#1F2A55]">{value}<span className="ml-0.5 text-t3 font-medium">{unit}</span></dd>
+            </div>
+          ))}
+        </dl>
 
         <section className={`${card} mt-4`} aria-labelledby="report-words">
           <div className="flex items-baseline justify-between">
@@ -444,6 +434,7 @@ export function ReportView({ who, days, sessions, now, choice, skyState, onBack,
           </button>
         </>}
         </div>
+        </>}
 
         <p className="mt-6 flex items-start justify-center gap-text text-t2 text-pretty text-[#5A6478]">
           <Icon name="lock" size={14} />
@@ -467,7 +458,7 @@ function DayView({
   const started = saidTimes.length ? new Date(Math.min(...saidTimes)) : null;
   return (
     <Shell color={who.color} bloom="soft">
-      <Header title={`${m}월 ${d}일 ${WEEKDAY_FULL[weekday]}`} back="리포트로" onBack={onBack} headingRef={headingRef} />
+      <Header title={`${m}월 ${d}일 ${WEEKDAY_FULL[weekday]}`} back="라이브러리로" onBack={onBack} headingRef={headingRef} />
       <div className="absolute inset-x-0 top-[calc(env(safe-area-inset-top)+80px)] bottom-0 overflow-y-auto px-gutter pb-10">
         <section className={card} aria-label="그날의 하늘">
           {day?.crisis ? (
@@ -556,7 +547,7 @@ function SkySheet({ date, day, deep, onClose, onPick }: { date: string; day: Day
         </div>
       )}
     >
-      <p className="text-t3 text-pretty text-[#3D4559]">AI가 고른 하늘을 내가 고칠 수 있어요. 고친 하늘을 리포트에 써요. AI가 고른 하늘은 진단이 아니에요.</p>
+      <p className="text-t3 text-pretty text-[#3D4559]">AI가 고른 하늘을 내가 고칠 수 있어요. 고친 하늘을 구름 정원과 라이브러리에 써요. AI가 고른 하늘은 진단이 아니에요.</p>
       <fieldset className="mt-4">
         <legend className="mb-2 text-t3 font-bold text-[#3D4559]">{m}월 {d}일 {WEEKDAY_FULL[weekday]}의 하늘</legend>
         <div className="grid grid-cols-3 gap-2">
@@ -579,8 +570,8 @@ function SkySheet({ date, day, deep, onClose, onPick }: { date: string; day: Day
   );
 }
 
-/** 리포트: 열 때 원문을 날짜별 숫자로 옮기고, 허락했으면 지난 날 하늘을 한 번에 골라 둔다. */
-export default function Report({ who, onBack, accessToken }: { who: Who; onBack: () => void; accessToken: () => Promise<string> }) {
+/** 인사이트·라이브러리: 열 때 원문을 날짜별 숫자로 옮기고, 허락했으면 지난 날 하늘을 한 번에 골라 둔다. */
+export default function Report({ mode, who, onBack, accessToken, onSeed, onDecorate }: { mode: ReportMode; who: Who; onBack: () => void; accessToken: () => Promise<string>; onSeed?: (opener: string) => void; onDecorate?: () => void }) {
   const [now] = useState(() => Date.now());
   const [sessions, setSessions] = useState<Session[]>(() => loadLog());
   const [days, setDays] = useState<DayStat[]>(() => syncReport(loadStoredSessions(), Date.now(), [who.name]));
@@ -618,11 +609,14 @@ export default function Report({ who, onBack, accessToken }: { who: Who; onBack:
   }, [choice, sessions, now]);
 
   if (archive) {
-    return <Log who={who} title="대화 기록" back="리포트로" onBack={() => setArchive(false)} onCleared={() => { setSessions([]); setDays([]); }} />;
+    return <Log who={who} title="대화 기록" back="라이브러리로" onBack={() => setArchive(false)} onCleared={() => { setSessions([]); setDays([]); }} />;
   }
 
   return (
     <ReportView
+      mode={mode}
+      onSeed={onSeed}
+      onDecorate={onDecorate}
       who={who}
       days={days}
       sessions={sessions}
