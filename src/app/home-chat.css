@@ -52,7 +52,7 @@
 .home-right-action[data-send="true"] .home-mic-action { opacity: 0; scale: .25; filter: blur(4px); pointer-events: none; }
 .home-messages {
   position: absolute;
-  inset: 136px 20px 310px;
+  inset: calc(env(safe-area-inset-top) + 80px) 20px 310px;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 8px 4px 16px;
@@ -66,7 +66,7 @@
 .home-screen[data-has-messages="true"] .home-character-wrap { top: calc(100% - 310px); translate: calc(-50% + 95px) 0; }
 .home-screen:has(.home-safety) .home-messages { top: 255px; }
 @container (max-height: 640px) {
-  .home-screen[data-text-open="true"] .home-header { top: 16px; }
+  .home-screen[data-text-open="true"] .home-header { top: calc(env(safe-area-inset-top) + 8px); }
   .home-screen[data-text-open="true"] .home-intro { opacity: 0; pointer-events: none; }
   .home-screen[data-text-open="true"] .home-bottom { bottom: 12px; }
   .home-screen[data-text-open="true"] .home-messages { top: 86px; bottom: 210px; }
@@ -76,3 +76,8 @@
 @media (prefers-reduced-motion: reduce) {
   .home-compose, .home-compose-content, .home-text-toggle, .home-send, .home-mic-action, .home-character-wrap { transition: none; }
 }
+/* 펼친 입력창 안에서는 첨부 버튼의 원 배경을 걷어 입력창과 한 덩어리로 보이게 한다. */
+.home-compose[data-open="true"] .home-attach { background: transparent; box-shadow: none; backdrop-filter: none; }
+.home-mic { background: #1e4fe0; color: #fff; box-shadow: 0 6px 18px rgb(30 79 224 / 28%); }
+.home-mic[data-off="true"] { background: #f2f4f8; color: #1f2a55; box-shadow: none; }
+.home-voice-pill[data-expanded="true"] .home-mic { box-shadow: none; }

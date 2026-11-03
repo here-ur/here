@@ -433,3 +433,30 @@ export async function requestReportSky(days: { date: string; text: string }[], s
   }
   return results;
 }
+
+// ── 요일마다 다녀간 하늘 ──
+export type WeekdaySkies = { weekday: number; skies: { id: SkyId; count: number }[] };
+
+/** 요일(일=0)마다 다녀간 하늘을 센다. 위기 표현이 있던 날은 하늘을 보여 주지 않으므로 뺀다. */
+export function weekdaySkies(days: DayStat[]): WeekdaySkies[] {
+  const counts = Array.from({ length: 7 }, () => new Map<SkyId, number>());
+  for (const day of days) {
+    const sky = day.crisis ? undefined : effectiveSky(day);
+    if (!sky) continue;
+    const [y, m, d] = day.date.split("-").map(Number);
+    const map = counts[new Date(y, m - 1, d).getDay()];
+    map.set(sky, (map.get(sky) ?? 0) + 1);
+  }
+  return counts.map((map, weekday) => ({
+    weekday,
+    skies: SKY_IDS.filter((id) => map.has(id)).map((id) => ({ id, count: map.get(id)! })).sort((a, b) => b.count - a.count),
+  }));
+}
+
+/** 가장 자주 다녀간 요일·하늘 한 쌍. 두 번 이상이고 하나로 정해질 때만 돌려준다(해석하지 않고 횟수만 말한다). */
+export function standoutWeekday(rows: WeekdaySkies[]): { weekday: number; sky: SkyId; count: number } | null {
+  const pairs = rows.flatMap((row) => row.skies.map((s) => ({ weekday: row.weekday, sky: s.id, count: s.count })));
+  const max = Math.max(0, ...pairs.map((p) => p.count));
+  const top = pairs.filter((p) => p.count === max);
+  return max >= 2 && top.length === 1 ? top[0] : null;
+}

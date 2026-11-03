@@ -27,15 +27,15 @@ export default function Log({ who, onBack, title = "대화 기록", back = "리�
 
   return (
     <Shell color={who.color} bloom="soft">
-      <header className="absolute inset-x-0 top-12 z-10 flex items-center justify-between px-gutter">
-        <button onClick={onBack} aria-label={back} className="ui-press grid size-11 place-items-center rounded-full bg-white text-[#1F2A55] shadow-[0_3px_14px_rgba(28,38,80,.08)]">
-          <Icon name="back" size={20} />
+      <header className="absolute inset-x-0 top-[calc(env(safe-area-inset-top)+12px)] z-10 flex h-14 items-center justify-between px-gutter">
+        <button onClick={onBack} aria-label={back} className="ui-press grid size-12 place-items-center rounded-full bg-white/72 text-[#1F2A55] shadow-[0_2px_10px_rgba(28,38,80,.05)] backdrop-blur-md">
+          <Icon name="back" size={22} />
         </button>
         <h1 className="text-t6 font-bold">{title}</h1>
-        <span className="size-11" />
+        <span className="size-12" />
       </header>
 
-      <div className="absolute inset-x-0 top-28 bottom-0 overflow-y-auto px-gutter pb-10">
+      <div className="absolute inset-x-0 top-[calc(env(safe-area-inset-top)+80px)] bottom-0 overflow-y-auto px-gutter pb-10">
         <p className="mb-4 text-center text-t2 text-[#5A6478]">지난 30일 동안 나눈 이야기</p>
 
         {sessions.length === 0 ? (

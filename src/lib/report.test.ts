@@ -20,8 +20,10 @@ import {
   saveReport,
   setMySky,
   stripParticle,
+  standoutWeekday,
   summarizeDays,
   syncReport,
+  weekdaySkies,
 } from "./report.ts";
 
 const store = new Map<string, string>();
@@ -220,4 +222,25 @@ test("하늘 요청은 같은 출처로 날짜와 내 말만 보내고, 모르�
 test("하늘 요청이 실패하면 상태 코드와 다시 시도할 시간을 알려 준다", async (t) => {
   t.mock.method(globalThis, "fetch", async () => Response.json({ error: "지금은 요청이 많아요." }, { status: 429, headers: { "Retry-After": "30" } }));
   await assert.rejects(requestReportSky([{ date: "2026-10-28", text: "회의" }]), (error: unknown) => error instanceof ReportSkyError && error.status === 429 && error.retryAfter === 30 && error.message === "지금은 요청이 많아요.");
+});
+
+test("요일마다 다녀간 하늘을 세고, 위기 표현이 있던 날과 하늘 없는 날은 뺀다", () => {
+  // 2026-11-02·09·16은 월요일, 11-03·10은 화요일
+  const rows = weekdaySkies([
+    day("2026-11-02", { ai: "rain" }),
+    day("2026-11-09", { ai: "sunny", mine: "rain" }),
+    day("2026-11-16", { ai: "rain", crisis: true }),
+    day("2026-11-03", { ai: "none" }),
+    day("2026-11-10", { ai: "cloudy" }),
+  ]);
+  assert.deepEqual(rows[1].skies, [{ id: "rain", count: 2 }]);
+  assert.deepEqual(rows[2].skies, [{ id: "cloudy", count: 1 }]);
+  assert.deepEqual(standoutWeekday(rows), { weekday: 1, sky: "rain", count: 2 });
+});
+
+test("눈에 띄는 요일은 두 번 이상이고 하나로 정해질 때만 고른다", () => {
+  const row = (weekday: number, count: number) => ({ weekday, skies: [{ id: "sunny" as const, count }] });
+  assert.equal(standoutWeekday([row(1, 1), row(2, 1)]), null);
+  assert.equal(standoutWeekday([row(1, 2), row(2, 2)]), null);
+  assert.deepEqual(standoutWeekday([row(1, 3), row(2, 2)]), { weekday: 1, sky: "sunny", count: 3 });
 });

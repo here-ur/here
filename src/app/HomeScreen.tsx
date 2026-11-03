@@ -6,6 +6,7 @@ import type { Msg } from "@/lib/log";
 import { ChatMarkdown } from "@/lib/chat-markdown";
 import { COLORS, type ColorId, type Profile, josa } from "@/lib/onboarding";
 import Buddy, { type BuddyState } from "./Buddy";
+import { CalendarIcon } from "./Drawer";
 import { Icon } from "./art";
 import Sheet from "./Sheet";
 import "./home-voice.css";
@@ -203,27 +204,19 @@ export default function HomeScreen({
       {/* 온보딩의 빛이 하얗게 걷히며 홈이 나타난다 */}
       {greet && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 bg-white motion-safe:animate-unveil motion-reduce:hidden" />}
 
-      <header className="home-header absolute inset-x-0 top-12 z-10 flex h-14 items-center justify-between px-gutter">
-        <button onClick={onMenu} aria-label="메뉴" className="ui-press grid size-14 place-items-center rounded-full bg-white shadow-[0_3px_18px_rgba(28,38,80,.055),0_1px_2px_rgba(28,38,80,.03)]">
+      <header className="home-header absolute inset-x-0 z-10 flex h-14 items-center justify-between px-gutter">
+        <button onClick={onMenu} aria-label="메뉴" className="home-chrome-button ui-press grid size-12 place-items-center rounded-full">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
             <path d="M4.5 7h15M4.5 12h15M4.5 17h9" />
           </svg>
         </button>
-        <span className="flex items-center gap-1.5">
-          <Buddy shape={profile.shape} color={profile.color} size={30} look={[0.2, 0.1]} />
-          <span className="text-t7 font-medium">Here!</span>
-        </span>
-        <button onClick={onReport} aria-label="리포트" className="ui-press grid size-14 place-items-center rounded-full bg-white shadow-[0_3px_18px_rgba(28,38,80,.055),0_1px_2px_rgba(28,38,80,.03)]">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M5 19V11M12 19V5M19 19v-6" />
-          </svg>
+        <span className="text-t7 font-bold">Here!</span>
+        <button onClick={onReport} aria-label="리포트" className="home-chrome-button ui-press grid size-12 place-items-center rounded-full">
+          <CalendarIcon />
         </button>
       </header>
 
-      <div className={`home-intro absolute inset-x-gutter top-[18%] flex flex-col items-center gap-6 text-center ${voice || hasMessages ? "home-intro-quiet" : ""}`} aria-hidden={Boolean(voice || hasMessages)}>
-        <span className="inline-flex h-8 items-center rounded-full bg-white px-4 text-t4 text-[#2A2E36] shadow-[0_2px_12px_rgba(28,38,80,.05),0_0_0_1px_rgba(28,38,80,.03)]">
-          AI 이야기 친구
-        </span>
+      <div className={`home-intro absolute inset-x-gutter top-[18%] flex flex-col items-center text-center ${voice || hasMessages ? "home-intro-quiet" : ""}`} aria-hidden={Boolean(voice || hasMessages)}>
         <h1 className="min-h-[2.6em] whitespace-pre-line text-t12 font-medium text-balance">
           {headline || "오늘 하루,\n어떤 이야기를 해 볼까?"}
         </h1>
@@ -296,10 +289,10 @@ export default function HomeScreen({
               fileInputRef.current?.click();
             }}
             aria-label="파일 첨부"
-            className="home-attach ui-press grid size-14 shrink-0 place-items-center rounded-full text-[#1F2A55]"
+            className="home-attach home-chrome-button ui-press grid size-14 shrink-0 place-items-center rounded-full"
           >
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-              <path d="M12 4v16M4 12h16" />
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
             </svg>
           </button>
             <div className="home-compose-content" inert={!chat.open} aria-hidden={!chat.open}>
@@ -325,9 +318,9 @@ export default function HomeScreen({
               aria-expanded={chat.open}
               aria-controls="home-text-draft"
               aria-hidden={chat.open}
-              className="home-text-toggle ui-press grid size-14 place-items-center rounded-full text-[#1F2A55] disabled:opacity-40"
+              className="home-text-toggle home-chrome-button ui-press grid size-14 place-items-center rounded-full disabled:opacity-40"
             >
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M5 4.5h14A1.5 1.5 0 0 1 20.5 6v10a1.5 1.5 0 0 1-1.5 1.5H10l-6.5 4V6A1.5 1.5 0 0 1 5 4.5Z" />
               </svg>
             </button>
@@ -351,15 +344,16 @@ export default function HomeScreen({
                 aria-label={voice ? voice.error ? "음성 연결 다시 시도" : voice.micOn ? "마이크 끄기" : "마이크 켜기" : `${josa(name, "과", "와")} 음성 대화 시작`}
                 aria-expanded={Boolean(voice)}
                 aria-pressed={voice && !voice.error ? voice.micOn : undefined}
-                className="ui-press grid size-14 shrink-0 place-items-center rounded-full text-[#1F2A55] disabled:opacity-40"
+                className="home-mic ui-press grid size-14 shrink-0 place-items-center rounded-full disabled:opacity-40"
+                data-off={Boolean(voice && !voice.micOn && !voice.error)}
               >
-                <Icon name={voice && !voice.micOn && !voice.error ? "micOff" : "mic"} size={28} />
+                <Icon name={voice && !voice.micOn && !voice.error ? "micOff" : "mic"} size={26} />
               </button>
             </div>
             </div>
           </div>
         </div>
-        <p className="text-center text-t1 text-[#5A6478]">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
+        <p className="text-center text-t1 text-[#5A6478]/80">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
       </div>
       {voice?.listening && <div className="home-listening-wave" aria-hidden="true">{Array.from({ length: 32 }, (_, index) => <i key={index} style={{ animationDelay: `${(index % 7) * -160}ms`, backgroundColor: COLORS.find((color) => color.id === profile.color)?.deep }} />)}</div>}
       {children}
