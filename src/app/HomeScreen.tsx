@@ -280,8 +280,8 @@ export default function HomeScreen({
       </header>
 
       <div className={`home-intro absolute inset-x-gutter top-[18%] flex flex-col items-center text-center ${voice || hasMessages ? "home-intro-quiet" : ""}`} aria-hidden={Boolean(voice || hasMessages)}>
-        {/* 배지·설명 없이 몽글이가 먼저 건네는 한마디만. 문구는 page가 정한다(기억 인사 또는 기본 오프너). */}
-        {headline && <h1 className="min-h-[2.6em] whitespace-pre-line text-t12 font-medium text-balance">{headline}</h1>}
+        {/* 홈에는 글을 두지 않는다. 오프너는 몽글이가 소리로 건네고 대화 맥락에만 들어가며, 화면 낭독기에만 남긴다. */}
+        {headline && <h1 className="sr-only">{headline}</h1>}
       </div>
 
       {notice && <div className="home-safety absolute inset-x-gutter top-[18%] z-10">{notice}</div>}
