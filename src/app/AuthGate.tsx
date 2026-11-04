@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { normalizeInviteCode, normalizePhone } from "@/lib/invite";
 import { setLocalOwner } from "@/lib/local-scope";
 import { browserSupabase } from "@/lib/supabase";
+import { checkEntry, type Entry } from "@/lib/session-entry";
 import MemoryConsentGate from "./MemoryConsentGate";
 
 type Mode = "login" | "signup";
@@ -13,6 +14,8 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   const client = browserSupabase();
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(client));
+  const [checkFailed, setCheckFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [mode, setMode] = useState<Mode>("login");
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
@@ -23,37 +26,35 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   const [error, setError] = useState("");
   const stepInputRef = useRef<HTMLInputElement>(null);
 
+  function enter(result: Entry) {
+    setLoading(false);
+    setBusy(false);
+    setCheckFailed(result.kind === "retry");
+    setLocalOwner(result.kind === "member" ? result.id : null);
+    setUserId(result.kind === "member" ? result.id : null);
+    if (result.kind === "invite") {
+      setMode("signup"); setStep("invite");
+      setVerifiedPhone(result.phone); setPhone(result.phone);
+    } else if (result.kind === "login") {
+      setMode("login"); setStep("phone"); setPhone(""); setVerifiedPhone(null);
+      setInvite(""); setCode(""); setError("");
+    }
+  }
+
   useEffect(() => {
     if (!client) return;
     let active = true;
-    void (async () => {
-      const { data: { user } } = await client.auth.getUser();
-      if (!active) return;
-      if (user) {
-        const { data } = await client.from("members").select("user_id").eq("user_id", user.id).maybeSingle();
-        if (!active) return;
-        if (data) { setLocalOwner(user.id); setUserId(user.id); }
-        else if (user.phone) {
-          // 휴대폰 인증 후 새로고침해도 초대코드 입력을 이어간다.
-          setMode("signup");
-          setStep("invite");
-          setVerifiedPhone(user.phone);
-          setPhone(user.phone);
-        } else await client.auth.signOut();
-      }
-      setLoading(false);
-    })();
+    void checkEntry(client).then(result => { if (active) enter(result); });
     return () => { active = false; };
-  }, [client]);
+  }, [client, attempt]);
 
   useEffect(() => {
     if (step !== "phone") stepInputRef.current?.focus();
   }, [step]);
 
   async function signOut() {
-    setLocalOwner(null);
-    setUserId(null);
-    await client?.auth.signOut();
+    const result = await client?.auth.signOut({ scope: "local" });
+    enter({ kind: result?.error ? "retry" : "login" });
   }
 
   async function sendOtp(event: React.FormEvent) {
@@ -74,7 +75,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     }
     const { error: otpError } = await client.auth.signInWithOtp({ phone: normalizedPhone, options: { shouldCreateUser: mode === "signup" } });
     setBusy(false);
-    if (otpError) { setError(mode === "login" ? "번호를 확인하거나 초대코드로 가입해 주세요." : "인증번호를 보내지 못했어요. 잠시 후 다시 시도해 주세요."); return; }
+    if (otpError) { setError("인증번호를 보내지 못했어요. 번호를 확인하고 잠시 후 다시 시도해 주세요."); return; }
     setVerifiedPhone(normalizedPhone);
     setCode("");
     setStep("otp");
@@ -87,32 +88,20 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     setError("");
     const { data, error: verifyError } = await client.auth.verifyOtp({ phone: verifiedPhone, token: code.trim(), type: "sms" });
     if (verifyError || !data.user) { setBusy(false); setError("인증번호가 맞지 않거나 만료됐어요."); return; }
-    if (mode === "signup") {
-      const { data: redeemed, error: redeemError } = await client.rpc("redeem_invite", { p_code: normalizeInviteCode(invite) });
-      if (redeemError || redeemed !== true) {
-        setBusy(false);
-        setStep("invite");
-        setError("사용할 수 없는 초대코드예요. 코드가 맞는지 확인하거나 다른 코드를 입력해 주세요.");
-        return;
-      }
-      const { data: member, error: memberError } = await client.from("members").select("user_id").eq("user_id", data.user.id).maybeSingle();
+    const entry = await checkEntry(client, data.user);
+    if (entry.kind !== "invite" || mode !== "signup") {
+      enter(entry);
+      return;
+    }
+    const { data: redeemed, error: redeemError } = await client.rpc("redeem_invite", { p_code: normalizeInviteCode(invite) });
+    if (redeemError) { enter({ kind: "retry" }); return; }
+    if (redeemed !== true) {
       setBusy(false);
-      if (memberError || !member) { setError("가입을 마무리하지 못했어요. 다시 시도해 주세요."); return; }
-      setLocalOwner(data.user.id);
-      setUserId(data.user.id);
+      setStep("invite");
+      setError("사용할 수 없는 초대코드예요. 코드가 맞는지 확인하거나 다른 코드를 입력해 주세요.");
       return;
     }
-    const { data: member, error: memberError } = await client.from("members").select("user_id").eq("user_id", data.user.id).maybeSingle();
-    setBusy(false);
-    if (memberError || !member) {
-      await client.auth.signOut();
-      setVerifiedPhone(null);
-      setStep("phone");
-      setError("가입하지 않은 번호예요. 초대코드로 가입해 주세요.");
-      return;
-    }
-    setLocalOwner(data.user.id);
-    setUserId(data.user.id);
+    enter(await checkEntry(client, data.user));
   }
 
   async function redeemInvite(event: React.FormEvent) {
@@ -131,29 +120,20 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     }
     // 휴대폰 인증 후 코드가 먼저 사용됐다면 문자 재전송 없이 새 코드로 마무리한다.
     const { data: redeemed, error: redeemError } = await client.rpc("redeem_invite", { p_code: normalizedInvite });
-    if (redeemError || redeemed !== true) {
+    if (redeemError) { enter({ kind: "retry" }); return; }
+    if (redeemed !== true) {
       setBusy(false);
       setError("사용할 수 없는 초대코드예요. 다시 확인해 주세요.");
       return;
     }
-    const { data: { user } } = await client.auth.getUser();
-    const { data: member, error: memberError } = user
-      ? await client.from("members").select("user_id").eq("user_id", user.id).maybeSingle()
-      : { data: null, error: null };
-    setBusy(false);
-    if (!user || memberError || !member) { setError("가입을 마무리하지 못했어요. 다시 시도해 주세요."); return; }
-    setLocalOwner(user.id);
-    setUserId(user.id);
+    enter(await checkEntry(client));
   }
 
   async function goBack() {
     if (busy) return;
     setError("");
     if (step === "invite" && verifiedPhone) {
-      await client?.auth.signOut();
-      setVerifiedPhone(null);
-      setPhone("");
-      setStep("invite");
+      await signOut();
       return;
     }
     if (step === "phone" && mode === "signup") { setStep("invite"); return; }
@@ -163,6 +143,10 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   }
 
   if (loading) return <main className="app-frame bg-[#FAFCFE]" />;
+  if (checkFailed) return <main className="app-frame flex flex-col items-center justify-center gap-4 px-7">
+    <p role="alert">로그인 상태를 확인하지 못했어요. 연결을 확인하고 다시 시도해 주세요.</p>
+    <button type="button" className="min-h-11 px-4" onClick={() => { setLoading(true); setAttempt(n => n + 1); }}>다시 확인</button>
+  </main>;
   if (userId) return <MemoryConsentGate key={userId} userId={userId} signOut={signOut}>{children(userId, signOut)}</MemoryConsentGate>;
 
   const currentSteps: Step[] = mode === "login" ? ["phone", "otp"] : ["invite", "phone", "otp"];
