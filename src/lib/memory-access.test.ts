@@ -44,12 +44,12 @@ test("동의 확인은 승인된 회원만 통과시키고 실패 시 닫힌 상
 });
 
 test("경로 구성 검사: 텍스트·음성 모두 모델 호출보다 먼저 회원·동의 검사를 둔다", () => {
-  for (const route of ["chat", "realtime"]) {
+  for (const route of ["chat", "report-sky", "realtime"]) {
     const source = readFileSync(new URL(`../app/api/${route}/route.ts`, import.meta.url), "utf8");
     assert.match(source, /await requireMember\((?:request|req)\)/);
     assert.ok(source.includes("await requireMemoryConsent(access.supabase)"));
     assert.ok(source.includes("if (consentError) return consentError"));
-    const provider = route === "chat" ? "return chatResponse(request" : "await openai(";
+    const provider = route === "chat" ? "return chatResponse(request" : route === "report-sky" ? "return reportSkyResponse(request" : "await openai(";
     assert.ok(source.indexOf(provider) >= 0);
     assert.ok(source.indexOf("if (consentError)") < source.indexOf(provider));
   }

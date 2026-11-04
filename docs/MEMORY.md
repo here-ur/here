@@ -5,7 +5,7 @@
 ## 적용 상태
 
 - PR #8(기억·동의), #9(동의 화면 수정)을 `dev`에 병합했다. 운영 코드는 변경하지 않는다.
-- `20261031010000_conversation_memory.sql`을 서울 `here-dev`에만 SQL Editor로 적용했다. `here-prod`에는 적용하지 않았다.
+- `0003_conversation_memory.sql`을 서울 `here-dev`에만 SQL Editor로 적용했다. `here-prod`에는 적용하지 않았다.
 - `MEMORY_ENABLED=false`가 기본값이다. Vercel Preview의 `dev` 브랜치에만 true로 설정하고 `https://here-dev.vercel.app`에서 활성화했다.
 - `MEMORY_ENABLED=true`, 정확한 `here-dev` Supabase URL, Production이 아닌 환경을 모두 만족해야 작동한다. 환경변수만 바꿔 운영에서 활성화할 수 없다.
 - 초기 SQL 파일은 이미 수동 적용했다. migration 이력 동기화 없이 `supabase db push` 또는 기존 테이블 생성 SQL을 재실행하지 않는다.
@@ -98,7 +98,7 @@
 
 ## 대화 마크다운
 
-- 홈·내 기록의 AI 답변은 공통 Markdown 렌더러 사용. 강조·목록·표·인용·코드·링크 지원. 사용자 입력은 일반 텍스트 유지.
+- 홈·대화 기록의 AI 답변은 공통 Markdown 렌더러 사용. 강조·목록·표·인용·코드·링크 지원. 사용자 입력은 일반 텍스트 유지.
 - 원시 HTML 실행·위험 URL·원격 이미지 로딩 차단. 외부 링크는 새 탭, referrer 전송 차단. 긴 표·코드만 가로 스크롤.
 
 ## 운영 반영 전 필수 후속 작업
@@ -113,7 +113,7 @@
 
 ## 2026-11-01 운영 안전장치 — 개발 우선
 
-- DB 적용: `20261101010000_api_limits.sql`, `20261101020000_consent_events.sql` → here-dev만 적용. 운영 DB 미적용.
+- DB 적용: `0004_api_limits.sql`, `0005_consent_events.sql` → here-dev만 적용. 운영 DB 미적용.
 - 앱 배포 순서: DB 마이그레이션 → 자동 테스트·lint·build → PR → dev 병합 → 개발 배포 검증. main 병합은 별도 승인.
 - `api_usage_windows`: 회원·API·시간창별 사용 횟수. 본문·전화번호·IP·키 미저장. 고정 행 재사용, 회원당 최대 8행.
 - 서버 인스턴스가 달라도 동일 DB에서 원자적 차감. 회원 인증·동의 확인 후 적용. DB 장애·마이그레이션 누락은 503, 한도 초과는 429 + Retry-After. 오류 요청도 차감, 자동 환급 없음.
@@ -121,7 +121,7 @@
 
 | API | 분당 | UTC 일당 |
 | --- | ---: | ---: |
-| chat | 20 | 200 |
+| chat (리포트 하늘 포함) | 20 | 200 |
 | realtime 세션 발급 | 5 | 60 |
 | voice-memory 저장·검색 | 60 | 2,000 |
 | home-greeting | 10 | 100 |
@@ -141,6 +141,8 @@
 | --- | --- | --- |
 | 휴대폰 번호·인증 | Supabase Auth, Twilio Verify | 가입·로그인. 학습 대상 제외 |
 | 텍스트 발화·응답 | 브라우저, 서버 메모리, Runyour 응답 API | 대화 생성. 기억 DB 원문 저장 없음. 브라우저 30일 기록 별도 |
+| 리포트 하늘 | 브라우저 → Here 서버 → Runyour 응답 API (지난 날의 내 말만, 위기 날 제외) | 하늘 6가지 enum만 받음. 기억 조회·저장 없음, `chat` 할당량 사용. 사용자가 끌 수 있음 |
+| 리포트 날짜별 숫자 | 브라우저 `here.report.v1`(계정별) | 말한 횟수·시간대·하늘·자주 한 단어 상위 20개. 최대 1년, 서버 저장 없음 |
 | 음성·전사 | 브라우저 ↔ OpenAI 실시간 API, 확정 전사만 Here 서버 임시 처리 | 음성 대화·개인 기억 요약. Here 음성 파일 저장 없음 |
 | 개인 기억 요약 | Supabase conversation_memories | 동의 사용자 본인의 이후 대화에만 사용 |
 | 1,536차원 벡터 | OpenAI 임베딩 API → 같은 Supabase 행 | 본인 기억 의미 검색. 익명화나 모델 학습을 의미하지 않음 |

@@ -1,0 +1,27 @@
+/* 대화 뒤 작은 실천 시안. 홈 위쪽 가로 카드 줄, 요일 체크, 숨 고르기 원. */
+.practice-rail { display: flex; gap: 8px; margin: 0 -20px; padding: 4px 20px 6px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.practice-rail::-webkit-scrollbar { display: none; }
+.practice-chip { flex: 0 0 74%; scroll-snap-align: start; }
+.practice-chip:last-child { scroll-snap-align: end; }
+
+/* 요일 칸. 글·아이콘 없이 색으로만: 이야기한 날은 연하게, 실천한 날은 진하게. 쉰 날·아직 안 온 날은 빈 원이다(실패 표시 없음). */
+.practice-day { display: block; width: 16px; height: 16px; border-radius: 9999px; box-shadow: inset 0 0 0 1.5px #dfe3ec; transition: background var(--seed-duration-d4) ease, box-shadow var(--seed-duration-d4) ease; }
+.practice-day[data-talked="true"] { background: var(--practice-tint, #e6edff); box-shadow: inset 0 0 0 1.5px var(--practice-tint, #e6edff); }
+.practice-day[data-practiced="true"] { background: var(--practice-deep, #1f2a55); box-shadow: none; }
+.practice-day[data-today="true"] { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--practice-deep, #1f2a55); }
+
+/* 숨 고르기: 4초 들이쉬고 6초 내쉬는 10초 한 바퀴. 동작 줄이기에서는 원을 멈추고 글로만 안내한다. */
+.breath-ring { width: 128px; height: 128px; border-radius: 9999px; background: radial-gradient(circle at 50% 40%, var(--breath-light, #eee8ff), var(--breath-base, #b7a6ff)); box-shadow: 0 10px 30px rgb(28 38 80 / 12%); }
+.breath-in, .breath-out { opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .breath-ring { animation: breath-ring 10s ease-in-out infinite; }
+  .breath-in { animation: breath-in 10s ease-in-out infinite; }
+  .breath-out { animation: breath-out 10s ease-in-out infinite; }
+  .practice-done-pop { animation: pop var(--seed-duration-d5) var(--seed-timing-function-enter) both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .breath-in { opacity: 1; }
+}
+@keyframes breath-ring { 0% { transform: scale(.78); } 40% { transform: scale(1); } 100% { transform: scale(.78); } }
+@keyframes breath-in { 0%, 36% { opacity: 1; } 42%, 100% { opacity: 0; } }
+@keyframes breath-out { 0%, 40% { opacity: 0; } 46%, 96% { opacity: 1; } 100% { opacity: 0; } }

@@ -1,14 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { ACCESSORIES, buildGarden, loadSeeds, unlockedAccessories } from "@/lib/garden";
 import { COLORS, SHAPES, VOICES, type Profile, accentButton, cleanName } from "@/lib/onboarding";
+import { loadReport } from "@/lib/report";
 import * as sfx from "@/lib/sound";
+import { Icon } from "./art";
 import Buddy from "./Buddy";
 import Sheet from "./Sheet";
 
 /** 몽글이 바꾸기: 온보딩에서 고른 모습·빛·목소리·이름을 언제든 다시 고른다. 위에서 바로 미리 본다. */
 export default function Customize({ profile, onSave, onClose }: { profile: Profile; onSave: (p: Profile) => void; onClose: () => void }) {
   const [draft, setDraft] = useState(profile);
+  // 구름 정원이 자라며 연 꾸미기 아이템. 이 기기의 정원 기록으로만 판단한다.
+  const [unlocked] = useState(() => unlockedAccessories(buildGarden(loadReport(), loadSeeds())));
   const set = (patch: Partial<Profile>) => setDraft((d) => ({ ...d, ...patch }));
   const chip = (on: boolean) =>
     `ui-press h-11 rounded-full px-4 text-t5 font-medium ${on ? "bg-[#1F2A55] text-white" : "bg-[#F2F4F8] text-[#1F2A55]"}`;
@@ -16,7 +21,7 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
   return (
     <Sheet title={`${profile.companion} 바꾸기`} onClose={onClose}>
       <div className="flex justify-center py-2">
-        <Buddy shape={draft.shape} color={draft.color} size={140} look={[0, 0.25]} key={`${draft.shape}-${draft.color}`} className="motion-safe:animate-pop" />
+        <Buddy shape={draft.shape} color={draft.color} accessory={draft.accessory} size={140} look={[0, 0.25]} key={`${draft.shape}-${draft.color}-${draft.accessory ?? ""}`} className="motion-safe:animate-pop" />
       </div>
 
       <section className="mt-2">
@@ -58,6 +63,33 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="mt-5">
+        <div className="mb-2 flex items-baseline justify-between">
+          <h3 className="text-t4 font-bold text-[#3D4559]">꾸미기</h3>
+          <span className="text-t2 tabular-nums text-[#5A6478]">{unlocked.size} / {ACCESSORIES.length} 열림</span>
+        </div>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="꾸미기">
+          <button role="radio" aria-checked={!draft.accessory} onClick={() => set({ accessory: undefined })} className={chip(!draft.accessory)}>없음</button>
+          {ACCESSORIES.map((a, i) => {
+            const open = unlocked.has(a.id);
+            return (
+              <button
+                key={a.id}
+                role="radio"
+                aria-checked={draft.accessory === a.id}
+                aria-disabled={!open}
+                aria-label={open ? a.label : `${a.label}, 잠김. ${a.hint}`}
+                onClick={() => { if (!open) return; sfx.pick(i); set({ accessory: a.id }); }}
+                className={open ? chip(draft.accessory === a.id) : "h-11 cursor-not-allowed rounded-full border border-dashed border-[#D5DAE5] px-4 text-t5 font-medium text-[#B4B9C6]"}
+              >
+                {open ? a.label : <span className="flex items-center gap-1"><Icon name="lock" size={14} />{a.label}</span>}
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-t3 text-pretty text-[#5A6478]">구름 정원이 자라면 하나씩 열려요. {ACCESSORIES.find((a) => !unlocked.has(a.id))?.hint ?? "모두 열었어요!"}</p>
       </section>
 
       <section className="mt-5">

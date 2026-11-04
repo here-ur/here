@@ -9,9 +9,22 @@
 }
 
 .buddy-pose,
-.buddy-body-motion {
+.buddy-body-motion,
+.buddy-wait {
   transform-box: view-box;
   transform-origin: 50% 55%;
+}
+
+/* 한 번만 붙는 연결 동작과 작은 반응은 바닥 쪽을 기준으로 눌리고 튄다. */
+.buddy-cue,
+.buddy-react {
+  transform-box: view-box;
+  transform-origin: 50% 78%;
+}
+
+.buddy-glance {
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
 .buddy-pose,
@@ -73,6 +86,35 @@
   .buddy[data-state="speaking"] .buddy-mouth-motion {
     animation: buddy-speaking-mouth 720ms ease-in-out infinite;
   }
+
+  /* 기본 상태에서 가끔(20초에 한 번) 주변을 크게 둘러본다. 고정 시선(작은 아이콘 등)에는 붙이지 않는다. */
+  .buddy[data-state="idle"]:not([data-look-override]) .buddy-glance {
+    animation: buddy-look-around 20000ms ease-in-out infinite;
+  }
+
+  .buddy[data-state="idle"]:not([data-look-override]) .buddy-wait {
+    animation: buddy-look-around-body 20000ms ease-in-out infinite;
+  }
+
+  /* 응답을 4초 넘게 기다리면 몸짓을 한 단계 바꿔 멈춘 것처럼 보이지 않게 한다. */
+  .buddy[data-state="thinking"] .buddy-wait {
+    animation: buddy-long-wait 3200ms ease-in-out 4000ms infinite;
+  }
+
+  /* 상태 전환 연결 동작: 사용자 행동에는 바로 반응하고 끝은 천천히 맺는다. */
+  .buddy-cue[data-cue="press"] { animation: buddy-cue-press 420ms cubic-bezier(0, 0, .15, 1); }
+  .buddy-cue[data-cue="hop"] { animation: buddy-cue-hop 480ms cubic-bezier(0, 0, .15, 1); }
+  .buddy-cue[data-cue="lift"] { animation: buddy-cue-lift 420ms cubic-bezier(0, 0, .15, 1); }
+  .buddy-cue[data-cue="pop"] { animation: buddy-cue-pop 460ms cubic-bezier(.03, .4, .1, 1); }
+  .buddy-cue[data-cue="lean"] { animation: buddy-cue-lean 520ms ease-in-out; }
+  .buddy-cue[data-cue="settle"] { animation: buddy-cue-settle 640ms ease-in-out; }
+  .buddy-cue[data-cue="bye"] { animation: buddy-cue-bye 760ms ease-in-out; }
+
+  /* 작은 반응: 글자를 칠 때(두 이름을 번갈아 써서 매번 다시 시작), 말을 시작하거나 멈출 때 */
+  .buddy-react[data-react="tap-a"] { animation: buddy-tap-a 220ms ease-out; }
+  .buddy-react[data-react="tap-b"] { animation: buddy-tap-b 220ms ease-out; }
+  .buddy-react[data-react="hear-start"] { animation: buddy-hear-start 360ms cubic-bezier(0, 0, .15, 1); }
+  .buddy-react[data-react="hear-stop"] { animation: buddy-hear-stop 420ms ease-in-out; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -129,6 +171,84 @@
   0%, 100% { transform: translateY(0) rotate(0); }
   35% { transform: translateY(-2px) rotate(0.4deg); }
   68% { transform: translateY(-0.5px) rotate(-0.25deg); }
+}
+
+@keyframes buddy-look-around {
+  0%, 80%, 98%, 100% { transform: translate(0, 0); }
+  84%, 88% { transform: translate(-3px, -0.6px); }
+  92%, 95% { transform: translate(2.6px, 0); }
+}
+
+@keyframes buddy-look-around-body {
+  0%, 80%, 98%, 100% { transform: rotate(0); }
+  84%, 88% { transform: rotate(-1.2deg); }
+  92%, 95% { transform: rotate(1deg); }
+}
+
+@keyframes buddy-long-wait {
+  0%, 100% { transform: rotate(0) translateX(0); }
+  30% { transform: rotate(-1.6deg) translateX(-1.5px); }
+  65% { transform: rotate(1.2deg) translateX(1px); }
+}
+
+@keyframes buddy-cue-press {
+  0%, 100% { transform: none; }
+  35% { transform: translateY(3px) scale(1.04, 0.94); }
+  70% { transform: scale(0.99, 1.01); }
+}
+
+@keyframes buddy-cue-hop {
+  0%, 100% { transform: none; }
+  30% { transform: translate(-3px, -7px) scale(0.98, 1.03); }
+  62% { transform: translate(-1px, 1px) scale(1.02, 0.98); }
+}
+
+@keyframes buddy-cue-lift {
+  0%, 100% { transform: none; }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes buddy-cue-pop {
+  0%, 100% { transform: none; }
+  30% { transform: translateY(-9px) scale(1.03); }
+  58% { transform: translateY(1px) scale(1.03, 0.96); }
+}
+
+@keyframes buddy-cue-lean {
+  0%, 100% { transform: none; }
+  50% { transform: translate(-2px, 1px) rotate(-3deg); }
+}
+
+@keyframes buddy-cue-settle {
+  0%, 100% { transform: none; }
+  40% { transform: translateY(1.5px) scale(1.01, 0.99); }
+}
+
+@keyframes buddy-cue-bye {
+  0%, 100% { transform: none; }
+  22% { transform: rotate(-4deg); }
+  50% { transform: rotate(3deg); }
+  76% { transform: rotate(-1deg); }
+}
+
+@keyframes buddy-tap-a {
+  0%, 100% { transform: none; }
+  40% { transform: translateY(1.2px) scale(1.01, 0.99); }
+}
+
+@keyframes buddy-tap-b {
+  0%, 100% { transform: none; }
+  40% { transform: translateY(1.2px) scale(1.01, 0.99); }
+}
+
+@keyframes buddy-hear-start {
+  0%, 100% { transform: none; }
+  40% { transform: translateY(-3px) scale(1.02); }
+}
+
+@keyframes buddy-hear-stop {
+  0%, 100% { transform: none; }
+  45% { transform: translateY(2px) rotate(1deg); }
 }
 
 @keyframes buddy-speaking-mouth {

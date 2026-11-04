@@ -1,54 +1,195 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { COLORS, type Profile, josa } from "@/lib/onboarding";
+import { type QuotaStatus, quotaSummary } from "@/lib/quota-status";
+import { type DayStat, effectiveSky, loadReport, localDate, monthView } from "@/lib/report";
 import { Icon } from "./art";
 import Buddy from "./Buddy";
+import { SkyDot } from "./sky";
+import { getSfxEnabled, setSfxEnabled, subscribeSfx } from "@/lib/sfx";
 
-// 왼쪽에서 열리는 메뉴. Tolan 메뉴 구조를 참고하되, 성격 인사이트·먼저 연락하기·하루 대화량은 넣지 않았다
-// (진단처럼 읽힐 수 있거나, 서버 저장이 필요하거나, 아직 정하지 않은 것).
 
-function Row({ icon, label, onClick, current }: { icon: React.ReactNode; label: string; onClick: () => void; current?: boolean }) {
+// 왼쪽에서 열리는 메뉴. Tolan 메뉴 구조를 참고하되, 성격 인사이트·먼저 연락하기는 넣지 않았다
+// (진단처럼 읽힐 수 있거나, 서버 저장이 필요한 것). 대화량·하늘 같은 숫자는 기기에만 두는 리포트에서 보여 준다.
+// 메뉴에는 자주 쓰는 것만 두고, 약관·버전·계정 동작은 같은 패널 안의 설정 화면으로 모은다.
+
+function Row({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
     <li>
       <button
         onClick={onClick}
-        aria-current={current ? "page" : undefined}
-        className="ui-press flex h-13 w-full items-center gap-3.5 rounded-r4 px-3.5 text-left text-t5 font-medium text-[#1F2A55] hover:bg-[#F2F4F8] aria-[current=page]:bg-[#F2F4F8]"
+        className="ui-press flex h-11 w-full items-center gap-3 rounded-r3 px-3 text-left text-t4 font-medium text-[#1F2A55] hover:bg-[#F2F4F8]"
       >
-        <span className="grid size-6 place-items-center text-[#3D4559]">{icon}</span>
+        <span className="grid size-5 place-items-center">{icon}</span>
         {label}
       </button>
     </li>
   );
 }
 
+const chevron = (
+  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-[#8A91A3]">
+    <path d="m9 6 6 6-6 6" />
+  </svg>
+);
+
+/** 설정 화면의 한 줄. 링크·버튼·값 표시를 같은 모양으로 맞춘다. */
+function SettingRow({ children, onClick, href, danger, trailing }: { children: React.ReactNode; onClick?: () => void; href?: string; danger?: boolean; trailing?: React.ReactNode }) {
+  const className = `flex min-h-11 w-full items-center justify-between gap-3 px-3.5 text-left text-t4 ${danger ? "text-[#C42A23]" : "text-[#1F2A55]"}`;
+  if (href) return <li><a href={href} className={`ui-press ${className} hover:bg-[#F7F8FB]`}>{children}{trailing}</a></li>;
+  if (onClick) return <li><button onClick={onClick} className={`ui-press ${className} hover:bg-[#F7F8FB]`}>{children}{trailing}</button></li>;
+  return <li className={className}>{children}{trailing}</li>;
+}
+
+/** 효과음 켬/끔. 이 기기에만 저장한다. 음성 대화 중에는 설정과 상관없이 쉰다. */
+function SfxRow() {
+  const on = useSyncExternalStore(subscribeSfx, getSfxEnabled, () => true);
+  return (
+    <li>
+      <button role="switch" aria-checked={on} onClick={() => setSfxEnabled(!on)} data-sfx="none" className="ui-press flex min-h-11 w-full items-center justify-between gap-3 px-3.5 text-left text-t4 text-[#1F2A55] hover:bg-[#F7F8FB]">
+        <span>효과음<span className="ml-2 text-t2 text-[#8A91A3]">버튼·화면 전환</span></span>
+        <span aria-hidden="true" className={`relative h-6 w-10 shrink-0 rounded-full transition-colors duration-[var(--seed-duration-d4)] ${on ? "bg-[#1F2A55]" : "bg-[#D9DDE7]"}`}>
+          <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform duration-[var(--seed-duration-d4)] ${on ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+        </span>
+      </button>
+    </li>
+  );
+}
+
+/** 내가 고른 몽글이의 프로필. 처음 이야기한 날부터 며칠째인지는 이 기기의 기록으로만 센다. */
+function ProfileCard({ profile, days }: { profile: Profile; days: DayStat[] }) {
+  const color = COLORS.find((c) => c.id === profile.color) ?? COLORS[0];
+  const first = days.reduce<string | null>((min, d) => (min === null || d.date < min ? d.date : min), null);
+  const together = first ? Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(`${first}T00:00:00`).getTime()) / 86_400_000) + 1 : null;
+  return (
+    <div className="mt-3 flex items-center gap-3 px-1">
+      <span aria-hidden="true" className="grid size-11 shrink-0 place-items-center rounded-full" style={{ background: color.light }}>
+        <Buddy shape={profile.shape} color={profile.color} accessory={profile.accessory} size={36} look={[0.15, 0.1]} bob />
+      </span>
+      <span className="min-w-0 flex-1">
+        <b className="block truncate text-t4 font-bold text-[#1F2A55]">{profile.companion}</b>
+        <span className="block truncate text-t2 text-[#5A6478]">
+          {profile.nickname ? `${profile.nickname}님의 ` : ""}AI 이야기 친구{together && <span style={{ color: color.deep }}> · 함께한 지 {together}일째</span>}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+/** 메뉴의 라이브러리 입구. 이 기기의 숫자로 이번 달 대화한 날과 최근 7일 하늘을 보여 준다. */
+function ReportCard({ days, onClick }: { days: DayStat[]; onClick: () => void }) {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const talked = monthView(days, now.getFullYear(), month).talked;
+  const byDate = new Map(days.map((d) => [d.date, d]));
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const at = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6 + i);
+    return { at, day: byDate.get(localDate(at.getTime())) };
+  });
+  const summary = talked ? `${talked}일 이야기했어요` : "이번 달 첫 이야기를 기다려요";
+  return (
+    <button onClick={onClick} aria-label={`${month}월 라이브러리 보기, ${summary}`} className="ui-press mt-3 flex w-full items-center gap-3 rounded-r4 bg-[#F4F6FB] py-2.5 pr-2 pl-3.5 text-left hover:bg-[#EEF1F8]">
+      <span aria-hidden="true" className="min-w-0 flex-1">
+        <span className="block text-t1 text-[#5A6478]">{month}월 하늘</span>
+        <b className="block truncate text-t3 font-bold text-[#1F2A55]">{talked ? `${talked}일 이야기했어요` : "첫 이야기를 기다려요"}</b>
+      </span>
+      {/* 최근 7일. 맨 오른쪽이 오늘이고, 위기 표현이 있던 날은 하늘을 보여 주지 않는다. */}
+      <span aria-hidden="true" className="flex shrink-0 items-center gap-1">
+        {week.map(({ day }, index) => {
+          const sky = day && !day.crisis ? effectiveSky(day) : undefined;
+          const today = index === 6 ? "ring-[1.5px] ring-[#1F2A55]/30 ring-offset-1 ring-offset-[#F4F6FB]" : "";
+          return sky
+            ? <span key={index} className={`rounded-full ${today}`}><SkyDot id={sky} size={18} /></span>
+            : <span key={index} className={`grid size-[18px] place-items-center rounded-full ${day ? "bg-white" : "border border-dashed border-[#D5DAE5]"} ${today}`}>{day && <i className="size-1 rounded-full bg-[#9AA2B5]" />}</span>;
+        })}
+      </span>
+      {chevron}
+    </button>
+  );
+}
+
+/** 오늘 남은 대화량 한 줄. 평소엔 조용히, 적게 남으면 주황으로, 다 쓰면 다시 채워지는 시각을 알려 준다. */
+function QuotaLine({ status }: { status: QuotaStatus }) {
+  const { chatLeft, voiceLeft, ratio, state } = quotaSummary(status);
+  const reset = new Date(status.resetAt * 1000);
+  const resetText = `${reset.getHours() < 12 ? "오전" : "오후"} ${reset.getHours() % 12 || 12}시${reset.getMinutes() ? ` ${reset.getMinutes()}분` : ""}에 다시 채워져요`;
+  const counts = `글 ${chatLeft}번 · 음성 ${voiceLeft}번`;
+  return (
+    <div role="group" aria-label={state === "out" ? `오늘 대화를 다 했어요. ${resetText}` : `오늘 남은 대화: ${counts}`} className="px-3 pt-2 pb-2">
+      <span aria-hidden="true" className="block h-1.5 overflow-hidden rounded-full bg-[#E9ECF3]">
+        <span className="block h-full rounded-full transition-[width] duration-[var(--seed-duration-d6)]" style={{ width: `${Math.round(ratio * 100)}%`, background: state === "low" ? "#E8A23C" : "#8EA3E8" }} />
+      </span>
+      <p aria-hidden="true" className={`mt-1.5 text-t1 tabular-nums ${state === "low" ? "text-[#B06A00]" : "text-[#8A91A3]"}`}>
+        {state === "out" ? `오늘 대화를 다 했어요 · ${resetText}` : `오늘 남은 대화 · ${counts}`}
+      </p>
+    </div>
+  );
+}
+
+/** 라이브러리 아이콘. 라이브러리가 하늘 달력을 담아서 홈 헤더와 메뉴에서 같은 달력 모양을 쓴다. */
+export function CalendarIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+      <rect x="4" y="5.5" width="16" height="14.5" rx="3" />
+      <path d="M8 3.5v4M16 3.5v4M4 10h16" />
+    </svg>
+  );
+}
+
 const stroke = { fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
+
+// 메뉴 아이콘은 모두 20px·선 굵기 1.7·글자와 같은 색으로 맞춰 글자 굵기(500)와 무게를 같게 한다.
+const menuIcon = (paths: React.ReactNode) => <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" {...stroke}>{paths}</svg>;
+const ICONS = {
+  insight: menuIcon(<><path d="M9.5 17.5h5M10.25 20.5h3.5" /><path d="M12 3.5a5.5 5.5 0 0 0-3.3 9.9c.5.4.8 1 .8 1.6v.5h5V15c0-.6.3-1.2.8-1.6A5.5 5.5 0 0 0 12 3.5Z" /></>),
+  library: menuIcon(<><rect x="4" y="5.5" width="16" height="14.5" rx="3" /><path d="M8 3.5v4M16 3.5v4M4 10h16" /></>),
+  friends: menuIcon(<><circle cx="9" cy="8.5" r="3.2" /><path d="M3.5 19c.7-3.2 2.9-5 5.5-5s4.8 1.8 5.5 5" /><path d="M15.5 5.6a3.2 3.2 0 0 1 0 5.8M17.5 14.4c1.6.7 2.6 2.3 3 4.6" /></>),
+  help: menuIcon(<><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H8.5L4 21.5v-10a7.5 7.5 0 0 1 16 0Z" /><path d="M8.5 10.5h7M8.5 14h4.5" /></>),
+  // 몽글이처럼 생긴 구름 얼굴
+  character: menuIcon(<><path d="M7 19.5h10a4.5 4.5 0 0 0 .8-8.93A6 6 0 0 0 6.2 11.6 4 4 0 0 0 7 19.5Z" /><circle cx="9.8" cy="14.3" r=".8" fill="currentColor" stroke="none" /><circle cx="14.2" cy="14.3" r=".8" fill="currentColor" stroke="none" /><path d="M10.7 16.7c.8.6 1.8.6 2.6 0" /></>),
+  settings: menuIcon(<><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></>),
+};
 
 export default function Drawer({
   open,
   profile,
   onClose,
-  onLog,
+  onInsight,
+  onLibrary,
   onCustomize,
   onHelp,
-  onInvite,
+  onFriends,
   onSignOut,
   onReset,
+  loadQuota,
 }: {
   open: boolean;
   profile: Profile;
   onClose: () => void;
-  onLog: () => void;
+  onInsight: () => void;
+  onLibrary: () => void;
   onCustomize: () => void;
   onHelp: () => void;
-  onInvite: () => void;
+  onFriends: () => void;
   onSignOut: () => void;
   onReset: () => void;
+  loadQuota?: (signal: AbortSignal) => Promise<QuotaStatus | null>;
 }) {
   const panelRef = useRef<HTMLElement>(null);
+  const [view, setView] = useState<"menu" | "settings">("menu");
+  const [wasOpen, setWasOpen] = useState(false);
+  const [days, setDays] = useState<DayStat[]>([]);
+  const [quota, setQuota] = useState<QuotaStatus | null>(null);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setDays(loadReport()); // 열 때마다 이 기기의 리포트 숫자를 다시 읽는다
+    else setView("menu"); // 닫았다 다시 열면 항상 메뉴부터 보여 준다
+  }
   const onCloseRef = useRef(onClose);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  const loadQuotaRef = useRef(loadQuota);
+  useEffect(() => { loadQuotaRef.current = loadQuota; }, [loadQuota]);
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -73,104 +214,93 @@ export default function Drawer({
       if (previous?.isConnected) previous.focus({ preventScroll: true });
     };
   }, [open]);
+  useEffect(() => {
+    // 열 때마다 서버에서 오늘 남은 대화량을 새로 읽는다. 실패하면 줄을 감춘다.
+    const load = loadQuotaRef.current;
+    if (!open || !load) return;
+    const controller = new AbortController();
+    load(controller.signal).then((next) => { if (!controller.signal.aborted) setQuota(next); }, () => {});
+    return () => controller.abort();
+  }, [open]);
+  useEffect(() => {
+    // 메뉴 ↔ 설정을 오갈 때 바뀐 화면의 첫 버튼으로 포커스를 옮긴다.
+    if (!open) return;
+    panelRef.current?.querySelector<HTMLElement>("button:not(:disabled), a[href]")?.focus({ preventScroll: true });
+  }, [view, open]);
   const name = profile.companion;
-  const tile = COLORS.find((c) => c.id === profile.color)?.light;
   return (
     <div className={`absolute inset-0 z-40 ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
       <div onClick={onClose} className={`absolute inset-0 bg-[rgba(20,28,60,.32)] backdrop-blur-[2px] transition-opacity duration-300 ease-enter ${open ? "opacity-100" : "opacity-0"}`} />
       <nav
         ref={panelRef}
-        aria-label="메뉴"
+        aria-label={view === "settings" ? "설정" : "메뉴"}
         role="dialog"
         aria-modal="true"
         inert={!open}
-        className={`absolute inset-y-0 left-0 flex w-[82%] max-w-[340px] flex-col overflow-y-auto rounded-r-r6 bg-white px-gutter pt-8 pb-6 shadow-[10px_0_40px_rgba(20,28,60,.15)] transition-transform duration-300 ease-enter ${
+        className={`absolute inset-y-0 left-0 flex w-[82%] max-w-[340px] flex-col overflow-y-auto rounded-r-r6 px-gutter pt-6 pb-5 shadow-[10px_0_40px_rgba(20,28,60,.15)] transition-transform duration-300 ease-enter ${view === "settings" ? "bg-[#F7F8FB]" : "bg-white"} ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3 px-1.5">
-            <span className="grid size-14 place-items-center rounded-r4" style={{ background: tile }}>
-              <Buddy shape={profile.shape} color={profile.color} size={50} look={[0.2, 0.2]} />
-            </span>
-            <span>
-              <b className="block text-t6 font-bold tracking-[-0.02em]">{name}</b>
-              <span className="text-t3 text-[#5A6478]">{profile.nickname ? `${profile.nickname}님의 ${name}` : `나의 ${name}`}</span>
-            </span>
-          </div>
-          <button onClick={onClose} aria-label="메뉴 닫기" className="ui-press grid size-11 shrink-0 place-items-center rounded-full bg-[#F2F4F8] text-[#3D4559]">
-            <Icon name="close" size={18} />
-          </button>
-        </div>
-
-        <ul className="mt-7 flex flex-col gap-1">
-          <Row
-            current
-            onClick={onClose}
-            label="홈"
-            icon={
-              <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
-                <path d="M4 10.5L12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z" />
-              </svg>
-            }
-          />
-          <Row
-            onClick={onLog}
-            label="내 기록"
-            icon={
-              <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
-                <path d="M3.6 12.2A8.5 8.5 0 1 0 6.2 5.9" />
-                <path d="M3.4 4.6v4h4" />
-                <path d="M12 7.6V12l3 2" />
-              </svg>
-            }
-          />
-          <Row
-            onClick={onCustomize}
-            label={`${name} 바꾸기`}
-            icon={
-              <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
-                <path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6L5.5 10l4.6-1.9z" />
-                <path d="M18.5 15.5l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z" />
-              </svg>
-            }
-          />
-          <Row onClick={onHelp} label="도움받기" icon={<Icon name="help" size={22} />} />
-          <Row onClick={onInvite} label="친구 초대" icon={<span aria-hidden="true" className="text-2xl leading-none">＋</span>} />
-        </ul>
-
-        <a href="tel:109" className="ui-press mt-6 flex items-center justify-between gap-3 rounded-r5 bg-[#FFF3F2] p-4 ring-1 ring-[#F2B8B3] ring-inset">
-          <span>
-            <b className="block text-t5 font-bold text-[#111318]">
-              위급할 때는 <span className="text-[#C42A23]">109</span>
-            </b>
-            <span className="text-t2 text-[#55525F]">24시간 사람과 이야기할 수 있어요</span>
-          </span>
-          <span className="flex h-10 shrink-0 items-center gap-1 rounded-full bg-[#C42A23] px-3.5 text-sm font-bold text-white">
-            <Icon name="phone" size={16} />
-            전화
-          </span>
-        </a>
-
-        <div className="mt-auto flex flex-col gap-3 px-2 pt-6 text-t3 text-[#5A6478]">
-          <p className="flex gap-3">
-            {/* 문서가 아직 없어서 링크 자리만 둔다 */}
-            <a href="#" className="underline-offset-4 hover:underline">
-              이용약관
-            </a>
-            <a href="#" className="underline-offset-4 hover:underline">
-              개인정보 처리방침
-            </a>
-          </p>
-          <p>{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
-          <div className="flex items-center justify-between">
-            <span>버전 0.1.0</span>
-            <button onClick={onReset} className="ui-press h-11 font-medium text-[#3D4559] underline underline-offset-4">
-              처음부터 다시 하기
+        {view === "menu" ? <>
+          <div className="flex items-center justify-between pl-3">
+            <span className="text-t7 font-bold text-[#1F2A55]">Here!</span>
+            <button onClick={onClose} aria-label="메뉴 닫기" className="ui-press grid size-10 shrink-0 place-items-center rounded-full bg-[#F2F4F8] text-[#3D4559]">
+              <Icon name="close" size={18} />
             </button>
           </div>
-          <button onClick={onSignOut} className="ui-press self-start py-2 text-sm font-medium text-[#5A6478] underline underline-offset-4">로그아웃</button>
-        </div>
+
+          <ProfileCard profile={profile} days={days} />
+
+          <ReportCard days={days} onClick={onLibrary} />
+
+          <ul className="mt-3 flex flex-col gap-0.5">
+            <Row onClick={onInsight} label="구름 정원" icon={ICONS.insight} />
+            <Row onClick={onLibrary} label="라이브러리" icon={ICONS.library} />
+            <Row onClick={onFriends} label="친구" icon={ICONS.friends} />
+            <Row onClick={onHelp} label="도움받기" icon={ICONS.help} />
+            <li role="separator" aria-hidden="true" className="my-1.5 ml-3 h-px w-1/3 bg-[#E6E8EF]" />
+            <Row onClick={onCustomize} label="캐릭터" icon={ICONS.character} />
+          </ul>
+
+
+          <div className="mt-auto border-t border-[#E6E8EF] pt-2">
+            {quota && <QuotaLine status={quota} />}
+            <ul className="flex flex-col gap-0.5">
+              <li>
+                <button onClick={() => setView("settings")} className="ui-press flex h-11 w-full items-center gap-3 rounded-r3 px-3 text-left text-t4 font-medium text-[#1F2A55] hover:bg-[#F2F4F8]">
+                  <span className="grid size-5 place-items-center">{ICONS.settings}</span>
+                  <span className="flex-1">설정</span>
+                  {chevron}
+                </button>
+              </li>
+            </ul>
+          </div>
+        </> : <>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setView("menu")} aria-label="메뉴로 돌아가기" className="ui-press -ml-1.5 grid size-10 shrink-0 place-items-center rounded-full text-[#1F2A55] hover:bg-[#ECEEF3]">
+              <Icon name="back" size={20} />
+            </button>
+            <h2 className="text-t5 font-bold text-[#1F2A55]">설정</h2>
+          </div>
+
+          <ul className="mt-4 overflow-hidden rounded-r3 bg-white">
+            {/* 문서가 아직 없어서 링크 자리만 둔다 */}
+            <SettingRow href="#" trailing={chevron}>이용약관</SettingRow>
+            <SettingRow href="#" trailing={chevron}>개인정보 처리방침</SettingRow>
+            <SettingRow trailing={<span className="text-t3 tabular-nums text-[#8A91A3]">0.1.0</span>}>앱 버전</SettingRow>
+          </ul>
+
+          <ul className="mt-3 overflow-hidden rounded-r3 bg-white">
+            <SfxRow />
+          </ul>
+
+          <ul className="mt-3 overflow-hidden rounded-r3 bg-white">
+            <SettingRow onClick={onSignOut}>로그아웃</SettingRow>
+            <SettingRow onClick={onReset} danger>{name} 처음부터 다시 만들기</SettingRow>
+          </ul>
+
+          <p className="mt-auto px-2 pt-6 text-t2 text-[#8A91A3]">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
+        </>}
       </nav>
     </div>
   );

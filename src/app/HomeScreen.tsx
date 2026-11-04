@@ -4,10 +4,10 @@ import { useEffect, useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { Msg } from "@/lib/log";
 import { ChatMarkdown } from "@/lib/chat-markdown";
-import { DEFAULT_HOME_OPENER, FIRST_HOME_OPENER } from "@/lib/home-opener";
 import { safeSearchSource, type SearchSource } from "@/lib/web-search-protocol";
 import { COLORS, type ColorId, type Profile, josa } from "@/lib/onboarding";
 import Buddy, { type BuddyState } from "./Buddy";
+import { CalendarIcon } from "./Drawer";
 import { Icon } from "./art";
 import Sheet from "./Sheet";
 import "./home-voice.css";
@@ -16,6 +16,13 @@ import "./home-chat.css";
 // 글 버튼은 홈을 유지한 채 입력창만 펼친다. 음성 버튼은 같은 자리에서 확장한다.
 // 파일 메타정보만 임시로 보관하며, 내용을 읽거나 서버로 보내지 않는다.
 type SelectedFile = { key: string; name: string; size: number };
+
+// 첨부 메뉴. 고른 종류에 맞춰 기기의 카메라·사진·파일 선택창을 연다(카메라는 지원하는 휴대폰에서만 바로 열린다).
+const ATTACH_KINDS = [
+  { id: "camera", label: "사진 찍기", accept: "image/*", capture: true, icon: <><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.5-2h6l1.5 2h2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5Z" /><circle cx="12" cy="12.5" r="3.2" /></> },
+  { id: "photo", label: "사진 선택", accept: "image/*", capture: false, icon: <><rect x="4" y="4.5" width="16" height="15" rx="2.5" /><circle cx="9" cy="9.5" r="1.6" /><path d="m4.5 17 4.5-4.5 3.5 3.5 2.5-2.5 4.5 4.5" /></> },
+  { id: "file", label: "파일 선택", accept: "", capture: false, icon: <><path d="M14 3.5H7.5A1.5 1.5 0 0 0 6 5v14a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 18 19V7.5Z" /><path d="M14 3.5v4h4" /></> },
+] as const;
 
 export type HomeVoiceControls = {
   state: BuddyState;
@@ -28,6 +35,7 @@ export type HomeVoiceControls = {
   caption?: string;
   sources?: SearchSource[];
   warning?: string;
+  hearing?: boolean; // 사용자가 말하는 중(받아쓰기 중간 결과가 오는 동안)
   onEnd: () => void;
   onMic: () => void;
 };
@@ -46,12 +54,12 @@ export type HomeChatControls = {
 
 /** 아래에서 올라오는 오돌토돌한 번짐. 고른 몽글이 빛의 색을 연하게 써서 캐릭터와 어울리게 하고,
  * 천천히 숨 쉬듯 부풀며 그 안에서 두 색이 오로라처럼 흐른다. */
-export function Bloom({ color = "lavender", className = "h-[66%]" }: { color?: ColorId; className?: string }) {
+export function Bloom({ color = "lavender", className = "h-[66%]", lively = false }: { color?: ColorId; className?: string; lively?: boolean }) {
   const id = `bloom${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const c = COLORS.find((x) => x.id === color) ?? COLORS[0];
   return (
     <div aria-hidden="true" className={`pointer-events-none absolute inset-x-0 bottom-0 overflow-hidden ${className}`} style={{ maskImage: "linear-gradient(to bottom, transparent, black 18%)" }}>
-      <svg className="absolute inset-0 size-full origin-bottom motion-safe:animate-bloom" viewBox="0 300 390 544" preserveAspectRatio="xMidYMax slice">
+      <svg className="absolute inset-0 size-full origin-bottom motion-safe:animate-bloom" style={lively ? { animationDuration: "6s" } : undefined} viewBox="0 300 390 544" preserveAspectRatio="xMidYMax slice">
         <defs>
           <radialGradient id={`${id}-g`} gradientUnits="userSpaceOnUse" cx="195" cy="857" r="475">
             <stop offset="0" stopColor={c.blob1} stopOpacity="0.62" />
@@ -76,8 +84,8 @@ export function Bloom({ color = "lavender", className = "h-[66%]" }: { color?: C
         <rect x="0" y="750" width="390" height="94" fill={`url(#${id}-b)`} />
       </svg>
       {/* 번짐 안에서 아주 느리게 흐르는 두 색 */}
-      <div className="absolute -inset-x-1/4 bottom-[-15%] h-[80%] motion-safe:animate-aurora-a" style={{ background: `radial-gradient(38% 42% at 32% 62%, ${c.blob2}66, transparent 70%)` }} />
-      <div className="absolute -inset-x-1/4 bottom-[-15%] h-[80%] motion-safe:animate-aurora-b" style={{ background: `radial-gradient(36% 40% at 70% 70%, ${c.blob1}55, transparent 70%)` }} />
+      <div className="absolute -inset-x-1/4 bottom-[-15%] h-[80%] motion-safe:animate-aurora-a" style={{ background: `radial-gradient(38% 42% at 32% 62%, ${c.blob2}66, transparent 70%)`, animationDuration: lively ? "9s" : undefined }} />
+      <div className="absolute -inset-x-1/4 bottom-[-15%] h-[80%] motion-safe:animate-aurora-b" style={{ background: `radial-gradient(36% 40% at 70% 70%, ${c.blob1}55, transparent 70%)`, animationDuration: lively ? "12s" : undefined }} />
     </div>
   );
 }
@@ -88,19 +96,23 @@ export default function HomeScreen({
   headline,
   onVoice,
   onText,
-  onLog,
+  onLibrary,
   onMenu,
   voice,
   chat,
   notice,
+  spotlight,
+  nudge,
   children,
 }: {
   profile: Profile;
   greet: boolean; // 온보딩을 막 끝냈으면 몽글이가 처음 인사한다
   headline?: string | null;
+  spotlight?: React.ReactNode; // 기본 홈 위쪽에 작게 두는 것(오늘 해 볼 만한 것 시안). 대화 중에는 감춘다
+  nudge?: React.ReactNode; // 대화를 마친 뒤 하단 버튼 위에 한 번 보여 주는 카드 시안
   onVoice: () => void;
   onText: () => void;
-  onLog: () => void;
+  onLibrary: () => void;
   onMenu: () => void;
   voice?: HomeVoiceControls;
   chat: HomeChatControls;
@@ -110,6 +122,9 @@ export default function HomeScreen({
   const [showFiles, setShowFiles] = useState(false);
   const [files, setFiles] = useState<SelectedFile[]>([]);
   const [greeting, setGreeting] = useState(greet);
+  const [attachOpen, setAttachOpen] = useState(false);
+  const attachButtonRef = useRef<HTMLButtonElement>(null);
+  const attachMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const micButtonRef = useRef<HTMLButtonElement>(null);
   const chatButtonRef = useRef<HTMLButtonElement>(null);
@@ -121,6 +136,9 @@ export default function HomeScreen({
   const name = profile.companion;
   const nick = profile.nickname || "친구";
   const hasMessages = chat.open && !voice && (chat.messages.length > 0 || chat.sending);
+  const chatting = chat.open && !voice; // 글 대화 중: 몽글이를 입력창 바로 위로 작게 옮긴다
+  const resting = !chat.open && !voice; // 기본 홈: 글 없이 몽글이와 배경 움직임으로 대화를 권한다
+  const bottomRef = useRef<HTMLDivElement>(null);
   const canSend = chat.open && Boolean(chat.draft.trim());
 
   useEffect(() => {
@@ -147,6 +165,19 @@ export default function HomeScreen({
   }, []);
 
   useEffect(() => {
+    // 입력창이 늘거나 오류·파일 줄이 생겨도 대화 목록이 하단 영역 바로 위에서 끝나게 한다.
+    const frame = frameRef.current;
+    const bottom = bottomRef.current;
+    if (!frame || !bottom) return;
+    const sync = () => frame.style.setProperty("--home-bottom-space", `${frame.clientHeight - bottom.offsetTop}px`);
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(frame);
+    observer.observe(bottom);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     const input = composerRef.current;
     if (!input) return;
     input.style.height = "auto";
@@ -169,6 +200,38 @@ export default function HomeScreen({
     composerRef.current?.blur();
     flushSync(chat.onClose);
     chatButtonRef.current?.focus({ preventScroll: true });
+  }
+
+  useEffect(() => {
+    if (!attachOpen) return;
+    attachMenuRef.current?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+    const close = (event: PointerEvent | KeyboardEvent) => {
+      if (event instanceof KeyboardEvent) {
+        if (event.key === "Escape") { event.preventDefault(); setAttachOpen(false); attachButtonRef.current?.focus({ preventScroll: true }); }
+        if (event.key === "Tab") setAttachOpen(false);
+        return;
+      }
+      const target = event.target as Node;
+      if (!attachMenuRef.current?.contains(target) && !attachButtonRef.current?.contains(target)) setAttachOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [attachOpen]);
+
+  function pickAttachment(kind: (typeof ATTACH_KINDS)[number]) {
+    const input = fileInputRef.current;
+    if (attachOpen) {
+      setAttachOpen(false);
+      attachButtonRef.current?.focus({ preventScroll: true });
+    }
+    if (!input) return;
+    if (kind.accept) input.accept = kind.accept; else input.removeAttribute("accept");
+    if (kind.capture) input.setAttribute("capture", "environment"); else input.removeAttribute("capture");
+    input.click();
   }
 
   useEffect(() => {
@@ -201,41 +264,31 @@ export default function HomeScreen({
 
   return (
     <main ref={frameRef} className="app-frame home-screen bg-[#FAFCFE] text-[#111318] motion-safe:animate-fade" data-text-open={chat.open} data-has-messages={hasMessages}>
-      <Bloom color={profile.color} />
+      <Bloom color={profile.color} lively={resting} />
       {/* 온보딩의 빛이 하얗게 걷히며 홈이 나타난다 */}
       {greet && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 bg-white motion-safe:animate-unveil motion-reduce:hidden" />}
 
-      <header className="home-header absolute inset-x-0 top-12 z-10 flex h-14 items-center justify-between px-gutter">
-        <button onClick={onMenu} aria-label="메뉴" className="ui-press grid size-14 place-items-center rounded-full bg-white shadow-[0_3px_18px_rgba(28,38,80,.055),0_1px_2px_rgba(28,38,80,.03)]">
+      <header className="home-header absolute inset-x-0 z-10 flex h-14 items-center justify-between px-gutter">
+        <button onClick={onMenu} aria-label="메뉴" className="home-chrome-button ui-press grid size-12 place-items-center rounded-full">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
             <path d="M4.5 7h15M4.5 12h15M4.5 17h9" />
           </svg>
         </button>
-        <span className="flex items-center gap-1.5">
-          <Buddy shape={profile.shape} color={profile.color} size={30} look={[0.2, 0.1]} />
-          <span className="text-t7 font-medium">Here!</span>
-        </span>
-        <button onClick={onLog} aria-label="내 기록" className="ui-press grid size-14 place-items-center rounded-full bg-white shadow-[0_3px_18px_rgba(28,38,80,.055),0_1px_2px_rgba(28,38,80,.03)]">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M3.6 12.2A8.5 8.5 0 1 0 6.2 5.9" />
-            <path d="M3.4 4.6v4h4" />
-            <path d="M12 7.6V12l3 2" />
-          </svg>
+        <button onClick={onLibrary} aria-label="라이브러리" className="home-chrome-button ui-press grid size-12 place-items-center rounded-full">
+          <CalendarIcon />
         </button>
       </header>
 
-      <div className={`home-intro absolute inset-x-gutter top-[18%] flex flex-col items-center gap-6 text-center ${voice || hasMessages ? "home-intro-quiet" : ""}`} aria-hidden={Boolean(voice || hasMessages)}>
-        <span className="inline-flex h-8 items-center rounded-full bg-white px-4 text-t4 text-[#2A2E36] shadow-[0_2px_12px_rgba(28,38,80,.05),0_0_0_1px_rgba(28,38,80,.03)]">
-          AI 이야기 친구
-        </span>
-        <h1 className="min-h-[2.6em] whitespace-pre-line text-t12 font-medium text-balance">
-          {headline || (greet ? FIRST_HOME_OPENER : DEFAULT_HOME_OPENER)}
-        </h1>
+      <div className={`home-intro absolute inset-x-gutter top-[18%] flex flex-col items-center text-center ${voice || hasMessages ? "home-intro-quiet" : ""}`} aria-hidden={Boolean(voice || hasMessages)}>
+        {/* 배지·설명 없이 몽글이가 먼저 건네는 한마디만. 문구는 page가 정한다(기억 인사 또는 기본 오프너). */}
+        {headline && <h1 className="min-h-[2.6em] whitespace-pre-line text-t12 font-medium text-balance">{headline}</h1>}
       </div>
 
       {notice && <div className="home-safety absolute inset-x-gutter top-[18%] z-10">{notice}</div>}
+      {spotlight && resting && !notice && <div className="absolute inset-x-gutter top-[calc(env(safe-area-inset-top)+76px)] z-10">{spotlight}</div>}
 
       {hasMessages && <div ref={messageListRef} className="home-messages" role="log" aria-label="대화 내용" aria-live="polite" aria-relevant="additions text">
+        <p className="pt-1 text-center text-t1 text-[#5A6478]/80">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
         {chat.messages.map((message, index) => <div key={index} className="home-message" data-role={message.role}>
           <span className="sr-only">{message.role === "user" ? "나" : name}: </span>
           {message.role === "assistant" ? <div className="home-message-bubble"><ChatMarkdown content={message.content} /></div> : <p>{message.content}</p>}
@@ -246,7 +299,7 @@ export default function HomeScreen({
         </div>}
       </div>}
 
-      <div className="home-character-wrap absolute inset-x-gutter top-[44%] flex flex-col items-center">
+      <div className="home-character-wrap absolute inset-x-gutter top-[36%] flex flex-col items-center" data-hidden={chatting} aria-hidden={chatting}>
         {greeting && !voice && !chat.open && !hasMessages && (
           <button
             onClick={() => setGreeting(false)}
@@ -256,7 +309,20 @@ export default function HomeScreen({
           </button>
         )}
         <div className={`home-buddy ${voice ? "home-buddy-expanded" : ""}`}>
-          <Buddy shape={profile.shape} color={profile.color} size={170} state={voice?.state ?? chat.state} mouth={greeting && !voice && !chat.open ? "tongue" : undefined} bob />
+          <div className={resting ? "home-buddy-float" : undefined}>
+          <Buddy
+            shape={profile.shape}
+            color={profile.color}
+            accessory={profile.accessory}
+            size={170}
+            state={voice?.state ?? chat.state}
+            mouth={greeting && !voice && !chat.open ? "tongue" : undefined}
+            bob
+            tap={chat.open && !voice ? chat.draft.length : undefined}
+            hearing={voice ? Boolean(voice.hearing) : undefined}
+            voice={Boolean(voice)}
+          />
+          </div>
         </div>
         {voice && <div className="mt-5 max-w-full px-4 text-center">
           <p role="status" className="text-t4 font-medium text-[#1F2A55]">{voice.error ? "연결하지 못했어요" : voice.statusText}</p>
@@ -264,7 +330,7 @@ export default function HomeScreen({
         </div>}
       </div>
 
-      <div className="home-bottom absolute inset-x-5 bottom-[max(32px,env(safe-area-inset-bottom))] flex flex-col gap-3">
+      <div ref={bottomRef} className="home-bottom absolute inset-x-5 bottom-[max(32px,env(safe-area-inset-bottom))] flex flex-col gap-3">
         {voice?.sources && voice.sources.length > 0 && <nav aria-label="검색 출처" className="flex max-h-24 gap-2 overflow-auto rounded-r3 bg-white/90 px-3 py-2">
           {voice.sources.map(safeSearchSource).filter((source): source is SearchSource => Boolean(source)).map((source, index) => <a key={`${source.url}-${index}`} href={source.url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="inline-flex min-h-10 max-w-48 shrink-0 items-center rounded-r2 px-2 text-t3 text-[#1F2A55] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"><span className="truncate">{source.title}</span></a>)}
         </nav>}
@@ -284,21 +350,40 @@ export default function HomeScreen({
             선택한 파일 {files.length}개 · 기기에서만
           </button>
         )}
+        {nudge && resting && <div>{nudge}</div>}
+        {chatting && (
+          <div aria-hidden="true" className="home-chat-buddy">
+            <Buddy shape={profile.shape} color={profile.color} accessory={profile.accessory} size={68} state={chat.state} tap={chat.draft.length} />
+          </div>
+        )}
         <div role="group" aria-label={voice ? "음성 대화" : chat.open ? "메시지 작성" : "대화 시작"} className="home-actions">
           <form className="home-compose" data-open={chat.open} onSubmit={(event) => { event.preventDefault(); if (canSend && !chat.sending) chat.onSend(); }}>
           <button
+            ref={attachButtonRef}
             type="button"
             onClick={(event) => {
               event.currentTarget.focus({ preventScroll: true });
-              fileInputRef.current?.click();
+              setAttachOpen((open) => !open);
             }}
-            aria-label="파일 첨부"
-            className="home-attach ui-press grid size-14 shrink-0 place-items-center rounded-full text-[#1F2A55]"
+            aria-label="첨부"
+            aria-haspopup="menu"
+            aria-expanded={attachOpen}
+            className="home-attach home-chrome-button ui-press grid size-14 shrink-0 place-items-center rounded-full"
           >
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-              <path d="M12 4v16M4 12h16" />
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" className={`transition-transform duration-[var(--seed-duration-d4)] ${attachOpen ? "rotate-45" : ""}`}>
+              <path d="M12 5v14M5 12h14" />
             </svg>
           </button>
+          {attachOpen && (
+            <div ref={attachMenuRef} role="menu" aria-label="첨부할 종류" className="absolute bottom-[calc(100%+8px)] left-0 z-20 w-48 origin-bottom-left rounded-r4 bg-white p-1.5 shadow-[0_10px_32px_rgba(28,38,80,.16)] motion-safe:animate-pop">
+              {ATTACH_KINDS.map((kind) => (
+                <button key={kind.id} type="button" role="menuitem" onClick={() => pickAttachment(kind)} className="ui-press flex h-11 w-full items-center gap-3 rounded-r3 px-3 text-left text-t4 font-medium text-[#1F2A55] hover:bg-[#F2F4F8] focus-visible:bg-[#F2F4F8]">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-[#3D4559]">{kind.icon}</svg>
+                  {kind.label}
+                </button>
+              ))}
+            </div>
+          )}
             <div className="home-compose-content" inert={!chat.open} aria-hidden={!chat.open}>
               <label htmlFor="home-text-draft" className="sr-only">{name}에게 하고 싶은 말</label>
               <textarea ref={composerRef} id="home-text-draft" rows={1} maxLength={800} value={chat.draft} readOnly={chat.sending} tabIndex={chat.open ? 0 : -1} aria-busy={chat.sending} placeholder={`${name}에게 이야기해요…`} autoComplete="off" enterKeyHint="send"
@@ -322,9 +407,9 @@ export default function HomeScreen({
               aria-expanded={chat.open}
               aria-controls="home-text-draft"
               aria-hidden={chat.open}
-              className="home-text-toggle ui-press grid size-14 place-items-center rounded-full text-[#1F2A55] disabled:opacity-40"
+              className="home-text-toggle home-chrome-button ui-press grid size-14 place-items-center rounded-full disabled:opacity-40"
             >
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M5 4.5h14A1.5 1.5 0 0 1 20.5 6v10a1.5 1.5 0 0 1-1.5 1.5H10l-6.5 4V6A1.5 1.5 0 0 1 5 4.5Z" />
               </svg>
             </button>
@@ -334,7 +419,7 @@ export default function HomeScreen({
             <div inert={canSend} aria-hidden={canSend} className="home-mic-action">
             <div className="home-voice-pill" data-expanded={Boolean(voice)}>
               <div className="home-voice-end" inert={!voice} aria-hidden={!voice}>
-                <button type="button" onClick={voice?.onEnd} tabIndex={voice ? 0 : -1} aria-label="음성 대화 종료" className="ui-press grid size-11 shrink-0 place-items-center rounded-full bg-[#E5484D] text-white">
+                <button type="button" onClick={voice?.onEnd} tabIndex={voice ? 0 : -1} aria-label="음성 대화 종료" className="ui-press grid size-12 shrink-0 place-items-center rounded-full bg-[#E5484D] text-white">
                   <Icon name="close" size={20} />
                 </button>
                 <span className="h-8 w-px shrink-0 bg-[#D9DDE7]" />
@@ -348,15 +433,16 @@ export default function HomeScreen({
                 aria-label={voice ? voice.error ? "음성 연결 다시 시도" : voice.micOn ? "마이크 끄기" : "마이크 켜기" : `${josa(name, "과", "와")} 음성 대화 시작`}
                 aria-expanded={Boolean(voice)}
                 aria-pressed={voice && !voice.error ? voice.micOn : undefined}
-                className="ui-press grid size-14 shrink-0 place-items-center rounded-full text-[#1F2A55] disabled:opacity-40"
+                className="home-mic ui-press grid size-14 shrink-0 place-items-center rounded-full disabled:opacity-40"
+                data-off={Boolean(voice && !voice.micOn && !voice.error)}
               >
-                <Icon name={voice && !voice.micOn && !voice.error ? "micOff" : "mic"} size={28} />
+                <Icon name={voice && !voice.micOn && !voice.error ? "micOff" : "mic"} size={26} />
               </button>
             </div>
             </div>
           </div>
         </div>
-        <p className="text-center text-t1 text-[#5A6478]">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
+        {!chatting && <p className="text-center text-t1 text-[#5A6478]/80">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>}
       </div>
       {voice?.listening && <div className="home-listening-wave" aria-hidden="true">{Array.from({ length: 32 }, (_, index) => <i key={index} style={{ animationDelay: `${(index % 7) * -160}ms`, backgroundColor: COLORS.find((color) => color.id === profile.color)?.deep }} />)}</div>}
       {children}
@@ -368,7 +454,7 @@ export default function HomeScreen({
           footer={(
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => pickAttachment(ATTACH_KINDS[2])}
               className="ui-press h-14 w-full rounded-full bg-[#F2F4F8] text-t5 font-bold text-[#1F2A55]"
             >
               파일 더 선택하기

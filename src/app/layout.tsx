@@ -3,6 +3,7 @@ import { Bagel_Fat_One } from "next/font/google";
 import "./globals.css";
 import "./app-frame.css";
 import "./chat-markdown.css";
+import SoundEffects from "./SoundEffects";
 
 const display = Bagel_Fat_One({
   weight: "400",
@@ -29,7 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">{children}<SoundEffects /></body>
     </html>
   );
 }

@@ -13,11 +13,13 @@
   justify-content: flex-end;
   width: 56px;
   height: 64px;
+  padding-inline: 0;
   border-radius: var(--seed-radius-full);
-  transition: width var(--seed-duration-d6) var(--seed-timing-function-enter), background-color var(--seed-duration-d3) ease, box-shadow var(--seed-duration-d3) ease;
+  transition: width var(--seed-duration-d6) var(--seed-timing-function-enter), padding var(--seed-duration-d6) var(--seed-timing-function-enter), background-color var(--seed-duration-d3) ease, box-shadow var(--seed-duration-d3) ease;
 }
 .home-voice-pill[data-expanded="true"] {
-  width: 132px;
+  width: 137px; /* 8 + 종료 48 + 12 + 구분선 1 + 12 + 마이크 48 + 8 */
+  padding-inline: 8px;
   background: #fff;
   box-shadow: 0 4px 18px rgb(28 38 80 / 8%);
 }
@@ -30,7 +32,7 @@
   opacity: 0;
   transition: width var(--seed-duration-d6) var(--seed-timing-function-enter), opacity var(--seed-duration-d3) ease;
 }
-.home-voice-pill[data-expanded="true"] .home-voice-end { width: 64px; opacity: 1; }
+.home-voice-pill[data-expanded="true"] .home-voice-end { width: 73px; opacity: 1; }
 .home-listening-wave {
   position: absolute;
   inset-inline: 0;
@@ -50,4 +52,21 @@
 @keyframes home-listening-wave {
   from { transform: scaleY(.2); }
   to { transform: scaleY(1); }
+}
+.home-header { top: calc(env(safe-area-inset-top) + 12px); }
+/* 헤더·하단 보조 버튼은 같은 반투명 원으로 맞춘다. 주 행동(마이크·보내기)만 채운다. */
+.home-chrome-button {
+  background: rgb(255 255 255 / 72%);
+  box-shadow: 0 2px 10px rgb(28 38 80 / 5%);
+  backdrop-filter: blur(12px);
+  color: #1f2a55;
+}
+/* 기본 홈에서 몽글이가 조금 더 둥실거리며 말을 기다린다. 동작 줄이기에서는 움직이지 않는다. */
+@media (prefers-reduced-motion: no-preference) {
+  .home-buddy-float { animation: home-buddy-float 4.8s ease-in-out infinite; }
+}
+@keyframes home-buddy-float {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  30% { transform: translateY(-10px) rotate(-1.5deg); }
+  65% { transform: translateY(-4px) rotate(1.2deg); }
 }

@@ -1,0 +1,20 @@
+/* 구름 정원의 작은 움직임. 동작 줄이기에서는 모두 멈춘다. */
+.garden-plant { transform-box: fill-box; transform-origin: 50% 100%; }
+@media (prefers-reduced-motion: no-preference) {
+  .garden-plant { animation: garden-sway 4.2s ease-in-out infinite alternate; }
+  .garden-rain { animation: garden-rain 1.1s linear infinite; }
+  .garden-wind { animation: garden-wind 3.6s ease-in-out infinite; }
+  .garden-sun { transform-box: fill-box; transform-origin: center; animation: garden-spin 24s linear infinite; }
+  .garden-cloud { animation: garden-drift 9s ease-in-out infinite alternate; }
+}
+@keyframes garden-sway { from { transform: rotate(-2.5deg); } to { transform: rotate(2.5deg); } }
+@keyframes garden-rain { from { transform: translateY(-14px); opacity: 0; } 30% { opacity: .9; } to { transform: translateY(18px); opacity: 0; } }
+@keyframes garden-wind { 0%, 100% { transform: translateX(-6px); opacity: .3; } 50% { transform: translateX(8px); opacity: .9; } }
+@keyframes garden-spin { to { transform: rotate(360deg); } }
+@keyframes garden-drift { from { transform: translateX(-6px); } to { transform: translateX(8px); } }
+@media (prefers-reduced-motion: no-preference) {
+  .garden-fall { animation: garden-fall 5.5s linear infinite; }
+  .garden-twinkle { transform-box: fill-box; transform-origin: center; animation: garden-twinkle 2.4s ease-in-out infinite; }
+}
+@keyframes garden-fall { from { transform: translate(0, -20px) rotate(0); opacity: 0; } 15% { opacity: 1; } to { transform: translate(14px, 70px) rotate(160deg); opacity: 0; } }
+@keyframes garden-twinkle { 0%, 100% { transform: scale(.4); opacity: .2; } 50% { transform: scale(1); opacity: 1; } }

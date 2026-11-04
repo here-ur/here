@@ -91,6 +91,7 @@ export type Profile = {
   color: ColorId;
   voice: VoiceId;
   style: StyleId;
+  accessory?: string; // 구름 정원에서 연 꾸미기 아이템(없으면 맨몸)
 };
 
 const KEY = "here.profile.v1";

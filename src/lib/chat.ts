@@ -41,7 +41,8 @@ export async function requestChat(
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
-      body: JSON.stringify({ messages, name }),
+      // 메시지 시각 같은 기기 전용 정보는 빼고 role·content만 보낸다.
+      body: JSON.stringify({ messages: messages.map(({ role, content }) => ({ role, content })), name }),
       signal,
     });
   } catch (error) {
