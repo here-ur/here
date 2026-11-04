@@ -78,6 +78,8 @@ function setup(t: TestContext, options: {
   sessionStatus?: number;
   playError?: Error;
   memory?: boolean;
+  webSearch?: boolean;
+  searchRequest?: () => Promise<Response>;
   memoryRequest?: (body: Record<string, unknown>) => Promise<Response>;
 } = {}) {
   const stream = new MockStream();
@@ -149,8 +151,9 @@ function setup(t: TestContext, options: {
   t.mock.method(globalThis, "fetch", async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
     requests.push({ input, init });
     if (input === "/api/realtime") {
-      return Response.json({ key: "mock-ephemeral-key", memory: options.memory ?? false }, { status: options.sessionStatus ?? 200 });
+      return Response.json({ key: "mock-ephemeral-key", memory: options.memory ?? false, webSearch: options.webSearch ?? false }, { status: options.sessionStatus ?? 200 });
     }
+    if (input === "/api/web-search") return options.searchRequest?.() ?? Response.json({ available: true, text: "공식 안내", sources: [{ title: "공식 문서", url: "https://example.com/docs" }] });
     if (input === "/api/voice-memory") {
       const body = JSON.parse(String(init?.body));
       return options.memoryRequest?.(body) ?? (body.action === "remember" ? Response.json({ accepted: true }, { status: 202 }) : Response.json({ context: "사용자는 아줄을 좋아한다고 말했다." }));
@@ -170,6 +173,61 @@ function beginGreeting(channel: MockChannel) {
   channel.emit({ type: "response.created", response: { id: "greeting-1", metadata: greeting.response?.metadata } });
   return greeting;
 }
+
+test("음성 웹검색은 인증된 서버 도구를 한 번 실행하고 전사에 출처를 붙인다", async t => {
+  const m = setup(t, { webSearch: true });
+  const rt = await connectRealtime(m.handlers, {}, undefined, "fake-token", { greeting: false });
+  t.after(() => rt.close());
+  const c = m.peers[0].channel; c.open();
+  c.emit({ type: "response.created", response: { id: "search-response" } });
+  const call = { type: "function_call", name: "search_web", call_id: "search1", arguments: '{"query":"공식 문서"}' };
+  c.emit({ ...call, type: "response.function_call_arguments.done" });
+  c.emit({ type: "response.done", response: { id: "search-response", status: "completed", output: [call] } });
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(m.requests.filter(r => r.input === "/api/web-search").length, 1);
+  const req = m.requests.find(r => r.input === "/api/web-search")!;
+  assert.equal(new Headers(req.init?.headers).get("authorization"), "Bearer fake-token");
+  assert.deepEqual(JSON.parse(String(req.init?.body)), { query: "공식 문서" });
+  assert.ok(c.sent.some(e => e.type === "response.create"));
+  c.emit({ type: "response.created", response: { id: "answer-search" } });
+  c.emit({ type: "response.output_audio_transcript.done", response_id: "answer-search", transcript: "공식 안내에 따르면 가능해." });
+  assert.match(m.assistantTexts.at(-1)!, /https:\/\/example.com\/docs/);
+});
+
+test("늦게 끝난 웹검색은 새 발언을 가로채거나 출처를 섞지 않는다", async t => {
+  const deferredSearch = deferred<Response>();
+  const m = setup(t, { webSearch: true, searchRequest: () => deferredSearch.promise });
+  const rt = await connectRealtime(m.handlers, {}, undefined, "fake-token", { greeting: false });
+  t.after(() => rt.close());
+  const c = m.peers[0].channel; c.open();
+  c.emit({ type: "response.created", response: { id: "old" } });
+  c.emit({ type: "response.done", response: { id: "old", status: "completed", output: [{ type: "function_call", name: "search_web", call_id: "late-search", arguments: '{"query":"공식 문서"}' }] } });
+  c.emit({ type: "input_audio_buffer.speech_started" });
+  deferredSearch.resolve(Response.json({ available: true, text: "old", sources: [{ title: "old", url: "https://example.com/old" }] }));
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(c.sent.filter(e => e.type === "response.create").length, 0);
+  c.emit({ type: "response.output_audio_transcript.done", transcript: "새 답변" });
+  assert.equal(m.assistantTexts.at(-1), "새 답변");
+});
+
+test("음성 검색은 발언당 두 번으로 제한하고 인증 거절 때 통화를 종료한다", async t => {
+  const m = setup(t, { webSearch: true });
+  const rt = await connectRealtime(m.handlers, {}, undefined, "fake-token", { greeting: false });
+  t.after(() => rt.close());
+  const c = m.peers[0].channel; c.open();
+  for (let n = 0; n < 3; n++) c.emit({ type: "response.function_call_arguments.done", name: "search_web", call_id: `cap-${n}`, arguments: '{"query":"공식 문서"}' });
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(m.requests.filter(r => r.input === "/api/web-search").length, 2);
+  rt.close();
+  const denied = setup(t, { webSearch: true, searchRequest: async () => Response.json({}, { status: 403 }) });
+  const deniedRt = await connectRealtime(denied.handlers, {}, undefined, "fake-token", { greeting: false });
+  t.after(() => deniedRt.close());
+  const dc = denied.peers[0].channel; dc.open();
+  dc.emit({ type: "response.function_call_arguments.done", name: "search_web", call_id: "denied", arguments: '{"query":"공식 문서"}' });
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(dc.closeCount, 1);
+  assert.match(denied.errors[0], /회원·이용 동의/);
+});
 
 function finishGreeting(channel: MockChannel) {
   channel.emit({ type: "output_audio_buffer.started", response_id: "greeting-1" });
@@ -270,6 +328,19 @@ test("데이터 채널이 열리면 음성 인사를 도구 호출 없이 한 �
   assert.ok(greeting.response?.instructions?.trim());
   assert.ok(Object.keys(greeting.response?.metadata ?? {}).length > 0);
   assert.equal(m.statuses.at(-1), "connecting");
+});
+
+test("마이크 진입은 홈 문구를 맥락으로만 전달하고 다시 인사하지 않는다", async (t) => {
+  const m = setup(t);
+  const realtime = await connectRealtime(m.handlers, {}, undefined, "fake-token", { greeting: false, opener: "요즘 아줄 어때?" });
+  t.after(() => realtime.close());
+  const channel = m.peers[0].channel;
+  channel.open();
+  channel.open();
+  assert.equal(channel.sent.filter(event => event.type === "response.create").length, 0);
+  const context = channel.sent.filter(event => event.type === "conversation.item.create");
+  assert.equal(context.length, 1);
+  assert.match(JSON.stringify(context[0]), /요즘 아줄 어때/);
 });
 
 test("인사 생성 완료나 다른 응답의 재생 완료로는 마이크 잠금을 풀지 않는다", async (t) => {

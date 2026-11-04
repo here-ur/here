@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { Msg } from "@/lib/log";
 import { ChatMarkdown } from "@/lib/chat-markdown";
+import { safeSearchSource, type SearchSource } from "@/lib/web-search-protocol";
 import { COLORS, type ColorId, type Profile, josa } from "@/lib/onboarding";
 import Buddy, { type BuddyState } from "./Buddy";
 import { CalendarIcon } from "./Drawer";
@@ -32,6 +33,7 @@ export type HomeVoiceControls = {
   statusText: string;
   error: string;
   caption?: string;
+  sources?: SearchSource[];
   warning?: string;
   hearing?: boolean; // 사용자가 말하는 중(받아쓰기 중간 결과가 오는 동안)
   onEnd: () => void;
@@ -278,8 +280,8 @@ export default function HomeScreen({
       </header>
 
       <div className={`home-intro absolute inset-x-gutter top-[18%] flex flex-col items-center text-center ${voice || hasMessages ? "home-intro-quiet" : ""}`} aria-hidden={Boolean(voice || hasMessages)}>
-        {/* 읽을 글 없이 바로 말을 걸도록 기본 문구는 두지 않는다. 기억으로 만든 인사가 있을 때만 보여 준다. */}
-        {headline && <h1 className="whitespace-pre-line text-t12 font-medium text-balance">{headline}</h1>}
+        {/* 배지·설명 없이 몽글이가 먼저 건네는 한마디만. 문구는 page가 정한다(기억 인사 또는 기본 오프너). */}
+        {headline && <h1 className="min-h-[2.6em] whitespace-pre-line text-t12 font-medium text-balance">{headline}</h1>}
       </div>
 
       {notice && <div className="home-safety absolute inset-x-gutter top-[18%] z-10">{notice}</div>}
@@ -324,11 +326,14 @@ export default function HomeScreen({
         </div>
         {voice && <div className="mt-5 max-w-full px-4 text-center">
           <p role="status" className="text-t4 font-medium text-[#1F2A55]">{voice.error ? "연결하지 못했어요" : voice.statusText}</p>
-          {voice.caption && !voice.error && <p className="mt-2 line-clamp-2 text-t3 text-[#5A6478]">{voice.caption}</p>}
+          {voice.caption && !voice.error && <div className="mt-2 line-clamp-2 text-t3 text-[#5A6478]"><ChatMarkdown content={voice.caption.split("\n\n출처:")[0]} /></div>}
         </div>}
       </div>
 
       <div ref={bottomRef} className="home-bottom absolute inset-x-5 bottom-[max(32px,env(safe-area-inset-bottom))] flex flex-col gap-3">
+        {voice?.sources && voice.sources.length > 0 && <nav aria-label="검색 출처" className="flex max-h-24 gap-2 overflow-auto rounded-r3 bg-white/90 px-3 py-2">
+          {voice.sources.map(safeSearchSource).filter((source): source is SearchSource => Boolean(source)).map((source, index) => <a key={`${source.url}-${index}`} href={source.url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="inline-flex min-h-10 max-w-48 shrink-0 items-center rounded-r2 px-2 text-t3 text-[#1F2A55] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"><span className="truncate">{source.title}</span></a>)}
+        </nav>}
         {voice?.warning && !voice.error && <p role="status" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#5A6478]">{voice.warning}</p>}
         {voice?.error && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{voice.error}</p>}
         {chat.error && !voice && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{chat.error}</p>}
