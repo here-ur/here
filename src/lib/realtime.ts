@@ -1,3 +1,4 @@
+import type { MouthShape } from "./mouth-shape.ts";
 import { createOutputAudioMeter } from "./output-audio-meter.ts";
 import { homeEntryGreetingPrompt } from "./companion-prompt.ts";
 import { safeHomeOpener } from "./home-opener.ts";
@@ -8,7 +9,7 @@ import { parseSearchQuery, searchCitations, SEARCH_UNAVAILABLE, type SearchSourc
 
 // 브라우저 ↔ OpenAI realtime (WebRTC). 진짜 키는 서버에만 있고, 여기서는 /api/realtime이 준 임시 키만 쓴다.
 export type Handlers = {
-  onOutputLevel?: (level: number) => void;
+  onOutputLevel?: (level: number, shape: MouthShape) => void;
   onStatus: (s: "connecting" | "listening" | "thinking" | "speaking" | "idle") => void;
   onUserText: (text: string) => void;
   onUserPartial: (text: string) => void;

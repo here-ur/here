@@ -89,7 +89,8 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   const [homeGreetingDone, setHomeGreetingDone] = useState(false);
   const [homeSpeaking, setHomeSpeaking] = useState(false);
   const outputLevel = useRef(0);
-  const onOutputLevel = useCallback((level: number) => { outputLevel.current = level; }, []);
+  const outputShape = useRef<import("@/lib/mouth-shape").MouthShape>("rest");
+  const onOutputLevel = useCallback((level: number, shape: import("@/lib/mouth-shape").MouthShape) => { outputLevel.current = level; outputShape.current = shape; }, []);
   // 음성 대화 중에는 효과음이 마이크에 섞이지 않게 모두 쉰다.
   useEffect(() => { muteSfx(voiceMode); return () => muteSfx(false); }, [voiceMode]);
 
@@ -227,7 +228,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
     try {
       const token = await accessToken();
       const conn = await connectRealtime({
-        onOutputLevel: (level) => { if (current()) outputLevel.current = level; },
+        onOutputLevel: (level, shape) => { if (current()) { outputLevel.current = level; outputShape.current = shape; } },
         onStatus: (next) => { if (current()) setStatus(next); },
         onUserPartial: (text) => {
           if (!current()) return;
@@ -401,6 +402,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
         onLibrary={() => openReport("library")}
         onMenu={() => { setHomeGreetingDone(true); setShowMenu(true); }}
         outputLevel={outputLevel}
+        outputShape={outputShape}
         chat={{
           open: typing,
           messages: pendingText ? [...messages, { role: "user", content: pendingText }] : messages,

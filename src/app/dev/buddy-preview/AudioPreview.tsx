@@ -9,6 +9,7 @@ export default function AudioPreview() {
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState("");
   const level = useRef(0);
+  const shape = useRef<import("@/lib/mouth-shape").MouthShape>("rest");
   const stop = useRef<() => void>(() => {});
   const output = useRef<HTMLAudioElement | null>(null);
   const metrics = useRef<HTMLOutputElement>(null);
@@ -24,12 +25,14 @@ export default function AudioPreview() {
     const audible = new Audio();
     audible.srcObject = destination.stream;
     output.current = audible;
+    const seen = new Set<string>();
     let audibleFrames = 0, silentFrames = 0, peak = 0;
-    const meter = createOutputAudioMeter(value => {
+    const meter = createOutputAudioMeter((value, mouthShape) => {
+      shape.current = mouthShape; seen.add(mouthShape);
       level.current = value;
       if (value > .015) audibleFrames++; else silentFrames++;
       peak = Math.max(peak, value);
-      if (metrics.current) metrics.current.textContent = `음성 프레임 ${audibleFrames} · 무음 프레임 ${silentFrames} · 최대 벌림 ${peak.toFixed(2)} · 현재 ${value.toFixed(2)}`;
+      if (metrics.current) metrics.current.textContent = `음성 프레임 ${audibleFrames} · 무음 프레임 ${silentFrames} · 최대 벌림 ${peak.toFixed(2)} · 현재 ${value.toFixed(2)} · 모양 ${mouthShape} · 확인 ${[...seen].join(",")}`;
     });
     meter.attach(destination.stream, audible);
     meter.setEnabled(true);
@@ -46,7 +49,7 @@ export default function AudioPreview() {
   return <section className="mt-8">
     <h2 className="text-t4 font-bold">실제 음성 파형 확인</h2>
     <p className="text-t3 text-cat-muted">합성 한국어 샘플. 문장 사이 무음에서 입이 닫히는지 확인해요.</p>
-    <div className="flex justify-center"><Buddy size={220} state={playing ? "speaking" : "idle"} outputLevel={level} /></div>
+    <div className="flex justify-center"><Buddy size={220} state={playing ? "speaking" : "idle"} outputLevel={level} outputShape={shape} /></div>
     <div className="flex flex-wrap gap-2">
       <button className="ui-press rounded-full bg-white px-4 py-3" onClick={() => void play()}>음성 샘플 재생</button>
       <button className="ui-press rounded-full bg-white px-4 py-3" disabled={!playing} onClick={() => { if (output.current) { output.current.muted = !muted; if (!muted) level.current = 0; } setMuted(!muted); }}>{muted ? "소리 켜기" : "음소거"}</button>

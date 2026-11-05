@@ -4,11 +4,11 @@ import type { BuddyState, Look, Mouth } from "./Buddy";
 import type { CatExpression } from "@/lib/cat-expression";
 
 /** Original silhouette + a small generated clean-face patch + independent SVG eyes/mouth. */
-export default function CatFace({ state, expression, look, mouth, outputLevel }: {
-  state: BuddyState; expression: CatExpression; look?: Look; mouth?: Mouth; outputLevel?: RefObject<number>;
+export default function CatFace({ state, expression, look, mouth, outputLevel, outputShape }: {
+  state: BuddyState; expression: CatExpression; look?: Look; mouth?: Mouth; outputLevel?: RefObject<number>; outputShape?: RefObject<import("@/lib/mouth-shape").MouthShape>;
 }) {
   const id = `cat-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
-  const { mouth: openMouthRef, rest: closedMouthRef } = useAudioMouth(state === "speaking", outputLevel);
+  const { mouth: openMouthRef, rest: closedMouthRef } = useAudioMouth(state === "speaking", outputLevel, outputShape);
   const attentive = state === "attentive" || state === "listening";
   const eye = expression === "warm"
     ? "M-103 10 Q0-6 103 10 C95 75-95 75-103 10Z"
@@ -56,7 +56,7 @@ export default function CatFace({ state, expression, look, mouth, outputLevel }:
             </g>)}
             <g transform="translate(790 474)">
               <path ref={closedMouthRef} className="cat-mouth-rest" opacity="1" d={mouthLine} fill="none" stroke="#090A0D" strokeWidth="8" strokeLinecap="round" />
-              <g ref={openMouthRef} className="cat-mouth-speaking" opacity="0"><ellipse rx="26" ry="20" fill="#090A0D" /><path d="M-14 9 Q0 3 14 9" fill="none" stroke="#956D64" strokeWidth="5" strokeLinecap="round" /></g>
+              <g ref={openMouthRef} className="cat-mouth-speaking" opacity="0"><path className="cat-mouth-cavity" d="M-26 0 A26 20 0 1 0 26 0 A26 20 0 1 0-26 0" fill="#090A0D" /><path className="cat-mouth-teeth" d="M-16-4 Q0-2 16-4" fill="none" stroke="#D5CBB8" strokeWidth="4" strokeLinecap="round" opacity="0" /><path className="cat-mouth-tongue" d="M-13 10 Q0 5 13 10" fill="none" stroke="#956D64" strokeWidth="4" strokeLinecap="round" opacity=".3" /></g>
             </g>
           </g>
         </g>

@@ -40,7 +40,7 @@ function Accessory({ id, shape }: { id: AccessoryId; shape: ShapeId }) {
 }
 
 export default function Buddy({
-  size, state = "idle", look, mouth, className = "", hearing, accessory, expression = "neutral", outputLevel, stroll = false, groundShadow = false,
+  size, state = "idle", look, mouth, className = "", hearing, accessory, expression = "neutral", outputLevel, outputShape, stroll = false, groundShadow = false,
 }: {
   accessory?: AccessoryId | string;
   cheer?: number;
@@ -58,6 +58,7 @@ export default function Buddy({
   voice?: boolean;
   expression?: CatExpression;
   outputLevel?: RefObject<number>;
+  outputShape?: RefObject<import("@/lib/mouth-shape").MouthShape>;
   stroll?: boolean;
   groundShadow?: boolean;
 }) {
@@ -70,7 +71,7 @@ export default function Buddy({
       <g className="cat-travel">
       {groundShadow && <ellipse cx="120" cy="204" rx="53" ry="3" fill="#2D261A" opacity=".09" />}
       <g className="cat-step-weight">
-      <CatFace outputLevel={outputLevel} state={state} expression={expression} look={look} mouth={mouth} />
+      <CatFace outputLevel={outputLevel} outputShape={outputShape} state={state} expression={expression} look={look} mouth={mouth} />
       {accessory && ["sprout", "hat", "scarf", "flowers", "crown", "rainbow"].includes(accessory) && <Accessory id={accessory as AccessoryId} shape="round" />}
       </g></g>
     </svg>
