@@ -6,6 +6,7 @@ import type { Msg } from "@/lib/log";
 import { ChatMarkdown } from "@/lib/chat-markdown";
 import { safeSearchSource, type SearchSource } from "@/lib/web-search-protocol";
 import { COLORS, type ColorId, type Profile, josa } from "@/lib/onboarding";
+import { catExpression } from "@/lib/cat-expression";
 import { companionBackground } from "@/lib/companion-theme";
 import Buddy, { type BuddyState } from "./Buddy";
 import { CalendarIcon } from "./Drawer";
@@ -134,6 +135,7 @@ export default function HomeScreen({
   const wasVoiceActive = useRef(Boolean(voice));
   const fileNoticeId = useId();
   const name = profile.companion;
+  const expression = catExpression(chat.messages.findLast((message) => message.role === "user")?.content ?? "", Boolean(notice));
   const hasMessages = chat.open && !voice && (chat.messages.length > 0 || chat.sending);
   const chatting = chat.open && !voice; // 글 대화 중: 몽글이를 입력창 바로 위로 작게 옮긴다
   const resting = !chat.open && !voice; // 기본 홈: 글 없이 몽글이와 배경 움직임으로 대화를 권한다
@@ -294,19 +296,18 @@ export default function HomeScreen({
 
       <div className="home-character-wrap absolute inset-x-gutter top-[32%] flex flex-col items-center" data-hidden={chatting} aria-hidden={chatting}>
         <div className={`home-buddy ${voice ? "home-buddy-expanded" : ""}`}>
-          <div className={resting ? "home-buddy-float" : undefined}>
           <Buddy
             shape={profile.shape}
             color={profile.color}
             accessory={profile.accessory}
             size={248}
+            expression={expression}
             state={voice?.state ?? chat.state}
             bob
             tap={chat.open && !voice ? chat.draft.length : undefined}
             hearing={voice ? Boolean(voice.hearing) : undefined}
             voice={Boolean(voice)}
           />
-          </div>
         </div>
         {voice && <div className="mt-5 max-w-full px-4 text-center">
           <p role="status" className="text-t4 font-medium text-cat-ink">{voice.error ? "연결하지 못했어요" : voice.statusText}</p>
@@ -337,7 +338,7 @@ export default function HomeScreen({
         {nudge && resting && <div>{nudge}</div>}
         {chatting && (
           <div aria-hidden="true" className="home-chat-buddy">
-            <Buddy shape={profile.shape} color={profile.color} accessory={profile.accessory} size={68} state={chat.state} tap={chat.draft.length} />
+            <Buddy shape={profile.shape} color={profile.color} accessory={profile.accessory} size={68} expression={expression} state={chat.state} tap={chat.draft.length} />
           </div>
         )}
         <div role="group" aria-label={voice ? "음성 대화" : chat.open ? "메시지 작성" : "대화 시작"} className="home-actions">

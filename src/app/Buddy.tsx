@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { type TransitionCue, transitionCue } from "@/lib/buddy-cues";
+import CatFace from "./CatFace";
+import type { CatExpression } from "@/lib/cat-expression";
 import { type ColorId, type ShapeId } from "@/lib/onboarding";
 import "./buddy-motion.css";
 
@@ -8,16 +8,7 @@ export type Look = readonly [number, number];
 export type Mouth = "smile" | "tongue" | "o" | "calm";
 export type BuddyState = "idle" | "attentive" | "listening" | "thinking" | "speaking";
 
-function CatBody() {
-  return (
-    <svg x="20" y="32" width="200" height="184" viewBox="280 100 970 890" overflow="visible">
-      {/* Original transparent artwork, framed without stretching or recoloring. */}
-      <image href="/characters/black-cat.png" width="1536" height="1024" />
-    </svg>
-  );
-}
-
-// 구름 정원에서 연 꾸미기 아이템. 몸 움직임과 함께 흔들리도록 몸 그룹 안에 그린다.
+// 구름 정원에서 연 꾸미기 아이템. 기존 위치와 크기를 유지한다.
 type AccessoryId = "sprout" | "hat" | "scarf" | "flowers" | "crown" | "rainbow";
 function Accessory({ id, shape }: { id: AccessoryId; shape: ShapeId }) {
   const head = shape === "round" ? { x: 120, y: 50, r: 0 } : { x: 150, y: 66, r: -6 };
@@ -47,19 +38,10 @@ function Accessory({ id, shape }: { id: AccessoryId; shape: ShapeId }) {
 }
 
 export default function Buddy({
-  size,
-  state = "idle",
-  look,
-  bob = false,
-  className = "",
-  tap,
-  hearing,
-  voice,
-  accessory,
-  cheer,
+  size, state = "idle", look, mouth, className = "", hearing, accessory, expression = "neutral",
 }: {
-  accessory?: AccessoryId | string; // 구름 정원에서 연 꾸미기 아이템
-  cheer?: number; // 실천 체크처럼 작은 기쁨이 생길 때마다 바뀌는 값. 말하기 시작 때와 같은 '통' 튀기를 한 번 쓴다
+  accessory?: AccessoryId | string;
+  cheer?: number;
   shape?: ShapeId;
   color?: ColorId;
   size: number;
@@ -67,50 +49,20 @@ export default function Buddy({
   look?: Look;
   mouth?: Mouth;
   lid?: boolean;
-  bob?: boolean;
+  bob?: boolean; // Legacy API: floating is intentionally no longer used.
   className?: string;
-  tap?: number; // 글을 칠 때마다 바뀌는 값(글자 수). 주목 상태에서 아주 작게 반응한다
-  hearing?: boolean; // 음성에서 사용자가 말하는 중. 말을 시작·멈추는 순간에 반응한다
-  voice?: boolean; // 음성 대화 중. 끝나는 순간 짧게 작별 몸짓을 한다
+  tap?: number;
+  hearing?: boolean;
+  voice?: boolean;
+  expression?: CatExpression;
 }) {
-  // 상태·입력이 바뀐 순간에만 한 번 움직인다. 렌더 중에 이전 값과 비교하고, 동작이 끝나면 지운다.
-  const [prev, setPrev] = useState({ state, tap, hearing, voice, cheer });
-  const [cue, setCue] = useState<TransitionCue | "bye" | null>(null);
-  const [react, setReact] = useState<string | null>(null);
-  if (prev.state !== state || prev.tap !== tap || prev.hearing !== hearing || prev.voice !== voice || prev.cheer !== cheer) {
-    if (prev.voice && !voice) setCue("bye");
-    else if (prev.state !== state) setCue(transitionCue(prev.state, state));
-    else if (prev.cheer !== cheer && cheer !== undefined && prev.cheer !== undefined) setCue("pop");
-    if (prev.hearing !== hearing && hearing !== undefined && prev.hearing !== undefined && state === "listening") setReact(hearing ? "hear-start" : "hear-stop");
-    else if (prev.tap !== tap && tap !== undefined && prev.tap !== undefined && state === "attentive") setReact(react === "tap-a" ? "tap-b" : "tap-a");
-    setPrev({ state, tap, hearing, voice, cheer });
-  }
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 240 240"
-      overflow="visible"
-      aria-hidden="true"
-      data-state={state}
-      data-character="black-cat"
-      data-look-override={look !== undefined ? "true" : undefined}
-      data-bob={bob ? "true" : undefined}
-      className={`buddy ${className}`}
-    >
-      {/* 늦게 도착한 이전 동작의 끝 신호가 다음 동작을 지우지 않게, 지금 붙은 동작이 끝났을 때만 지운다. */}
-      <g className="buddy-cue" data-cue={cue ?? undefined} onAnimationEnd={(event) => { if (event.target === event.currentTarget && event.animationName === `buddy-cue-${cue}`) setCue(null); }}>
-        <g className="buddy-react" data-react={react ?? undefined} onAnimationEnd={(event) => { if (event.target === event.currentTarget && react?.startsWith("hear") && event.animationName === `buddy-${react}`) setReact(null); }}>
-          <g className="buddy-pose">
-            <g className="buddy-wait">
-              <g className="buddy-body-motion">
-                <CatBody />
-                {accessory && ["sprout", "hat", "scarf", "flowers", "crown", "rainbow"].includes(accessory) && <Accessory id={accessory as AccessoryId} shape="round" />}
-              </g>
-            </g>
-          </g>
-        </g>
-      </g>
+    <svg width={size} height={size} viewBox="0 0 240 240" overflow="visible" aria-hidden="true"
+      data-state={state} data-character="black-cat" data-expression={expression}
+      data-look-override={look !== undefined ? "true" : undefined} data-hearing={hearing || undefined}
+      className={`buddy ${className}`}>
+      <CatFace state={state} expression={expression} look={look} mouth={mouth} />
+      {accessory && ["sprout", "hat", "scarf", "flowers", "crown", "rainbow"].includes(accessory) && <Accessory id={accessory as AccessoryId} shape="round" />}
     </svg>
   );
 }

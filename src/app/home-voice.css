@@ -66,16 +66,6 @@
   .home-chrome-button:hover { background: var(--color-cat-soft); }
   .home-mic:hover { background: #ECA72E; }
 }
-/* 기본 홈에서 몽글이가 조금 더 둥실거리며 말을 기다린다. 동작 줄이기에서는 움직이지 않는다. */
-@media (prefers-reduced-motion: no-preference) {
-  .home-buddy-float { animation: home-buddy-float 6s ease-in-out infinite; }
-}
-@keyframes home-buddy-float {
-  0%, 100% { transform: translateY(0) rotate(0); }
-  30% { transform: translateY(-4px) rotate(-.5deg); }
-  65% { transform: translateY(-2px) rotate(.4deg); }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .home-intro, .home-buddy, .home-voice-pill, .home-voice-end, .home-chrome-button { transition: none; }
 }

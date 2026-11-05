@@ -328,14 +328,12 @@ export default function Garden3D({ garden, season, weather, color, shape = "clou
 
       const clock = new THREE.Clock();
       let raf = 0;
-      const buddyBase = buddy?.position.y ?? 0;
       const frame = () => {
         raf = requestAnimationFrame(frame);
         if (!visible) return;
         const t = clock.getElapsedTime();
         controls.update();
         if (!reduce) {
-          if (buddy) buddy.position.y = buddyBase + Math.sin(t * 1.6) * 0.05;
           world.position.y = Math.sin(t * 0.7) * 0.05;
           for (const s of sway) s.obj.rotation.z = Math.sin(t * 1.3 + s.phase) * 0.05;
           const pos = fallGeo.attributes.position as InstanceType<typeof THREE.BufferAttribute>;

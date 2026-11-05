@@ -12,11 +12,11 @@
 .home-buddy::before {
   content: "";
   position: absolute;
-  left: 22%; right: 22%; bottom: 13px;
-  height: 14px;
+  left: 22%; right: 22%; bottom: 35px;
+  height: 9px;
   background: rgb(45 38 26 / 14%);
   border-radius: 50%;
-  filter: blur(10px);
+  filter: blur(6px);
 }
 .home-buddy { position: relative; }
 
