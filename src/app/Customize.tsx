@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ACCESSORIES, buildGarden, loadSeeds, unlockedAccessories } from "@/lib/garden";
-import { COLORS, SHAPES, VOICES, type Profile, accentButton, cleanName } from "@/lib/onboarding";
+import { COLORS, VOICES, type Profile, accentButton, cleanName } from "@/lib/onboarding";
 import { loadReport } from "@/lib/report";
 import * as sfx from "@/lib/sound";
 import { Icon } from "./art";
@@ -24,29 +24,9 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
         <Buddy shape={draft.shape} color={draft.color} accessory={draft.accessory} size={140} look={[0, 0.25]} key={`${draft.shape}-${draft.color}-${draft.accessory ?? ""}`} className="motion-safe:animate-pop" />
       </div>
 
-      <section className="mt-2">
-        <h3 className="mb-2 text-t4 font-bold text-[#3D4559]">모습</h3>
-        <div className="flex gap-2" role="radiogroup" aria-label="모습">
-          {SHAPES.map((x, i) => (
-            <button
-              key={x.id}
-              role="radio"
-              aria-checked={draft.shape === x.id}
-              onClick={() => {
-                sfx.pick(i);
-                set({ shape: x.id });
-              }}
-              className={chip(draft.shape === x.id)}
-            >
-              {x.label}
-            </button>
-          ))}
-        </div>
-      </section>
-
       <section className="mt-5">
-        <h3 className="mb-2 text-t4 font-bold text-[#3D4559]">빛</h3>
-        <div className="flex gap-3" role="radiogroup" aria-label="빛">
+        <h3 className="mb-2 text-t4 font-bold text-[#3D4559]">배경 색</h3>
+        <div className="flex gap-3" role="radiogroup" aria-label="배경 색">
           {COLORS.map((c, i) => (
             <button
               key={c.id}

@@ -5,7 +5,6 @@ import {
   COLORS,
   DEFAULT_COMPANION,
   QUESTIONS,
-  SHAPES,
   VOICES,
   type Answers,
   type ColorId,
@@ -141,7 +140,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
   const [step, setStep] = useState<Step>("splash");
   const [nickname, setNickname] = useState("");
   const [answers, setAnswers] = useState<Answers>({});
-  const [shape, setShape] = useState<ShapeId>("cloud");
+  const shape: ShapeId = "cloud"; // Legacy profile value; the character is now a cat.
   const [color, setColor] = useState<ColorId>("lavender");
   const [voice, setVoice] = useState<VoiceId>("marin");
   const [companion, setCompanion] = useState(DEFAULT_COMPANION);
@@ -157,12 +156,6 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
   const style = matchStyle(answers);
   const matched = describeStyle(style, answers);
     const qIndex = QUESTIONS.findIndex((q) => !answers[q.id]);
-
-  function switchShape(dir: number) {
-    const i = (SHAPES.findIndex((x) => x.id === shape) + dir + SHAPES.length) % SHAPES.length;
-    sfx.pick(i);
-    setShape(SHAPES[i].id);
-  }
 
   // 화면 전환: 지금 화면이 잠깐 흐려지며 사라지고(LEAVE_MS), 다음 화면이 위로 살짝 떠오르며 나타난다.
   function go(next: Step, sound = true) {
@@ -413,38 +406,13 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       {step === "shape" && (
         <div className={`absolute inset-0 ${screen}`}>
           <Back onClick={() => go("match")} />
-          <Title sub="언제든 바꿀 수 있어요.">몽글이는 어떤 모습이 좋을까요?</Title>
-          <div className="absolute inset-x-0 top-[250px] flex items-center justify-between px-5">
-            <button onClick={() => switchShape(-1)} aria-label="이전 모습" className="ui-press grid size-11 place-items-center rounded-full bg-white/15 text-white">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M14.5 6l-6 6 6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            <Appear color={color} size={210} key={shape}>
-              <Buddy shape={shape} color={color} size={210} look={[0, 0.2]} className="motion-safe:animate-pop" />
+          <Title sub="길에서 살다가, 이제 네 곁으로.">새로운 친구를 만나 봐요</Title>
+          <div className="absolute inset-x-0 top-[250px] flex justify-center">
+            <Appear color={color} size={210}>
+              <Buddy size={210} bob className="motion-safe:animate-pop" />
             </Appear>
-            <button onClick={() => switchShape(1)} aria-label="다음 모습" className="ui-press grid size-11 place-items-center rounded-full bg-white/15 text-white">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M9.5 6l6 6-6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
           </div>
-          <div className="absolute inset-x-0 top-[500px] flex justify-center gap-2" role="radiogroup" aria-label="몽글이 모습">
-            {SHAPES.map((x, i) => (
-              <button
-                key={x.id}
-                role="radio"
-                aria-checked={shape === x.id}
-                onClick={() => {
-                  sfx.pick(i);
-                  setShape(x.id);
-                }}
-                className={`ui-press h-11 rounded-full px-5 text-t5 font-bold ${shape === x.id ? "bg-white text-[#1e1d2b]" : "bg-white/10 text-white"}`}
-              >
-                {x.label}
-              </button>
-            ))}
-          </div>
+          <p className="absolute inset-x-6 top-[500px] text-center text-t5 text-[#e4e2ee]">말은 좀 퉁명스러워도, 이야기는 듣고 있어요.</p>
           <div className="absolute inset-x-0 top-[640px] flex justify-center">
             <Next onClick={() => go("color")} />
           </div>
@@ -454,14 +422,14 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       {step === "color" && (
         <div className={`absolute inset-0 ${screen}`}>
           <Back onClick={() => go("shape")} />
-          <Title sub="언제든 바꿀 수 있어요.">몽글이는 어떤 빛이면 좋을까요?</Title>
+          <Title sub="언제든 바꿀 수 있어요.">어떤 배경 색이 좋을까요?</Title>
           <div className="absolute inset-x-0 top-[290px] flex justify-center">
             <Appear color={color} size={210} key={color}>
               <Buddy shape={shape} color={color} size={210} look={[0, 0.2]} className="motion-safe:animate-pop" />
             </Appear>
           </div>
           <p className="absolute inset-x-0 top-[490px] text-center text-t5 font-bold">{COLORS.find((c) => c.id === color)!.label}</p>
-          <div className="absolute inset-x-0 top-[530px] flex justify-center gap-4" role="radiogroup" aria-label="몽글이 빛">
+          <div className="absolute inset-x-0 top-[530px] flex justify-center gap-4" role="radiogroup" aria-label="배경 색">
             {COLORS.map((c, i) => (
               <button
                 key={c.id}

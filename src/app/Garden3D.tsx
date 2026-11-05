@@ -34,8 +34,25 @@ const SKY_GRADIENT: Record<SkyId | "none", string> = {
 
 /** 2D 몽글이 SVG를 그림판에 올릴 수 있게 여백을 두고 비트맵으로 바꾼다. */
 async function rasterize(svg: SVGSVGElement, size: number) {
+  // SVG images loaded into a canvas cannot load external resources. Embed the
+  // original cat artwork in the detached copy; never mutate the visible Buddy.
+  const snapshot = svg.cloneNode(true) as SVGSVGElement;
+  await Promise.all(Array.from(snapshot.querySelectorAll("image")).map(async (image) => {
+    const href = image.getAttribute("href");
+    if (!href || href.startsWith("data:")) return;
+    const response = await fetch(href);
+    if (!response.ok) throw new Error("buddy artwork");
+    const blob = await response.blob();
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error("buddy artwork"));
+      reader.readAsDataURL(blob);
+    });
+    image.setAttribute("href", dataUrl);
+  }));
   // 뒤쪽 빛(블러)이 필터 영역에서 네모나게 잘리지 않도록 영역을 넉넉히 넓힌다.
-  const markup = new XMLSerializer().serializeToString(svg)
+  const markup = new XMLSerializer().serializeToString(snapshot)
     .replace(/viewBox="0 0 240 240"/, 'viewBox="-40 -40 320 320"')
     .replace(/<filter([^>]*?) x="-\d+%" y="-\d+%" width="\d+%" height="\d+%"/g, '<filter$1 x="-150%" y="-150%" width="400%" height="400%"')
     // 뒤쪽 빛은 3D에서는 빛과 그림자가 대신하므로 뺀다(투명 영역이 그림판에서 네모처럼 비치는 걸 막는다).

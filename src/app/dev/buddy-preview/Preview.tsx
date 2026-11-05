@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import Buddy, { type BuddyState } from "../../Buddy";
-import { COLORS, SHAPES, type ColorId, type ShapeId } from "@/lib/onboarding";
 import "../../home-voice.css";
 
 // 몽글이 상태 전환·작은 반응을 직접 눌러 보는 개발용 화면. 실제 연결·AI 호출은 없다.
@@ -20,15 +19,14 @@ export default function Preview() {
   const [draft, setDraft] = useState("");
   const [hearing, setHearing] = useState(false);
   const [voice, setVoice] = useState(false);
-  const [shape, setShape] = useState<ShapeId>("cloud");
-  const [color, setColor] = useState<ColorId>("lavender");
+  const [accessory, setAccessory] = useState<string>();
   return (
     <main className="app-frame overflow-y-auto bg-[#FAFCFE] px-gutter py-10 text-[#1F2A55]">
       <h1 className="text-t6 font-bold">몽글이 모션 미리보기</h1>
       <p className="mt-1 text-t3 text-[#5A6478]">상태를 바꾸면 연결 동작이 한 번 붙어요. 동작 줄이기 설정에서는 움직이지 않아요.</p>
       <div className="mt-6 grid place-items-center">
         <div className={`home-buddy ${voice ? "home-buddy-expanded" : ""}`}>
-          <Buddy shape={shape} color={color} size={200} state={state} bob tap={state === "attentive" ? draft.length : undefined} hearing={voice ? hearing : undefined} voice={voice} />
+          <Buddy accessory={accessory} size={200} state={state} bob tap={state === "attentive" ? draft.length : undefined} hearing={voice ? hearing : undefined} voice={voice} />
         </div>
       </div>
       <section className="mt-8">
@@ -51,9 +49,11 @@ export default function Preview() {
         </div>
       </section>
       <section className="mt-6 flex flex-wrap gap-2">
-        {SHAPES.map((s) => <button key={s.id} onClick={() => setShape(s.id)} className={chip(shape === s.id)}>{s.label}</button>)}
-        {COLORS.map((c) => <button key={c.id} onClick={() => setColor(c.id)} className={chip(color === c.id)}>{c.label}</button>)}
+        {[undefined, "sprout", "hat", "scarf", "flowers", "crown", "rainbow"].map((item) => <button key={item ?? "none"} onClick={() => setAccessory(item)} className={chip(accessory === item)}>{item ?? "꾸미기 없음"}</button>)}
       </section>
+      <div className="mt-6 flex items-center gap-4" aria-label="작은 캐릭터 미리보기">
+        {[30, 36, 68].map((size) => <Buddy key={size} size={size} state={state} />)}
+      </div>
     </main>
   );
 }
