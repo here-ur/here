@@ -2,7 +2,7 @@
 
 import { safeHomeOpener, withHomeOpener } from "@/lib/home-opener";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
 import { companionState } from "@/lib/companion-state";
 import { ChatRequestError, requestChat } from "@/lib/chat";
@@ -88,6 +88,8 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   const openingLine = safeHomeOpener(headline);
   const [homeGreetingDone, setHomeGreetingDone] = useState(false);
   const [homeSpeaking, setHomeSpeaking] = useState(false);
+  const outputLevel = useRef(0);
+  const onOutputLevel = useCallback((level: number) => { outputLevel.current = level; }, []);
   // 음성 대화 중에는 효과음이 마이크에 섞이지 않게 모두 쉰다.
   useEffect(() => { muteSfx(voiceMode); return () => muteSfx(false); }, [voiceMode]);
 
@@ -225,6 +227,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
     try {
       const token = await accessToken();
       const conn = await connectRealtime({
+        onOutputLevel: (level) => { if (current()) outputLevel.current = level; },
         onStatus: (next) => { if (current()) setStatus(next); },
         onUserPartial: (text) => {
           if (!current()) return;
@@ -397,6 +400,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
         onText={openText}
         onLibrary={() => openReport("library")}
         onMenu={() => { setHomeGreetingDone(true); setShowMenu(true); }}
+        outputLevel={outputLevel}
         chat={{
           open: typing,
           messages: pendingText ? [...messages, { role: "user", content: pendingText }] : messages,
@@ -433,7 +437,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
           {suggest && <button onClick={openHelpSoon} className="ui-press h-11 rounded-full bg-white px-5 text-t4 font-bold text-[#1F2A55]">도움받기</button>}
         </div> : undefined}
       >
-        {!homeGreetingDone && headlineReady && openingLine && <HomeEntryGreeting name={profile.companion} voice={profile.voice} opener={openingLine} onSpeaking={setHomeSpeaking} onDone={setHomeGreetingDone} />}
+        {!homeGreetingDone && headlineReady && openingLine && <HomeEntryGreeting name={profile.companion} voice={profile.voice} opener={openingLine} onOutputLevel={onOutputLevel} onSpeaking={setHomeSpeaking} onDone={setHomeGreetingDone} />}
         <Drawer
           open={showMenu}
           profile={me}

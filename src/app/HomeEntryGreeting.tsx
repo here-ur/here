@@ -5,9 +5,10 @@ import { connectRealtime } from "@/lib/realtime";
 import { browserSupabase } from "@/lib/supabase";
 
 /** Home-entry audio only. Never requests microphone access or stores a conversation. */
-export default function HomeEntryGreeting({ name, voice, opener, onSpeaking, onDone }: {
+export default function HomeEntryGreeting({ name, voice, opener, onSpeaking, onDone, onOutputLevel }: {
   name: string; voice: string; opener: string;
   onSpeaking: (value: boolean) => void;
+  onOutputLevel?: (level: number) => void;
   onDone: (value: boolean) => void;
 }) {
   useEffect(() => {
@@ -25,6 +26,7 @@ export default function HomeEntryGreeting({ name, voice, opener, onSpeaking, onD
           if (controller.signal.aborted) return;
           if (!data.session) { finish(); return; }
           await connectRealtime({
+            onOutputLevel,
             onStatus: status => { if (!controller.signal.aborted) onSpeaking(status === "speaking"); },
             onUserText: () => {}, onUserPartial: () => {},
             onAssistantText: () => {}, onAssistantPartial: () => {}, onTool: () => {},
@@ -43,6 +45,6 @@ export default function HomeEntryGreeting({ name, voice, opener, onSpeaking, onD
       document.removeEventListener("visibilitychange", onHidden);
       controller.abort();
     };
-  }, [name, voice, opener, onSpeaking, onDone]);
+  }, [name, voice, opener, onSpeaking, onDone, onOutputLevel]);
   return null;
 }

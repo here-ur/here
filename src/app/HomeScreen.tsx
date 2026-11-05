@@ -106,7 +106,9 @@ export default function HomeScreen({
   spotlight,
   nudge,
   children,
+  outputLevel,
 }: {
+  outputLevel?: React.RefObject<number>;
   profile: Profile;
   greet: boolean; // 온보딩 직후 등장 모션
   headline?: string | null;
@@ -301,6 +303,9 @@ export default function HomeScreen({
             color={profile.color}
             accessory={profile.accessory}
             size={248}
+            stroll={resting && !showFiles && !attachOpen}
+            groundShadow
+            outputLevel={outputLevel}
             expression={expression}
             state={voice?.state ?? chat.state}
             bob
@@ -338,7 +343,7 @@ export default function HomeScreen({
         {nudge && resting && <div>{nudge}</div>}
         {chatting && (
           <div aria-hidden="true" className="home-chat-buddy">
-            <Buddy shape={profile.shape} color={profile.color} accessory={profile.accessory} size={68} expression={expression} state={chat.state} tap={chat.draft.length} />
+            <Buddy shape={profile.shape} color={profile.color} accessory={profile.accessory} size={68} outputLevel={outputLevel} expression={expression} state={chat.state} tap={chat.draft.length} />
           </div>
         )}
         <div role="group" aria-label={voice ? "음성 대화" : chat.open ? "메시지 작성" : "대화 시작"} className="home-actions">

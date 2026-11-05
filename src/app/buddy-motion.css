@@ -1,4 +1,4 @@
-/* Feet and torso stay planted. Only the masked upper head, pupils and mouth move. */
+/* Head motion and audio-driven mouth; foot/travel transforms are interruptible. */
 .buddy { flex-shrink: 0; }
 .cat-head-pose, .cat-head-idle, .cat-head-response { transform-origin: 790px 570px; }
 .cat-head-pose, .cat-face-turn, .cat-pupil-focus, .cat-eye-expression {
@@ -14,8 +14,6 @@
 .buddy[data-state="thinking"] .cat-head-pose { transform: rotate(-1.2deg); }
 .buddy[data-state="listening"] .cat-pupil-focus { transform: translate(-8px, 4px); }
 .buddy[data-state="listening"] .cat-head-pose { transform: rotate(1deg); }
-.buddy[data-state="speaking"] .cat-mouth-rest { opacity: 0; }
-.buddy[data-state="speaking"] .cat-mouth-speaking { opacity: 1; }
 .buddy[data-expression="warm"] .cat-eye-expression { transform: scaleY(.74); }
 .buddy[data-expression="gentle"] .cat-eye-0 { transform: rotate(-5deg) scaleY(.88); }
 .buddy[data-expression="gentle"] .cat-eye-1 { transform: rotate(5deg) scaleY(.88); }
@@ -26,7 +24,6 @@
   .buddy[data-state="idle"]:not([data-look-override]) .cat-face-turn { animation: cat-face-turn 15s ease-in-out infinite; }
   .buddy[data-state="idle"]:not([data-look-override]) .cat-pupil-glance { animation: cat-glance 15s ease-in-out infinite; }
   .buddy[data-state="listening"][data-hearing] .cat-head-response { animation: cat-listen-nod 4.6s ease-in-out infinite; }
-  .buddy[data-state="speaking"] .cat-mouth-speaking { animation: cat-talk .72s ease-in-out infinite; }
   .buddy[data-state="speaking"] .cat-head-response { animation: cat-speaking-nod 5.8s ease-in-out infinite; }
 }
 @keyframes cat-blink {
@@ -58,14 +55,14 @@
   48%, 60% { transform: rotate(-.65deg); }
   76% { transform: rotate(.3deg); }
 }
-@keyframes cat-talk {
-  0%, 100% { transform: scale(.9, .25); }
-  22% { transform: scale(1, .85); }
-  45% { transform: scale(.85, .4); }
-  68% { transform: scale(.92, 1); }
-  83% { transform: scale(1, .35); }
-}
 @media (prefers-reduced-motion: reduce) {
   .buddy * { animation: none !important; transition: none !important; }
   .cat-head-pose, .cat-face-turn { transform: none !important; }
 }
+
+.cat-step-weight { transform-origin: 120px 205px; }
+.cat-foot-left { transform-origin: 570px 875px; }
+.cat-foot-right { transform-origin: 1025px 875px; }
+.buddy[data-walk-direction] .cat-pupil-glance { animation: none; transition: transform 300ms ease; }
+.buddy[data-walk-direction="left"] .cat-pupil-glance { transform: translate(-24px, 0); }
+.buddy[data-walk-direction="right"] .cat-pupil-glance { transform: translate(24px, 0); }
