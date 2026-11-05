@@ -1,3 +1,4 @@
+import { estimateMouthShape, type MouthShape } from "./mouth-shape.ts";
 /** Visual-only tap of the remote audio. Never connects to speakers or reads the microphone. */
 export function speechEnvelope(samples: Float32Array, previous: number, elapsedMs: number): number {
   let energy = 0;
@@ -9,7 +10,7 @@ export function speechEnvelope(samples: Float32Array, previous: number, elapsedM
   return next < 0.015 ? 0 : next;
 }
 
-export function createOutputAudioMeter(onLevel: (level: number) => void) {
+export function createOutputAudioMeter(onLevel: (level: number, shape: MouthShape) => void) {
   let context: AudioContext | undefined;
   let source: MediaStreamAudioSourceNode | undefined;
   let analyser: AnalyserNode | undefined;
@@ -19,7 +20,8 @@ export function createOutputAudioMeter(onLevel: (level: number) => void) {
   let last = 0;
   let enabled = false;
   let closed = false;
-  const reset = () => { level = 0; onLevel(0); };
+  let shape: MouthShape = "rest", candidate: MouthShape = "rest", candidateMs = 0;
+  const reset = () => { level = 0; shape = candidate = "rest"; candidateMs = 0; onLevel(0, "rest"); };
   const resume = () => {
     if (!closed && context?.state === "suspended") void context.resume().catch(() => {});
   };
@@ -44,11 +46,13 @@ export function createOutputAudioMeter(onLevel: (level: number) => void) {
       audio = element;
       try {
         analyser = context.createAnalyser();
-        analyser.fftSize = 512;
+        analyser.fftSize = 1024;
+        analyser.smoothingTimeConstant = .35;
         source = context.createMediaStreamSource(stream);
         source.connect(analyser);
         // No destination connection: the existing audio element remains the only speaker output.
         const samples = new Float32Array(analyser.fftSize);
+        const spectrum = new Float32Array(analyser.frequencyBinCount);
         last = 0;
         const tick = (time: number) => {
           if (closed) return;
@@ -57,7 +61,12 @@ export function createOutputAudioMeter(onLevel: (level: number) => void) {
           if (enabled && context?.state === "running" && !document.hidden && !audio?.paused && !audio?.muted && audio?.volume !== 0) {
             analyser!.getFloatTimeDomainData(samples);
             level = speechEnvelope(samples, level, elapsed);
-            onLevel(level);
+            analyser!.getFloatFrequencyData(spectrum);
+            const next = estimateMouthShape(spectrum, context.sampleRate, analyser!.fftSize, level);
+            if (next !== candidate) { candidate = next; candidateMs = 0; }
+            else candidateMs += Math.min(elapsed, 40);
+            if (next === "rest" || shape === "rest" || candidateMs >= 55) shape = next;
+            onLevel(level, shape);
           } else if (level) reset();
           frame = requestAnimationFrame(tick);
         };

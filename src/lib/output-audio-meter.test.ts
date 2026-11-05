@@ -23,10 +23,11 @@ test("output tap preserves playback, gates mute/pause, closes context and cancel
   let next = 0, closeCount = 0, disconnects = 0, connections = 0;
   const frames = new Map<number, (time: number) => void>();
   const doc = { hidden: false, addEventListener(name: string, fn: () => void) { const list = listeners.get(name) ?? new Set(); list.add(fn); listeners.set(name, list); }, removeEventListener(name: string, fn: () => void) { listeners.get(name)?.delete(fn); } };
-  const analyser = { fftSize: 512, getFloatTimeDomainData(data: Float32Array) { data.fill(.1); }, disconnect() { disconnects++; } };
+  const analyser = { fftSize: 512, frequencyBinCount: 512, getFloatFrequencyData(data: Float32Array) { data.fill(-60); }, getFloatTimeDomainData(data: Float32Array) { data.fill(.1); }, disconnect() { disconnects++; } };
   const source = { connect(target: unknown) { assert.equal(target, analyser); connections++; }, disconnect() { disconnects++; } };
   class Context {
     state = "running";
+    sampleRate = 48000;
     createAnalyser() { return analyser; }
     createMediaStreamSource(stream: unknown) { assert.equal(stream, remote); return source; }
     async resume() { this.state = "running"; }

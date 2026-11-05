@@ -2,7 +2,7 @@
 
 - `black-cat.png`: original user-supplied character; silhouette and body retained.
 - `black-cat-face-base.png`: clean face patch created with the builtin image generation tool, edit mode, transparent background. Only the central face area is composited over the original in `CatFace.tsx`; the generated outline is not used.
-- Eyes, pupils and mouth: SVG layers; upper head masked for restrained motion. Idle home motion uses short horizontal steps with independent feet. Speaking mouth size follows the remote playback waveform, not a fixed loop or phoneme recognition. Silence, mute, interruption and call teardown close the mouth.
+- Eyes, pupils and mouth: SVG layers; upper head masked for restrained motion. Idle home motion uses short steps with world-space planted feet; interruptions finish one step and settle in place. Speaking mouth size follows the remote playback waveform. Frequency bands select six mouth families (rest/open/wide/round/pucker/teeth), with a short hold and shape interpolation. This is a lightweight visual approximation, not phoneme recognition or Korean forced alignment. Silence, mute, interruption and call teardown close the mouth.
 
 ## Generation prompt
 

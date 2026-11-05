@@ -8,7 +8,7 @@ import { browserSupabase } from "@/lib/supabase";
 export default function HomeEntryGreeting({ name, voice, opener, onSpeaking, onDone, onOutputLevel }: {
   name: string; voice: string; opener: string;
   onSpeaking: (value: boolean) => void;
-  onOutputLevel?: (level: number) => void;
+  onOutputLevel?: (level: number, shape: import("@/lib/mouth-shape").MouthShape) => void;
   onDone: (value: boolean) => void;
 }) {
   useEffect(() => {
