@@ -44,7 +44,7 @@ export async function connectRealtime(
   let mic: MediaStream | null = null;
   let dc: RTCDataChannel | null = null;
   let closed = false;
-  let greetingPending = options.greeting !== false;
+  let greetingPending = options.greeting !== false && Boolean(safeHomeOpener(options.opener));
   let channelReady = false;
   let playbackReady = options.microphone !== false;
   let resumePlayback: (() => void) | undefined;
@@ -212,7 +212,8 @@ export async function connectRealtime(
     greetingRequested = true;
     if (!greetingPending) {
       // Context only: the home opener was already shown/spoken. Do not generate another greeting.
-      if (options.opener) send({ type: "conversation.item.create", item: { type: "message", role: "assistant", content: [{ type: "output_text", text: safeHomeOpener(options.opener).replace(/\n/g, " ") }] } });
+      const opener = safeHomeOpener(options.opener);
+      if (opener) send({ type: "conversation.item.create", item: { type: "message", role: "assistant", content: [{ type: "output_text", text: opener.replace(/\n/g, " ") }] } });
       send({ type: "session.update", session: { type: "realtime", audio: { input: { turn_detection: { type: "semantic_vad", eagerness: "low" } } } } });
       applyMic();
       readyStatus();

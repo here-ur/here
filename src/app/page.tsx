@@ -1,6 +1,6 @@
 "use client";
 
-import { DEFAULT_HOME_OPENER, FIRST_HOME_OPENER, withHomeOpener } from "@/lib/home-opener";
+import { safeHomeOpener, withHomeOpener } from "@/lib/home-opener";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
@@ -85,7 +85,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
   const [headline, setHeadline] = useState<string | null>(null);
   const [headlineReady, setHeadlineReady] = useState(false);
   const headlineLocked = useRef(false);
-  const openingLine = headline || DEFAULT_HOME_OPENER;
+  const openingLine = safeHomeOpener(headline);
   const [homeGreetingDone, setHomeGreetingDone] = useState(false);
   const [homeSpeaking, setHomeSpeaking] = useState(false);
   // 음성 대화 중에는 효과음이 마이크에 섞이지 않게 모두 쉰다.
@@ -107,7 +107,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
         if (!response.ok) return;
         const result = await response.json();
         if (!controller.signal.aborted && !headlineLocked.current && typeof result.headline === "string" && result.headline.length <= 100) setHeadline(result.headline);
-      } catch { /* The default greeting keeps the home usable when personalisation is unavailable. */ }
+      } catch { /* No generic greeting when personalisation is unavailable. */ }
       finally { if (!controller.signal.aborted) setHeadlineReady(true); }
     })();
     return () => controller.abort();
@@ -368,7 +368,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
           setNewProfile(p);
           setJustMet(true);
           headlineLocked.current = true;
-          setHeadline(FIRST_HOME_OPENER);
+          setHeadline(null);
           setHeadlineReady(true);
         }}
       />
@@ -433,7 +433,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
           {suggest && <button onClick={openHelpSoon} className="ui-press h-11 rounded-full bg-white px-5 text-t4 font-bold text-[#1F2A55]">도움받기</button>}
         </div> : undefined}
       >
-        {!homeGreetingDone && headlineReady && <HomeEntryGreeting name={profile.companion} voice={profile.voice} opener={openingLine} onSpeaking={setHomeSpeaking} onDone={setHomeGreetingDone} />}
+        {!homeGreetingDone && headlineReady && openingLine && <HomeEntryGreeting name={profile.companion} voice={profile.voice} opener={openingLine} onSpeaking={setHomeSpeaking} onDone={setHomeGreetingDone} />}
         <Drawer
           open={showMenu}
           profile={me}

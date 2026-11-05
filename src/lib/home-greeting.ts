@@ -1,12 +1,11 @@
 import { createHash } from "node:crypto";
 import { readProvider } from "./memory.ts";
-import { CASUAL_HOME_OPENERS } from "./home-opener.ts";
 
 // Stable per account and Korean calendar day; revisiting a menu must not shuffle the opener.
 export function homeGreetingPlan(userId: string, now = Date.now()) {
   const day = Math.floor((now + 9 * 60 * 60_000) / 86_400_000);
   const seed = createHash("sha256").update(`${userId}:${day}`).digest().readUInt32BE(0);
-  return { day, useMemory: seed % 3 !== 0, fallback: CASUAL_HOME_OPENERS[Math.floor(seed / 3) % CASUAL_HOME_OPENERS.length] };
+  return { day, useMemory: seed % 3 !== 0, fallback: null };
 }
 
 export type GreetingMemory = { id: string; summary: string; updated_at: string };
@@ -40,32 +39,32 @@ export function topicGreeting(value: unknown, memories: GreetingMemory[], day: n
   if (context === "ongoing") {
     if (uncertain.test(evidence)) return null;
     if (category === "book" && /읽고 있|읽는 중|읽으며|reading/i.test(evidence))
-      return `${topic} 어디까지 읽었어?\n아직 재밌어?`;
+      return `그 ${topic},\n어디까지 읽었어?`;
     if (category === "music" && /듣고 있|듣는 중|자주 듣|즐겨 듣|listening/i.test(evidence))
-      return `요즘도 ${topic} 들어?\n새로 꽂힌 곡 있어?`;
+      return `요즘도 ${topic} 들어?\n좋은 곡 있으면 나도 좀 알자.`;
     if ((category === "creative" || category === "outdoors" || category === "game") && /하고 있|하는 중|즐겨 한다|꾸준히 한다|매주.*한다|매일.*한다/i.test(evidence)) {
       const crafting = category === "creative" && /종이접기|뜨개질|도예|목공/.test(topic);
-      return `요즘도 ${topic} 해?\n${crafting ? "최근엔 뭐 만들었어?" : "최근엔 어땠어?"}`;
+      return `그 ${topic}, 요즘도 해?\n${crafting ? "뭐 만들었는지 얘기 좀 해 봐." : "어땠는지 얘기 좀 해 봐."}`;
     }
     return null;
   }
   if (context === "cooking_plan") {
     if (category !== "food" || /않|아니|취소|포기|이미|완료|만들어 봤|만들었다/.test(evidence) || !/만들어\s?보고 싶|만들고 싶|만들 계획|요리해\s?보고 싶/.test(evidence)) return null;
-    return `전에 말한 ${topic},\n만들어봤어?`;
+    return `그 ${topic}, 만들어 봤어?\n어떻게 됐나 좀 궁금해서.`;
   }
   if (context === "hobby_exploring") {
     if (category !== "creative" || /않|아니|취소|포기|이미|정했다|찾았다/.test(evidence) || !/취미/.test(topic) || !/찾고 있|고민 중|고르는 중|찾아보고 있/.test(evidence)) return null;
-    return "해보고 싶은 거 좀 찾았어?\n같이 골라볼까?";
+    return "취미는 좀 골랐어?\n후보라도 얘기해 봐.";
   }
   // Only the grounded, non-sensitive topic enters the copy. Never display arbitrary model instructions.
   const lines: Record<Category, string[]> = {
-    game: [`요즘 ${topic} 할 시간 있어?`, `${topic} 말고도\n해보고 싶은 게임 있어?`],
-    music: [`요즘 ${topic} 듣고 싶을 때 있어?`, `${topic} 말고\n새로 꽂힌 음악 있어?`],
-    book: [`${topic} 좋아한다고 했지?\n비슷한 책도 궁금해?`, `요즘 읽고 싶은 책 있어?\n${topic} 같은 거?`],
-    food: [`오늘은 ${topic} 생각 안 나?`, `${topic} 말고\n요즘 끌리는 것도 있어?`],
-    outdoors: [`요즘 ${topic} 할 시간 있어?`, `${topic} 말고도\n해보고 싶은 거 있어?`],
-    creative: [`요즘 ${topic} 해볼 시간 있어?`, `${topic} 말고도\n새로 해보고 싶은 거 있어?`],
-    pet: [`요즘 귀여운 ${topic} 본 적 있어?`, `${topic} 어떤 모습이\n제일 귀여워?`],
+    game: [`${topic} 좋아한다며.\n뭐가 그렇게 재밌어?`, `${topic} 말고 꽂힌 게임 있어?\n나도 좀 알자.`],
+    music: [`${topic} 좋아한다며.\n한 곡만 골라 봐.`, `${topic} 말고\n새로 꽂힌 음악은?`],
+    book: [`${topic} 좋아한다며.\n어느 부분이 좋았어?`, `${topic} 같은 책 또 찾았어?\n뭐가 눈에 들어오는데.`],
+    food: [`${topic} 좋아한다며.\n먹는 취향은 확실하네.`, `${topic} 말고\n요즘 먹고 싶은 건?`],
+    outdoors: [`${topic} 좋아한다며.\n어떤 점이 좋은데?`, `${topic} 말고\n해보고 싶은 것도 있어?`],
+    creative: [`${topic} 좋아한다며.\n뭐가 그렇게 재밌어?`, `${topic} 말고 눈여겨본 거 있어?\n얘기 좀 해 봐.`],
+    pet: [`${topic} 좋아한다며.\n취향 좀 들어 보자.`, `${topic} 어떤 모습이 좋은데?\n좀 궁금해서.`],
   };
   return lines[category as Category][Math.abs(day) % 2];
 }
