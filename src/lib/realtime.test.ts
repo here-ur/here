@@ -250,10 +250,25 @@ test("마이크 연결·재연결은 인사 없이 VAD를 켜고 바로 듣는�
   }
 });
 
+test("홈 문구가 없거나 유효하지 않으면 음성 인사나 빈 맥락을 생성하지 않는다", async t => {
+  for (const opener of [undefined, "", "   ", "<script>"]) {
+    await t.test(String(opener), async st => {
+      const m = setup(st);
+      const rt = await connectRealtime(m.handlers, {}, undefined, "fake-token", { opener });
+      st.after(() => rt.close());
+      const channel = m.peers[0].channel;
+      channel.open();
+      assert.equal(channel.sent.filter(e => e.type === "response.create" || e.type === "conversation.item.create").length, 0);
+      assert.equal(m.statuses.at(-1), "listening");
+      assert.ok(m.stream.tracks.every(track => track.enabled));
+    });
+  }
+});
+
 test("홈 인사는 마이크 요청 없이 재생하고 완료되면 연결을 닫는다", async t => {
   const m = setup(t);
   let completed = 0;
-  const rt = await connectRealtime(m.handlers, {}, undefined, undefined, { microphone: false, onGreetingEnd: () => completed++ });
+  const rt = await connectRealtime(m.handlers, {}, undefined, undefined, { microphone: false, opener: "그 파스타, 만들어 봤어?", onGreetingEnd: () => completed++ });
   t.after(() => rt.close());
   const peer = m.peers[0];
   peer.channel.open();
@@ -277,7 +292,7 @@ test("홈 자동재생이 막히면 첫 제스처에서만 재시도하고 종�
     removeEventListener: (name: string) => listeners.delete(name),
   });
   const m = setup(t, { playError: new DOMException("blocked", "NotAllowedError") });
-  const rt = await connectRealtime(m.handlers, {}, undefined, undefined, { microphone: false });
+  const rt = await connectRealtime(m.handlers, {}, undefined, undefined, { microphone: false, opener: "그 파스타, 만들어 봤어?" });
   t.after(() => rt.close());
   const peer = m.peers[0];
   peer.channel.open(); peer.ontrack?.({ streams: [m.stream] });
@@ -316,7 +331,7 @@ test("연결 요청과 마이크는 모두 스텁으로 처리하고 트랙을 �
 
 test("데이터 채널이 열리면 음성 인사를 도구 호출 없이 한 번만 요청한다", async (t) => {
   const m = setup(t);
-  const realtime = await connectRealtime(m.handlers);
+  const realtime = await connectRealtime(m.handlers, {}, undefined, undefined, { opener: "그 파스타, 만들어 봤어?" });
   t.after(() => realtime.close());
   const channel = m.peers[0].channel;
   const greeting = beginGreeting(channel);
@@ -345,7 +360,7 @@ test("마이크 진입은 홈 문구를 맥락으로만 전달하고 다시 인�
 
 test("인사 생성 완료나 다른 응답의 재생 완료로는 마이크 잠금을 풀지 않는다", async (t) => {
   const m = setup(t);
-  const realtime = await connectRealtime(m.handlers);
+  const realtime = await connectRealtime(m.handlers, {}, undefined, undefined, { opener: "그 파스타, 만들어 봤어?" });
   t.after(() => realtime.close());
   const channel = m.peers[0].channel;
   beginGreeting(channel);
@@ -363,7 +378,7 @@ test("인사 생성 완료나 다른 응답의 재생 완료로는 마이크 잠
 
 test("인사 중 선택한 마이크 끄기를 재생 완료 이후에도 유지한다", async (t) => {
   const m = setup(t);
-  const realtime = await connectRealtime(m.handlers);
+  const realtime = await connectRealtime(m.handlers, {}, undefined, undefined, { opener: "그 파스타, 만들어 봤어?" });
   t.after(() => realtime.close());
   beginGreeting(m.peers[0].channel);
   realtime.setMic(false);
@@ -378,7 +393,7 @@ test("인사 중 선택한 마이크 끄기를 재생 완료 이후에도 유지
 
 test("응답을 기다리는 중 마이크를 꺼도 생각 중 상태를 유지한다", async (t) => {
   const m = setup(t);
-  const realtime = await connectRealtime(m.handlers);
+  const realtime = await connectRealtime(m.handlers, {}, undefined, undefined, { opener: "그 파스타, 만들어 봤어?" });
   t.after(() => realtime.close());
   const channel = m.peers[0].channel;
   beginGreeting(channel);
@@ -394,7 +409,7 @@ test("응답을 기다리는 중 마이크를 꺼도 생각 중 상태를 유지
 
 test("인사 오디오가 중단되면 연결을 정리하고 늦은 재생 완료에도 마이크를 열지 않는다", async (t) => {
   const m = setup(t);
-  const realtime = await connectRealtime(m.handlers);
+  const realtime = await connectRealtime(m.handlers, {}, undefined, undefined, { opener: "그 파스타, 만들어 봤어?" });
   t.after(() => realtime.close());
   const channel = m.peers[0].channel;
   beginGreeting(channel);
@@ -420,7 +435,7 @@ test("첫 인사 응답이 실패하거나 중단되면 마이크를 열지 않�
   for (const status of ["failed", "cancelled", "incomplete"]) {
     await t.test(status, async (st) => {
       const m = setup(st);
-      const realtime = await connectRealtime(m.handlers);
+      const realtime = await connectRealtime(m.handlers, {}, undefined, undefined, { opener: "그 파스타, 만들어 봤어?" });
       st.after(() => realtime.close());
       beginGreeting(m.peers[0].channel);
       m.peers[0].channel.emit({
@@ -437,7 +452,7 @@ test("첫 인사 응답이 실패하거나 중단되면 마이크를 열지 않�
 
 test("음성 재생이 거절되면 안전한 오류를 알리고 마이크를 켜지 않는다", async (t) => {
   const m = setup(t, { playError: new DOMException("mock autoplay denied", "NotAllowedError") });
-  const realtime = await connectRealtime(m.handlers);
+  const realtime = await connectRealtime(m.handlers, {}, undefined, undefined, { opener: "그 파스타, 만들어 봤어?" });
   t.after(() => realtime.close());
   beginGreeting(m.peers[0].channel);
   m.peers[0].ontrack?.({ streams: [m.stream] });
@@ -452,7 +467,7 @@ test("음성 재생이 거절되면 안전한 오류를 알리고 마이크를 �
 
 test("마이크 권한이 없으면 수신 전용 연결을 유지하고 마이크를 켰다고 표시하지 않는다", async (t) => {
   const m = setup(t, { media: async () => { throw new DOMException("mock denied", "NotAllowedError"); } });
-  const realtime = await connectRealtime(m.handlers);
+  const realtime = await connectRealtime(m.handlers, {}, undefined, undefined, { opener: "그 파스타, 만들어 봤어?" });
   t.after(() => realtime.close());
   assert.equal(realtime.hasMic, false);
   assert.deepEqual(m.peers[0].transceivers, [{ kind: "audio", options: { direction: "recvonly" } }]);
@@ -464,7 +479,7 @@ test("마이크 권한이 없으면 수신 전용 연결을 유지하고 마이�
 
 test("소리 설정은 출력에만 적용하고 종료는 트랙·채널·재생 자원을 정리한다", async (t) => {
   const m = setup(t);
-  const realtime = await connectRealtime(m.handlers);
+  const realtime = await connectRealtime(m.handlers, {}, undefined, undefined, { opener: "그 파스타, 만들어 봤어?" });
   const peer = m.peers[0];
   beginGreeting(peer.channel);
   const lateMessage = peer.channel.onmessage;
@@ -541,7 +556,7 @@ test("마이크 권한 응답을 기다리다 취소하면 늦게 도착한 트�
 test("연결 완료 후에도 취소 신호가 마이크와 피어를 닫는다", async (t) => {
   const m = setup(t);
   const controller = new AbortController();
-  const realtime = await connectRealtime(m.handlers, {}, controller.signal);
+  const realtime = await connectRealtime(m.handlers, {}, controller.signal, undefined, { opener: "그 파스타, 만들어 봤어?" });
   beginGreeting(m.peers[0].channel);
   finishGreeting(m.peers[0].channel);
   assert.ok(m.stream.tracks.every((track) => track.enabled));
@@ -556,7 +571,7 @@ test("연결 완료 후에도 취소 신호가 마이크와 피어를 닫는다"
 
 test("음성 기억은 확정된 사용자 발언만 한 번 저장하고 부분 인식·AI 인사는 제외한다", async t => {
   const m = setup(t, { memory: true });
-  const rt = await connectRealtime(m.handlers, {}, undefined, "test-member-token");
+  const rt = await connectRealtime(m.handlers, {}, undefined, "test-member-token", { opener: "그 파스타, 만들어 봤어?" });
   t.after(() => rt.close());
   const c = m.peers[0].channel;
   beginGreeting(c);
@@ -581,7 +596,7 @@ test("음성 기억은 확정된 사용자 발언만 한 번 저장하고 부분
 test("기억 도구 결과를 돌려준 다음에만 후속 음성 응답을 요청하며 중복 이벤트는 무시한다", async t => {
   const pending = deferred<Response>();
   const m = setup(t, { memory: true, memoryRequest: () => pending.promise });
-  const rt = await connectRealtime(m.handlers, {}, undefined, "test-member-token");
+  const rt = await connectRealtime(m.handlers, {}, undefined, "test-member-token", { opener: "그 파스타, 만들어 봤어?" });
   t.after(() => rt.close());
   const c = m.peers[0].channel;
   beginGreeting(c); finishGreeting(c);
@@ -605,7 +620,7 @@ test("기억 도구 결과를 돌려준 다음에만 후속 음성 응답을 요
 test("음성 저장 요청 실패는 통화를 끊거나 연결 오류로 표시하지 않는다", async t => {
   const m = setup(t, { memory: true, memoryRequest: async () => new Response(null, { status: 503 }) });
   const warnings: string[] = [];
-  const rt = await connectRealtime({ ...m.handlers, onMemoryWarning: text => warnings.push(text) }, {}, undefined, "test-member-token");
+  const rt = await connectRealtime({ ...m.handlers, onMemoryWarning: text => warnings.push(text) }, {}, undefined, "test-member-token", { opener: "그 파스타, 만들어 봤어?" });
   t.after(() => rt.close());
   const c = m.peers[0].channel;
   beginGreeting(c); finishGreeting(c);
@@ -621,7 +636,7 @@ test("기억 검색 중 새 발언·종료가 오면 늦은 결과로 음성을 
   for (const action of ["interrupt", "close"]) await t.test(action, async st => {
     const pending = deferred<Response>();
     const m = setup(st, { memory: true, memoryRequest: () => pending.promise });
-    const rt = await connectRealtime(m.handlers, {}, undefined, "test-member-token");
+    const rt = await connectRealtime(m.handlers, {}, undefined, "test-member-token", { opener: "그 파스타, 만들어 봤어?" });
     st.after(() => rt.close());
     const c = m.peers[0].channel;
     beginGreeting(c); finishGreeting(c);
@@ -637,7 +652,7 @@ test("기억 검색 중 새 발언·종료가 오면 늦은 결과로 음성을 
 test("검색 장애는 기억 없이 대화를 이어가되 동의 거부는 통화를 정리한다", async t => {
   for (const status of [503, 403, 401]) await t.test(String(status), async st => {
     const m = setup(st, { memory: true, memoryRequest: async () => Response.json({ error: "private" }, { status }) });
-    const rt = await connectRealtime(m.handlers, {}, undefined, "test-member-token");
+    const rt = await connectRealtime(m.handlers, {}, undefined, "test-member-token", { opener: "그 파스타, 만들어 봤어?" });
     st.after(() => rt.close());
     const c = m.peers[0].channel;
     beginGreeting(c); finishGreeting(c);
@@ -657,7 +672,7 @@ test("검색 장애는 기억 없이 대화를 이어가되 동의 거부는 통
 
 test("운영처럼 기억이 비활성이면 음성 발언을 기억 API에 보내지 않는다", async t => {
   const m = setup(t);
-  const rt = await connectRealtime(m.handlers, {}, undefined, "test-member-token");
+  const rt = await connectRealtime(m.handlers, {}, undefined, "test-member-token", { opener: "그 파스타, 만들어 봤어?" });
   t.after(() => rt.close());
   const c = m.peers[0].channel;
   beginGreeting(c); finishGreeting(c);

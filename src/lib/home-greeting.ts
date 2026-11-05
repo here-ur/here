@@ -1,12 +1,11 @@
 import { createHash } from "node:crypto";
 import { readProvider } from "./memory.ts";
-import { CASUAL_HOME_OPENERS } from "./home-opener.ts";
 
 // Stable per account and Korean calendar day; revisiting a menu must not shuffle the opener.
 export function homeGreetingPlan(userId: string, now = Date.now()) {
   const day = Math.floor((now + 9 * 60 * 60_000) / 86_400_000);
   const seed = createHash("sha256").update(`${userId}:${day}`).digest().readUInt32BE(0);
-  return { day, useMemory: seed % 3 !== 0, fallback: CASUAL_HOME_OPENERS[Math.floor(seed / 3) % CASUAL_HOME_OPENERS.length] };
+  return { day, useMemory: seed % 3 !== 0, fallback: null };
 }
 
 export type GreetingMemory = { id: string; summary: string; updated_at: string };

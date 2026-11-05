@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { companionConversationPrompt, homeEntryGreetingPrompt } from "./companion-prompt.ts";
+import { CAT_VOICE_DELIVERY, companionConversationPrompt, homeEntryGreetingPrompt } from "./companion-prompt.ts";
 import { DEFAULT_COMPANION } from "./onboarding.ts";
 
 test("채팅·음성·홈 인사는 지정 이름만 정체성으로 사용한다", () => {
@@ -52,10 +52,17 @@ test("각 요청 경로가 같은 이름·말투 빌더를 사용하며 안전 �
 });
 
 test("음성 인사는 화면 문구만 읽고 별도 질문이나 자기소개를 붙이지 않는다", () => {
-  const prompt = homeEntryGreetingPrompt("보리", "너와 친해지고 싶어!\n너에 대해 알려줘.");
-  assert.match(prompt, /너와 친해지고 싶어! 너에 대해 알려줘\./);
+  const prompt = homeEntryGreetingPrompt("보리", "그 파스타, 만들어 봤어?\n어떻게 됐나 좀 궁금해서.");
+  assert.match(prompt, /그 파스타, 만들어 봤어\? 어떻게 됐나 좀 궁금해서\./);
   assert.match(prompt, /이 문구만 한 번 말해/);
   assert.doesNotMatch(prompt, /오늘은 어떤 하루였어/);
+});
+
+test("음성 대화와 기억 인사에 같은 담담한 억양을 적용하고 빈 인사는 생성하지 않는다", () => {
+  assert.ok(companionConversationPrompt("보리", "voice").includes(CAT_VOICE_DELIVERY));
+  assert.ok(homeEntryGreetingPrompt("보리", "그 파스타, 만들어 봤어?").includes(CAT_VOICE_DELIVERY));
+  assert.ok(!companionConversationPrompt("보리", "chat").includes(CAT_VOICE_DELIVERY));
+  assert.match(homeEntryGreetingPrompt("보리"), /인사나 자기소개를 만들어 내지 말고/);
 });
 
 test("편한 어미·짧은 반응·상황에 맞는 웃음을 허용하되 정직함은 유지한다", () => {

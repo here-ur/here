@@ -106,7 +106,7 @@ export default function HomeScreen({
   children,
 }: {
   profile: Profile;
-  greet: boolean; // 온보딩을 막 끝냈으면 몽글이가 처음 인사한다
+  greet: boolean; // 온보딩 직후 등장 모션
   headline?: string | null;
   spotlight?: React.ReactNode; // 기본 홈 위쪽에 작게 두는 것(오늘 해 볼 만한 것 시안). 대화 중에는 감춘다
   nudge?: React.ReactNode; // 대화를 마친 뒤 하단 버튼 위에 한 번 보여 주는 카드 시안
@@ -121,7 +121,6 @@ export default function HomeScreen({
 }) {
   const [showFiles, setShowFiles] = useState(false);
   const [files, setFiles] = useState<SelectedFile[]>([]);
-  const [greeting, setGreeting] = useState(greet);
   const [attachOpen, setAttachOpen] = useState(false);
   const attachButtonRef = useRef<HTMLButtonElement>(null);
   const attachMenuRef = useRef<HTMLDivElement>(null);
@@ -134,7 +133,6 @@ export default function HomeScreen({
   const wasVoiceActive = useRef(Boolean(voice));
   const fileNoticeId = useId();
   const name = profile.companion;
-  const nick = profile.nickname || "친구";
   const hasMessages = chat.open && !voice && (chat.messages.length > 0 || chat.sending);
   const chatting = chat.open && !voice; // 글 대화 중: 몽글이를 입력창 바로 위로 작게 옮긴다
   const resting = !chat.open && !voice; // 기본 홈: 글 없이 몽글이와 배경 움직임으로 대화를 권한다
@@ -234,12 +232,6 @@ export default function HomeScreen({
     input.click();
   }
 
-  useEffect(() => {
-    if (!greeting) return;
-    const t = setTimeout(() => setGreeting(false), 6000);
-    return () => clearTimeout(t);
-  }, [greeting]);
-
   const filePicker = (
     <input
       ref={fileInputRef}
@@ -280,7 +272,7 @@ export default function HomeScreen({
       </header>
 
       <div className={`home-intro absolute inset-x-gutter top-[18%] flex flex-col items-center text-center ${voice || hasMessages ? "home-intro-quiet" : ""}`} aria-hidden={Boolean(voice || hasMessages)}>
-        {/* 배지·설명 없이 몽글이가 먼저 건네는 한마디만. 문구는 page가 정한다(기억 인사 또는 기본 오프너). */}
+        {/* 실제 기억에 연결되는 문구가 있을 때만 표시. 기본 인사는 없음. */}
         {headline && <h1 className="min-h-[2.6em] whitespace-pre-line text-t12 font-medium text-balance">{headline}</h1>}
       </div>
 
@@ -300,14 +292,6 @@ export default function HomeScreen({
       </div>}
 
       <div className="home-character-wrap absolute inset-x-gutter top-[36%] flex flex-col items-center" data-hidden={chatting} aria-hidden={chatting}>
-        {greeting && !voice && !chat.open && !hasMessages && (
-          <button
-            onClick={() => setGreeting(false)}
-            className="ui-press mb-2 max-w-full rounded-r4 bg-white/90 px-4 py-3 text-t5 font-medium text-[#1e1d2b] shadow-[0_8px_24px_rgba(40,60,140,.18)] motion-safe:animate-pop"
-          >
-            안녕, {nick}! 나는 {josa(name, "이야", "야")}.
-          </button>
-        )}
         <div className={`home-buddy ${voice ? "home-buddy-expanded" : ""}`}>
           <div className={resting ? "home-buddy-float" : undefined}>
           <Buddy
@@ -316,7 +300,6 @@ export default function HomeScreen({
             accessory={profile.accessory}
             size={170}
             state={voice?.state ?? chat.state}
-            mouth={greeting && !voice && !chat.open ? "tongue" : undefined}
             bob
             tap={chat.open && !voice ? chat.draft.length : undefined}
             hearing={voice ? Boolean(voice.hearing) : undefined}

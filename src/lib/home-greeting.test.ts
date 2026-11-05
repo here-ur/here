@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createGreetingCache, greetingCandidates, topicGreeting, homeGreetingPlan } from "./home-greeting.ts";
-import { FIRST_HOME_OPENER, DEFAULT_HOME_OPENER, CASUAL_HOME_OPENERS, safeHomeOpener, withHomeOpener } from "./home-opener.ts";
+import { safeHomeOpener, withHomeOpener } from "./home-opener.ts";
 
 const memory = { id: "test-a", summary: "사용자는 보드게임 아줄을 가장 좋아한다고 말했다.", updated_at: "2026-10-31" };
 const selection = { memory_id: "test-a", topic: "아줄", category: "game", context: "preference", evidence: memory.summary };
@@ -17,18 +17,14 @@ test("저장된 취향에서만 짧은 홈 문구를 만들고 날짜별로 변�
   assert.equal(topicGreeting({ ...selection, topic: "<script>" }, [memory], 0), null);
 });
 
-test("첫 만남·가벼운 재방문·기억 문구는 분리하고 한국 날짜 안에서 유지한다", () => {
-  assert.equal(FIRST_HOME_OPENER, "네가 새 집사야?\n일단 얘기 좀 해 봐.");
-  assert.notEqual(FIRST_HOME_OPENER, DEFAULT_HOME_OPENER);
-  assert.equal(DEFAULT_HOME_OPENER, "왔어?\n오늘은 무슨 일인데.");
+test("한국 날짜 안에서 기억 인사 계획을 유지하고 기본 인사는 만들지 않는다", () => {
   const morning = Date.parse("2026-11-02T00:00:00+09:00");
   assert.deepEqual(homeGreetingPlan("a", morning), homeGreetingPlan("a", morning + 86_399_999));
   assert.notEqual(homeGreetingPlan("a", morning).day, homeGreetingPlan("a", morning - 1).day);
   const plans = Array.from({ length: 30 }, (_, i) => homeGreetingPlan("a", morning + i * 86_400_000));
   assert.ok(plans.some(p => p.useMemory));
   assert.ok(plans.some(p => !p.useMemory));
-  for (const p of plans) assert.ok(CASUAL_HOME_OPENERS.includes(p.fallback));
-  for (const line of [...CASUAL_HOME_OPENERS, FIRST_HOME_OPENER]) assert.ok(line.length <= 100);
+  for (const p of plans) assert.equal(p.fallback, null);
 });
 
 test("활동·계획이 명시된 기억에서 자연스러운 후속 질문을 만든다", () => {
@@ -61,11 +57,14 @@ test("정확한 한 문장 근거 없이 상태를 추정하지 않는다", () =
 });
 
 test("홈 문구를 대화 맥락에 한 번만 넣고 기존 대화를 덮어쓰지 않는다", () => {
-  const initial = withHomeOpener([], FIRST_HOME_OPENER);
-  assert.deepEqual(initial, [{ role: "assistant", content: "네가 새 집사야? 일단 얘기 좀 해 봐." }]);
-  assert.equal(withHomeOpener(initial, DEFAULT_HOME_OPENER), initial);
-  assert.equal(safeHomeOpener("<script>"), DEFAULT_HOME_OPENER);
-  assert.equal(safeHomeOpener("x".repeat(101)), DEFAULT_HOME_OPENER);
+  const initial = withHomeOpener([], "그 파스타, 만들어 봤어?\n어떻게 됐나 좀 궁금해서.");
+  assert.deepEqual(initial, [{ role: "assistant", content: "그 파스타, 만들어 봤어? 어떻게 됐나 좀 궁금해서." }]);
+  assert.equal(withHomeOpener(initial, "다른 문구"), initial);
+  for (const value of [undefined, null, "", "   ", "<script>", "x".repeat(101)]) {
+    assert.equal(safeHomeOpener(value), "");
+    const messages: { role: "user" | "assistant"; content: string }[] = [];
+    assert.equal(withHomeOpener(messages, value), messages, "빈 인사를 대화에 삽입하지 않는다");
+  }
 });
 
 test("모든 허용 분류의 문구는 광고식 비유나 확인되지 않은 일정이 없다", () => {
@@ -103,7 +102,7 @@ test("계정·기억별 캐시 격리와 중복 호출 방지", async () => {
   await get("user-a", [{ ...memory, updated_at: "changed" }], config); assert.equal(calls, 3);
 });
 
-test("기억 없음·키 없음·오류·불완전 출력은 기본 인사로 돌아간다", async () => {
+test("기억 없음·키 없음·오류·불완전 출력은 인사 없이 유지한다", async () => {
   const get = createGreetingCache();
   const fail = { apiKey: "test-only", fetch: (async () => { throw new Error("provider_down"); }) as typeof fetch };
   assert.equal(await get("empty", [], fail), null);
