@@ -2,7 +2,19 @@
 @import "@seed-design/css/recipes/text.css" layer(components);
 @import "./seed-foundation.css";
 
-/* 몽글이 프로토타입의 색: 밝은 하늘과 보라. 앱 전체를 이 한 가지 톤으로 고정한다. */
+/* Shared cat palette must also be emitted for component CSS variable references. */
+@theme static {
+  --color-cat-paper: #F5F2EB;
+  --color-cat-surface: #FFFDFA;
+  --color-cat-ink: #292927;
+  --color-cat-muted: #6F6C65;
+  --color-cat-soft: #ECE8DF;
+  --color-cat-line: #D9D4CA;
+  --color-cat-amber: #F4B544;
+  --color-cat-accent: #85591B;
+}
+
+/* Legacy illustration colors remain available to the garden and reports. */
 @theme {
   --color-ink: #18181d;
   --color-ink-2: #4a4a57;

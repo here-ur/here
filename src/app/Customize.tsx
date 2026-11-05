@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { ACCESSORIES, buildGarden, loadSeeds, unlockedAccessories } from "@/lib/garden";
-import { COLORS, VOICES, type Profile, accentButton, cleanName } from "@/lib/onboarding";
+import { VOICES, type Profile, cleanName } from "@/lib/onboarding";
+import { COMPANION_BACKGROUNDS, companionBackground } from "@/lib/companion-theme";
 import { loadReport } from "@/lib/report";
 import * as sfx from "@/lib/sound";
 import { Icon } from "./art";
@@ -16,18 +17,22 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
   const [unlocked] = useState(() => unlockedAccessories(buildGarden(loadReport(), loadSeeds())));
   const set = (patch: Partial<Profile>) => setDraft((d) => ({ ...d, ...patch }));
   const chip = (on: boolean) =>
-    `ui-press h-11 rounded-full px-4 text-t5 font-medium ${on ? "bg-[#1F2A55] text-white" : "bg-[#F2F4F8] text-[#1F2A55]"}`;
+    `ui-press h-11 rounded-full px-4 text-t5 font-medium ${on ? "bg-cat-ink text-white" : "bg-cat-soft text-cat-ink"}`;
 
   return (
-    <Sheet title={`${profile.companion} 바꾸기`} onClose={onClose}>
-      <div className="flex justify-center py-2">
+    <Sheet title={`${profile.companion} 바꾸기`} onClose={onClose} footer={
+      <button onClick={() => onSave({ ...draft, companion: cleanName(draft.companion) })} className="ui-press h-14 w-full rounded-full bg-cat-ink text-t5 font-bold text-white">
+        이대로 할게요
+      </button>
+    }>
+      <div className="mt-3 flex justify-center rounded-r5 py-2" style={{ backgroundColor: companionBackground(draft.color) }}>
         <Buddy shape={draft.shape} color={draft.color} accessory={draft.accessory} size={140} look={[0, 0.25]} key={`${draft.shape}-${draft.color}-${draft.accessory ?? ""}`} className="motion-safe:animate-pop" />
       </div>
 
       <section className="mt-5">
-        <h3 className="mb-2 text-t4 font-bold text-[#3D4559]">배경 색</h3>
+        <h3 className="mb-2 text-t4 font-bold text-cat-ink">배경 색</h3>
         <div className="flex gap-3" role="radiogroup" aria-label="배경 색">
-          {COLORS.map((c, i) => (
+          {COMPANION_BACKGROUNDS.map((c, i) => (
             <button
               key={c.id}
               role="radio"
@@ -37,9 +42,9 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
                 sfx.pick(i);
                 set({ color: c.id });
               }}
-              className={`ui-press size-11 rounded-full p-1 ring-offset-2 ${draft.color === c.id ? "ring-2 ring-[#1F2A55]" : ""}`}
+              className={`ui-press size-11 rounded-full p-1 ring-offset-2 ${draft.color === c.id ? "ring-2 ring-cat-ink" : ""}`}
             >
-              <span className="block size-full rounded-full" style={{ background: `linear-gradient(160deg, ${c.light}, ${c.base} 70%, ${c.blob1})` }} />
+              <span className="block size-full rounded-full border border-cat-line" style={{ background: c.surface }} />
             </button>
           ))}
         </div>
@@ -47,8 +52,8 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
 
       <section className="mt-5">
         <div className="mb-2 flex items-baseline justify-between">
-          <h3 className="text-t4 font-bold text-[#3D4559]">꾸미기</h3>
-          <span className="text-t2 tabular-nums text-[#5A6478]">{unlocked.size} / {ACCESSORIES.length} 열림</span>
+          <h3 className="text-t4 font-bold text-cat-ink">꾸미기</h3>
+          <span className="text-t2 tabular-nums text-cat-muted">{unlocked.size} / {ACCESSORIES.length} 열림</span>
         </div>
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="꾸미기">
           <button role="radio" aria-checked={!draft.accessory} onClick={() => set({ accessory: undefined })} className={chip(!draft.accessory)}>없음</button>
@@ -62,18 +67,18 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
                 aria-disabled={!open}
                 aria-label={open ? a.label : `${a.label}, 잠김. ${a.hint}`}
                 onClick={() => { if (!open) return; sfx.pick(i); set({ accessory: a.id }); }}
-                className={open ? chip(draft.accessory === a.id) : "h-11 cursor-not-allowed rounded-full border border-dashed border-[#D5DAE5] px-4 text-t5 font-medium text-[#B4B9C6]"}
+                className={open ? chip(draft.accessory === a.id) : "h-11 cursor-not-allowed rounded-full border border-dashed border-cat-line px-4 text-t5 font-medium text-cat-muted"}
               >
                 {open ? a.label : <span className="flex items-center gap-1"><Icon name="lock" size={14} />{a.label}</span>}
               </button>
             );
           })}
         </div>
-        <p className="mt-2 text-t3 text-pretty text-[#5A6478]">구름 정원이 자라면 하나씩 열려요. {ACCESSORIES.find((a) => !unlocked.has(a.id))?.hint ?? "모두 열었어요!"}</p>
+        <p className="mt-2 text-t3 text-pretty text-cat-muted">구름 정원이 자라면 하나씩 열려요. {ACCESSORIES.find((a) => !unlocked.has(a.id))?.hint ?? "모두 열었어요!"}</p>
       </section>
 
       <section className="mt-5">
-        <h3 className="mb-2 text-t4 font-bold text-[#3D4559]">목소리</h3>
+        <h3 className="mb-2 text-t4 font-bold text-cat-ink">목소리</h3>
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="목소리">
           {VOICES.map((v, i) => (
             <button
@@ -91,11 +96,11 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
             </button>
           ))}
         </div>
-        <p className="mt-2 text-t3 text-pretty text-[#5A6478]">{VOICES.find((v) => v.id === draft.voice)?.desc} · 다음 대화부터 바뀌어요</p>
+        <p className="mt-2 text-t3 text-pretty text-cat-muted">{VOICES.find((v) => v.id === draft.voice)?.desc} · 다음 대화부터 바뀌어요</p>
       </section>
 
       <section className="mt-5">
-        <label htmlFor="companion-name" className="mb-2 block text-t4 font-bold text-[#3D4559]">
+        <label htmlFor="companion-name" className="mb-2 block text-t4 font-bold text-cat-ink">
           이름
         </label>
         <input
@@ -103,17 +108,11 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
           value={draft.companion}
           onChange={(e) => set({ companion: e.target.value })}
           maxLength={10}
-          className="ui-transition h-12 w-full rounded-r4 bg-[#F2F4F8] px-4 text-t5 font-medium text-[#111318] outline-0 focus:ring-2 focus:ring-[#1F2A55]/30"
+          className="ui-transition h-12 w-full rounded-r4 bg-cat-soft px-4 text-t5 font-medium text-cat-ink outline-0 focus:ring-2 focus:ring-cat-ink/30"
         />
       </section>
 
-      <button
-        onClick={() => onSave({ ...draft, companion: cleanName(draft.companion) })}
-        style={accentButton(draft.color)}
-        className="ui-press mt-6 h-14 w-full rounded-full text-t5 font-bold text-white"
-      >
-        이대로 할게요
-      </button>
+
     </Sheet>
   );
 }

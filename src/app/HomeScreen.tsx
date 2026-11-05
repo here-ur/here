@@ -6,6 +6,7 @@ import type { Msg } from "@/lib/log";
 import { ChatMarkdown } from "@/lib/chat-markdown";
 import { safeSearchSource, type SearchSource } from "@/lib/web-search-protocol";
 import { COLORS, type ColorId, type Profile, josa } from "@/lib/onboarding";
+import { companionBackground } from "@/lib/companion-theme";
 import Buddy, { type BuddyState } from "./Buddy";
 import { CalendarIcon } from "./Drawer";
 import { Icon } from "./art";
@@ -255,8 +256,7 @@ export default function HomeScreen({
   );
 
   return (
-    <main ref={frameRef} className="app-frame home-screen bg-[#FAFCFE] text-[#111318] motion-safe:animate-fade" data-text-open={chat.open} data-has-messages={hasMessages}>
-      <Bloom color={profile.color} lively={resting} />
+    <main ref={frameRef} className="app-frame home-screen text-cat-ink motion-safe:animate-fade" data-text-open={chat.open} data-has-messages={hasMessages} style={{ backgroundColor: companionBackground(profile.color) }}>
       {/* 온보딩의 빛이 하얗게 걷히며 홈이 나타난다 */}
       {greet && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 bg-white motion-safe:animate-unveil motion-reduce:hidden" />}
 
@@ -266,6 +266,7 @@ export default function HomeScreen({
             <path d="M4.5 7h15M4.5 12h15M4.5 17h9" />
           </svg>
         </button>
+        <span className="home-wordmark" aria-label="Here!">here<span aria-hidden="true">!</span></span>
         <button onClick={onLibrary} aria-label="라이브러리" className="home-chrome-button ui-press grid size-12 place-items-center rounded-full">
           <CalendarIcon />
         </button>
@@ -273,32 +274,32 @@ export default function HomeScreen({
 
       <div className={`home-intro absolute inset-x-gutter top-[18%] flex flex-col items-center text-center ${voice || hasMessages ? "home-intro-quiet" : ""}`} aria-hidden={Boolean(voice || hasMessages)}>
         {/* 실제 기억에 연결되는 문구가 있을 때만 표시. 기본 인사는 없음. */}
-        {headline && <h1 className="min-h-[2.6em] whitespace-pre-line text-t12 font-medium text-balance">{headline}</h1>}
+        {headline && <h1 className="min-h-[2.6em] max-w-80 whitespace-pre-line text-t9 leading-relaxed font-medium tracking-tight text-balance">{headline}</h1>}
       </div>
 
       {notice && <div className="home-safety absolute inset-x-gutter top-[18%] z-10">{notice}</div>}
       {spotlight && resting && !notice && <div className="absolute inset-x-gutter top-[calc(env(safe-area-inset-top)+76px)] z-10">{spotlight}</div>}
 
       {hasMessages && <div ref={messageListRef} className="home-messages" role="log" aria-label="대화 내용" aria-live="polite" aria-relevant="additions text">
-        <p className="pt-1 text-center text-t1 text-[#5A6478]/80">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
+        <p className="pt-1 text-center text-t1 text-cat-muted">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
         {chat.messages.map((message, index) => <div key={index} className="home-message" data-role={message.role}>
           <span className="sr-only">{message.role === "user" ? "나" : name}: </span>
           {message.role === "assistant" ? <div className="home-message-bubble"><ChatMarkdown content={message.content} /></div> : <p>{message.content}</p>}
         </div>)}
         {chat.sending && <div className="home-message" data-role="assistant">
           <span className="sr-only">{name}가 생각하는 중</span>
-          <p className="flex items-center gap-1 py-4" aria-hidden="true">{[0, 1, 2].map((dot) => <i key={dot} className="size-1.5 rounded-full bg-[#5A6478] motion-safe:animate-dot" style={{ animationDelay: `${dot * 150}ms` }} />)}</p>
+          <p className="flex items-center gap-1 py-4" aria-hidden="true">{[0, 1, 2].map((dot) => <i key={dot} className="size-1.5 rounded-full bg-cat-muted motion-safe:animate-dot" style={{ animationDelay: `${dot * 150}ms` }} />)}</p>
         </div>}
       </div>}
 
-      <div className="home-character-wrap absolute inset-x-gutter top-[36%] flex flex-col items-center" data-hidden={chatting} aria-hidden={chatting}>
+      <div className="home-character-wrap absolute inset-x-gutter top-[32%] flex flex-col items-center" data-hidden={chatting} aria-hidden={chatting}>
         <div className={`home-buddy ${voice ? "home-buddy-expanded" : ""}`}>
           <div className={resting ? "home-buddy-float" : undefined}>
           <Buddy
             shape={profile.shape}
             color={profile.color}
             accessory={profile.accessory}
-            size={170}
+            size={248}
             state={voice?.state ?? chat.state}
             bob
             tap={chat.open && !voice ? chat.draft.length : undefined}
@@ -308,16 +309,16 @@ export default function HomeScreen({
           </div>
         </div>
         {voice && <div className="mt-5 max-w-full px-4 text-center">
-          <p role="status" className="text-t4 font-medium text-[#1F2A55]">{voice.error ? "연결하지 못했어요" : voice.statusText}</p>
-          {voice.caption && !voice.error && <div className="mt-2 line-clamp-2 text-t3 text-[#5A6478]"><ChatMarkdown content={voice.caption.split("\n\n출처:")[0]} /></div>}
+          <p role="status" className="text-t4 font-medium text-cat-ink">{voice.error ? "연결하지 못했어요" : voice.statusText}</p>
+          {voice.caption && !voice.error && <div className="mt-2 line-clamp-2 text-t3 text-cat-muted"><ChatMarkdown content={voice.caption.split("\n\n출처:")[0]} /></div>}
         </div>}
       </div>
 
       <div ref={bottomRef} className="home-bottom absolute inset-x-5 bottom-[max(32px,env(safe-area-inset-bottom))] flex flex-col gap-3">
         {voice?.sources && voice.sources.length > 0 && <nav aria-label="검색 출처" className="flex max-h-24 gap-2 overflow-auto rounded-r3 bg-white/90 px-3 py-2">
-          {voice.sources.map(safeSearchSource).filter((source): source is SearchSource => Boolean(source)).map((source, index) => <a key={`${source.url}-${index}`} href={source.url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="inline-flex min-h-10 max-w-48 shrink-0 items-center rounded-r2 px-2 text-t3 text-[#1F2A55] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"><span className="truncate">{source.title}</span></a>)}
+          {voice.sources.map(safeSearchSource).filter((source): source is SearchSource => Boolean(source)).map((source, index) => <a key={`${source.url}-${index}`} href={source.url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="inline-flex min-h-10 max-w-48 shrink-0 items-center rounded-r2 px-2 text-t3 text-cat-ink underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"><span className="truncate">{source.title}</span></a>)}
         </nav>}
-        {voice?.warning && !voice.error && <p role="status" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#5A6478]">{voice.warning}</p>}
+        {voice?.warning && !voice.error && <p role="status" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-cat-muted">{voice.warning}</p>}
         {voice?.error && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{voice.error}</p>}
         {chat.error && !voice && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{chat.error}</p>}
         {files.length > 0 && (
@@ -328,7 +329,7 @@ export default function HomeScreen({
               setShowFiles(true);
             }}
             aria-haspopup="dialog"
-            className="ui-press min-h-11 self-start rounded-full bg-white/70 px-4 text-t3 font-medium text-[#1F2A55]"
+            className="ui-press min-h-11 self-start rounded-full bg-white/70 px-4 text-t3 font-medium text-cat-ink"
           >
             선택한 파일 {files.length}개 · 기기에서만
           </button>
@@ -358,10 +359,10 @@ export default function HomeScreen({
             </svg>
           </button>
           {attachOpen && (
-            <div ref={attachMenuRef} role="menu" aria-label="첨부할 종류" className="absolute bottom-[calc(100%+8px)] left-0 z-20 w-48 origin-bottom-left rounded-r4 bg-white p-1.5 shadow-[0_10px_32px_rgba(28,38,80,.16)] motion-safe:animate-pop">
+            <div ref={attachMenuRef} role="menu" aria-label="첨부할 종류" className="absolute bottom-[calc(100%+8px)] left-0 z-20 w-48 origin-bottom-left rounded-r4 bg-white p-1.5 shadow-[0_10px_32px_rgba(35,32,27,.12)] motion-safe:animate-pop">
               {ATTACH_KINDS.map((kind) => (
-                <button key={kind.id} type="button" role="menuitem" onClick={() => pickAttachment(kind)} className="ui-press flex h-11 w-full items-center gap-3 rounded-r3 px-3 text-left text-t4 font-medium text-[#1F2A55] hover:bg-[#F2F4F8] focus-visible:bg-[#F2F4F8]">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-[#3D4559]">{kind.icon}</svg>
+                <button key={kind.id} type="button" role="menuitem" onClick={() => pickAttachment(kind)} className="ui-press flex h-11 w-full items-center gap-3 rounded-r3 px-3 text-left text-t4 font-medium text-cat-ink hover:bg-cat-soft focus-visible:bg-cat-soft">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-cat-ink">{kind.icon}</svg>
                   {kind.label}
                 </button>
               ))}
@@ -378,7 +379,7 @@ export default function HomeScreen({
                   if (canSend && !chat.sending) chat.onSend();
                 }}
               />
-              <button type="button" onClick={collapseText} tabIndex={chat.open ? 0 : -1} aria-label="입력창 닫기" className="ui-press grid size-11 shrink-0 place-items-center rounded-full bg-[#F2F4F8] text-[#1F2A55]"><Icon name="close" size={18} /></button>
+              <button type="button" onClick={collapseText} tabIndex={chat.open ? 0 : -1} aria-label="입력창 닫기" className="ui-press grid size-11 shrink-0 place-items-center rounded-full bg-cat-soft text-cat-ink"><Icon name="close" size={18} /></button>
             </div>
             <button
               ref={chatButtonRef}
@@ -398,14 +399,14 @@ export default function HomeScreen({
             </button>
           </form>
           <div className="home-right-action" data-send={canSend}>
-            <button type="button" onClick={chat.onSend} disabled={chat.sending || !canSend} tabIndex={canSend ? 0 : -1} aria-hidden={!canSend} aria-label="메시지 보내기" className="home-send ui-press grid size-14 place-items-center rounded-full bg-[#1E4FE0] text-white disabled:opacity-40"><Icon name="send" size={23} /></button>
+            <button type="button" onClick={chat.onSend} disabled={chat.sending || !canSend} tabIndex={canSend ? 0 : -1} aria-hidden={!canSend} aria-label="메시지 보내기" className="home-send ui-press grid size-14 place-items-center rounded-full bg-cat-ink text-white disabled:opacity-40"><Icon name="send" size={23} /></button>
             <div inert={canSend} aria-hidden={canSend} className="home-mic-action">
             <div className="home-voice-pill" data-expanded={Boolean(voice)}>
               <div className="home-voice-end" inert={!voice} aria-hidden={!voice}>
                 <button type="button" onClick={voice?.onEnd} tabIndex={voice ? 0 : -1} aria-label="음성 대화 종료" className="ui-press grid size-12 shrink-0 place-items-center rounded-full bg-[#E5484D] text-white">
                   <Icon name="close" size={20} />
                 </button>
-                <span className="h-8 w-px shrink-0 bg-[#D9DDE7]" />
+                <span className="h-8 w-px shrink-0 bg-cat-line" />
               </div>
               <button
                 ref={micButtonRef}
@@ -425,9 +426,9 @@ export default function HomeScreen({
             </div>
           </div>
         </div>
-        {!chatting && <p className="text-center text-t1 text-[#5A6478]/80">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>}
+        {!chatting && <p className="text-center text-t1 text-cat-muted">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>}
       </div>
-      {voice?.listening && <div className="home-listening-wave" aria-hidden="true">{Array.from({ length: 32 }, (_, index) => <i key={index} style={{ animationDelay: `${(index % 7) * -160}ms`, backgroundColor: COLORS.find((color) => color.id === profile.color)?.deep }} />)}</div>}
+      {voice?.listening && <div className="home-listening-wave" aria-hidden="true">{Array.from({ length: 32 }, (_, index) => <i key={index} style={{ animationDelay: `${(index % 7) * -160}ms`, backgroundColor: "var(--color-cat-accent)" }} />)}</div>}
       {children}
       {!showFiles && filePicker}
       {showFiles && (
@@ -438,31 +439,31 @@ export default function HomeScreen({
             <button
               type="button"
               onClick={() => pickAttachment(ATTACH_KINDS[2])}
-              className="ui-press h-14 w-full rounded-full bg-[#F2F4F8] text-t5 font-bold text-[#1F2A55]"
+              className="ui-press h-14 w-full rounded-full bg-cat-soft text-t5 font-bold text-cat-ink"
             >
               파일 더 선택하기
             </button>
           )}
         >
           {filePicker}
-          <p id={fileNoticeId} className="mt-4 text-article-note text-pretty text-[#5A6478]">
+          <p id={fileNoticeId} className="mt-4 text-article-note text-pretty text-cat-muted">
             파일 전송 기능은 준비 중이에요. 선택한 파일 정보는 이 기기에서만 표시되며, 파일 내용은 읽거나 전송하지 않아요.
           </p>
           {files.length === 0 ? (
-            <p role="status" className="py-8 text-center text-t4 text-[#5A6478]">선택한 파일이 없어요.</p>
+            <p role="status" className="py-8 text-center text-t4 text-cat-muted">선택한 파일이 없어요.</p>
           ) : (
             <ul aria-label="선택한 파일 목록" aria-describedby={fileNoticeId} className="mt-5 flex flex-col gap-3">
               {files.map((file) => (
-                <li key={file.key} className="flex items-center gap-3 rounded-r4 bg-[#F2F4F8] py-3 pr-2 pl-4">
+                <li key={file.key} className="flex items-center gap-3 rounded-r4 bg-cat-soft py-3 pr-2 pl-4">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-t4 font-medium text-[#1F2A55]" title={file.name}>{file.name}</p>
-                    <p className="mt-1 text-t2 tabular-nums text-[#5A6478]">{file.size.toLocaleString("ko-KR")} B</p>
+                    <p className="truncate text-t4 font-medium text-cat-ink" title={file.name}>{file.name}</p>
+                    <p className="mt-1 text-t2 tabular-nums text-cat-muted">{file.size.toLocaleString("ko-KR")} B</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setFiles((current) => current.filter((item) => item.key !== file.key))}
                     aria-label={`${file.name} 선택 해제`}
-                    className="ui-press grid size-11 shrink-0 place-items-center rounded-full text-[#5A6478]"
+                    className="ui-press grid size-11 shrink-0 place-items-center rounded-full text-cat-muted"
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
                       <path d="m6 6 12 12M18 6 6 18" />

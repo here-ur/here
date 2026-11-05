@@ -13,11 +13,11 @@ const display = Bagel_Fat_One({
 
 export const metadata: Metadata = {
   title: "Here!",
-  description: "말로 이야기하고, 필요할 때 나에게 맞는 상담사를 살펴보세요",
+  description: "무심한 듯 곁에 있는 고양이와, 글과 목소리로 나누는 이야기",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#AFC1FF",
+  themeColor: "#F5F2EB",
   viewportFit: "cover",
 };
 
