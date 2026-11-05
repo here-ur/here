@@ -1,13 +1,13 @@
 // Shared display/audio copy. No account data or server-only imports in this module.
-export const FIRST_HOME_OPENER = "너와 친해지고 싶어!\n너에 대해 알려줘.";
-export const DEFAULT_HOME_OPENER = "왔네!\n요즘 어떻게 지내?";
+export const FIRST_HOME_OPENER = "네가 새 집사야?\n일단 얘기 좀 해 봐.";
+export const DEFAULT_HOME_OPENER = "왔어?\n오늘은 무슨 일인데.";
 export const CASUAL_HOME_OPENERS = [
   DEFAULT_HOME_OPENER,
-  "오늘 뭐 할까?\n아직 안 정했어도 괜찮아.",
-  "오늘은 무슨 얘기 할까?\n별거 아닌 얘기도 좋아.",
-  "갑자기 하루가 통째로 비면,\n뭐 하고 싶어?",
-  "요즘 자꾸 생각나는 노래 있어?\n하나만 알려줘.",
-  "오늘 먹고 싶은 거 있어?\n난 네 취향이 궁금해.",
+  "할 말 있어?\n웅. 듣고 있어.",
+  "오늘은 뭐 했어?\n별일 없었어도 말해 봐.",
+  "그냥 들렀어?\n뭐, 그래도 되고.",
+  "요즘 뭐에 꽂혔어?\n나도 좀 알자.",
+  "무슨 생각 해?\n혼자만 하지 말고 얘기 좀 해 봐.",
 ] as const;
 
 export function safeHomeOpener(value?: string | null): string {

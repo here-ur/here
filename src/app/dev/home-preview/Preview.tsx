@@ -10,7 +10,7 @@ export default function Preview() {
   const [voice, setVoice] = useState(false); // 마이크 버튼으로 음성 모드 모양만 확인한다(실제 연결 없음)
   const [micOn, setMicOn] = useState(true);
   const [mode, setMode] = useState<"first" | "return" | "memory">("first");
-  const headline = mode === "first" ? FIRST_HOME_OPENER : mode === "return" ? DEFAULT_HOME_OPENER : "요즘도 종이접기 해?\n최근엔 뭐 만들었어?";
+  const headline = mode === "first" ? FIRST_HOME_OPENER : mode === "return" ? DEFAULT_HOME_OPENER : "그 종이접기, 요즘도 해?\n뭐 만들었는지 얘기 좀 해 봐.";
   return <><div className="fixed left-2 top-2 z-50 flex gap-2 rounded-xl bg-white p-2 text-sm text-black shadow">
     {([ ["first", "첫 만남"], ["return", "재방문"], ["memory", "기억 연결"] ] as const).map(([value, label]) => <button key={value} aria-pressed={mode === value} onClick={() => setMode(value)} className="rounded-lg border px-3 py-2 aria-pressed:bg-slate-200">{label}</button>)}
   </div><HomeScreen

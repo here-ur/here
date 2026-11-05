@@ -9,7 +9,7 @@ const selection = { memory_id: "test-a", topic: "아줄", category: "game", cont
 const provider = (selection: unknown) => Response.json({ status: "completed", output: [{ type: "message", role: "assistant", content: [{ type: "output_text", text: JSON.stringify(selection) }] }] });
 
 test("저장된 취향에서만 짧은 홈 문구를 만들고 날짜별로 변주한다", () => {
-  assert.equal(topicGreeting(selection, [memory], 0), "요즘 아줄 할 시간 있어?");
+  assert.equal(topicGreeting(selection, [memory], 0), "아줄 좋아한다며.\n뭐가 그렇게 재밌어?");
   assert.notEqual(topicGreeting(selection, [memory], 0), topicGreeting(selection, [memory], 1));
   assert.equal(topicGreeting({ ...selection, topic: "체스" }, [memory], 0), null);
   assert.equal(topicGreeting({ ...selection, memory_id: "other" }, [memory], 0), null);
@@ -18,9 +18,9 @@ test("저장된 취향에서만 짧은 홈 문구를 만들고 날짜별로 변�
 });
 
 test("첫 만남·가벼운 재방문·기억 문구는 분리하고 한국 날짜 안에서 유지한다", () => {
-  assert.equal(FIRST_HOME_OPENER, "너와 친해지고 싶어!\n너에 대해 알려줘.");
+  assert.equal(FIRST_HOME_OPENER, "네가 새 집사야?\n일단 얘기 좀 해 봐.");
   assert.notEqual(FIRST_HOME_OPENER, DEFAULT_HOME_OPENER);
-  assert.equal(DEFAULT_HOME_OPENER, "왔네!\n요즘 어떻게 지내?");
+  assert.equal(DEFAULT_HOME_OPENER, "왔어?\n오늘은 무슨 일인데.");
   const morning = Date.parse("2026-11-02T00:00:00+09:00");
   assert.deepEqual(homeGreetingPlan("a", morning), homeGreetingPlan("a", morning + 86_399_999));
   assert.notEqual(homeGreetingPlan("a", morning).day, homeGreetingPlan("a", morning - 1).day);
@@ -33,11 +33,11 @@ test("첫 만남·가벼운 재방문·기억 문구는 분리하고 한국 날�
 
 test("활동·계획이 명시된 기억에서 자연스러운 후속 질문을 만든다", () => {
   const cases = [
-    ["종이접기", "creative", "ongoing", "사용자는 요즘 종이접기를 하고 있다.", "요즘도 종이접기 해?\n최근엔 뭐 만들었어?"],
-    ["어린 왕자", "book", "ongoing", "사용자는 어린 왕자를 읽고 있다.", "어린 왕자 어디까지 읽었어?\n아직 재밌어?"],
-    ["재즈", "music", "ongoing", "사용자는 재즈를 자주 듣는다.", "요즘도 재즈 들어?\n새로 꽂힌 곡 있어?"],
-    ["파스타", "food", "cooking_plan", "사용자는 파스타를 만들어 보고 싶다.", "전에 말한 파스타,\n만들어봤어?"],
-    ["취미", "creative", "hobby_exploring", "사용자는 새로운 취미를 찾고 있다.", "해보고 싶은 거 좀 찾았어?\n같이 골라볼까?"],
+    ["종이접기", "creative", "ongoing", "사용자는 요즘 종이접기를 하고 있다.", "그 종이접기, 요즘도 해?\n뭐 만들었는지 얘기 좀 해 봐."],
+    ["어린 왕자", "book", "ongoing", "사용자는 어린 왕자를 읽고 있다.", "그 어린 왕자,\n어디까지 읽었어?"],
+    ["재즈", "music", "ongoing", "사용자는 재즈를 자주 듣는다.", "요즘도 재즈 들어?\n좋은 곡 있으면 나도 좀 알자."],
+    ["파스타", "food", "cooking_plan", "사용자는 파스타를 만들어 보고 싶다.", "그 파스타, 만들어 봤어?\n어떻게 됐나 좀 궁금해서."],
+    ["취미", "creative", "hobby_exploring", "사용자는 새로운 취미를 찾고 있다.", "취미는 좀 골랐어?\n후보라도 얘기해 봐."],
   ];
   for (const [topic, category, context, summary, expected] of cases) {
     assert.equal(topicGreeting({ ...selection, topic, category, context, evidence: summary }, [{ ...memory, summary }], 0), expected);
@@ -62,7 +62,7 @@ test("정확한 한 문장 근거 없이 상태를 추정하지 않는다", () =
 
 test("홈 문구를 대화 맥락에 한 번만 넣고 기존 대화를 덮어쓰지 않는다", () => {
   const initial = withHomeOpener([], FIRST_HOME_OPENER);
-  assert.deepEqual(initial, [{ role: "assistant", content: "너와 친해지고 싶어! 너에 대해 알려줘." }]);
+  assert.deepEqual(initial, [{ role: "assistant", content: "네가 새 집사야? 일단 얘기 좀 해 봐." }]);
   assert.equal(withHomeOpener(initial, DEFAULT_HOME_OPENER), initial);
   assert.equal(safeHomeOpener("<script>"), DEFAULT_HOME_OPENER);
   assert.equal(safeHomeOpener("x".repeat(101)), DEFAULT_HOME_OPENER);
