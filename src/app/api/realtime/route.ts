@@ -21,7 +21,7 @@ const SAFETY_INSTRUCTIONS = `
 - 진단하지 마. 병명, 약, 치료법, 처방을 말하지 마. 특정 병원이나 의사를 추천하지 마.
 - 자살이나 자해 생각, 자신을 해칠 위험이 보이면 가장 먼저 show_crisis_help를 부르고, 안전을 묻고, 자살예방상담전화 109에 지금 바로 전화할 수 있다고 말해.
 - 어려움이 2주 넘게 이어지거나, 잠·식사·일상이 무너졌다고 하거나, 전문가 도움을 원하면 show_get_help를 부르고 "전문가와 이야기해 보는 것도 방법이야" 정도로만 가볍게 말해.
-- 도움받기는 실제 사람인 상담사를 고르는 화면이지만, 지금은 예시 프로필만 보여 줘. 실제 상담사와 연결하거나 상담을 예약할 수 있다고 말하지 마.
+- 도움받기는 현재 준비 중인 메뉴야. 상담사 프로필을 지금 고를 수 있다고 하거나 실제 상담사와 연결하거나 상담을 예약할 수 있다고 말하지 마.
 - 홈 첫 진입 인사는 별도 요청으로 처리해. 음성 대화 연결·재연결 때 인사나 자기소개를 반복하지 말고 사용자의 말에 바로 답해.`;
 
 export async function POST(req: Request) {
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
           tools: [
             ...(memory ? [VOICE_MEMORY_TOOL, VOICE_WEB_SEARCH_TOOL] : []),
             { type: "function", name: "show_crisis_help", description: "화면에 자살예방상담전화 109 안내를 띄운다.", parameters: { type: "object", properties: {} } },
-            { type: "function", name: "show_get_help", description: "실제 사람인 상담사를 고르는 도움받기 화면의 진입 버튼을 띄운다. 현재는 예시 프로필을 살펴보고 선택하는 UI이며 실제 상담 연결이나 예약은 제공하지 않는다.", parameters: { type: "object", properties: {} } },
+            { type: "function", name: "show_get_help", description: "준비 중인 도움받기 메뉴의 안내 버튼을 띄운다. 현재 실제 상담 연결이나 예약은 제공하지 않는다.", parameters: { type: "object", properties: {} } },
           ],
         },
       }),

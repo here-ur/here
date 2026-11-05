@@ -36,6 +36,19 @@ test("공통 말투는 강제 질문을 없애고 기억 예시와 실제 사실
   assert.match(companionConversationPrompt("보리", "voice"), /지나치게 천천히 말하지 마/);
 });
 
+test("채팅·음성 모두 컨셉을 먼저 적용하고 상담 요소는 고정 양식 없이 보조한다", () => {
+  for (const mode of ["chat", "voice"] as const) {
+    const prompt = companionConversationPrompt("보리", mode);
+    assert.ok(prompt.indexOf("1순위는 길고양이 컨셉") < prompt.indexOf("2순위는 상담 기본 요소"));
+    assert.match(prompt, /매 답변의 고정 양식이 아니야/);
+    assert.match(prompt, /조언을 요청했는데도 듣기만 하거나/);
+    assert.match(prompt, /안전·정직함·개인정보·사용자의 선택권/);
+    assert.match(prompt, /위기에는 안전 대응이 캐릭터 연기보다 우선/);
+    assert.match(prompt, /현재 '도움받기'는 준비 중/);
+    assert.match(prompt, /사용자가 실제 말한 부분에 정확히 반응/);
+  }
+});
+
 test("각 요청 경로가 같은 이름·말투 빌더를 사용하며 안전 규칙을 유지한다", () => {
   const chat = readFileSync(new URL("./chat-server.ts", import.meta.url), "utf8");
   const voice = readFileSync(new URL("../app/api/realtime/route.ts", import.meta.url), "utf8");
