@@ -111,8 +111,6 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
           className="ui-transition h-12 w-full rounded-r4 bg-cat-soft px-4 text-t5 font-medium text-cat-ink outline-0 focus:ring-2 focus:ring-cat-ink/30"
         />
       </section>
-
-
     </Sheet>
   );
 }
