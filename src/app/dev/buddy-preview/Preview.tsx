@@ -1,4 +1,5 @@
 "use client";
+import AudioPreview from "./AudioPreview";
 import { useState } from "react";
 import { catExpression } from "@/lib/cat-expression";
 import Buddy, { type BuddyState } from "../../Buddy";
@@ -24,12 +25,13 @@ export default function Preview() {
   return (
     <main className="app-frame app-frame-scrollable bg-cat-paper px-gutter py-10 text-cat-ink">
       <h1 className="text-t6 font-bold">고양이 표정 미리보기</h1>
-      <p className="mt-1 text-t3 text-cat-muted">몸은 고정. 머리·눈·입만 반응해요. 동작 줄이기에서는 표정만 바뀌어요.</p>
+      <p className="mt-1 text-t3 text-cat-muted">기다릴 때는 짧게 걷고, 대화할 때는 멈춰요. 동작 줄이기에서는 표정만 바뀌어요.</p>
       <div className="mt-6 grid place-items-center">
         <div className={`home-buddy ${voice ? "home-buddy-expanded" : ""}`}>
-          <Buddy accessory={accessory} size={300} expression={catExpression(draft)} state={state} bob tap={state === "attentive" ? draft.length : undefined} hearing={voice ? hearing : undefined} voice={voice} />
+          <Buddy stroll groundShadow accessory={accessory} size={300} expression={catExpression(draft)} state={state} bob tap={state === "attentive" ? draft.length : undefined} hearing={voice ? hearing : undefined} voice={voice} />
         </div>
       </div>
+      <AudioPreview />
       <section className="mt-8">
         <h2 className="text-t4 font-bold">상태</h2>
         <div className="mt-2 flex flex-wrap gap-2">

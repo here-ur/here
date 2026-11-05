@@ -1,3 +1,4 @@
+import { createOutputAudioMeter } from "./output-audio-meter.ts";
 import { homeEntryGreetingPrompt } from "./companion-prompt.ts";
 import { safeHomeOpener } from "./home-opener.ts";
 import { requestVoiceMemory, VoiceMemoryAccessError } from "./voice-memory-client.ts";
@@ -7,6 +8,7 @@ import { parseSearchQuery, searchCitations, SEARCH_UNAVAILABLE, type SearchSourc
 
 // 브라우저 ↔ OpenAI realtime (WebRTC). 진짜 키는 서버에만 있고, 여기서는 /api/realtime이 준 임시 키만 쓴다.
 export type Handlers = {
+  onOutputLevel?: (level: number) => void;
   onStatus: (s: "connecting" | "listening" | "thinking" | "speaking" | "idle") => void;
   onUserText: (text: string) => void;
   onUserPartial: (text: string) => void;
@@ -38,6 +40,7 @@ export async function connectRealtime(
   options: { greeting?: boolean; microphone?: boolean; opener?: string; onGreetingEnd?: () => void } = {},
 ): Promise<Realtime> {
   const markTiming = voiceTiming();
+  const outputMeter = h.onOutputLevel ? createOutputAudioMeter(h.onOutputLevel) : undefined;
   const controller = new AbortController();
   let pc: RTCPeerConnection | null = null;
   let audioEl: HTMLAudioElement | null = null;
@@ -122,6 +125,7 @@ export async function connectRealtime(
   }
 
   function updateStatus(status: Parameters<Handlers["onStatus"]>[0]) {
+    outputMeter?.setEnabled(status === "speaking");
     currentStatus = status;
     h.onStatus(status);
   }
@@ -129,6 +133,7 @@ export async function connectRealtime(
   function close(reason?: unknown) {
     if (closed) return;
     closed = true;
+    outputMeter?.close();
     controller.abort(reason);
     clearTimeout(greetingTimer);
     if (resumePlayback) {
@@ -254,7 +259,9 @@ export async function connectRealtime(
     audio.autoplay = false;
     peer.ontrack = (event) => {
       if (closed) return;
-      audio.srcObject = event.streams[0];
+      const remoteStream = event.streams[0] ?? new MediaStream([event.track]);
+      audio.srcObject = remoteStream;
+      outputMeter?.attach(remoteStream, audio);
       const play = () => {
         if (closed) return;
         void audio.play().then(() => {
@@ -459,7 +466,7 @@ export async function connectRealtime(
         applyMic();
         if (!closed && !greetingPending && !playing && (currentStatus === "listening" || currentStatus === "idle")) readyStatus();
       },
-      setSound(on) { audio.muted = !on; },
+      setSound(on) { audio.muted = !on; if (!on) outputMeter?.reset(); },
       close: () => close(),
     };
   } catch (error) {
