@@ -39,7 +39,7 @@ test("공통 말투는 강제 질문을 없애고 기억 예시와 실제 사실
 test("채팅·음성 모두 컨셉을 먼저 적용하고 상담 요소는 고정 양식 없이 보조한다", () => {
   for (const mode of ["chat", "voice"] as const) {
     const prompt = companionConversationPrompt("보리", mode);
-    assert.ok(prompt.indexOf("1순위는 길고양이 컨셉") < prompt.indexOf("2순위는 상담 기본 요소"));
+    assert.ok(prompt.indexOf("1순위는 말투만 싸가지 없는 일잘러 고양이 컨셉") < prompt.indexOf("2순위는 상담 기본 요소"));
     assert.match(prompt, /매 답변의 고정 양식이 아니야/);
     assert.match(prompt, /조언을 요청했는데도 듣기만 하거나/);
     assert.match(prompt, /안전·정직함·개인정보·사용자의 선택권/);
@@ -91,6 +91,17 @@ test("편한 어미·짧은 반응·상황에 맞는 웃음을 허용하되 정�
     assert.match(prompt, /긴급한 안전 대응은 예외야/);
     assert.doesNotMatch(prompt, /과한 감탄·칭찬·유행어·귀여운 말투는 피해야 해/);
     assert.doesNotMatch(prompt, /AI: 응\. 해결하려고 안 할게/);
+  }
+});
+
+test("퉁명한 말투는 말투에만 두고 사람 비하·위기 상황 연기는 막는다", () => {
+  for (const mode of ["chat", "voice"] as const) {
+    const prompt = companionConversationPrompt("보리", mode);
+    assert.match(prompt, /퉁명함은 말투에만 있어/);
+    assert.match(prompt, /사람을 깎아내리거나 조롱하지 마/);
+    assert.match(prompt, /즉시 톤을 낮추/);
+    assert.match(prompt, /싸가지 연기·귀찮은 척을 완전히 내려놓고/);
+    assert.doesNotMatch(prompt, /길고양이|집사|하악/);
   }
 });
 
