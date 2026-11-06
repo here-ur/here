@@ -1,4 +1,4 @@
-// 온보딩 설정은 계정별로 이 기기의 localStorage에만 남긴다.
+// localStorage는 계정 프로필의 캐시. 원본은 Supabase 사용자 메타데이터에 저장한다.
 // 프로필 중 이름은 채팅·음성 설정에, 목소리는 음성 설정에 사용한다. 대화 내용은 답변 생성을 위해 별도로 전송한다.
 
 import { accountKey } from "./local-scope.ts";
@@ -123,7 +123,16 @@ export function profileRaw(): string | null {
 export function parseProfile(raw: string | null): Profile | null {
   try {
     const p = JSON.parse(raw ?? "null");
-    return p && typeof p.companion === "string" ? p : null;
+    if (!p || typeof p.companion !== "string" || !p.companion.trim()) return null;
+    return {
+      nickname: typeof p.nickname === "string" ? p.nickname.trim().slice(0, 20) : "",
+      companion: cleanName(p.companion),
+      shape: SHAPES.some(x => x.id === p.shape) ? p.shape : "cloud",
+      color: COLORS.some(x => x.id === p.color) ? p.color : "lavender",
+      voice: VOICES.some(x => x.id === p.voice) ? p.voice : "cedar",
+      style: ["listen", "sort", "chat"].includes(p.style) ? p.style : "listen",
+      ...(typeof p.accessory === "string" && /^[a-z-]{1,40}$/.test(p.accessory) ? { accessory: p.accessory } : {}),
+    };
   } catch {
     return null;
   }

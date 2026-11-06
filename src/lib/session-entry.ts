@@ -15,10 +15,19 @@ export async function checkEntry(client: SupabaseClient, verified?: Identity, ti
   async function check(): Promise<Entry> {
     let user = verified;
     if (!user) {
-      const { data, error } = await client.auth.getUser();
+      let { data, error } = await client.auth.getUser();
+      // Access-token expiry alone must not send a returning member to SMS.
+      const terminal = (e: typeof error) => e?.name === "AuthSessionMissingError" ||
+        ["session_not_found", "session_expired", "refresh_token_not_found", "refresh_token_already_used", "user_not_found"].includes(e?.code ?? "");
+      if (error && !terminal(error) && (error.status === 401 || error.code === "bad_jwt")) {
+        const refreshed = await client.auth.refreshSession();
+        if (controller.signal.aborted) return { kind: "retry" };
+        if (refreshed.error) return { kind: terminal(refreshed.error) ? "login" : "retry" };
+        ({ data, error } = await client.auth.getUser());
+        if (error && !terminal(error)) return { kind: "retry" };
+      }
       if (error) {
-        const expired = error.name === "AuthSessionMissingError" || error.status === 401 ||
-          ["session_not_found", "session_expired", "refresh_token_not_found", "refresh_token_already_used", "bad_jwt", "user_not_found"].includes(error.code ?? "");
+        const expired = terminal(error);
         return { kind: expired ? "login" : "retry" };
       }
       if (!data.user) return { kind: "login" };
