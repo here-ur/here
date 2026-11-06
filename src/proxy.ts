@@ -1,9 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { devCanonicalAddress } from "./lib/dev-canonical-address";
 
 // Refresh the same first-party session before the app boots after a long absence.
 // APIs still require a verified Bearer token and membership; cookies grant no access by themselves.
 export async function proxy(request: NextRequest) {
+  const canonical = devCanonicalAddress(request.url, request.method, {
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    VERCEL_GIT_COMMIT_REF: process.env.VERCEL_GIT_COMMIT_REF,
+  });
+  if (canonical) return NextResponse.redirect(canonical, { status: 307, headers: { "Cache-Control": "private, no-store" } });
   const response = NextResponse.next({ request });
   response.headers.set("Cache-Control", "private, no-store");
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
