@@ -2,12 +2,13 @@
 
 import { safeHomeOpener, withHomeOpener } from "@/lib/home-opener";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
 import { companionState } from "@/lib/companion-state";
 import { ChatRequestError, requestChat } from "@/lib/chat";
 import { type Msg, type Session, loadStoredSessions, pruneLog, saveSession } from "@/lib/log";
-import { DEFAULT_COMPANION, type Profile, clearProfile, josa, parseProfile, profileRaw, saveProfile } from "@/lib/onboarding";
+import { DEFAULT_COMPANION, type Profile, josa } from "@/lib/onboarding";
+import { useAccountProfile } from "./use-account-profile";
 import { type Realtime, connectRealtime } from "@/lib/realtime";
 import { muteSfx } from "@/lib/sfx";
 import { displayNameForServer } from "@/lib/friends";
@@ -39,7 +40,6 @@ const hint = (status: Status, name: string) =>
     speaking: `${josa(name, "이", "가")} 말하는 중`,
   })[status];
 
-const noSubscribe = () => () => {};
 
 // 개발 중 화면 확인용 프로필. 브라우저 저장소에는 온보딩 완료로 기록하지 않는다.
 const DEV_PROFILE: Profile | null =
@@ -48,15 +48,13 @@ const DEV_PROFILE: Profile | null =
     : null;
 
 export default function Page() {
-  return <AuthGate>{(userId, signOut) => <MicrophonePermissionGate key={userId}><Home signOut={signOut} /></MicrophonePermissionGate>}</AuthGate>;
+  return <AuthGate>{(userId, signOut) => <MicrophonePermissionGate key={userId}><Home userId={userId} signOut={signOut} /></MicrophonePermissionGate>}</AuthGate>;
 }
 
-function Home({ signOut }: { signOut: () => Promise<void> }) {
-  // 저장된 프로필을 우선 사용하고, 개발용 건너뛰기가 켜져 있으면 기본 프로필로 홈을 연다.
-  // 서버 렌더에서는 localStorage를 모르니 undefined로 비워 둔다.
-  const storedProfile = useSyncExternalStore(noSubscribe, profileRaw, () => undefined);
-  const [newProfile, setNewProfile] = useState<Profile | null>(null);
-  const profile = newProfile ?? (storedProfile === undefined ? undefined : (parseProfile(storedProfile) ?? DEV_PROFILE));
+function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void> }) {
+  const account = useAccountProfile(userId);
+  const profile = account.profile === null ? DEV_PROFILE : account.profile;
+  const [pendingProfile, setPendingProfile] = useState<Profile | null>(null);
 
   const [justMet, setJustMet] = useState(false); // 온보딩을 막 끝냈으면 홈에서 몽글이가 처음 인사한다
   const [started, setStarted] = useState(false);
@@ -362,14 +360,20 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
     setShowHelp(true);
   }
 
-  if (profile === undefined) return <main className="app-frame bg-[#FAFCFE]" />; // 저장소를 읽기 전 한순간
+  if (profile === undefined) return <main className="app-frame flex flex-col items-center justify-center gap-4 bg-cat-surface px-7">
+    {account.error && <><p role="alert">{account.error}</p><button onClick={account.retry} className="min-h-12 px-5">다시 확인</button></>}
+  </main>;
 
   if (profile === null) {
+    if (pendingProfile) return <main className="app-frame flex flex-col items-center justify-center gap-4 bg-cat-surface px-7">
+      <p role="status">{account.error || "설정을 저장하고 있어요…"}</p>
+      {account.error && <button disabled={account.saving} className="min-h-12 px-5" onClick={() => { void account.save(pendingProfile); }}>다시 저장</button>}
+    </main>;
     return (
       <Onboarding
         onDone={(p) => {
-          saveProfile(p);
-          setNewProfile(p);
+          setPendingProfile(p);
+          void account.save(p);
           setJustMet(true);
           headlineLocked.current = true;
           setHeadline(null);
@@ -468,8 +472,7 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
           loadQuota={async (signal) => requestQuotaStatus(await accessToken(), signal)}
           onReset={() => {
             if (!window.confirm(`${profile.companion} 설정을 지우고 처음부터 다시 할까요? 대화 기록은 그대로 남아요.`)) return;
-            clearProfile();
-            location.reload();
+            void account.save(null).then(ok => { if (ok) { setPendingProfile(null); location.reload(); } });
           }}
         />
         {helpSoon && (
@@ -482,11 +485,11 @@ function Home({ signOut }: { signOut: () => Promise<void> }) {
         {customizing && (
           <Customize
             profile={me}
+            saving={account.saving}
+            error={account.error}
             onClose={() => setCustomizing(false)}
             onSave={(p) => {
-              saveProfile(p);
-              setNewProfile(p);
-              setCustomizing(false);
+              void account.save(p).then(ok => { if (ok) setCustomizing(false); });
             }}
           />
         )}

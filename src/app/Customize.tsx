@@ -11,7 +11,7 @@ import Buddy from "./Buddy";
 import Sheet from "./Sheet";
 
 /** 몽글이 바꾸기: 온보딩에서 고른 모습·빛·목소리·이름을 언제든 다시 고른다. 위에서 바로 미리 본다. */
-export default function Customize({ profile, onSave, onClose }: { profile: Profile; onSave: (p: Profile) => void; onClose: () => void }) {
+export default function Customize({ profile, onSave, onClose, saving = false, error = "" }: { profile: Profile; onSave: (p: Profile) => void; onClose: () => void; saving?: boolean; error?: string }) {
   const [draft, setDraft] = useState(profile);
   // 구름 정원이 자라며 연 꾸미기 아이템. 이 기기의 정원 기록으로만 판단한다.
   const [unlocked] = useState(() => unlockedAccessories(buildGarden(loadReport(), loadSeeds())));
@@ -21,9 +21,10 @@ export default function Customize({ profile, onSave, onClose }: { profile: Profi
 
   return (
     <Sheet title={`${profile.companion} 바꾸기`} onClose={onClose} footer={
-      <button onClick={() => onSave({ ...draft, companion: cleanName(draft.companion) })} className="ui-press h-14 w-full rounded-full bg-cat-ink text-t5 font-bold text-white">
-        이대로 할게요
-      </button>
+      <div>{error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}
+      <button disabled={saving} onClick={() => onSave({ ...draft, companion: cleanName(draft.companion) })} className="ui-press h-14 w-full rounded-full bg-cat-ink text-t5 font-bold text-white disabled:opacity-50">
+        {saving ? "저장 중…" : "이대로 할게요"}
+      </button></div>
     }>
       <div className="mt-3 flex justify-center rounded-r5 py-2" style={{ backgroundColor: companionBackground(draft.color) }}>
         <Buddy shape={draft.shape} color={draft.color} accessory={draft.accessory} size={140} look={[0, 0.25]} key={`${draft.shape}-${draft.color}-${draft.accessory ?? ""}`} className="motion-safe:animate-pop" />

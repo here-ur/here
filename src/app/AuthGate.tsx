@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { normalizeInviteCode, normalizePhone } from "@/lib/invite";
 import { setLocalOwner } from "@/lib/local-scope";
-import { browserSupabase } from "@/lib/supabase";
+import { browserSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { checkEntry, type Entry } from "@/lib/session-entry";
 import MemoryConsentGate from "./MemoryConsentGate";
 
@@ -13,7 +13,7 @@ type Step = "phone" | "otp" | "invite";
 export default function AuthGate({ children }: { children: (userId: string, signOut: () => Promise<void>) => React.ReactNode }) {
   const client = browserSupabase();
   const [userId, setUserId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(Boolean(client));
+  const [loading, setLoading] = useState(isSupabaseConfigured);
   const [checkFailed, setCheckFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [mode, setMode] = useState<Mode>("login");
@@ -25,8 +25,9 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const stepInputRef = useRef<HTMLInputElement>(null);
+  const checkGeneration = useRef(0);
 
-  function enter(result: Entry) {
+  const enter = useCallback((result: Entry) => {
     setLoading(false);
     setBusy(false);
     setCheckFailed(result.kind === "retry");
@@ -39,27 +40,41 @@ export default function AuthGate({ children }: { children: (userId: string, sign
       setMode("login"); setStep("phone"); setPhone(""); setVerifiedPhone(null);
       setInvite(""); setCode(""); setError("");
     }
-  }
+  }, []);
 
   useEffect(() => {
     if (!client) return;
     let active = true;
-    void checkEntry(client).then(result => { if (active) enter(result); });
+    const generation = ++checkGeneration.current;
+    void checkEntry(client).then(result => { if (active && generation === checkGeneration.current) enter(result); });
     return () => { active = false; };
-  }, [client, attempt]);
+  }, [client, attempt, enter]);
+
+  useEffect(() => {
+    if (!client) return;
+    const { data } = client.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") { checkGeneration.current++; enter({ kind: "login" }); }
+      if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && !userId && !busy && step === "phone") setAttempt(n => n + 1);
+    });
+    const recover = () => { if (checkFailed && !busy) setAttempt(n => n + 1); };
+    window.addEventListener("online", recover);
+    window.addEventListener("focus", recover);
+    return () => { data.subscription.unsubscribe(); window.removeEventListener("online", recover); window.removeEventListener("focus", recover); };
+  }, [client, userId, busy, step, checkFailed, enter]);
 
   useEffect(() => {
     if (step !== "phone") stepInputRef.current?.focus();
   }, [step]);
 
-  async function signOut() {
+  const signOut = useCallback(async () => {
     const result = await client?.auth.signOut({ scope: "local" });
     enter({ kind: result?.error ? "retry" : "login" });
-  }
+  }, [client, enter]);
 
   async function sendOtp(event: React.FormEvent) {
     event.preventDefault();
     if (!client || busy) return;
+    checkGeneration.current++;
     const normalizedPhone = normalizePhone(phone);
     if (!normalizedPhone) { setError("휴대폰 번호를 확인해 주세요."); return; }
     setBusy(true);
@@ -84,6 +99,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   async function verifyOtp(event: React.FormEvent) {
     event.preventDefault();
     if (!client || !verifiedPhone || busy) return;
+    checkGeneration.current++;
     setBusy(true);
     setError("");
     const { data, error: verifyError } = await client.auth.verifyOtp({ phone: verifiedPhone, token: code.trim(), type: "sms" });
