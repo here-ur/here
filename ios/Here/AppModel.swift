@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import Supabase
+import OSLog
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -17,8 +18,10 @@ final class AppModel: ObservableObject {
     private let client: SupabaseClient?
     private let apiURL: URL
     private var restored = false
+    private var storageChecked = false
     private var accountID: UUID?
     private var pendingInvite: String?
+    private var accountStage = "계정"
 
     init() {
         let config = Bundle.main.url(forResource: "Config", withExtension: "plist")
@@ -61,6 +64,16 @@ final class AppModel: ObservableObject {
             gate = .configuration
             return
         }
+        if !storageChecked {
+            do {
+                try SessionStorageCheck.verify(KeychainLocalStorage(service: "com.hereur.here.dev.auth"))
+                storageChecked = true
+            } catch {
+                self.error = "로그인 정보를 안전하게 저장할 수 없어요. 서명된 앱으로 다시 실행해 주세요."
+                gate = .configuration
+                return
+            }
+        }
         busy = true
         if gate != .home { gate = .loading }
         defer { busy = false; restored = true }
@@ -73,7 +86,7 @@ final class AppModel: ObservableObject {
             clearAccount()
             gate = .login
         } catch {
-            self.error = "계정 정보를 불러오지 못했어요. 연결을 확인하고 다시 시도해 주세요."
+            self.error = accountFailure(error)
             // An outage or failed profile lookup must never become first-time onboarding.
             if gate != .home { gate = .retry }
         }
@@ -86,10 +99,12 @@ final class AppModel: ObservableObject {
 
     private func loadAccount() async throws {
         guard let client else { throw APIError(error: "개발 연결 설정이 없어요.") }
+        accountStage = "계정 인증"
         let user = try await client.auth.user()
         if accountID != user.id { messages = []; profile = nil }
         accountID = user.id
         struct Member: Decodable { let user_id: UUID }
+        accountStage = "회원 정보"
         let members: [Member] = try await client.from("members").select("user_id").eq("user_id", value: user.id.uuidString).execute().value
         if members.isEmpty {
             if let pendingInvite {
@@ -100,6 +115,7 @@ final class AppModel: ObservableObject {
             gate = .invite
             return
         }
+        accountStage = "이용 동의"
         let consent: ConsentStatus = try await api("memory-consent")
         consentVersion = consent.version
         if consent.required {
@@ -109,6 +125,7 @@ final class AppModel: ObservableObject {
             gate = .consent
             return
         }
+        accountStage = "캐릭터 설정"
         if let stored = user.userMetadata["here_profile_v1"], stored != .null {
             let envelope = try JSONDecoder().decode(ProfileEnvelope.self, from: JSONEncoder().encode(stored))
             guard envelope.version == 1 else { throw APIError(error: "새 버전의 캐릭터 설정이에요. 앱을 업데이트해 주세요.") }
@@ -143,7 +160,7 @@ final class AppModel: ObservableObject {
         guard let client, let number = InputRules.phone(phone) else { throw APIError(error: "휴대폰 번호를 확인해 주세요.") }
         try await client.auth.verifyOTP(phone: number, token: code.trimmingCharacters(in: .whitespaces), type: .sms)
         do { try await loadAccount() }
-        catch { gate = .retry; self.error = "인증은 완료했지만 계정 정보를 불러오지 못했어요. 다시 시도해 주세요." }
+        catch { gate = .retry; self.error = accountFailure(error) }
     }
 
     func redeemInvite(_ input: String) async throws {
@@ -179,9 +196,25 @@ final class AppModel: ObservableObject {
     }
 
     private func api<T: Decodable>(_ path: String, body: Data? = nil) async throws -> T {
+        try JSONDecoder().decode(T.self, from: await apiData(path, body: body))
+    }
+
+    func voiceRequest() throws -> (String, [String: Any]) async throws -> Data {
+        guard !isPreview, gate == .home, let originalAccount = accountID else {
+            throw APIError(error: "로그인하면 음성으로 대화할 수 있어요.")
+        }
+        return { [weak self] path, body in
+            guard let self, self.accountID == originalAccount, !self.isPreview,
+                  ["realtime", "voice-memory", "web-search"].contains(path) else { throw VoiceAccessError.revoked }
+            return try await self.apiData(path, body: JSONSerialization.data(withJSONObject: body), account: originalAccount)
+        }
+    }
+
+    private func apiData(_ path: String, body: Data? = nil, account: UUID? = nil) async throws -> Data {
         guard !isPreview, let client else { throw APIError(error: "로그인 후 이용해 주세요.") }
         for attempt in 0...1 {
             let session = try await client.auth.session
+            if let account, session.user.id != account || accountID != account { throw VoiceAccessError.revoked }
             var request = URLRequest(url: apiURL.appendingPathComponent("api/" + path))
             request.httpMethod = body == nil ? "GET" : "POST"
             request.httpBody = body
@@ -191,11 +224,13 @@ final class AppModel: ObservableObject {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let response = response as? HTTPURLResponse else { throw APIError(error: "서버 응답을 확인하지 못했어요.") }
+            if let account, accountID != account { throw VoiceAccessError.revoked }
             if response.statusCode == 401, attempt == 0 { _ = try await client.auth.refreshSession(); continue }
+            if account != nil && [401, 403].contains(response.statusCode) { throw VoiceAccessError.revoked }
             guard (200..<300).contains(response.statusCode) else {
                 throw (try? JSONDecoder().decode(APIError.self, from: data)) ?? APIError(error: "서버에 연결하지 못했어요. 잠시 뒤 다시 시도해 주세요.")
             }
-            return try JSONDecoder().decode(T.self, from: data)
+            return data
         }
         throw APIError(error: "로그인 상태를 다시 확인해 주세요.")
     }
@@ -234,6 +269,19 @@ final class AppModel: ObservableObject {
         if isPreview { await leavePreview(); return }
         let ok = await perform { try await client?.auth.signOut(scope: .local) }
         if ok { clearAccount(); gate = .login }
+    }
+
+    private func accountFailure(_ error: Error) -> String {
+        #if DEBUG
+        // Diagnostics intentionally exclude tokens, phone numbers and metadata values.
+        var detail = String(describing: type(of: error))
+        if case DecodingError.keyNotFound(let key, _) = error { detail += ":missing:" + key.stringValue }
+        if case DecodingError.typeMismatch(_, let context) = error { detail += ":type:" + context.codingPath.map(\.stringValue).joined(separator: ".") }
+        if case DecodingError.dataCorrupted(let context) = error { detail += ":data:" + context.codingPath.map(\.stringValue).joined(separator: ".") }
+        if let urlError = error as? URLError { detail += ":url:" + String(urlError.code.rawValue) }
+        Logger(subsystem: "com.hereur.here.dev", category: "account").error("Account load failed stage=\(self.accountStage, privacy: .public) kind=\(detail, privacy: .public)")
+        #endif
+        return (error as? APIError)?.error ?? "\(accountStage)를 불러오지 못했어요. 다시 인증할 필요 없이 잠시 뒤 다시 시도해 주세요."
     }
 
     private func clearAccount() {

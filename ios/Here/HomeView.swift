@@ -6,7 +6,9 @@ struct HomeView: View {
     @State private var chatOpen = false
     @State private var settingsOpen = false
     @State private var draft = ""
-    @State private var featureNotice = false
+    @StateObject private var voice = VoiceConversation()
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
     @FocusState private var focused: Bool
     private var name: String { model.profile?.companion ?? "몽글이" }
 
@@ -29,11 +31,14 @@ struct HomeView: View {
                     Spacer()
                     Image("Cat").resizable().scaledToFit()
                         .frame(maxWidth: 310, maxHeight: 320)
-                        .shadow(color: .black.opacity(0.07), radius: 20, y: 12)
+                        .shadow(color: .black.opacity(voice.active ? 0.10 + Double(voice.level) * 0.12 : 0.07), radius: voice.active ? 26 : 20, y: 12)
+                        .scaleEffect(voice.active && !reduceMotion ? 1.04 : 1)
+                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: voice.active)
                         .accessibilityLabel(name)
                     Spacer()
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Palette.surface(model.profile?.color ?? "mint").ignoresSafeArea())
             .safeAreaInset(edge: .bottom, spacing: 0) { composer }
             .navigationTitle("here")
@@ -41,9 +46,9 @@ struct HomeView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Menu {
-                        Button("캐릭터 설정", systemImage: "slider.horizontal.3") { settingsOpen = true }.disabled(model.isPreview)
-                        Button("새 대화", systemImage: "square.and.pencil") { model.messages = []; model.chatError = "" }.disabled(model.sending)
-                        Button("로그아웃", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) { Task { await model.signOut() } }.disabled(model.sending || model.busy)
+                        Button("캐릭터 설정", systemImage: "slider.horizontal.3") { settingsOpen = true }.disabled(model.isPreview || voice.active)
+                        Button("새 대화", systemImage: "square.and.pencil") { model.messages = []; model.chatError = "" }.disabled(model.sending || voice.active)
+                        Button("로그아웃", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) { voice.stop(); Task { await model.signOut() } }.disabled(model.sending || model.busy)
                     } label: { Image(systemName: "line.3.horizontal").frame(minWidth: 44, minHeight: 44).accessibilityLabel("메뉴") }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -56,9 +61,13 @@ struct HomeView: View {
                 }
             }
             .sheet(isPresented: $settingsOpen) { ProfileView() }
-            .alert("음성 대화는 준비 중이에요", isPresented: $featureNotice) {
-                Button("확인", role: .cancel) { }
-            } message: { Text("이번 iOS 첫 버전에서는 텍스트로 대화할 수 있어요. 마이크는 켜지지 않아요.") }
+            .onDisappear { voice.stop() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .background { voice.stop() }
+            }
+            .alert("안내", isPresented: Binding(get: { !voice.helpNotice.isEmpty }, set: { if !$0 { voice.helpNotice = "" } })) {
+                Button("확인", role: .cancel) { voice.helpNotice = "" }
+            } message: { Text(voice.helpNotice) }
         }
     }
 
@@ -94,13 +103,41 @@ struct HomeView: View {
 
     private var composer: some View {
         VStack(spacing: 12) {
+            if voice.active {
+                VStack(spacing: 8) {
+                    HStack(spacing: 8) {
+                        if voice.phase == .preparing { ProgressView().controlSize(.small) }
+                        else { Image(systemName: voice.muted ? "mic.slash" : "waveform") }
+                        Text(voice.status)
+                    }.font(.caption).foregroundStyle(.secondary)
+                    if !voice.transcript.isEmpty {
+                        ScrollView { Text(voice.transcript).font(.callout).multilineTextAlignment(.center).textSelection(.enabled) }
+                            .frame(maxHeight: 100)
+                    }
+                }
+            }
+            if !voice.sources.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack {
+                        ForEach(voice.sources) { source in
+                            if let url = source.safeURL { Link(source.title, destination: url).font(.caption).lineLimit(1) }
+                        }
+                    }
+                }
+            }
+            ErrorText(text: voice.error)
+            if !voice.warning.isEmpty { Text(voice.warning).font(.caption).foregroundStyle(.secondary) }
+            if voice.permissionDenied {
+                Button("마이크 설정 열기") { if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) } }
+                    .font(.caption)
+            }
             HStack(spacing: 16) {
                 if chatOpen {
                     TextField("\(name)에게 이야기해 줘", text: $draft, axis: .vertical)
                         .lineLimit(1...5).padding(.horizontal, 18).padding(.vertical, 14)
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26))
                         .focused($focused)
-                        .disabled(model.sending)
+                        .disabled(model.sending || voice.active)
                     Button {
                         Task { if await model.send(draft) { draft = "" } }
                     } label: {
@@ -113,19 +150,51 @@ struct HomeView: View {
                 } else {
                     Spacer()
                     Button {
+                        voice.stop()
                         withAnimation(reduceMotion ? nil : .snappy) { chatOpen = true }
                         focused = true
                     } label: { Image(systemName: "bubble.left").font(.system(size: 26)).frame(width: 56, height: 56) }
                         .accessibilityLabel("글로 이야기하기")
-                    Button { featureNotice = true } label: { Image(systemName: "mic").font(.system(size: 28)).frame(width: 56, height: 56) }
-                        .accessibilityLabel("음성 대화, 준비 중")
+                    if voice.active {
+                        HStack(spacing: 4) {
+                            Button { voice.stop() } label: {
+                                Image(systemName: "xmark").font(.headline).frame(width: 48, height: 48)
+                                    .foregroundStyle(.white).background(Color.red, in: Circle())
+                            }.accessibilityLabel("음성 대화 끝내기")
+                            Divider().frame(height: 28).padding(.horizontal, 6)
+                            Button { voice.mute() } label: {
+                                Image(systemName: voice.muted ? "mic.slash" : "mic").font(.system(size: 26)).frame(width: 48, height: 48)
+                            }
+                            .disabled(voice.phase == .preparing)
+                            .accessibilityLabel(voice.muted ? "마이크 켜기" : "마이크 끄기")
+                        }
+                        .padding(6).background(.regularMaterial, in: Capsule())
+                        .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .trailing)))
+                    } else {
+                        Button { startVoice() } label: { Image(systemName: "mic").font(.system(size: 28)).frame(width: 56, height: 56) }
+                            .disabled(model.sending || model.busy)
+                            .accessibilityLabel("음성 대화 시작")
+                    }
                 }
             }.foregroundStyle(Palette.ink)
+                .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: voice.active)
             Text("AI와의 대화예요 · 진단과 치료는 전문가가 해요")
                 .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }
         .padding(.horizontal, 24).padding(.top, 10).padding(.bottom, 12)
         .background(Palette.surface(model.profile?.color ?? "mint"))
+    }
+
+    private func startVoice() {
+        do {
+            let request = try model.voiceRequest()
+            let persona = ["name": name, "voice": model.profile?.voice ?? "marin"]
+            Task {
+                await voice.start(request: request, persona: persona) { role, text in
+                    model.messages.append(ChatMessage(role: role, content: text))
+                }
+            }
+        } catch { voice.error = (error as? APIError)?.error ?? "로그인 상태를 확인해 주세요." }
     }
 
     private func markdown(_ content: String) -> AttributedString {

@@ -28,6 +28,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Here Dev
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: 고양이와 음성으로 대화할 때 마이크를 사용해요. 음성은 대화 처리에 전송되고, 확정된 발언의 요약은 사용자 기억에 사용돼요.
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         MARKETING_VERSION: "0.1.0"
