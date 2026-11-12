@@ -1,0 +1,2 @@
+@layer framework7, theme, base, components, utilities;
+@import "../../../node_modules/framework7/framework7-bundle.css" layer(framework7);

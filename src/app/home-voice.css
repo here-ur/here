@@ -54,7 +54,7 @@
   to { transform: scaleY(1); }
 }
 .home-header { top: calc(env(safe-area-inset-top) + 12px); }
-/* Matte outlines for secondary actions; amber is reserved for the microphone. */
+/* Header controls share the same circular hit area. */
 .home-chrome-button {
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--color-cat-line);
@@ -64,7 +64,6 @@
 .home-header .home-chrome-button { box-shadow: none; }
 @media (hover: hover) {
   .home-chrome-button:hover { background: var(--color-cat-soft); }
-  .home-mic:hover { background: #ECA72E; }
 }
 @media (prefers-reduced-motion: reduce) {
   .home-intro, .home-buddy, .home-voice-pill, .home-voice-end, .home-chrome-button { transition: none; }

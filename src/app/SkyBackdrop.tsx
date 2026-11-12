@@ -13,7 +13,7 @@ const WEATHER_TINT: Record<SkyId | "none", string> = {
 
 export default function SkyBackdrop({ weather, color }: { weather: SkyId | null; color: ColorId }) {
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden bg-[#FAFCFE]">
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden bg-ios-page">
       <Bloom color={color} lively className="h-[80%]" />
       <div className="sky-horizon" style={{ background: `radial-gradient(closest-side, ${WEATHER_TINT[weather ?? "none"]}, transparent)` }} />
     </div>

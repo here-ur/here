@@ -1,5 +1,7 @@
 "use client";
 
+import { TextArea } from "./ui/Controls";
+import { Button } from "./ui/Button";
 import { useEffect, useRef, useState } from "react";
 import { companionState } from "@/lib/companion-state";
 import type { Msg } from "@/lib/log";
@@ -19,7 +21,7 @@ export type Who = { name: string; shape: ShapeId; color: ColorId; accessory?: st
 export function Shell({ children, color, bloom = "full" }: { children: React.ReactNode; color: ColorId; bloom?: "full" | "soft" }) {
   const c = COLORS.find((x) => x.id === color) ?? COLORS[0];
   return (
-    <main className="app-frame bg-[#FAFCFE] text-[#111318] motion-safe:animate-fade">
+    <main className="app-frame bg-ios-page text-ios-label motion-safe:animate-fade">
       {bloom === "full" ? (
         <Bloom color={color} />
       ) : (
@@ -59,10 +61,10 @@ export function Crisis109({ className = "" }: { className?: string }) {
 
 function HelpChip({ onClick }: { onClick: () => void }) {
   return (
-    <button onClick={onClick} className="ui-press flex h-11 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-bold text-[#1F2A55] shadow-[0_6px_18px_rgba(28,38,80,.12)]">
+    <Button variant="plain" onClick={onClick} className="ui-press flex h-11 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-bold text-[#1F2A55] shadow-[0_6px_18px_rgba(28,38,80,.12)]">
       <Icon name="help" size={18} />
       도움받기
-    </button>
+    </Button>
   );
 }
 
@@ -90,7 +92,7 @@ export function Bubbles({ who, messages, live, thinking, follow = true }: { who:
               className={`min-w-0 max-w-[78%] whitespace-pre-wrap px-4 py-2.5 text-article-body motion-safe:animate-fade ${
                 mine
                   ? "rounded-r5 rounded-br-r1_5 bg-linear-to-b from-[#3B76FF] to-[#1E4FE0] text-white shadow-[0_6px_16px_rgba(30,79,224,.25)]"
-                  : "rounded-r5 rounded-bl-r1_5 bg-white text-[#111318] shadow-[0_4px_14px_rgba(28,38,80,.08)]"
+                  : "rounded-r5 rounded-bl-r1_5 bg-white text-ios-label shadow-[0_4px_14px_rgba(28,38,80,.08)]"
               }`}
             >
               {m.typing ? (
@@ -144,19 +146,19 @@ export function TextScreen(p: {
     <Shell color={p.who.color} bloom="soft">
       <div className="relative flex h-full min-h-0 flex-col">
         <header className="flex shrink-0 items-center justify-between gap-3 px-gutter pt-6 pb-4">
-          <button onClick={p.onBack} aria-label="대화 마치기" className="ui-press grid size-11 shrink-0 place-items-center rounded-full bg-white text-[#1F2A55] shadow-[0_3px_14px_rgba(28,38,80,.08)]">
+          <Button variant="plain" onClick={p.onBack} aria-label="대화 마치기" className="ui-press grid size-11 shrink-0 place-items-center rounded-full bg-white text-[#1F2A55] shadow-[0_3px_14px_rgba(28,38,80,.08)]">
             <Icon name="back" size={20} />
-          </button>
+          </Button>
           <div className="flex min-w-0 items-center gap-2">
             <Buddy shape={p.who.shape} color={p.who.color} size={32} state={state} />
             <div className="min-w-0">
               <h1 className="flex items-center gap-1.5 text-t6 font-bold"><span className="truncate">{p.who.name}</span> <AiBadge /></h1>
-              <p className="mt-0.5 text-t2 text-[#5A6478]">글로 이야기하기</p>
+              <p className="mt-0.5 text-t2 text-ios-secondary">글로 이야기하기</p>
             </div>
           </div>
-          <button onClick={p.onVoice} disabled={p.sending} aria-label="음성으로 이야기하기" title="음성으로 이야기하기" className="ui-press grid size-11 shrink-0 place-items-center rounded-full bg-white text-[#1F2A55] shadow-[0_3px_14px_rgba(28,38,80,.08)] disabled:opacity-40">
+          <Button variant="plain" onClick={p.onVoice} disabled={p.sending} aria-label="음성으로 이야기하기" title="음성으로 이야기하기" className="ui-press grid size-11 shrink-0 place-items-center rounded-full bg-white text-[#1F2A55] shadow-[0_3px_14px_rgba(28,38,80,.08)] disabled:opacity-40">
             <Icon name="phone" size={20} />
-          </button>
+          </Button>
         </header>
 
         {p.crisis && <Crisis109 className="mx-4 mb-3 shrink-0" />}
@@ -166,7 +168,7 @@ export function TextScreen(p: {
             <div className="flex min-h-full flex-col items-center justify-center px-3 pb-10 text-center">
               <Buddy shape={p.who.shape} color={p.who.color} size={100} state={state} />
               <h2 className="mt-3 text-t8 font-bold text-balance">{p.who.name}에게 편하게<br />이야기해 보세요</h2>
-              <p className="mt-3 text-t4 text-pretty text-[#5A6478]">오늘 있었던 일도, 지금 드는 생각도 좋아요.</p>
+              <p className="mt-3 text-t4 text-pretty text-ios-secondary">오늘 있었던 일도, 지금 드는 생각도 좋아요.</p>
             </div>
           ) : <Bubbles who={p.who} messages={p.messages} live={p.live} thinking={p.thinking} />}
           {p.suggest && <div className="mt-5 flex justify-center"><HelpChip onClick={p.onHelp} /></div>}
@@ -179,7 +181,7 @@ export function TextScreen(p: {
           {p.error && <p role="alert" className="mb-3 rounded-r3 bg-white/90 px-3 py-2 text-t3 text-pretty text-[#C42A23]">{p.error}</p>}
           <div className="glass-focus rounded-r6 bg-white p-3 shadow-[0_0_0_1px_rgba(28,38,80,.08),0_8px_28px_rgba(28,38,80,.08)]" style={{ "--accent": COLORS.find((color) => color.id === p.who.color)?.deep } as React.CSSProperties}>
             <label htmlFor="text-draft" className="sr-only">{p.who.name}에게 하고 싶은 말</label>
-            <textarea
+            <TextArea
               ref={composer}
               id="text-draft"
               rows={1}
@@ -198,16 +200,16 @@ export function TextScreen(p: {
               placeholder="메시지를 입력하세요"
               enterKeyHint="enter"
               autoComplete="off"
-              className="block max-h-33 min-h-11 w-full resize-none overflow-y-auto bg-transparent px-1 pt-2 pb-3 text-article-body text-[#1F2A55] outline-0 placeholder:text-[#5A6478]"
+              className="block max-h-33 min-h-11 w-full resize-none overflow-y-auto bg-transparent px-1 pt-2 pb-3 text-article-body text-[#1F2A55] outline-0 placeholder:text-ios-secondary"
             />
             <div className="flex items-center justify-between gap-3">
-              <span className="pl-1 text-t2 text-[#5A6478]">{p.sending ? "답변을 기다리고 있어요…" : "천천히 적어도 괜찮아요"}</span>
-              <button aria-label="메시지 보내기" disabled={!canSend} style={accentButton(p.who.color)} className="ui-press grid size-11 shrink-0 place-items-center rounded-full text-white disabled:opacity-40">
+              <span className="pl-1 text-t2 text-ios-secondary">{p.sending ? "답변을 기다리고 있어요…" : "천천히 적어도 괜찮아요"}</span>
+              <Button variant="plain" type="submit" aria-label="메시지 보내기" disabled={!canSend} style={accentButton(p.who.color)} className="ui-press grid size-11 shrink-0 place-items-center rounded-full text-white disabled:opacity-40">
                 <Icon name="send" size={20} />
-              </button>
+              </Button>
             </div>
           </div>
-          <p className="mt-3 text-center text-t1 text-[#5A6478]">{josa(p.who.name, "은", "는")} AI예요. 진단과 치료는 전문가가 해요.</p>
+          <p className="mt-3 text-center text-t1 text-ios-secondary">{josa(p.who.name, "은", "는")} AI예요. 진단과 치료는 전문가가 해요.</p>
         </form>
       </div>
     </Shell>
@@ -227,13 +229,13 @@ export function SummaryScreen(p: { who: Who; messages: Msg[]; clock: string; cri
       </div>
       <div className="absolute inset-x-5 bottom-8 flex flex-col gap-2">
         {p.suggest && (
-          <button onClick={p.onHelp} className="ui-press h-14 rounded-full bg-white text-t5 font-bold text-[#1F2A55] shadow-[0_6px_18px_rgba(28,38,80,.12)]">
+          <Button variant="plain" onClick={p.onHelp} className="ui-press h-14 rounded-full bg-white text-t5 font-bold text-[#1F2A55] shadow-[0_6px_18px_rgba(28,38,80,.12)]">
             도움받기
-          </button>
+          </Button>
         )}
-        <button onClick={p.onClose} className="ui-press h-14 rounded-full bg-[#141518] text-t5 font-bold text-white">
+        <Button variant="plain" onClick={p.onClose} className="ui-press h-14 rounded-full bg-[#141518] text-t5 font-bold text-white">
           닫기
-        </button>
+        </Button>
       </div>
     </Shell>
   );

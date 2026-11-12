@@ -1,5 +1,7 @@
 "use client";
 
+import { TextArea } from "./ui/Controls";
+import { Button } from "./ui/Button";
 import { useEffect, useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { Msg } from "@/lib/log";
@@ -9,7 +11,6 @@ import { COLORS, type ColorId, type Profile, josa } from "@/lib/onboarding";
 import { catExpression } from "@/lib/cat-expression";
 import { companionBackground } from "@/lib/companion-theme";
 import Buddy, { type BuddyState } from "./Buddy";
-import { CalendarIcon } from "./Drawer";
 import { Icon } from "./art";
 import Sheet from "./Sheet";
 import "./home-voice.css";
@@ -100,6 +101,7 @@ export default function HomeScreen({
   onText,
   onLibrary,
   onMenu,
+  menuButtonRef,
   voice,
   chat,
   notice,
@@ -120,6 +122,7 @@ export default function HomeScreen({
   onText: () => void;
   onLibrary: () => void;
   onMenu: () => void;
+  menuButtonRef?: React.Ref<HTMLButtonElement>;
   voice?: HomeVoiceControls;
   chat: HomeChatControls;
   notice?: React.ReactNode;
@@ -266,16 +269,14 @@ export default function HomeScreen({
       {/* 온보딩의 빛이 하얗게 걷히며 홈이 나타난다 */}
       {greet && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 bg-white motion-safe:animate-unveil motion-reduce:hidden" />}
 
-      <header className="home-header absolute inset-x-0 z-10 flex h-14 items-center justify-between px-gutter">
-        <button onClick={onMenu} aria-label="메뉴" className="home-chrome-button ui-press grid size-12 place-items-center rounded-full">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
-            <path d="M4.5 7h15M4.5 12h15M4.5 17h9" />
-          </svg>
-        </button>
+      <header className="here-navbar home-header absolute inset-x-0 z-10 flex h-14 items-center justify-between px-gutter">
+        <Button ref={menuButtonRef} variant="plain" onClick={onMenu} aria-label="메뉴" className="home-chrome-button ui-press grid size-12 place-items-center rounded-full">
+          <Icon name="menu" size={22} />
+        </Button>
         <span className="home-wordmark" aria-label="Here!">here<span aria-hidden="true">!</span></span>
-        <button onClick={onLibrary} aria-label="라이브러리" className="home-chrome-button ui-press grid size-12 place-items-center rounded-full">
-          <CalendarIcon />
-        </button>
+        <Button variant="plain" onClick={onLibrary} aria-label="라이브러리" className="home-chrome-button ui-press grid size-12 place-items-center rounded-full">
+          <Icon name="library" size={22} />
+        </Button>
       </header>
 
       <div className={`home-intro absolute inset-x-gutter top-[18%] flex flex-col items-center text-center ${voice || hasMessages ? "home-intro-quiet" : ""}`} aria-hidden={Boolean(voice || hasMessages)}>
@@ -330,7 +331,7 @@ export default function HomeScreen({
         {voice?.error && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{voice.error}</p>}
         {chat.error && !voice && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{chat.error}</p>}
         {files.length > 0 && (
-          <button
+          <Button variant="plain"
             type="button"
             onClick={(event) => {
               event.currentTarget.focus({ preventScroll: true });
@@ -340,7 +341,7 @@ export default function HomeScreen({
             className="ui-press min-h-11 self-start rounded-full bg-white/70 px-4 text-t3 font-medium text-cat-ink"
           >
             선택한 파일 {files.length}개 · 기기에서만
-          </button>
+          </Button>
         )}
         {nudge && resting && <div>{nudge}</div>}
         {chatting && (
@@ -350,7 +351,7 @@ export default function HomeScreen({
         )}
         <div role="group" aria-label={voice ? "음성 대화" : chat.open ? "메시지 작성" : "대화 시작"} className="home-actions">
           <form className="home-compose" data-open={chat.open} onSubmit={(event) => { event.preventDefault(); if (canSend && !chat.sending) chat.onSend(); }}>
-          <button
+          <Button variant="tonal"
             ref={attachButtonRef}
             type="button"
             onClick={(event) => {
@@ -360,25 +361,23 @@ export default function HomeScreen({
             aria-label="첨부"
             aria-haspopup="menu"
             aria-expanded={attachOpen}
-            className="home-attach home-chrome-button ui-press grid size-14 shrink-0 place-items-center rounded-full"
+            className="home-attach home-action-icon ui-press grid size-14 shrink-0 place-items-center rounded-full"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" className={`transition-transform duration-[var(--seed-duration-d4)] ${attachOpen ? "rotate-45" : ""}`}>
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </button>
+            <span className={`grid transition-transform duration-[var(--seed-duration-d4)] ${attachOpen ? "rotate-45" : ""}`}><Icon name="add" /></span>
+          </Button>
           {attachOpen && (
             <div ref={attachMenuRef} role="menu" aria-label="첨부할 종류" className="absolute bottom-[calc(100%+8px)] left-0 z-20 w-48 origin-bottom-left rounded-r4 bg-white p-1.5 shadow-[0_10px_32px_rgba(35,32,27,.12)] motion-safe:animate-pop">
               {ATTACH_KINDS.map((kind) => (
-                <button key={kind.id} type="button" role="menuitem" onClick={() => pickAttachment(kind)} className="ui-press flex h-11 w-full items-center gap-3 rounded-r3 px-3 text-left text-t4 font-medium text-cat-ink hover:bg-cat-soft focus-visible:bg-cat-soft">
+                <Button variant="plain" key={kind.id} type="button" role="menuitem" onClick={() => pickAttachment(kind)} className="ui-press flex h-11 w-full items-center gap-3 rounded-r3 px-3 text-left text-t4 font-medium text-cat-ink hover:bg-cat-soft focus-visible:bg-cat-soft">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-cat-ink">{kind.icon}</svg>
                   {kind.label}
-                </button>
+                </Button>
               ))}
             </div>
           )}
             <div className="home-compose-content" inert={!chat.open} aria-hidden={!chat.open}>
               <label htmlFor="home-text-draft" className="sr-only">{name}에게 하고 싶은 말</label>
-              <textarea ref={composerRef} id="home-text-draft" rows={1} maxLength={800} value={chat.draft} readOnly={chat.sending} tabIndex={chat.open ? 0 : -1} aria-busy={chat.sending} placeholder={`${name}에게 이야기해요…`} autoComplete="off" enterKeyHint="send"
+              <TextArea ref={composerRef} id="home-text-draft" rows={1} maxLength={800} value={chat.draft} readOnly={chat.sending} tabIndex={chat.open ? 0 : -1} aria-busy={chat.sending} placeholder={`${name}에게 이야기해요…`} autoComplete="off" enterKeyHint="send"
                 onChange={(event) => chat.onDraft(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") { event.preventDefault(); collapseText(); return; }
@@ -387,9 +386,9 @@ export default function HomeScreen({
                   if (canSend && !chat.sending) chat.onSend();
                 }}
               />
-              <button type="button" onClick={collapseText} tabIndex={chat.open ? 0 : -1} aria-label="입력창 닫기" className="ui-press grid size-11 shrink-0 place-items-center rounded-full bg-cat-soft text-cat-ink"><Icon name="close" size={18} /></button>
+              <Button variant="plain" type="button" onClick={collapseText} tabIndex={chat.open ? 0 : -1} aria-label="입력창 닫기" className="ui-press grid size-11 shrink-0 place-items-center rounded-full bg-cat-soft text-cat-ink"><Icon name="close" size={18} /></Button>
             </div>
-            <button
+            <Button variant="tonal"
               ref={chatButtonRef}
               type="button"
               onClick={expandText}
@@ -399,24 +398,22 @@ export default function HomeScreen({
               aria-expanded={chat.open}
               aria-controls="home-text-draft"
               aria-hidden={chat.open}
-              className="home-text-toggle home-chrome-button ui-press grid size-14 place-items-center rounded-full disabled:opacity-40"
+              className="home-text-toggle home-action-icon ui-press grid size-14 place-items-center rounded-full disabled:opacity-40"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M5 4.5h14A1.5 1.5 0 0 1 20.5 6v10a1.5 1.5 0 0 1-1.5 1.5H10l-6.5 4V6A1.5 1.5 0 0 1 5 4.5Z" />
-              </svg>
-            </button>
+              <Icon name="help" />
+            </Button>
           </form>
           <div className="home-right-action" data-send={canSend}>
-            <button type="button" onClick={chat.onSend} disabled={chat.sending || !canSend} tabIndex={canSend ? 0 : -1} aria-hidden={!canSend} aria-label="메시지 보내기" className="home-send ui-press grid size-14 place-items-center rounded-full bg-cat-ink text-white disabled:opacity-40"><Icon name="send" size={23} /></button>
+            <Button variant="plain" type="button" onClick={chat.onSend} disabled={chat.sending || !canSend} tabIndex={canSend ? 0 : -1} aria-hidden={!canSend} aria-label="메시지 보내기" className="home-send ui-press grid size-14 place-items-center rounded-full bg-cat-ink text-white disabled:opacity-40"><Icon name="send" size={23} /></Button>
             <div inert={canSend} aria-hidden={canSend} className="home-mic-action">
             <div className="home-voice-pill" data-expanded={Boolean(voice)}>
               <div className="home-voice-end" inert={!voice} aria-hidden={!voice}>
-                <button type="button" onClick={voice?.onEnd} tabIndex={voice ? 0 : -1} aria-label="음성 대화 종료" className="ui-press grid size-12 shrink-0 place-items-center rounded-full bg-[#E5484D] text-white">
+                <Button variant="plain" type="button" onClick={voice?.onEnd} tabIndex={voice ? 0 : -1} aria-label="음성 대화 종료" className="ui-press grid size-12 shrink-0 place-items-center rounded-full bg-[#E5484D] text-white">
                   <Icon name="close" size={20} />
-                </button>
+                </Button>
                 <span className="h-8 w-px shrink-0 bg-cat-line" />
               </div>
-              <button
+              <Button variant="fill"
                 ref={micButtonRef}
                 type="button"
                 onClick={voice ? voice.onMic : onVoice}
@@ -425,11 +422,11 @@ export default function HomeScreen({
                 aria-label={voice ? voice.error ? "음성 연결 다시 시도" : voice.micOn ? "마이크 끄기" : "마이크 켜기" : `${josa(name, "과", "와")} 음성 대화 시작`}
                 aria-expanded={Boolean(voice)}
                 aria-pressed={voice && !voice.error ? voice.micOn : undefined}
-                className="home-mic ui-press grid size-14 shrink-0 place-items-center rounded-full disabled:opacity-40"
+                className="home-mic home-action-icon ui-press grid size-14 shrink-0 place-items-center rounded-full disabled:opacity-40"
                 data-off={Boolean(voice && !voice.micOn && !voice.error)}
               >
                 <Icon name={voice && !voice.micOn && !voice.error ? "micOff" : "mic"} size={26} />
-              </button>
+              </Button>
             </div>
             </div>
           </div>
@@ -444,13 +441,13 @@ export default function HomeScreen({
           title="선택한 파일"
           onClose={() => setShowFiles(false)}
           footer={(
-            <button
+            <Button variant="plain"
               type="button"
               onClick={() => pickAttachment(ATTACH_KINDS[2])}
               className="ui-press h-14 w-full rounded-full bg-cat-soft text-t5 font-bold text-cat-ink"
             >
               파일 더 선택하기
-            </button>
+            </Button>
           )}
         >
           {filePicker}
@@ -467,7 +464,7 @@ export default function HomeScreen({
                     <p className="truncate text-t4 font-medium text-cat-ink" title={file.name}>{file.name}</p>
                     <p className="mt-1 text-t2 tabular-nums text-cat-muted">{file.size.toLocaleString("ko-KR")} B</p>
                   </div>
-                  <button
+                  <Button variant="plain"
                     type="button"
                     onClick={() => setFiles((current) => current.filter((item) => item.key !== file.key))}
                     aria-label={`${file.name} 선택 해제`}
@@ -476,7 +473,7 @@ export default function HomeScreen({
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
                       <path d="m6 6 12 12M18 6 6 18" />
                     </svg>
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>

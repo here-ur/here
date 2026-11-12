@@ -5,6 +5,9 @@ import { normalizeInviteCode, normalizePhone } from "@/lib/invite";
 import { setLocalOwner } from "@/lib/local-scope";
 import { browserSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { checkEntry, type Entry } from "@/lib/session-entry";
+import Segmented from "framework7-react/components/segmented.js";
+import { Button } from "./ui/Button";
+import { TextField } from "./ui/TextField";
 import MemoryConsentGate from "./MemoryConsentGate";
 
 type Mode = "login" | "signup";
@@ -158,10 +161,10 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     setStep("phone");
   }
 
-  if (loading) return <main className="app-frame bg-[#FAFCFE]" />;
+  if (loading) return <main className="app-frame bg-ios-page" />;
   if (checkFailed) return <main className="app-frame flex flex-col items-center justify-center gap-4 px-7">
     <p role="alert">로그인 상태를 확인하지 못했어요. 연결을 확인하고 다시 시도해 주세요.</p>
-    <button type="button" className="min-h-11 px-4" onClick={() => { setLoading(true); setAttempt(n => n + 1); }}>다시 확인</button>
+    <Button variant="tonal" size="medium" onClick={() => { setLoading(true); setAttempt(n => n + 1); }}>다시 확인</Button>
   </main>;
   if (userId) return <MemoryConsentGate key={userId} userId={userId} signOut={signOut}>{children(userId, signOut)}</MemoryConsentGate>;
 
@@ -174,24 +177,23 @@ export default function AuthGate({ children }: { children: (userId: string, sign
       : verifiedPhone ? "휴대폰 인증이 끝났어요. 다른 초대코드로 가입을 마무리해요." : "받은 초대코드를 먼저 입력해 주세요.";
 
   return <main className="app-frame flex min-h-dvh flex-col justify-center bg-[linear-gradient(170deg,#F8FBFF,#E6EFFF_65%,#DCD9FF)] px-7 py-12 text-[#1F2A55]">
-    <div className="mx-auto w-full max-w-sm rounded-[32px] border border-white/80 bg-white/85 p-7 shadow-[0_20px_60px_rgba(75,98,164,.15)] backdrop-blur-xl">
-      <div className="mb-8 text-center"><span className="text-3xl font-bold">Here!</span><p className="mt-3 text-sm text-[#5A6478]">초대받은 사람만 몽글이와 이야기할 수 있어요.</p></div>
+    <div className="here-card mx-auto w-full max-w-sm p-7">
+      <div className="mb-8 text-center"><span className="text-3xl font-bold">Here!</span><p className="mt-3 text-sm text-ios-secondary">초대받은 사람만 몽글이와 이야기할 수 있어요.</p></div>
       {!client ? <p role="status" className="text-center text-sm leading-6">로그인 설정이 아직 준비되지 않았어요.<br />Supabase 연결 후 이용할 수 있어요.</p> : <>
-        {((mode === "login" && step === "phone") || (mode === "signup" && step === "invite" && !verifiedPhone)) ? <div className="mb-7 grid grid-cols-2 gap-2 rounded-full bg-[#F0F2FB] p-1" role="group" aria-label="로그인 방식">
-          {(["login", "signup"] as const).map((next) => <button key={next} type="button" onClick={() => { setMode(next); setStep(next === "login" ? "phone" : "invite"); setError(""); }} aria-pressed={mode === next} className={`min-h-11 rounded-full text-sm font-semibold transition-[background-color,box-shadow,color,transform] duration-200 active:scale-[0.96] ${mode === next ? "bg-white shadow-sm" : "text-[#69728B]"}`}>{next === "login" ? "로그인" : "초대코드로 가입"}</button>)}
-        </div> : <button type="button" onClick={() => { void goBack(); }} className="mb-5 -ml-2 min-h-11 rounded-full px-2 text-sm font-medium text-[#5A6478] hover:text-[#1F2A55] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6F4FF0]">← {step === "invite" ? "처음부터" : step === "otp" ? "번호 다시 입력" : "초대코드 다시 입력"}</button>}
+        {((mode === "login" && step === "phone") || (mode === "signup" && step === "invite" && !verifiedPhone)) ? <Segmented className="here-segmented mb-7 grid grid-cols-2 gap-2 rounded-full bg-ios-group p-1" {...{ role: "group", "aria-label": "로그인 방식" }}>
+          {(["login", "signup"] as const).map((next) => <Button variant="plain" key={next} type="button" onClick={() => { setMode(next); setStep(next === "login" ? "phone" : "invite"); setError(""); }} aria-pressed={mode === next} className={`min-h-11 rounded-full text-sm font-semibold transition-[background-color,box-shadow,color,transform] duration-200 active:scale-[0.96] ${mode === next ? "bg-white shadow-sm" : "text-[#69728B]"}`}>{next === "login" ? "로그인" : "초대코드로 가입"}</Button>)}
+        </Segmented> : <Button variant="plain" type="button" onClick={() => { void goBack(); }} className="mb-5 -ml-2 min-h-11 rounded-full px-2 text-sm font-medium text-ios-secondary hover:text-[#1F2A55] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6F4FF0]">← {step === "invite" ? "처음부터" : step === "otp" ? "번호 다시 입력" : "초대코드 다시 입력"}</Button>}
         <div className="mb-7" aria-label={`${mode === "login" ? "로그인" : "가입"} ${stepNumber}단계, 전체 ${currentSteps.length}단계`}>
           <div className="mb-5 flex gap-2" aria-hidden="true">{currentSteps.map((item, index) => <span key={item} className={`h-1.5 flex-1 rounded-full transition-colors duration-200 ${index < stepNumber ? "bg-[#6F4FF0]" : "bg-[#D8DDF0]"}`} />)}</div>
           <p className="mb-2 text-xs font-semibold tracking-wide text-[#6F4FF0]">{stepNumber} / {currentSteps.length} · {step === "phone" ? "휴대폰 번호" : step === "otp" ? "인증번호" : "초대코드"}</p>
           <h1 className="text-balance text-2xl font-bold leading-snug">{title}</h1>
-          <p className="mt-2 text-pretty text-sm leading-6 text-[#5A6478]">{description}</p>
+          <p className="mt-2 text-pretty text-sm leading-6 text-ios-secondary">{description}</p>
         </div>
         <form onSubmit={step === "phone" ? sendOtp : step === "otp" ? verifyOtp : redeemInvite} className="flex flex-col gap-4">
-          {step === "phone" && <><label className="text-sm font-semibold" htmlFor="phone">휴대폰 번호</label><input id="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="01012345678" value={phone} onChange={(event) => setPhone(event.target.value)} className="h-13 rounded-2xl border border-[#D8DDF0] bg-white px-4 outline-none focus:border-[#6F4FF0]" required /></>}
-          {step === "otp" && <><label className="text-sm font-semibold" htmlFor="sms-code">인증번호</label><input ref={stepInputRef} id="sms-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="6자리 숫자" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} className="h-13 rounded-2xl border border-[#D8DDF0] bg-white px-4 text-center text-xl tracking-[0.3em] tabular-nums outline-none focus:border-[#6F4FF0]" required /></>}
-          {step === "invite" && <><label className="text-sm font-semibold" htmlFor="invite">초대코드</label><input ref={stepInputRef} id="invite" autoCapitalize="characters" autoComplete="off" placeholder="초대코드 16자리" value={invite} onChange={(event) => setInvite(event.target.value.toUpperCase())} className="h-13 rounded-2xl border border-[#D8DDF0] bg-white px-4 uppercase tracking-wider outline-none focus:border-[#6F4FF0]" required /></>}
-          {error && <p role="alert" className="text-sm text-[#C2362B]">{error}</p>}
-          <button type="submit" disabled={busy} className="mt-3 min-h-13 rounded-full bg-[#6F4FF0] px-5 font-semibold text-white transition-transform duration-150 active:scale-[0.96] disabled:opacity-50">{busy ? "잠시만요…" : step === "invite" ? verifiedPhone ? "가입 완료하기" : "초대코드 확인" : step === "phone" ? "인증번호 받기" : mode === "login" ? "로그인하기" : "가입 완료하기"}</button>
+          {step === "phone" && <TextField label="휴대폰 번호" id="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="01012345678" value={phone} onChange={(event) => setPhone(event.target.value)} error={error} required />}
+          {step === "otp" && <TextField label="인증번호" ref={stepInputRef} id="sms-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="6자리 숫자" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} error={error} required />}
+          {step === "invite" && <TextField label="초대코드" ref={stepInputRef} id="invite" autoCapitalize="characters" autoComplete="off" placeholder="초대코드 16자리" value={invite} onChange={(event) => setInvite(event.target.value.toUpperCase())} error={error} required />}
+          <Button type="submit" fullWidth loading={busy} className="mt-3">{step === "invite" ? verifiedPhone ? "가입 완료하기" : "초대코드 확인" : step === "phone" ? "인증번호 받기" : mode === "login" ? "로그인하기" : "가입 완료하기"}</Button>
         </form>
       </>}
     </div>

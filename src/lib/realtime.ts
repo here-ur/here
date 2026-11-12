@@ -1,3 +1,4 @@
+import { microphoneErrorMessage } from "./microphone-permission.ts";
 import type { MouthShape } from "./mouth-shape.ts";
 import { createOutputAudioMeter } from "./output-audio-meter.ts";
 import { homeEntryGreetingPrompt } from "./companion-prompt.ts";
@@ -28,6 +29,7 @@ export type Realtime = {
   setSound: (on: boolean) => void;
   close: () => void;
   hasMic: boolean;
+  microphoneError?: string;
 };
 
 const CONNECTION_ERROR = "몽글이와 연결하지 못했어요. 조금 뒤에 다시 해 줘.";
@@ -46,6 +48,7 @@ export async function connectRealtime(
   let pc: RTCPeerConnection | null = null;
   let audioEl: HTMLAudioElement | null = null;
   let mic: MediaStream | null = null;
+  let microphoneError: string | undefined;
   let dc: RTCDataChannel | null = null;
   let closed = false;
   let greetingPending = options.greeting !== false && Boolean(safeHomeOpener(options.opener));
@@ -310,6 +313,7 @@ export async function connectRealtime(
       if (controller.signal.aborted) throw error;
       mic?.getTracks().forEach((track) => track.stop());
       mic = null;
+      microphoneError = microphoneErrorMessage(error);
       peer.addTransceiver("audio", { direction: "recvonly" });
     }
 
@@ -455,6 +459,7 @@ export async function connectRealtime(
 
     return {
       hasMic: !!mic,
+      microphoneError,
       sendText(text) {
         if (closed || greetingPending || !text.trim()) return;
         turn++; toolRounds = 0; searchCount = 0; turnSources.clear(); h.onSearchSources?.([]);

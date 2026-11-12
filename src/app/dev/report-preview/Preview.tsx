@@ -42,11 +42,15 @@ const SESSIONS: Session[] = [
   ] },
 ];
 
-export default function Preview() {
+export default function Preview({ initialMode = "library", onBack, onDecorate }: {
+  initialMode?: ReportMode;
+  onBack?: () => void;
+  onDecorate?: () => void;
+} = {}) {
   const [days, setDays] = useState(DAYS);
   const [choice, setChoice] = useState<"on" | "off" | null>(null);
   // 뒤로 버튼을 누르면 인사이트 ↔ 라이브러리를 바꿔 본다.
-  const [mode, setMode] = useState<ReportMode>("library");
+  const [mode, setMode] = useState<ReportMode>(initialMode);
   return (
     <ReportView
       key={mode}
@@ -57,7 +61,8 @@ export default function Preview() {
       now={NOW}
       choice={choice}
       skyState="idle"
-      onBack={() => setMode((m) => (m === "library" ? "insight" : "library"))}
+      onBack={onBack ?? (() => setMode((m) => (m === "library" ? "insight" : "library")))}
+      onDecorate={onDecorate}
       onArchive={() => {}}
       onChoice={setChoice}
       onPickSky={(date, sky) => setDays((current) => setMySky(current, date, sky))}

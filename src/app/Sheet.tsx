@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { Button } from "./ui/Button";
 import { Icon } from "./art";
 
 const EXIT_MS = 150;
@@ -106,15 +107,15 @@ export default function Sheet({ title, onClose, children, footer }: { title: str
             first.focus();
           }
         }}
-        className={`ui-transition flex max-h-[88%] w-full flex-col overflow-hidden rounded-t-r6 bg-cat-surface pt-3 shadow-[0_-10px_40px_rgba(35,32,27,.12)] transition-[translate,opacity] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-cat-ink ${closing ? "translate-y-3 opacity-0" : "motion-safe:animate-rise"}`}
+        className={`here-sheet ui-transition flex max-h-[88%] w-full flex-col overflow-hidden rounded-t-r6 bg-cat-surface pt-3 shadow-[0_-10px_40px_rgba(35,32,27,.12)] transition-[translate,opacity] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-cat-ink ${closing ? "translate-y-3 opacity-0" : "motion-safe:animate-rise"}`}
         style={closing ? { transitionDuration: `${EXIT_MS}ms` } : undefined}
       >
         <div aria-hidden="true" className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-cat-line" />
         <div className="mb-1 flex shrink-0 items-center justify-between gap-3 px-5">
           <h2 id={titleId} className="text-t7 font-bold text-balance text-cat-ink">{title}</h2>
-          <button onClick={requestClose} aria-label="닫기" className="ui-press grid size-11 shrink-0 place-items-center rounded-full bg-cat-soft text-cat-ink">
+          <Button onClick={requestClose} aria-label="닫기" tone="neutral" variant="tonal" size="medium" className="shrink-0">
             <Icon name="close" size={18} />
-          </button>
+          </Button>
         </div>
         <div className="min-h-0 overflow-y-auto overscroll-contain px-5 pb-6">{children}</div>
         {footer && <div className="shrink-0 border-t border-cat-line/50 px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">{footer}</div>}

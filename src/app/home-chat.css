@@ -94,8 +94,6 @@
 }
 /* 펼친 입력창 안에서는 첨부 버튼의 원 배경을 걷어 입력창과 한 덩어리로 보이게 한다. */
 .home-compose[data-open="true"] .home-attach { background: transparent; box-shadow: none; backdrop-filter: none; }
-.home-mic { background: var(--color-cat-amber); color: var(--color-cat-ink); box-shadow: none; }
-.home-mic[data-off="true"] { background: var(--color-cat-soft); color: var(--color-cat-ink); box-shadow: none; }
 /* 펼친 음성 캡슐 안에서는 종료·마이크 버튼을 같은 48px로 맞춰 양쪽 여백(8px)이 같아 보이게 한다. */
 .home-mic { transition-property: scale, background-color, color, box-shadow, width, height; transition-duration: var(--seed-duration-d6); transition-timing-function: var(--seed-timing-function-enter); }
 .home-voice-pill[data-expanded="true"] .home-mic { width: 48px; height: 48px; box-shadow: none; }

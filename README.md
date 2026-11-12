@@ -6,7 +6,7 @@ AI와 말로 이야기하고, 필요할 때 도움받기에서 실제 사람인 
 
 도움받기는 매번 상담 안내부터 열리며, 건너뛰기 또는 상담사 둘러보기로 목록에 진입한다. 상담사 카드는 프로필 바텀시트, 이야기하기는 별도 통화 미리보기 화면을 연다. 프로필은 예시 데이터이며 실제 상담 연결·녹음·예약·결제·리포트 공유는 제공하지 않는다. [원본 기획 시트](https://docs.google.com/spreadsheets/d/1ipT7eUM78gbYJlWxezUrxTPejYT98gBZfAfGedI8Ud8/edit?gid=552197863)의 준비 중인 상담 흐름과 현재 구현 범위는 [PRD](docs/PRD.md)에서 구분한다.
 
-화면은 기존 제품 프레임(최대 너비 430px, 높이 `100dvh`, 최소 높이 640px)을 유지한다. [SEED Design](https://github.com/daangn/seed-design)의 `@seed-design/css@3.0.3`을 기준으로 타이포그래피·간격·라운드·모션을 적용하고, 기존 제품의 컬러·그라디언트는 유지한다. 비컬러 토큰은 `src/app/seed-foundation.css`, 화면 크기는 `src/app/app-frame.css`에서 관리한다.
+화면은 최대 너비 430px의 모바일 프레임을 사용한다. 공통 UI는 **Framework7 React의 iOS 테마**를 기준으로 구현한다. 공통 컴포넌트와 테마 조정은 `src/app/ui/`, 아이콘 매핑은 `src/app/art.tsx`에서 관리한다. 새 화면이나 UI를 수정할 때는 [저장소 작업 지침](AGENTS.md)의 Here UI 항목을 따른다.
 
 ```bash
 npm install

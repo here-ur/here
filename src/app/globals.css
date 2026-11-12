@@ -262,3 +262,11 @@ body {
     scale: 1;
   }
 }
+
+@theme inline {
+  --color-ios-page: var(--f7-page-bg-color);
+  --color-ios-group: var(--here-ios-group);
+  --color-ios-label: var(--f7-text-color);
+  --color-ios-secondary: var(--here-ui-muted);
+  --color-ios-accent: var(--f7-theme-color);
+}
