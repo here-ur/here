@@ -49,7 +49,8 @@ struct HomeView: View {
                         Button("캐릭터 설정", systemImage: "slider.horizontal.3") { settingsOpen = true }.disabled(model.isPreview || voice.active)
                         Button("새 대화", systemImage: "square.and.pencil") { model.messages = []; model.chatError = "" }.disabled(model.sending || voice.active)
                         Button("로그아웃", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) { voice.stop(); Task { await model.signOut() } }.disabled(model.sending || model.busy)
-                    } label: { Image(systemName: "line.3.horizontal").frame(minWidth: 44, minHeight: 44).accessibilityLabel("메뉴") }
+                    } label: { Image(systemName: "line.3.horizontal").accessibilityLabel("메뉴") }
+                    .buttonBorderShape(.circle)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     if chatOpen {
