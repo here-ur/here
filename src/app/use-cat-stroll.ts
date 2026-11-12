@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { CAT_UNITS_PER_BUDDY_UNIT } from "./CatFace";
 import { createCatGait } from "@/lib/cat-gait";
 
 export function useCatStroll(active: boolean) {
@@ -23,8 +24,8 @@ export function useCatStroll(active: boolean) {
       }
       if (document.hidden) { previous = 0; frame = 0; return; }
       const pose = controller.update(dt, active);
-      // Feet use the image's 970-unit coordinate system, travel uses the outer 240-unit SVG.
-      const scale = 970 / 200;
+      // Feet use artwork coordinates; travel uses the outer 240-unit SVG.
+      const scale = CAT_UNITS_PER_BUDDY_UNIT;
       left.style.transform = `translate(${pose.leftX * scale}px, ${pose.leftY * scale}px)`;
       right.style.transform = `translate(${pose.rightX * scale}px, ${pose.rightY * scale}px)`;
       travel.style.transform = `translateX(${pose.x}px)`;

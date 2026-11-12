@@ -75,6 +75,9 @@
 .home-message[data-role="user"] { justify-content: flex-end; }
 .home-message[data-role="user"] > p { max-width: 85%; border-radius: 20px 20px 5px 20px; background: var(--color-cat-ink); color: var(--color-cat-surface); border-color: transparent; }
 .home-character-wrap { transition: opacity var(--seed-duration-d4) ease, scale var(--seed-duration-d6) var(--seed-timing-function-enter); }
+.home-character-wrap .buddy { width: min(320px, 82vw, 45svh); height: auto; }
+.home-character-wrap:has(.home-buddy-expanded) { top: 27%; }
+.home-character-wrap .home-buddy-expanded { transform: scale(1.1); }
 /* 글 대화 중에는 큰 몽글이를 감추고, 작은 몽글이가 입력창 위에 앉는다. */
 .home-character-wrap[data-hidden="true"] { opacity: 0; scale: .8; pointer-events: none; }
 .home-chat-buddy { align-self: flex-start; margin: 0 0 -14px 14px; position: relative; z-index: 1; pointer-events: none; }
@@ -100,7 +103,6 @@
 
 @container (max-height: 700px) {
   .home-character-wrap { top: 29%; }
-  .home-character-wrap .home-buddy { zoom: .85; }
   .home-intro { top: 15%; }
   .home-intro h1 { font-size: var(--seed-font-size-t7); }
 }

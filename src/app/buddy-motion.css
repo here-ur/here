@@ -1,6 +1,6 @@
 /* Head motion and audio-driven mouth; foot/travel transforms are interruptible. */
 .buddy { flex-shrink: 0; }
-.cat-head-pose, .cat-head-idle, .cat-head-response { transform-origin: 790px 570px; }
+.cat-head-pose, .cat-head-idle, .cat-head-response { transform-origin: 1692px 1038px; }
 .cat-head-pose, .cat-face-turn, .cat-pupil-focus, .cat-eye-expression {
   transition: transform 420ms cubic-bezier(.2, 0, .2, 1);
 }
@@ -19,12 +19,17 @@
 .buddy[data-expression="gentle"] .cat-eye-1 { transform: rotate(5deg) scaleY(.88); }
 
 @media (prefers-reduced-motion: no-preference) {
+  .buddy .cat-lids-blink { animation: cat-lids-blink 7.3s linear infinite; }
   .buddy .cat-eye-blink { animation: cat-blink 7.3s linear infinite; }
   .buddy[data-state="idle"]:not([data-look-override]) .cat-head-idle { animation: cat-head-turn 15s ease-in-out infinite; }
   .buddy[data-state="idle"]:not([data-look-override]) .cat-face-turn { animation: cat-face-turn 15s ease-in-out infinite; }
   .buddy[data-state="idle"]:not([data-look-override]) .cat-pupil-glance { animation: cat-glance 15s ease-in-out infinite; }
   .buddy[data-state="listening"][data-hearing] .cat-head-response { animation: cat-listen-nod 4.6s ease-in-out infinite; }
   .buddy[data-state="speaking"] .cat-head-response { animation: cat-speaking-nod 5.8s ease-in-out infinite; }
+}
+@keyframes cat-lids-blink {
+  0%, 34%, 37%, 76%, 79%, 100% { opacity: 0; }
+  35.5%, 77.5% { opacity: 1; }
 }
 @keyframes cat-blink {
   0%, 34%, 37%, 76%, 79%, 100% { transform: scaleY(1); }
@@ -61,8 +66,8 @@
 }
 
 .cat-step-weight { transform-origin: 120px 205px; }
-.cat-foot-left { transform-origin: 570px 875px; }
-.cat-foot-right { transform-origin: 1025px 875px; }
+.cat-foot-left { transform-origin: 1555px 1490px; }
+.cat-foot-right { transform-origin: 1788px 1490px; }
 .buddy[data-walk-direction] .cat-pupil-glance { animation: none; transition: transform 300ms ease; }
 .buddy[data-walk-direction="left"] .cat-pupil-glance { transform: translate(-24px, 0); }
 .buddy[data-walk-direction="right"] .cat-pupil-glance { transform: translate(24px, 0); }

@@ -305,7 +305,7 @@ export default function HomeScreen({
             shape={profile.shape}
             color={profile.color}
             accessory={profile.accessory}
-            size={248}
+            size={320}
             stroll={resting && !showFiles && !attachOpen}
             groundShadow
             outputLevel={outputLevel} outputShape={outputShape}
