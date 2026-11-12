@@ -40,3 +40,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# iOS local configuration and Xcode user state
+ios/Here/Config.plist
+ios/build/
+ios/DerivedData/
+**/xcuserdata/
+*.xcuserstate
+*.mobileprovision
+*.p12

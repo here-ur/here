@@ -1,0 +1,242 @@
+import Foundation
+import Combine
+import Supabase
+
+@MainActor
+final class AppModel: ObservableObject {
+    enum Gate { case loading, login, invite, consent, profile, home, retry, configuration }
+    @Published var gate: Gate = .loading
+    @Published var busy = false
+    @Published var error = ""
+    @Published var profile: CompanionProfile?
+    @Published var messages: [ChatMessage] = []
+    @Published var sending = false
+    @Published var chatError = ""
+    @Published var isPreview = false
+    @Published var consentVersion: String?
+    private let client: SupabaseClient?
+    private let apiURL: URL
+    private var restored = false
+    private var accountID: UUID?
+    private var pendingInvite: String?
+
+    init() {
+        let config = Bundle.main.url(forResource: "Config", withExtension: "plist")
+            .flatMap { NSDictionary(contentsOf: $0) as? [String: String] } ?? [:]
+        apiURL = URL(string: "https://here-dev.vercel.app")!
+        if let urlString = config["SUPABASE_URL"], let url = URL(string: urlString),
+           url.scheme == "https", url.host == "mwjwfumpxdlllikcdvkh.supabase.co",
+           !urlString.contains("YOUR_"), let key = config["SUPABASE_PUBLISHABLE_KEY"], !key.isEmpty, !key.contains("YOUR_") {
+            client = SupabaseClient(supabaseURL: url, supabaseKey: key, options: .init(
+                auth: .init(storage: KeychainLocalStorage(service: "com.hereur.here.dev.auth"), autoRefreshToken: true)
+            ))
+        } else { client = nil }
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--preview") { startPreview() }
+        #endif
+    }
+
+    func startPreview() {
+        #if DEBUG
+        isPreview = true
+        profile = .preview
+        messages = []
+        error = ""
+        gate = .home
+        #endif
+    }
+
+    func leavePreview() async {
+        isPreview = false
+        profile = nil
+        messages = []
+        restored = false
+        await restore()
+    }
+
+    func restore() async {
+        guard !isPreview, !busy else { return }
+        guard let client else {
+            error = "개발 연결 설정이 없어요. ios/README.md의 Config.plist 설정을 확인해 주세요."
+            gate = .configuration
+            return
+        }
+        busy = true
+        if gate != .home { gate = .loading }
+        defer { busy = false; restored = true }
+        do {
+            // SDK refreshes expired access tokens from Keychain, before membership checks.
+            _ = try await client.auth.session
+            try await loadAccount()
+            error = ""
+        } catch AuthError.sessionMissing {
+            clearAccount()
+            gate = .login
+        } catch {
+            self.error = "계정 정보를 불러오지 못했어요. 연결을 확인하고 다시 시도해 주세요."
+            // An outage or failed profile lookup must never become first-time onboarding.
+            if gate != .home { gate = .retry }
+        }
+    }
+
+    func refreshIfNeeded() async {
+        guard restored, !isPreview, !busy, !sending, gate == .home else { return }
+        await restore()
+    }
+
+    private func loadAccount() async throws {
+        guard let client else { throw APIError(error: "개발 연결 설정이 없어요.") }
+        let user = try await client.auth.user()
+        if accountID != user.id { messages = []; profile = nil }
+        accountID = user.id
+        struct Member: Decodable { let user_id: UUID }
+        let members: [Member] = try await client.from("members").select("user_id").eq("user_id", value: user.id.uuidString).execute().value
+        if members.isEmpty {
+            if let pendingInvite {
+                let redeemed: Bool = try await client.rpc("redeem_invite", params: ["p_code": pendingInvite]).execute().value
+                self.pendingInvite = nil
+                if redeemed { try await loadAccount(); return }
+            }
+            gate = .invite
+            return
+        }
+        let consent: ConsentStatus = try await api("memory-consent")
+        consentVersion = consent.version
+        if consent.required {
+            guard consent.version == "2026-10-31-dev-v1" else {
+                throw APIError(error: "동의 내용이 변경됐어요. 최신 iOS 빌드를 사용해 주세요.")
+            }
+            gate = .consent
+            return
+        }
+        if let stored = user.userMetadata["here_profile_v1"], stored != .null {
+            let envelope = try JSONDecoder().decode(ProfileEnvelope.self, from: JSONEncoder().encode(stored))
+            guard envelope.version == 1 else { throw APIError(error: "새 버전의 캐릭터 설정이에요. 앱을 업데이트해 주세요.") }
+            if let saved = envelope.profile {
+                guard !saved.companion.trimmingCharacters(in: .whitespaces).isEmpty else { throw APIError(error: "캐릭터 설정을 확인하지 못했어요.") }
+                profile = saved
+                gate = .home
+                return
+            }
+        }
+        profile = nil
+        gate = .profile
+    }
+
+    func checkInvite(_ input: String) async throws {
+        guard let client, let code = InputRules.invite(input) else { throw APIError(error: "초대코드 16자리를 확인해 주세요.") }
+        let valid: Bool = try await client.rpc("invite_available", params: ["p_code": code]).execute().value
+        guard valid else { throw APIError(error: "사용할 수 없는 초대코드예요.") }
+        pendingInvite = code
+    }
+
+    func sendOTP(phone: String, signup: Bool) async throws {
+        guard let client, let number = InputRules.phone(phone) else { throw APIError(error: "휴대폰 번호를 확인해 주세요.") }
+        if signup {
+            guard let pendingInvite else { throw APIError(error: "초대코드를 먼저 확인해 주세요.") }
+            try await checkInvite(pendingInvite)
+        } else { pendingInvite = nil }
+        try await client.auth.signInWithOTP(phone: number, shouldCreateUser: signup)
+    }
+
+    func verifyOTP(phone: String, code: String) async throws {
+        guard let client, let number = InputRules.phone(phone) else { throw APIError(error: "휴대폰 번호를 확인해 주세요.") }
+        try await client.auth.verifyOTP(phone: number, token: code.trimmingCharacters(in: .whitespaces), type: .sms)
+        do { try await loadAccount() }
+        catch { gate = .retry; self.error = "인증은 완료했지만 계정 정보를 불러오지 못했어요. 다시 시도해 주세요." }
+    }
+
+    func redeemInvite(_ input: String) async throws {
+        guard let client, let code = InputRules.invite(input) else { throw APIError(error: "초대코드를 확인해 주세요.") }
+        let valid: Bool = try await client.rpc("redeem_invite", params: ["p_code": code]).execute().value
+        guard valid else { throw APIError(error: "사용할 수 없는 초대코드예요.") }
+        try await loadAccount()
+    }
+
+    func acceptConsent(privacy: Bool, sensitive: Bool) async throws {
+        guard privacy, sensitive, let consentVersion else { throw APIError(error: "각 동의 내용을 확인해 주세요.") }
+        struct Accepted: Decodable { let ok: Bool }
+        let result: Accepted = try await api("memory-consent", body: JSONEncoder().encode(ConsentRequest(version: consentVersion, privacy: privacy, sensitive: sensitive)))
+        guard result.ok else { throw APIError(error: "동의를 저장하지 못했어요.") }
+        try await loadAccount()
+    }
+
+    func saveProfile(nickname: String, companion: String, color: String) async throws {
+        guard let client, let accountID else { throw APIError(error: "로그인이 필요해요.") }
+        let name = InputRules.name(companion)
+        guard !name.isEmpty else { throw APIError(error: "고양이 이름을 입력해 주세요.") }
+        var next = profile ?? .preview
+        next.nickname = String(nickname.trimmingCharacters(in: .whitespaces).prefix(20))
+        next.companion = name
+        next.color = color
+        let current = try await client.auth.user()
+        guard current.id == accountID else { throw APIError(error: "계정을 다시 확인해 주세요.") }
+        let value = try JSONDecoder().decode(AnyJSON.self, from: JSONEncoder().encode(ProfileEnvelope(version: 1, profile: next)))
+        let saved = try await client.auth.update(user: UserAttributes(data: ["here_profile_v1": value]))
+        guard saved.id == accountID else { throw APIError(error: "설정을 저장하지 못했어요.") }
+        profile = next
+        gate = .home
+    }
+
+    private func api<T: Decodable>(_ path: String, body: Data? = nil) async throws -> T {
+        guard !isPreview, let client else { throw APIError(error: "로그인 후 이용해 주세요.") }
+        for attempt in 0...1 {
+            let session = try await client.auth.session
+            var request = URLRequest(url: apiURL.appendingPathComponent("api/" + path))
+            request.httpMethod = body == nil ? "GET" : "POST"
+            request.httpBody = body
+            request.timeoutInterval = path == "chat" ? 125 : 20
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let response = response as? HTTPURLResponse else { throw APIError(error: "서버 응답을 확인하지 못했어요.") }
+            if response.statusCode == 401, attempt == 0 { _ = try await client.auth.refreshSession(); continue }
+            guard (200..<300).contains(response.statusCode) else {
+                throw (try? JSONDecoder().decode(APIError.self, from: data)) ?? APIError(error: "서버에 연결하지 못했어요. 잠시 뒤 다시 시도해 주세요.")
+            }
+            return try JSONDecoder().decode(T.self, from: data)
+        }
+        throw APIError(error: "로그인 상태를 다시 확인해 주세요.")
+    }
+
+    func send(_ text: String) async -> Bool {
+        guard !sending else { return false }
+        let content = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !content.isEmpty, content.count <= 8000 else { chatError = "1~8,000자까지 보낼 수 있어요."; return false }
+        guard !isPreview else { chatError = "화면 미리보기예요. 로그인하면 실제로 대화할 수 있어요."; return false }
+        sending = true
+        chatError = ""
+        let pending = ChatMessage(role: "user", content: content)
+        messages.append(pending)
+        defer { sending = false }
+        do {
+            let result: ChatReply = try await api("chat", body: JSONEncoder().encode(ChatRequest(messages: InputRules.context(messages), name: profile?.companion ?? "몽글이")))
+            messages.append(ChatMessage(role: "assistant", content: result.reply))
+            return true
+        } catch {
+            messages.removeAll { $0.id == pending.id }
+            chatError = (error as? APIError)?.error ?? "답변을 받지 못했어요. 입력한 내용은 남겨뒀어요. 다시 시도해 주세요."
+            return false
+        }
+    }
+
+    func perform(_ action: () async throws -> Void) async -> Bool {
+        guard !busy else { return false }
+        busy = true; error = ""
+        defer { busy = false }
+        do { try await action(); return true }
+        catch { self.error = (error as? APIError)?.error ?? "요청을 완료하지 못했어요. 입력 내용과 연결을 확인해 주세요."; return false }
+    }
+
+    func signOut() async {
+        guard !busy, !sending else { return }
+        if isPreview { await leavePreview(); return }
+        let ok = await perform { try await client?.auth.signOut(scope: .local) }
+        if ok { clearAccount(); gate = .login }
+    }
+
+    private func clearAccount() {
+        profile = nil; messages = []; accountID = nil; pendingInvite = nil; consentVersion = nil; chatError = ""
+    }
+}
