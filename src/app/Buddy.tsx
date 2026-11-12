@@ -13,8 +13,8 @@ export type BuddyState = "idle" | "attentive" | "listening" | "thinking" | "spea
 // 구름 정원에서 연 꾸미기 아이템. 기존 위치와 크기를 유지한다.
 type AccessoryId = "sprout" | "hat" | "scarf" | "flowers" | "crown" | "rainbow";
 function Accessory({ id, shape }: { id: AccessoryId; shape: ShapeId }) {
-  const head = shape === "round" ? { x: 120, y: 50, r: 0 } : { x: 150, y: 66, r: -6 };
-  const side = shape === "round" ? { x: 172, y: 64 } : { x: 188, y: 100 };
+  const head = shape === "round" ? { x: 114, y: 53, r: 0 } : { x: 150, y: 66, r: -6 };
+  const side = shape === "round" ? { x: 163, y: 55 } : { x: 188, y: 100 };
   const flower = (x: number, y: number, fill: string, key: number) => (
     <g key={key} transform={`translate(${x} ${y})`}>
       {[0, 72, 144, 216, 288].map((d) => <circle key={d} cx={Math.cos((d * Math.PI) / 180) * 5} cy={Math.sin((d * Math.PI) / 180) * 5} r={4.2} fill={fill} />)}
@@ -28,7 +28,7 @@ function Accessory({ id, shape }: { id: AccessoryId; shape: ShapeId }) {
       return <g transform={`translate(${head.x} ${head.y}) rotate(${head.r})`}><path d="M-30 0c0-22 13-34 30-34s30 12 30 34Z" fill="#E5484D" /><rect x="-33" y="-4" width="66" height="11" rx="5.5" fill="#F7F1EC" /><circle cy="-36" r="7" fill="#F7F1EC" /></g>;
     case "scarf":
       return shape === "round"
-        ? <g><path d="M60 182q60 26 120 0" stroke="#E8A23C" strokeWidth="15" fill="none" strokeLinecap="round" /><path d="M150 192l8 30" stroke="#E8A23C" strokeWidth="13" strokeLinecap="round" /><path d="M150 192l8 30" stroke="#F5C27A" strokeWidth="3" strokeDasharray="4 6" /></g>
+        ? <g><path d="M82 134q34 21 68 0" stroke="#E8A23C" strokeWidth="15" fill="none" strokeLinecap="round" /><path d="M139 146l8 25" stroke="#E8A23C" strokeWidth="13" strokeLinecap="round" /><path d="M139 146l8 25" stroke="#F5C27A" strokeWidth="3" strokeDasharray="4 6" /></g>
         : <g><path d="M56 170q68 18 140-4" stroke="#E8A23C" strokeWidth="15" fill="none" strokeLinecap="round" /><path d="M164 172l10 30" stroke="#E8A23C" strokeWidth="13" strokeLinecap="round" /><path d="M164 172l10 30" stroke="#F5C27A" strokeWidth="3" strokeDasharray="4 6" /></g>;
     case "flowers":
       return <g transform={`translate(${head.x} ${head.y + 2}) rotate(${head.r})`}>{[-30, -15, 0, 15, 30].map((x, i) => flower(x, Math.abs(x) * 0.25 - 4, ["#F6B4E4", "#FFFFFF", "#F9A8B8", "#FFFFFF", "#F6B4E4"][i], i))}</g>;

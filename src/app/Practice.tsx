@@ -1,5 +1,7 @@
 "use client";
 
+import { Badge } from "./ui/Controls";
+import { Button } from "./ui/Button";
 import { useState } from "react";
 import { COLORS, type ColorId } from "@/lib/onboarding";
 import { type Practice, type PracticeKind, type WeekCheck } from "@/lib/practice";
@@ -33,20 +35,20 @@ export function PracticeMini({ practices, doneIds, onOpen }: { practices: Practi
   return (
     <section aria-label="오늘 해 볼 만한 것" className="motion-safe:animate-screen-in">
       <div className="flex items-center justify-between px-1">
-        <p className="text-t2 font-medium text-[#5A6478]">오늘 해 볼 만한 것</p>
-        <span className="rounded-full bg-white/70 px-2.5 py-1 text-t1 font-medium tabular-nums text-[#1F2A55] backdrop-blur-md">{remaining ? `${remaining}개 남음` : "오늘은 다 했어요"}</span>
+        <p className="text-t2 font-medium text-ios-secondary">오늘 해 볼 만한 것</p>
+        <Badge className="tabular-nums">{remaining ? `${remaining}개 남음` : "오늘은 다 했어요"}</Badge>
       </div>
       <div className="practice-rail" role="list">
         {practices.map((p) => {
           const done = doneIds.has(p.id);
           return (
-            <button key={p.id} type="button" role="listitem" onClick={() => onOpen(p)} aria-label={`${p.title}, ${p.minutes}분${done ? ", 했어요" : ""}`} className="practice-chip ui-press flex h-14 items-center gap-3 rounded-r4 border border-white/70 bg-white/72 px-3.5 text-left shadow-[0_6px_18px_rgba(28,38,80,.06)] backdrop-blur-md">
-              <span className={`grid size-8 shrink-0 place-items-center rounded-full ${done ? "bg-[#1F2A55] text-white" : "bg-[#F2F4F8] text-[#3D4559]"}`}>{done ? <Check /> : <KindIcon kind={p.kind} size={18} />}</span>
+            <Button variant="plain" key={p.id} type="button" role="listitem" onClick={() => onOpen(p)} aria-label={`${p.title}, ${p.minutes}분${done ? ", 했어요" : ""}`} className="practice-chip ui-press flex h-14 items-center gap-3 rounded-r4 border border-white/70 bg-white/72 px-3.5 text-left shadow-[0_6px_18px_rgba(28,38,80,.06)] backdrop-blur-md">
+              <span className={`grid size-8 shrink-0 place-items-center rounded-full ${done ? "bg-[#1F2A55] text-white" : "bg-ios-group text-[#3D4559]"}`}>{done ? <Check /> : <KindIcon kind={p.kind} size={18} />}</span>
               <span className="min-w-0 flex-1">
-                <span className={`block truncate text-t4 font-medium ${done ? "text-[#5A6478] line-through decoration-[#C5CAD6]" : "text-[#1F2A55]"}`}>{p.title}</span>
-                <span className="block text-t1 text-[#5A6478]">{p.minutes}분</span>
+                <span className={`block truncate text-t4 font-medium ${done ? "text-ios-secondary line-through decoration-[#C5CAD6]" : "text-[#1F2A55]"}`}>{p.title}</span>
+                <span className="block text-t1 text-ios-secondary">{p.minutes}분</span>
               </span>
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -63,17 +65,17 @@ export function PracticeCard({ practice, name, onDo, onLater, onClose }: { pract
   return (
     <section aria-labelledby="practice-card-title" className="rounded-r5 border border-white/70 bg-white/92 p-4 shadow-[0_10px_32px_rgba(28,38,80,.12)] backdrop-blur-md motion-safe:animate-rise">
       <div className="flex items-start gap-3">
-        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#F2F4F8] text-[#1F2A55]"><KindIcon kind={practice.kind} /></span>
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-ios-group text-[#1F2A55]"><KindIcon kind={practice.kind} /></span>
         <div className="min-w-0 flex-1">
-          <p className="text-t1 text-[#5A6478]">{name}와 이야기한 뒤 해 볼 만한 작은 것</p>
+          <p className="text-t1 text-ios-secondary">{name}와 이야기한 뒤 해 볼 만한 작은 것</p>
           <h2 id="practice-card-title" className="mt-0.5 text-t5 font-bold text-[#1F2A55]">{practice.title}</h2>
-          <p className="mt-0.5 text-t2 text-[#5A6478]">{practice.minutes}분 · 안 해도 괜찮아요</p>
+          <p className="mt-0.5 text-t2 text-ios-secondary">{practice.minutes}분 · 안 해도 괜찮아요</p>
         </div>
-        <button type="button" onClick={onClose} aria-label="이 제안 닫기" className="ui-press -mt-1 -mr-1 grid size-10 shrink-0 place-items-center rounded-full text-[#5A6478]"><Icon name="close" size={18} /></button>
+        <Button variant="plain" type="button" onClick={onClose} aria-label="이 제안 닫기" className="ui-press -mt-1 -mr-1 grid size-10 shrink-0 place-items-center rounded-full text-ios-secondary"><Icon name="close" size={18} /></Button>
       </div>
       <div className="mt-3 flex gap-2">
-        <button type="button" onClick={onDo} className="ui-press h-11 flex-1 rounded-full bg-[#1F2A55] text-t4 font-bold text-white">해 볼게요</button>
-        <button type="button" onClick={onLater} className="ui-press h-11 rounded-full bg-[#F2F4F8] px-5 text-t4 font-bold text-[#1F2A55]">나중에</button>
+        <Button type="button" onClick={onDo} tone="neutral" size="medium" className="flex-1">해 볼게요</Button>
+        <Button type="button" onClick={onLater} tone="neutral" variant="tonal" size="medium">나중에</Button>
       </div>
     </section>
   );
@@ -87,13 +89,13 @@ export function PracticeSheet({ practice, color, done, onDone, onClose }: { prac
       title={practice.title}
       onClose={onClose}
       footer={done
-        ? <button type="button" onClick={onClose} className="ui-press h-14 w-full rounded-full bg-[#F2F4F8] text-t5 font-bold text-[#1F2A55]">닫기</button>
+        ? <Button variant="plain" type="button" onClick={onClose} className="ui-press h-14 w-full rounded-full bg-ios-group text-t5 font-bold text-[#1F2A55]">닫기</Button>
         : <div className="flex flex-col gap-2">
-          <button type="button" onClick={onDone} data-sfx="success" className="ui-press h-14 w-full rounded-full bg-[#1F2A55] text-t5 font-bold text-white">다 했어요</button>
-          <button type="button" onClick={onClose} className="ui-press h-11 w-full rounded-full text-t4 font-medium text-[#5A6478]">다음에 할게요</button>
+          <Button type="button" onClick={onDone} data-sfx="success" tone="neutral" fullWidth>다 했어요</Button>
+          <Button variant="plain" type="button" onClick={onClose} className="ui-press h-11 w-full rounded-full text-t4 font-medium text-ios-secondary">다음에 할게요</Button>
         </div>}
     >
-      <p className="mt-1 text-t2 text-[#5A6478]">{practice.minutes}분 · 안 해도 괜찮아요</p>
+      <p className="mt-1 text-t2 text-ios-secondary">{practice.minutes}분 · 안 해도 괜찮아요</p>
       {practice.kind === "breath" && (
         <div className="relative mx-auto mt-6 grid h-40 place-items-center" aria-hidden="true">
           <div className="breath-ring" style={{ "--breath-base": c.base, "--breath-light": c.light } as React.CSSProperties} />
@@ -106,13 +108,13 @@ export function PracticeSheet({ practice, color, done, onDone, onClose }: { prac
       <ol className="mt-5 flex flex-col gap-2.5">
         {practice.steps.map((step, i) => (
           <li key={step} className="flex items-start gap-3 text-t4 text-[#1F2A55]">
-            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#F2F4F8] text-t1 font-bold tabular-nums text-[#5A6478]">{i + 1}</span>
+            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-ios-group text-t1 font-bold tabular-nums text-ios-secondary">{i + 1}</span>
             <span className="pt-0.5">{step}</span>
           </li>
         ))}
       </ol>
-      {done && <p role="status" className="practice-done-pop mt-5 rounded-r3 bg-[#F2F4F8] px-4 py-3 text-center text-t4 font-medium text-[#1F2A55]">오늘 한 번 했어요 ✓</p>}
-      <p className="mt-5 text-t1 text-pretty text-[#5A6478]">체크는 이 기기에만 남고, 여기서 떠올린 내용은 어디에도 저장하지 않아요.</p>
+      {done && <p role="status" className="practice-done-pop mt-5 rounded-r3 bg-ios-group px-4 py-3 text-center text-t4 font-medium text-[#1F2A55]">오늘 한 번 했어요 ✓</p>}
+      <p className="mt-5 text-t1 text-pretty text-ios-secondary">체크는 이 기기에만 남고, 여기서 떠올린 내용은 어디에도 저장하지 않아요.</p>
     </Sheet>
   );
 }

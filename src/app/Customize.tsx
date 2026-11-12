@@ -1,5 +1,7 @@
 "use client";
 
+import { TextField } from "./ui/TextField";
+import { Button } from "./ui/Button";
 import { useState } from "react";
 import { ACCESSORIES, buildGarden, loadSeeds, unlockedAccessories } from "@/lib/garden";
 import { VOICES, type Profile, cleanName } from "@/lib/onboarding";
@@ -22,9 +24,9 @@ export default function Customize({ profile, onSave, onClose, saving = false, er
   return (
     <Sheet title={`${profile.companion} 바꾸기`} onClose={onClose} footer={
       <div>{error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}
-      <button disabled={saving} onClick={() => onSave({ ...draft, companion: cleanName(draft.companion) })} className="ui-press h-14 w-full rounded-full bg-cat-ink text-t5 font-bold text-white disabled:opacity-50">
+      <Button variant="plain" disabled={saving} onClick={() => onSave({ ...draft, companion: cleanName(draft.companion) })} className="ui-press h-14 w-full rounded-full bg-cat-ink text-t5 font-bold text-white disabled:opacity-50">
         {saving ? "저장 중…" : "이대로 할게요"}
-      </button></div>
+      </Button></div>
     }>
       <div className="mt-3 flex justify-center rounded-r5 py-2" style={{ backgroundColor: companionBackground(draft.color) }}>
         <Buddy shape={draft.shape} color={draft.color} accessory={draft.accessory} size={140} look={[0, 0.25]} key={`${draft.shape}-${draft.color}-${draft.accessory ?? ""}`} className="motion-safe:animate-pop" />
@@ -34,7 +36,7 @@ export default function Customize({ profile, onSave, onClose, saving = false, er
         <h3 className="mb-2 text-t4 font-bold text-cat-ink">배경 색</h3>
         <div className="flex gap-3" role="radiogroup" aria-label="배경 색">
           {COMPANION_BACKGROUNDS.map((c, i) => (
-            <button
+            <Button variant="plain"
               key={c.id}
               role="radio"
               aria-checked={draft.color === c.id}
@@ -46,7 +48,7 @@ export default function Customize({ profile, onSave, onClose, saving = false, er
               className={`ui-press size-11 rounded-full p-1 ring-offset-2 ${draft.color === c.id ? "ring-2 ring-cat-ink" : ""}`}
             >
               <span className="block size-full rounded-full border border-cat-line" style={{ background: c.surface }} />
-            </button>
+            </Button>
           ))}
         </div>
       </section>
@@ -57,11 +59,11 @@ export default function Customize({ profile, onSave, onClose, saving = false, er
           <span className="text-t2 tabular-nums text-cat-muted">{unlocked.size} / {ACCESSORIES.length} 열림</span>
         </div>
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="꾸미기">
-          <button role="radio" aria-checked={!draft.accessory} onClick={() => set({ accessory: undefined })} className={chip(!draft.accessory)}>없음</button>
+          <Button variant="plain" role="radio" aria-checked={!draft.accessory} onClick={() => set({ accessory: undefined })} className={chip(!draft.accessory)}>없음</Button>
           {ACCESSORIES.map((a, i) => {
             const open = unlocked.has(a.id);
             return (
-              <button
+              <Button variant="plain"
                 key={a.id}
                 role="radio"
                 aria-checked={draft.accessory === a.id}
@@ -71,7 +73,7 @@ export default function Customize({ profile, onSave, onClose, saving = false, er
                 className={open ? chip(draft.accessory === a.id) : "h-11 cursor-not-allowed rounded-full border border-dashed border-cat-line px-4 text-t5 font-medium text-cat-muted"}
               >
                 {open ? a.label : <span className="flex items-center gap-1"><Icon name="lock" size={14} />{a.label}</span>}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -82,7 +84,7 @@ export default function Customize({ profile, onSave, onClose, saving = false, er
         <h3 className="mb-2 text-t4 font-bold text-cat-ink">목소리</h3>
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="목소리">
           {VOICES.map((v, i) => (
-            <button
+            <Button variant="plain"
               key={v.id}
               role="radio"
               aria-checked={draft.voice === v.id}
@@ -94,22 +96,19 @@ export default function Customize({ profile, onSave, onClose, saving = false, er
               className={chip(draft.voice === v.id)}
             >
               {v.label}
-            </button>
+            </Button>
           ))}
         </div>
         <p className="mt-2 text-t3 text-pretty text-cat-muted">{VOICES.find((v) => v.id === draft.voice)?.desc} · 다음 대화부터 바뀌어요</p>
       </section>
 
       <section className="mt-5">
-        <label htmlFor="companion-name" className="mb-2 block text-t4 font-bold text-cat-ink">
-          이름
-        </label>
-        <input
+        <TextField
           id="companion-name"
+          label="이름"
           value={draft.companion}
           onChange={(e) => set({ companion: e.target.value })}
           maxLength={10}
-          className="ui-transition h-12 w-full rounded-r4 bg-cat-soft px-4 text-t5 font-medium text-cat-ink outline-0 focus:ring-2 focus:ring-cat-ink/30"
         />
       </section>
     </Sheet>

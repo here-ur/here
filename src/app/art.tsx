@@ -1,3 +1,5 @@
+import FrameworkIcon from "framework7-react/components/icon.js";
+
 // 몽글이 프로토타입의 그림(구름 캐릭터, 복숭아 언덕)과 아이콘을 그대로 옮긴 것.
 
 const CLOUD = [
@@ -88,98 +90,31 @@ export function Hills({ variant, className = "" }: { variant: keyof typeof LAYOU
   );
 }
 
-const PATHS = {
-  help: (
-    <>
-      <path d="M20 11a8 8 0 0 1-8 8H8l-5 3V11a8 8 0 0 1 17 0Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M8 10h8M8 14h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </>
-  ),
-  down: <path d="M6 9.5l6 6 6-6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />,
-  back: <path d="M14.5 6l-6 6 6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />,
-  log: <path d="M5 7h14M5 12h14M5 17h9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />,
-  mic: (
-    <>
-      <rect x="8.6" y="2.8" width="6.8" height="11.6" rx="3.4" stroke="currentColor" strokeWidth="2.2" />
-      <path d="M5.2 11.2a6.8 6.8 0 0 0 13.6 0M12 18v3" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-    </>
-  ),
-  stop: <rect x="6.5" y="6.5" width="11" height="11" rx="2.6" fill="currentColor" />,
-  micOff: (
-    <>
-      <rect x="8.6" y="2.8" width="6.8" height="11.6" rx="3.4" stroke="currentColor" strokeWidth="2.2" />
-      <path d="M5.2 11.2a6.8 6.8 0 0 0 13.6 0M12 18v3M3.5 3.5l17 17" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-    </>
-  ),
-  keyboard: (
-    <>
-      <rect x="2.6" y="5.6" width="18.8" height="12.8" rx="3.6" stroke="currentColor" strokeWidth="2.2" />
-      <circle cx="7" cy="10" r="1.25" fill="currentColor" />
-      <circle cx="10.4" cy="10" r="1.25" fill="currentColor" />
-      <circle cx="13.7" cy="10" r="1.25" fill="currentColor" />
-      <circle cx="17" cy="10" r="1.25" fill="currentColor" />
-      <path d="M8.4 14.2h7.2" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-    </>
-  ),
-  soundOn: (
-    <>
-      <path d="M3.6 9.6h3.1l4.4-3.6c.5-.4 1.2 0 1.2.6v10.8c0 .6-.7 1-1.2.6l-4.4-3.6H3.6c-.5 0-.9-.4-.9-.9v-3c0-.5.4-.9.9-.9z" fill="currentColor" />
-      <path d="M15.6 9.2a4 4 0 0 1 0 5.6M18.4 6.6a7.8 7.8 0 0 1 0 10.8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-    </>
-  ),
-  soundOff: (
-    <>
-      <path d="M3.6 9.6h3.1l4.4-3.6c.5-.4 1.2 0 1.2.6v10.8c0 .6-.7 1-1.2.6l-4.4-3.6H3.6c-.5 0-.9-.4-.9-.9v-3c0-.5.4-.9.9-.9z" fill="currentColor" />
-      <path d="M16.2 9.6l4.8 4.8M21 9.6l-4.8 4.8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-    </>
-  ),
-  send: <path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />,
-  hangUp: (
-    <path
-      d="M3.2 14.6c4.9-4.6 12.7-4.6 17.6 0 .5.5.6 1.3.2 1.9l-1.3 1.8c-.4.6-1.2.8-1.9.5l-2.6-1.2c-.5-.3-.9-.8-.9-1.4v-1.6a12.4 12.4 0 0 0-4.6 0v1.6c0 .6-.4 1.1-.9 1.4l-2.6 1.2c-.7.3-1.5.1-1.9-.5L3 16.5c-.4-.6-.3-1.4.2-1.9z"
-      fill="currentColor"
-    />
-  ),
-  captions: (
-    <>
-      <rect x="2.8" y="5.2" width="18.4" height="13.6" rx="3" stroke="currentColor" strokeWidth="2" />
-      <path d="M10.6 10.2a2.4 2.4 0 1 0 0 3.6M17.4 10.2a2.4 2.4 0 1 0 0 3.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </>
-  ),
-  info: (
-    <>
-      <circle cx="12" cy="12" r="8.6" stroke="currentColor" strokeWidth="2" />
-      <path d="M12 11v5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-      <circle cx="12" cy="7.9" r="1.2" fill="currentColor" />
-    </>
-  ),
-  lock: (
-    <>
-      <rect x="5" y="10.5" width="14" height="10" rx="3" stroke="currentColor" strokeWidth="2" />
-      <path d="M8.2 10.5V8a3.8 3.8 0 0 1 7.6 0v2.5" stroke="currentColor" strokeWidth="2" />
-    </>
-  ),
-  phone: (
-    <path
-      d="M6.6 3.8h2.5l1.3 4-1.9 1.4a11 11 0 0 0 6.3 6.3l1.4-1.9 4 1.3v2.5a2 2 0 0 1-2.2 2A16.2 16.2 0 0 1 4.6 6a2 2 0 0 1 2-2.2z"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinejoin="round"
-    />
-  ),
-  close: <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />,
-  pin: (
-    <>
-      <path d="M12 21s-6.6-5.6-6.6-11a6.6 6.6 0 0 1 13.2 0c0 5.4-6.6 11-6.6 11z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-      <circle cx="12" cy="10" r="2.4" stroke="currentColor" strokeWidth="2" />
-    </>
-  ),
-};
 
-export function Icon({ name, size = 24 }: { name: keyof typeof PATHS; size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" className="block">
-      {PATHS[name]}
-    </svg>
-  );
+const ICONS = {
+  help: "bubble_left",
+  down: "chevron_down",
+  back: "chevron_left",
+  log: "list_bullet",
+  mic: "mic",
+  stop: "stop_fill",
+  micOff: "mic_slash",
+  keyboard: "keyboard",
+  soundOn: "speaker_2",
+  soundOff: "speaker_slash",
+  send: "arrow_up",
+  hangUp: "phone_down",
+  captions: "captions_bubble",
+  info: "info_circle",
+  lock: "lock",
+  phone: "phone",
+  close: "xmark",
+  pin: "pin",
+  add: "plus",
+  menu: "line_horizontal_3",
+  library: "book",
+} as const;
+
+export function Icon({ name, size = 24 }: { name: keyof typeof ICONS; size?: number }) {
+  return <FrameworkIcon f7={ICONS[name]} size={size} aria-hidden="true" />;
 }

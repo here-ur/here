@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "./ui/Button";
+import { TextField } from "./ui/TextField";
 import { useEffect, useRef, useState } from "react";
 import {
   COLORS,
@@ -29,21 +31,21 @@ const LEAVE_MS = 150;
 
 function Next({ onClick, label = "다음", disabled }: { onClick: () => void; label?: string; disabled?: boolean }) {
   return (
-    <button type="button" onClick={onClick} disabled={disabled} aria-label={label} className="ui-press liquid-glass relative grid size-20 place-items-center rounded-full text-white disabled:[&>svg]:opacity-40">
+    <Button variant="plain" type="button" onClick={onClick} disabled={disabled} aria-label={label} className="ui-press liquid-glass relative grid size-20 place-items-center rounded-full text-white disabled:[&>svg]:opacity-40">
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M9.5 5.5l6.5 6.5-6.5 6.5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-    </button>
+    </Button>
   );
 }
 
 function Back({ onClick }: { onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} aria-label="뒤로" className="ui-press absolute top-14 left-5 grid size-11 place-items-center rounded-full bg-white/15 text-white">
+    <Button variant="plain" type="button" onClick={onClick} aria-label="뒤로" className="ui-press absolute top-14 left-5 grid size-11 place-items-center rounded-full bg-white/15 text-white">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M14.5 6l-6 6 6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-    </button>
+    </Button>
   );
 }
 
@@ -248,7 +250,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <div aria-hidden="true" className="pointer-events-none absolute -inset-1/4 bg-[radial-gradient(30%_25%_at_50%_88%,rgba(255,120,190,.12),transparent_70%)] motion-safe:animate-aurora-a [animation-delay:-11s]" />
           <div className="stars" aria-hidden="true" />
           <div aria-hidden="true" className="absolute -bottom-16 left-1/2 h-[120px] w-[220px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(255,214,150,.8),rgba(255,150,200,.5)_45%,rgba(140,170,255,.3)_70%,transparent)] blur-2xl" />
-          <button
+          <Button variant="plain"
             onClick={() => {
               setMuted(!muted);
               sfx.setMuted(!muted);
@@ -265,17 +267,17 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                 <path d="M15.6 9.2a4 4 0 0 1 0 5.6M18.4 6.6a7.8 7.8 0 0 1 0 10.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               )}
             </svg>
-          </button>
+          </Button>
         </>
       )}
 
       {step === "splash" && (
-        <button onClick={start} className={`absolute inset-0 grid place-items-center bg-[#f7f6f2] ${leaving ? "motion-safe:animate-screen-out" : ""}`} aria-label="시작">
+        <Button variant="plain" onClick={start} className={`absolute inset-0 grid place-items-center bg-[#f7f6f2] ${leaving ? "motion-safe:animate-screen-out" : ""}`} aria-label="시작">
           <span className="flex motion-safe:animate-fade items-center gap-2.5 text-t11 font-bold text-[#1e1d2b]">
             <LightCloud level={1} size={44} /> Here!
           </span>
           <span className="absolute bottom-16 text-t4 text-[#6e6c7e]">눌러서 시작하기</span>
-        </button>
+        </Button>
       )}
 
       {step === "name" && (
@@ -288,8 +290,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
         >
           <Title>뭐라고 부르면 될까요?</Title>
           <div className="liquid-glass glass-focus absolute inset-x-8 top-[206px] h-14 rounded-full" style={{ "--focus-fill": 0.14 } as React.CSSProperties}>
-            <label htmlFor="nickname" className="sr-only">이름이나 별명</label>
-            <input
+            <TextField label="이름이나 별명" hideLabel variant="plain" className="size-full"
               id="nickname"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
@@ -297,7 +298,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
               placeholder="이름이나 별명"
               autoComplete="nickname"
               enterKeyHint="next"
-              className="size-full rounded-full bg-transparent text-center text-t6 font-bold text-white outline-0 placeholder:text-[#b9b6c9]"
+              inputClassName="size-full rounded-full bg-transparent text-center text-t6 font-bold text-white outline-0 placeholder:text-[#b9b6c9]"
             />
           </div>
           <p className="absolute inset-x-6 top-[282px] text-center text-t2 text-[#8c89a0]">
@@ -369,13 +370,13 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                 </Caption>
                 <div className="flex flex-wrap justify-center gap-2" role="group" aria-label={QUESTIONS[qIndex].text}>
                   {QUESTIONS[qIndex].options.map((o, i) => (
-                    <button
+                    <Button variant="plain"
                       key={o}
                       onClick={() => answer(QUESTIONS[qIndex].id, o, i)}
                       className="ui-press h-11 rounded-full border border-white/20 bg-white/10 px-4 text-t5 font-medium backdrop-blur-md"
                     >
                       {o}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </>
@@ -431,7 +432,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <p className="absolute inset-x-0 top-[490px] text-center text-t5 font-bold">{COLORS.find((c) => c.id === color)!.label}</p>
           <div className="absolute inset-x-0 top-[530px] flex justify-center gap-4" role="radiogroup" aria-label="배경 색">
             {COLORS.map((c, i) => (
-              <button
+              <Button variant="plain"
                 key={c.id}
                 role="radio"
                 aria-checked={color === c.id}
@@ -443,7 +444,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                 className={`ui-press size-11 rounded-full p-1.5 ${color === c.id ? "ring-2 ring-white" : ""}`}
               >
                 <span className="block size-full rounded-full" style={{ background: `linear-gradient(160deg, ${c.light}, ${c.base} 70%, ${c.blob1})` }} />
-              </button>
+              </Button>
             ))}
           </div>
           <div className="absolute inset-x-0 top-[640px] flex justify-center">
@@ -461,7 +462,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           </div>
           <div className="absolute inset-x-6 top-[420px] flex items-end justify-between" role="radiogroup" aria-label="몽글이 목소리">
             {VOICES.map((v, i) => (
-              <button
+              <Button variant="plain"
                 key={v.id}
                 role="radio"
                 aria-checked={voice === v.id}
@@ -476,7 +477,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                 <span
                   className={`block size-9 rounded-r3_5 ui-transition ${voice === v.id ? "scale-110 bg-white shadow-[0_0_24px_rgba(255,255,255,.7)]" : "bg-white/35"}`}
                 />
-              </button>
+              </Button>
             ))}
           </div>
           <p className="absolute inset-x-0 top-[540px] text-center text-t5">
@@ -503,20 +504,19 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
             <Buddy shape={shape} color={color} size={170} look={[0.1, 0.65]} />
           </div>
           <div className="liquid-glass glass-focus absolute inset-x-5 bottom-10 flex h-14 items-center rounded-full pr-2 pl-6" style={{ "--focus-fill": 0.14 } as React.CSSProperties}>
-            <label htmlFor="companion" className="sr-only">몽글이 이름</label>
-            <input
+            <TextField label="몽글이 이름" hideLabel variant="plain" className="min-w-0 flex-1"
               id="companion"
               value={companion}
               onChange={(e) => setCompanion(e.target.value)}
               maxLength={10}
               enterKeyHint="done"
-              className="min-w-0 flex-1 bg-transparent text-t5 font-bold text-white outline-0"
+              inputClassName="min-w-0 flex-1 bg-transparent text-t5 font-bold text-white outline-0"
             />
-            <button aria-label="정하기" className="ui-press grid size-11 place-items-center rounded-full bg-white text-[#1e1d2b]">
+            <Button type="submit" aria-label="정하기" tone="neutral" variant="tonal" size="medium">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M6 12.5l4 4 8-9" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -524,7 +524,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
       {step === "hold" && (
         <div className={`absolute inset-0 ${screen}`}>
           <div className="absolute inset-x-0 top-[200px] flex justify-center">
-            <button
+            <Button variant="plain"
               aria-label={`${cleanName(companion)} 만나기`}
               onPointerDown={holdStart}
               onPointerUp={holdEnd}
@@ -554,7 +554,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                 />
               </svg>
               <Buddy shape={shape} color={color} size={210} look={[0, holding ? -0.3 : 0.1]} mouth={holding ? "o" : "calm"} />
-            </button>
+            </Button>
           </div>
           <p className="absolute inset-x-0 top-[500px] flex items-center justify-center gap-2 text-t5">
             <span className="-rotate-6 rounded-full bg-white px-3 py-1 font-bold text-[#1e1d2b]">꾹</span>

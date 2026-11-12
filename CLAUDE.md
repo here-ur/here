@@ -40,10 +40,8 @@ AI와 말로 이야기하고, 필요할 때 도움받기에서 실제 사람인 
 ## 디자인 기준
 
 - **화면 크기**: 기존 제품 프레임을 유지한다. `src/app/app-frame.css`의 `app-frame`은 너비 100%·최대 430px, 높이 `100dvh`·최소 640px이며 가로 중앙에 놓인다. 긴 콘텐츠는 화면 안에서 스크롤한다.
-- **파운데이션**: [SEED Design](https://github.com/daangn/seed-design)의 `@seed-design/css` **3.0.3**을 기준으로 컬러를 제외한 타이포그래피·간격·라운드·모션을 적용한다. 일반 UI의 글꼴은 SEED의 시스템 글꼴 우선 스택을 사용한다.
-- **적용 파일**: 공식 비컬러 토큰과 Tailwind 매핑은 `src/app/seed-foundation.css`, 공용 인터랙션은 `src/app/globals.css`에 둔다. `text-t*`, `rounded-r*`, `px-gutter` 같은 토큰을 사용하고, 기존 Tailwind 크기 클래스도 같은 파운데이션에 매핑한다.
-- **컬러**: 기존 제품의 컬러·그라디언트·캐릭터 표현을 유지한다. SEED의 컬러가 함께 들어오는 `base.css`·`all.css`는 통째로 불러오지 않고 공식 텍스트 레시피만 선택해서 사용한다. 패키지를 올릴 때 로컬 비컬러 토큰도 해당 버전과 맞춘다.
-- **모션**: 버튼 눌림·상태 변경은 `ui-press`·`ui-transition`, 화면·시트 진입과 퇴장은 SEED duration/easing 토큰을 사용한다. `prefers-reduced-motion`에서는 이동·반복 애니메이션과 눌림 확대·축소를 줄인다.
+- **파운데이션과 공통 UI**는 Framework7 React의 iOS 테마를 사용한다. [AGENTS.md의 Here UI 항목](AGENTS.md#here-ui)에 있는 공통 컴포넌트, 아이콘, 브라우저 검증 기준을 따른다.
+- 기존 화면의 `text-t*`, `rounded-r*`, `px-gutter`와 모션에 쓰이는 보조 토큰은 `src/app/seed-foundation.css`에서 관리한다. 캐릭터와 배경의 색상·그라디언트에는 Here의 제품 스타일을 사용한다.
 
 ## 반드시 지킬 것
 

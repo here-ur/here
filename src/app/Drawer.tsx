@@ -1,5 +1,7 @@
 "use client";
 
+import { ListRow, Switch } from "./ui/Controls";
+import { Button } from "./ui/Button";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { type Profile, josa } from "@/lib/onboarding";
 import { companionBackground } from "@/lib/companion-theme";
@@ -18,13 +20,13 @@ import { getSfxEnabled, setSfxEnabled, subscribeSfx } from "@/lib/sfx";
 function Row({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
     <li>
-      <button
+      <ListRow
         onClick={onClick}
         className="ui-press flex h-11 w-full items-center gap-3 rounded-r3 px-3 text-left text-t4 font-medium text-cat-ink hover:bg-cat-soft"
       >
         <span className="grid size-5 place-items-center">{icon}</span>
         {label}
-      </button>
+      </ListRow>
     </li>
   );
 }
@@ -39,7 +41,7 @@ const chevron = (
 function SettingRow({ children, onClick, href, danger, trailing }: { children: React.ReactNode; onClick?: () => void; href?: string; danger?: boolean; trailing?: React.ReactNode }) {
   const className = `flex min-h-11 w-full items-center justify-between gap-3 px-3.5 text-left text-t4 ${danger ? "text-[#C42A23]" : "text-cat-ink"}`;
   if (href) return <li><a href={href} className={`ui-press ${className} hover:bg-cat-paper`}>{children}{trailing}</a></li>;
-  if (onClick) return <li><button onClick={onClick} className={`ui-press ${className} hover:bg-cat-paper`}>{children}{trailing}</button></li>;
+  if (onClick) return <li><Button variant="plain" onClick={onClick} className={`ui-press ${className} hover:bg-cat-paper`}>{children}{trailing}</Button></li>;
   return <li className={className}>{children}{trailing}</li>;
 }
 
@@ -48,12 +50,9 @@ function SfxRow() {
   const on = useSyncExternalStore(subscribeSfx, getSfxEnabled, () => true);
   return (
     <li>
-      <button role="switch" aria-checked={on} onClick={() => setSfxEnabled(!on)} data-sfx="none" className="ui-press flex min-h-11 w-full items-center justify-between gap-3 px-3.5 text-left text-t4 text-cat-ink hover:bg-cat-paper">
+      <Switch checked={on} onCheckedChange={setSfxEnabled} data-sfx="none" className="ui-press flex min-h-11 w-full items-center justify-between gap-3 px-3.5 text-left text-t4 text-cat-ink hover:bg-cat-paper">
         <span>효과음<span className="ml-2 text-t2 text-cat-muted">버튼·화면 전환</span></span>
-        <span aria-hidden="true" className={`relative h-6 w-10 shrink-0 rounded-full transition-colors duration-[var(--seed-duration-d4)] ${on ? "bg-cat-ink" : "bg-cat-line"}`}>
-          <span className={`absolute top-0.5 size-5 rounded-full bg-cat-surface shadow transition-transform duration-[var(--seed-duration-d4)] ${on ? "translate-x-[18px]" : "translate-x-0.5"}`} />
-        </span>
-      </button>
+      </Switch>
     </li>
   );
 }
@@ -89,7 +88,7 @@ function ReportCard({ days, onClick }: { days: DayStat[]; onClick: () => void })
   });
   const summary = talked ? `${talked}일 이야기했어요` : "이번 달 첫 이야기를 기다려요";
   return (
-    <button onClick={onClick} aria-label={`${month}월 라이브러리 보기, ${summary}`} className="ui-press relative mt-4 flex w-full flex-wrap items-center gap-x-3 gap-y-3 rounded-r4 bg-cat-soft p-4 text-left hover:bg-cat-line">
+    <Button variant="plain" onClick={onClick} aria-label={`${month}월 라이브러리 보기, ${summary}`} className="ui-press relative mt-4 flex w-full flex-wrap items-center gap-x-3 gap-y-3 rounded-r4 bg-cat-soft p-4 text-left hover:bg-cat-line">
       <span aria-hidden="true" className="min-w-0 flex-1">
         <span className="block text-t1 text-cat-muted">{month}월 하늘</span>
         <b className="block truncate text-t3 font-bold text-cat-ink">{talked ? `${talked}일 이야기했어요` : "첫 이야기를 기다려요"}</b>
@@ -105,7 +104,7 @@ function ReportCard({ days, onClick }: { days: DayStat[]; onClick: () => void })
         })}
       </span>
       <span className="absolute top-4 right-3">{chevron}</span>
-    </button>
+    </Button>
   );
 }
 
@@ -230,23 +229,23 @@ export default function Drawer({
   const name = profile.companion;
   return (
     <div className={`absolute inset-0 z-40 ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
-      <div onClick={onClose} className={`absolute inset-0 bg-[rgba(35,32,27,.28)] backdrop-blur-[2px] transition-opacity duration-300 ease-enter ${open ? "opacity-100" : "opacity-0"}`} />
+      <div onClick={onClose} className={`absolute inset-0 here-panel-backdrop transition-opacity duration-300 ease-enter ${open ? "opacity-100" : "opacity-0"}`} />
       <nav
         ref={panelRef}
         aria-label={view === "settings" ? "설정" : "메뉴"}
         role="dialog"
         aria-modal="true"
         inert={!open}
-        className={`absolute inset-y-0 left-0 flex w-[82%] max-w-[340px] flex-col overflow-y-auto rounded-r-r6 px-gutter pt-6 pb-5 transition-transform duration-300 ease-enter ${view === "settings" ? "bg-cat-paper" : "bg-cat-surface"} ${
+        className={`here-panel absolute inset-y-0 left-0 flex w-[82%] max-w-[340px] flex-col overflow-y-auto rounded-r-r6 px-gutter pt-6 pb-5 transition-transform duration-300 ease-enter ${
           open ? "translate-x-0 shadow-[10px_0_40px_rgba(35,32,27,.12)]" : "-translate-x-full"
         }`}
       >
         {view === "menu" ? <>
           <div className="flex items-center justify-between pl-3">
             <span className="home-wordmark" aria-label="Here!">here<span aria-hidden="true">!</span></span>
-            <button onClick={onClose} aria-label="메뉴 닫기" className="ui-press grid size-10 shrink-0 place-items-center rounded-full bg-cat-soft text-cat-ink">
+            <Button variant="plain" onClick={onClose} aria-label="메뉴 닫기" className="ui-press grid size-10 shrink-0 place-items-center rounded-full bg-cat-soft text-cat-ink">
               <Icon name="close" size={18} />
-            </button>
+            </Button>
           </div>
 
           <ProfileCard profile={profile} days={days} />
@@ -267,19 +266,19 @@ export default function Drawer({
             {quota && <QuotaLine status={quota} />}
             <ul className="flex flex-col gap-0.5">
               <li>
-                <button onClick={() => setView("settings")} className="ui-press flex h-11 w-full items-center gap-3 rounded-r3 px-3 text-left text-t4 font-medium text-cat-ink hover:bg-cat-soft">
+                <Button variant="plain" onClick={() => setView("settings")} className="ui-press flex h-11 w-full items-center gap-3 rounded-r3 px-3 text-left text-t4 font-medium text-cat-ink hover:bg-cat-soft">
                   <span className="grid size-5 place-items-center">{ICONS.settings}</span>
                   <span className="flex-1">설정</span>
                   {chevron}
-                </button>
+                </Button>
               </li>
             </ul>
           </div>
         </> : <>
           <div className="flex items-center gap-2">
-            <button onClick={() => setView("menu")} aria-label="메뉴로 돌아가기" className="ui-press -ml-1.5 grid size-10 shrink-0 place-items-center rounded-full text-cat-ink hover:bg-cat-soft">
+            <Button variant="plain" onClick={() => setView("menu")} aria-label="메뉴로 돌아가기" className="ui-press -ml-1.5 grid size-10 shrink-0 place-items-center rounded-full text-cat-ink hover:bg-cat-soft">
               <Icon name="back" size={20} />
-            </button>
+            </Button>
             <h2 className="text-t5 font-bold text-cat-ink">설정</h2>
           </div>
 

@@ -1,5 +1,8 @@
 "use client";
 
+import Segmented from "framework7-react/components/segmented.js";
+import { Tab } from "./ui/Controls";
+import { Button } from "./ui/Button";
 import { useEffect, useId, useRef, useState } from "react";
 import { type Session, loadLog, loadStoredSessions } from "@/lib/log";
 import { gardenWeather } from "@/lib/garden";
@@ -59,16 +62,16 @@ function dateParts(date: string) {
 }
 
 const Header = ({ title, back, onBack, headingRef }: { title: string; back: string; onBack: () => void; headingRef?: React.Ref<HTMLHeadingElement> }) => (
-  <header className="absolute inset-x-0 top-[calc(env(safe-area-inset-top)+12px)] z-10 flex h-14 items-center justify-between px-gutter">
-    <button onClick={onBack} aria-label={back} className="ui-press grid size-12 place-items-center rounded-full bg-white/72 text-[#1F2A55] shadow-[0_2px_10px_rgba(28,38,80,.05)] backdrop-blur-md">
+  <header className="here-navbar absolute inset-x-0 top-[calc(env(safe-area-inset-top)+12px)] z-10 flex h-14 items-center justify-between px-gutter">
+    <Button variant="plain" onClick={onBack} aria-label={back} className="ui-press grid size-12 place-items-center rounded-full bg-white/72 text-[#1F2A55] shadow-[0_2px_10px_rgba(28,38,80,.05)] backdrop-blur-md">
       <Icon name="back" size={22} />
-    </button>
+    </Button>
     <h1 ref={headingRef} tabIndex={-1} className="text-t6 font-bold outline-none">{title}</h1>
     <span className="size-12" />
   </header>
 );
 
-const card = "rounded-r6 bg-white p-5 shadow-[0_6px_20px_rgba(28,38,80,.07)]";
+const card = "here-card p-5";
 // 화면이 열리거나 탭을 바꿀 때 카드가 위에서부터 차례로 올라온다(동작 줄이기에서는 움직이지 않는다).
 const STAGGER = "motion-safe:[&>*]:animate-screen-in [&>*:nth-child(2)]:[animation-delay:50ms] [&>*:nth-child(3)]:[animation-delay:100ms] [&>*:nth-child(4)]:[animation-delay:150ms] [&>*:nth-child(n+5)]:[animation-delay:200ms]";
 
@@ -176,7 +179,7 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
       {/* 인사이트(정원)는 화면 전체에 움직이는 하늘을 깔고, 카드를 반투명하게 띄운다. */}
       {mode === "insight" && <SkyBackdrop weather={gardenWeather(days, now)} color={who.color} />}
       <Header title={TITLE[mode]} back="처음 화면으로" onBack={onBack} headingRef={headingRef} />
-      {mode === "library" && <div role="tablist" aria-label="라이브러리 종류" className="absolute inset-x-gutter top-[calc(env(safe-area-inset-top)+80px)] z-10 grid grid-cols-3 gap-1 rounded-r4 bg-white/70 p-1 backdrop-blur-md motion-safe:animate-screen-in">
+      {mode === "library" && <Segmented {...{ role: "tablist", "aria-label": "라이브러리 종류" }} className="here-segmented absolute inset-x-gutter top-[calc(env(safe-area-inset-top)+80px)] z-10 grid grid-cols-3 gap-1 rounded-r4 bg-white/70 p-1 backdrop-blur-md motion-safe:animate-screen-in">
         {/* 고른 탭 뒤의 흰 칸이 탭 사이를 미끄러지듯 옮겨 간다 */}
         <span
           aria-hidden="true"
@@ -184,10 +187,9 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
           style={{ transform: `translateX(calc(${LIBRARY_TABS.findIndex((t) => t.id === tab)} * (100% + 0.25rem)))` }}
         />
         {LIBRARY_TABS.map((t, index) => (
-          <button
+          <Tab
             key={t.id}
             id={`${tabId}-${t.id}`}
-            role="tab"
             aria-selected={tab === t.id}
             aria-controls={`${tabId}-panel`}
             tabIndex={tab === t.id ? 0 : -1}
@@ -199,24 +201,24 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
               showTab(next.id);
               document.getElementById(`${tabId}-${next.id}`)?.focus();
             }}
-            className="ui-press relative h-10 rounded-r3 text-t4 font-medium text-[#5A6478] aria-selected:font-bold aria-selected:text-[#1F2A55]"
+            className="ui-press relative h-10 rounded-r3 text-t4 font-medium text-ios-secondary aria-selected:font-bold aria-selected:text-[#1F2A55]"
           >
             {t.label}
-          </button>
+          </Tab>
         ))}
-      </div>}
+      </Segmented>}
       <div ref={scrollRef} className={`absolute inset-x-0 ${mode === "library" ? "top-[calc(env(safe-area-inset-top)+140px)]" : "top-[calc(env(safe-area-inset-top)+80px)]"} bottom-0 overflow-y-auto px-gutter pb-10`}>
         {/* 인사이트는 쌓이는 정원을 먼저 보여 주고, 달마다 보는 숫자는 그 아래에 둔다. */}
         {mode === "insight" && <div className={STAGGER}><Garden who={who} days={days} now={now} onSeed={onSeed} onDecorate={onDecorate} /></div>}
         {mode === "library" && <>
         <div className="flex items-center justify-center gap-2 motion-safe:animate-screen-in">
-          <button onClick={() => setMonthIndex((i) => Math.max(0, i - 1))} disabled={monthIndex <= 0} aria-label="이전 달" className="ui-press grid size-11 place-items-center rounded-full text-[#1F2A55] disabled:opacity-30">
+          <Button variant="plain" onClick={() => setMonthIndex((i) => Math.max(0, i - 1))} disabled={monthIndex <= 0} aria-label="이전 달" className="ui-press grid size-11 place-items-center rounded-full text-[#1F2A55] disabled:opacity-30">
             <Icon name="back" size={18} />
-          </button>
+          </Button>
           <h2 aria-live="polite" className="min-w-32 text-center text-t5 font-bold tabular-nums">{current.year}년 {current.month}월</h2>
-          <button onClick={() => setMonthIndex((i) => Math.min(months.length - 1, i + 1))} disabled={monthIndex >= months.length - 1} aria-label="다음 달" className="ui-press grid size-11 place-items-center rounded-full text-[#1F2A55] disabled:opacity-30">
+          <Button variant="plain" onClick={() => setMonthIndex((i) => Math.min(months.length - 1, i + 1))} disabled={monthIndex >= months.length - 1} aria-label="다음 달" className="ui-press grid size-11 place-items-center rounded-full text-[#1F2A55] disabled:opacity-30">
             <span className="rotate-180"><Icon name="back" size={18} /></span>
-          </button>
+          </Button>
         </div>
 
         <div key={tab} id={`${tabId}-panel`} role="tabpanel" aria-labelledby={`${tabId}-${tab}`} className={STAGGER}>
@@ -229,8 +231,8 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
               지난 날마다 그날 내가 한 말을 보고 맑음·포근·흐림·비·천둥·바람 중 하나를 골라요. 이때 그날 내가 한 말을 AI 서비스로 한 번 더 보내요. 진단이 아니고, 언제든 직접 고칠 수 있어요.
             </p>
             <div className="mt-4 flex gap-2">
-              <button onClick={() => onChoice("on")} className="ui-press h-11 flex-1 rounded-full bg-[#1F2A55] text-t4 font-bold text-white">괜찮아요</button>
-              <button onClick={() => onChoice("off")} className="ui-press h-11 flex-1 rounded-full bg-[#F2F4F8] text-t4 font-bold text-[#1F2A55]">AI로 고르지 않기</button>
+              <Button onClick={() => onChoice("on")} tone="neutral" size="medium" className="flex-1">괜찮아요</Button>
+              <Button onClick={() => onChoice("off")} tone="neutral" variant="tonal" size="medium" className="flex-1">AI로 고르지 않기</Button>
             </div>
           </section>
         )}
@@ -238,13 +240,13 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
         <section className={`${card} mt-4`} aria-labelledby="report-calendar">
           <div className="flex items-baseline justify-between">
             <h3 id="report-calendar" className="text-t5 font-bold text-[#1F2A55]">하늘 달력</h3>
-            {skyState === "picking" && <span role="status" className="text-t2 text-[#5A6478]">하늘을 고르는 중…</span>}
-            {skyState === "failed" && <span role="status" className="text-t2 text-[#5A6478]">하늘을 다 고르지 못했어요</span>}
+            {skyState === "picking" && <span role="status" className="text-t2 text-ios-secondary">하늘을 고르는 중…</span>}
+            {skyState === "failed" && <span role="status" className="text-t2 text-ios-secondary">하늘을 다 고르지 못했어요</span>}
           </div>
           <table className="mt-3 w-full table-fixed border-separate border-spacing-y-1 text-center">
             <caption className="sr-only">{current.year}년 {current.month}월 하늘 달력. 날짜를 누르면 그날을 볼 수 있어요.</caption>
             <thead>
-              <tr>{WEEKDAY.map((w, i) => <th key={w} scope="col" abbr={WEEKDAY_FULL[i]} className="pb-1 text-t2 font-medium text-[#5A6478]">{w}</th>)}</tr>
+              <tr>{WEEKDAY.map((w, i) => <th key={w} scope="col" abbr={WEEKDAY_FULL[i]} className="pb-1 text-t2 font-medium text-ios-secondary">{w}</th>)}</tr>
             </thead>
             <tbody>
               {weeks.map((week, wi) => (
@@ -263,7 +265,7 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
                       : sky ? { background: SKY_LOOK[sky].tint, color: SKY_LOOK[sky].ink } : undefined;
                     return (
                       <td key={di} className="h-12 align-top">
-                        <button
+                        <Button variant="plain"
                           data-report-date={date}
                           onClick={() => { returnDate.current = date; setOpenDate(date); }}
                           aria-current={date === today ? "date" : undefined}
@@ -278,7 +280,7 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
                               <span aria-hidden="true" className="absolute -right-1.5 -bottom-1 grid size-[18px] place-items-center rounded-full bg-white shadow-[0_1px_3px_rgba(28,38,80,.15)]"><SkyIcon id={sky} size={13} /></span>
                             ) : null}
                           </span>
-                        </button>
+                        </Button>
                       </td>
                     );
                   })}
@@ -288,7 +290,7 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
           </table>
           <p className="mt-2 text-t1 text-[#8A91A3]">
             {AI_NOTE}
-            {choice === "off" && <> · <button onClick={() => onChoice("on")} className="ui-press font-medium text-[#1F2A55] underline underline-offset-4">AI로 고르기 켜기</button></>}
+            {choice === "off" && <> · <Button variant="plain" onClick={() => onChoice("on")} className="ui-press font-medium text-[#1F2A55] underline underline-offset-4">AI로 고르기 켜기</Button></>}
           </p>
         </section>
 
@@ -300,7 +302,7 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
                 <li key={s.id} className="flex items-center gap-3">
                   <SkyDot id={s.id} size={26} />
                   <span className="w-9 text-t3 font-medium text-[#1F2A55]">{s.label}</span>
-                  <span aria-hidden="true" className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#F2F4F8]">
+                  <span aria-hidden="true" className="h-2.5 flex-1 overflow-hidden rounded-full bg-ios-group">
                     <span className="block h-full rounded-full" style={{ width: `${(s.count / maxSky) * 100}%`, background: SKY_LOOK[s.id].ink }} />
                   </span>
                   <span className="w-8 text-right text-t3 tabular-nums text-[#3D4559]">{s.count}일</span>
@@ -323,7 +325,7 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
             ["내가 한 말", view.said, "번"],
           ].map(([label, value, unit]) => (
             <div key={label} className="rounded-r5 bg-white px-3 py-4 text-center shadow-[0_4px_16px_rgba(28,38,80,.05)]">
-              <dt className="text-t2 text-[#5A6478]">{label}</dt>
+              <dt className="text-t2 text-ios-secondary">{label}</dt>
               <dd className="mt-1 text-t8 font-bold tabular-nums text-[#1F2A55]">{value}<span className="ml-0.5 text-t3 font-medium">{unit}</span></dd>
             </div>
           ))}
@@ -332,31 +334,31 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
         <section className={`${card} mt-4`} aria-labelledby="report-words">
           <div className="flex items-baseline justify-between">
             <h3 id="report-words" className="text-t5 font-bold text-[#1F2A55]">자주 한 말</h3>
-            <span className="text-t2 text-[#5A6478]">이 기기에서만 세요</span>
+            <span className="text-t2 text-ios-secondary">이 기기에서만 세요</span>
           </div>
           {enough && view.words.length > 0 ? (
             <ul className="mt-3 flex flex-wrap gap-2">
               {view.words.map((w) => (
-                <li key={w.word} className="rounded-full bg-[#F2F4F8] px-3 py-2 text-t3 text-[#1F2A55]">
-                  {w.word} <span className="tabular-nums text-[#5A6478]">{w.count}번</span>
+                <li key={w.word} className="rounded-full bg-ios-group px-3 py-2 text-t3 text-[#1F2A55]">
+                  {w.word} <span className="tabular-nums text-ios-secondary">{w.count}번</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="mt-3 text-t3 text-[#5A6478]">이야기가 더 쌓이면 자주 한 말을 보여 줄게요.</p>
+            <p className="mt-3 text-t3 text-ios-secondary">이야기가 더 쌓이면 자주 한 말을 보여 줄게요.</p>
           )}
-          <p className="mt-3 text-t2 text-[#5A6478]">AI에는 보내지 않아요. 단어만 세서 가끔 어색한 말이 나올 수 있어요.</p>
+          <p className="mt-3 text-t2 text-ios-secondary">AI에는 보내지 않아요. 단어만 세서 가끔 어색한 말이 나올 수 있어요.</p>
         </section>
 
         {enough && (
           <section className={`${card} mt-4`} aria-labelledby="report-hours">
             <h3 id="report-hours" className="text-t5 font-bold text-[#1F2A55]">이야기한 시간대</h3>
-            <p className="mt-1 text-t2 text-[#5A6478]">내가 말한 때로 셌어요.</p>
+            <p className="mt-1 text-t2 text-ios-secondary">내가 말한 때로 셌어요.</p>
             <ul className="mt-4 grid grid-cols-4 items-end gap-3">
               {view.buckets.map((b) => (
                 <li key={b.id} className="flex flex-col items-center gap-1.5">
                   <span className="text-t2 tabular-nums text-[#3D4559]">{b.count}번</span>
-                  <span aria-hidden="true" className="flex h-20 w-full items-end overflow-hidden rounded-t-r3 bg-[#F2F4F8]">
+                  <span aria-hidden="true" className="flex h-20 w-full items-end overflow-hidden rounded-t-r3 bg-ios-group">
                     <span className="block w-full rounded-t-r3" style={{ height: `${Math.max(6, (b.count / maxBucket) * 100)}%`, background: b.id === peakBucket.id && b.count ? deep : "#C9CFDB" }} />
                   </span>
                   <span className="text-t3 font-medium text-[#1F2A55]">{b.label}</span>
@@ -376,13 +378,13 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
                   <span aria-hidden="true" className="flex min-h-7 flex-col-reverse items-center gap-1">
                     {row.skies.flatMap((s) => Array.from({ length: s.count }, (_, i) => <SkyDot key={`${s.id}-${i}`} id={s.id} size={24} />))}
                   </span>
-                  <span aria-hidden="true" className="text-t2 text-[#5A6478]">{WEEKDAY[row.weekday]}</span>
+                  <span aria-hidden="true" className="text-t2 text-ios-secondary">{WEEKDAY[row.weekday]}</span>
                 </li>
               ))}
             </ul>
             {standout && <p className="mt-3 text-t3 text-[#3D4559]">{WEEKDAY_FULL[standout.weekday]}에 {skyLabel(standout.sky)} 하늘이 {standout.count}번 다녀갔어요.</p>}
-          </> : <p className="mt-3 text-t3 text-[#5A6478]">하늘이 있는 날이 생기면 요일마다 모아 보여 줄게요.</p>}
-          <p className="mt-3 text-t2 text-[#5A6478]">하늘이 없는 날과 109 안내가 나왔던 날은 빼고 셌어요.</p>
+          </> : <p className="mt-3 text-t3 text-ios-secondary">하늘이 있는 날이 생기면 요일마다 모아 보여 줄게요.</p>}
+          <p className="mt-3 text-t2 text-ios-secondary">하늘이 없는 날과 109 안내가 나왔던 날은 빼고 셌어요.</p>
         </section>
         </>}
 
@@ -396,7 +398,7 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
                 const when = hour === null ? "" : ` · ${hourLabel(hour).period} ${hourLabel(hour).text}쯤`;
                 return (
                   <li key={day.date}>
-                    <button
+                    <Button variant="plain"
                       data-report-date={day.date}
                       onClick={() => { returnDate.current = day.date; setOpenDate(day.date); }}
                       className="ui-press flex min-h-16 w-full items-center gap-3 rounded-r5 bg-white px-4 py-3 text-left shadow-[0_4px_16px_rgba(28,38,80,.05)]"
@@ -410,31 +412,31 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
                       )}
                       <span className="min-w-0 flex-1">
                         <span className="block text-t4 font-bold text-[#1F2A55]">
-                          {m}월 {d}일 {WEEKDAY_FULL[weekday]}{day.date === today && <span className="ml-1.5 text-t2 font-medium text-[#5A6478]">오늘</span>}
+                          {m}월 {d}일 {WEEKDAY_FULL[weekday]}{day.date === today && <span className="ml-1.5 text-t2 font-medium text-ios-secondary">오늘</span>}
                         </span>
-                        <span className="text-t2 tabular-nums text-[#5A6478]">
+                        <span className="text-t2 tabular-nums text-ios-secondary">
                           {day.crisis ? "109 안내가 나왔던 날" : sky ? skyLabel(sky) : "하늘 없음"} · 내가 한 말 {day.said}번{when}
                         </span>
                       </span>
                       <span className="rotate-180 text-[#8A91A3]"><Icon name="back" size={16} /></span>
-                    </button>
+                    </Button>
                   </li>
                 );
               })}
             </ul>
           ) : (
-            <p className="mt-6 text-center text-t3 text-[#5A6478]">{current.month}월엔 이야기한 날이 없어요.</p>
+            <p className="mt-6 text-center text-t3 text-ios-secondary">{current.month}월엔 이야기한 날이 없어요.</p>
           )}
 
-          <button onClick={onArchive} className="ui-press mt-4 flex min-h-14 w-full items-center justify-between rounded-r5 bg-white px-5 text-left shadow-[0_4px_16px_rgba(28,38,80,.05)]">
-            <span className="text-t5 font-bold text-[#1F2A55]">대화 기록 모두 보기 <span className="ml-1 text-t3 font-medium text-[#5A6478]">최근 30일</span></span>
-            <span className="rotate-180 text-[#5A6478]"><Icon name="back" size={18} /></span>
-          </button>
+          <Button variant="plain" onClick={onArchive} className="ui-press mt-4 flex min-h-14 w-full items-center justify-between rounded-r5 bg-white px-5 text-left shadow-[0_4px_16px_rgba(28,38,80,.05)]">
+            <span className="text-t5 font-bold text-[#1F2A55]">대화 기록 모두 보기 <span className="ml-1 text-t3 font-medium text-ios-secondary">최근 30일</span></span>
+            <span className="rotate-180 text-ios-secondary"><Icon name="back" size={18} /></span>
+          </Button>
         </>}
         </div>
         </>}
 
-        <p className="mt-6 flex items-start justify-center gap-text text-t2 text-pretty text-[#5A6478]">
+        <p className="mt-6 flex items-start justify-center gap-text text-t2 text-pretty text-ios-secondary">
           <Icon name="lock" size={14} />
           대화 원문은 이 기기에 30일, 날짜별 숫자(하늘·자주 한 말 포함)는 최대 1년 남아요. 서버에는 저장하지 않아요.
         </p>
@@ -469,17 +471,17 @@ function DayView({
               <div className="flex items-center gap-4">
                 {sky ? <SkyDot id={sky} size={64} /> : <span className="size-16 shrink-0 rounded-full border-2 border-dashed border-[#B8BFCC]" />}
                 <div className="min-w-0 flex-1">
-                  <p className="text-t2 text-[#5A6478]">그날의 하늘</p>
+                  <p className="text-t2 text-ios-secondary">그날의 하늘</p>
                   <p className="mt-0.5 flex items-center gap-2 text-t7 font-bold text-[#1F2A55]">
                     {sky ? skyLabel(sky) : "아직 없어요"}
-                    {sky && <span className="rounded-full bg-[#F2F4F8] px-2 py-0.5 text-t1 font-bold text-[#5A6478]">{day?.mine ? "내가 고침" : "AI가 고름"}</span>}
+                    {sky && <span className="rounded-full bg-ios-group px-2 py-0.5 text-t1 font-bold text-ios-secondary">{day?.mine ? "내가 고침" : "AI가 고름"}</span>}
                   </p>
                 </div>
-                <button onClick={() => onSheet(true)} className="ui-press h-11 shrink-0 rounded-full bg-[#F2F4F8] px-4 text-t4 font-bold text-[#1F2A55]">
+                <Button variant="plain" onClick={() => onSheet(true)} className="ui-press h-11 shrink-0 rounded-full bg-ios-group px-4 text-t4 font-bold text-[#1F2A55]">
                   {sky ? "바꾸기" : "직접 고르기"}
-                </button>
+                </Button>
               </div>
-              <p className="mt-4 rounded-r3 bg-[#F2F4F8] p-3 text-t2 text-pretty text-[#3D4559]">
+              <p className="mt-4 rounded-r3 bg-ios-group p-3 text-t2 text-pretty text-[#3D4559]">
                 {sky && day?.mine ? "내가 고친 하늘이에요. " : ""}
                 {sky && !day?.mine ? "AI가 그날 내가 한 말을 보고 고른 하늘이에요 · 진단이 아니에요. " : ""}
                 {!sky && date >= today && choice === "on" ? "오늘 하늘은 하루가 지나면 AI가 골라 둘게요. " : ""}
@@ -493,11 +495,11 @@ function DayView({
 
         <dl className="mt-4 grid grid-cols-2 gap-2">
           <div className="rounded-r5 bg-white px-4 py-4 shadow-[0_4px_16px_rgba(28,38,80,.05)]">
-            <dt className="text-t2 text-[#5A6478]">내가 한 말</dt>
+            <dt className="text-t2 text-ios-secondary">내가 한 말</dt>
             <dd className="mt-1 text-t7 font-bold tabular-nums text-[#1F2A55]">{day?.said ?? 0}번</dd>
           </div>
           <div className="rounded-r5 bg-white px-4 py-4 shadow-[0_4px_16px_rgba(28,38,80,.05)]">
-            <dt className="text-t2 text-[#5A6478]">대화 시작</dt>
+            <dt className="text-t2 text-ios-secondary">대화 시작</dt>
             <dd className="mt-1 text-t7 font-bold tabular-nums text-[#1F2A55]">{started ? started.toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" }) : "—"}</dd>
           </div>
         </dl>
@@ -517,10 +519,10 @@ function DayView({
               </div>
             </details>
           ) : (
-            <p className="mt-3 rounded-r3 bg-[#F2F4F8] p-3 text-t3 text-pretty text-[#3D4559]">30일이 지나 대화 원문은 사라지고 숫자만 남아 있어요.</p>
+            <p className="mt-3 rounded-r3 bg-ios-group p-3 text-t3 text-pretty text-[#3D4559]">30일이 지나 대화 원문은 사라지고 숫자만 남아 있어요.</p>
           )}
         </section>
-        <p className="mt-6 text-center text-t1 text-[#5A6478]">{josa(who.name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
+        <p className="mt-6 text-center text-t1 text-ios-secondary">{josa(who.name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
       </div>
       {sheet && day && !day.crisis && (
         <SkySheet date={date} day={day} deep={deep} onClose={() => onSheet(false)} onPick={(next) => { onPickSky(date, next); onSheet(false); }} />
@@ -540,8 +542,8 @@ function SkySheet({ date, day, deep, onClose, onPick }: { date: string; day: Day
       onClose={onClose}
       footer={(
         <div className="flex flex-col gap-2">
-          <button onClick={() => onPick(picked)} disabled={!picked || picked === effectiveSky(day)} className="ui-press h-14 w-full rounded-full bg-[#1F2A55] text-t5 font-bold text-white disabled:opacity-40">이 하늘로 바꾸기</button>
-          {day.mine && <button onClick={() => onPick(undefined)} className="ui-press h-12 w-full rounded-full bg-[#F2F4F8] text-t4 font-bold text-[#1F2A55]">{ai ? "AI가 고른 하늘로 되돌리기" : "고른 하늘 지우기"}</button>}
+          <Button onClick={() => onPick(picked)} disabled={!picked || picked === effectiveSky(day)} tone="neutral" fullWidth>이 하늘로 바꾸기</Button>
+          {day.mine && <Button variant="plain" onClick={() => onPick(undefined)} className="ui-press h-12 w-full rounded-full bg-ios-group text-t4 font-bold text-[#1F2A55]">{ai ? "AI가 고른 하늘로 되돌리기" : "고른 하늘 지우기"}</Button>}
         </div>
       )}
     >
@@ -558,12 +560,12 @@ function SkySheet({ date, day, deep, onClose, onPick }: { date: string; day: Day
               <input type="radio" name={name} value={s.id} checked={picked === s.id} onChange={() => setPicked(s.id)} className="sr-only" />
               <SkyDot id={s.id} size={44} />
               <span className="text-t4 font-medium text-[#1F2A55]">{s.label}</span>
-              {ai === s.id && <span className="absolute top-1.5 right-1.5 rounded-full bg-white px-1.5 text-t1 font-bold text-[#5A6478] shadow-[0_1px_4px_rgba(28,38,80,.1)]">AI가 고름</span>}
+              {ai === s.id && <span className="absolute top-1.5 right-1.5 rounded-full bg-white px-1.5 text-t1 font-bold text-ios-secondary shadow-[0_1px_4px_rgba(28,38,80,.1)]">AI가 고름</span>}
             </label>
           ))}
         </div>
       </fieldset>
-      <p className="mt-3 text-t2 text-[#5A6478]">바꾼 하늘은 이 기기에만 남아요.</p>
+      <p className="mt-3 text-t2 text-ios-secondary">바꾼 하늘은 이 기기에만 남아요.</p>
     </Sheet>
   );
 }

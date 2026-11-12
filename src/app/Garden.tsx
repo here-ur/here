@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "./ui/Button";
 import { useState, useSyncExternalStore } from "react";
 import { COLLECTION_SIZE, type Garden as GardenState, type Plant, SEASON_LABEL, SEEDS, type SeasonId, TOPICS, WEATHER, buildGarden, dailySeeds, gardenAlbum, loadSeeds, pickSeed, seasonOf, speciesKey, speciesName, splineVariables } from "@/lib/garden";
 import { type DayStat, type SkyId, SKIES, localDate } from "@/lib/report";
@@ -18,7 +19,7 @@ const SKY_BG: Record<SkyId | "none", string> = {
 };
 
 // 하늘 배경 위에 반투명하게 떠 있는 카드
-const card = "rounded-r6 border border-white/70 bg-white/72 p-5 shadow-[0_8px_28px_rgba(28,38,80,.07)] backdrop-blur-xl";
+const card = "here-card p-5";
 
 // 3D를 그릴 수 있는 기기인지 한 번만 확인한다. 안 되면 2D 그림을 쓴다.
 let webglCache: boolean | null = null;
@@ -146,7 +147,7 @@ export default function Garden({ who, days, now, onSeed, splineUrl = GARDEN_SPLI
         <div className={`${card} relative -mt-4 !p-4`}>
         <div className="flex items-end justify-between px-1">
           <div>
-            <p className="text-t2 font-medium text-[#5A6478]">{SEASON_LABEL[season]}의 구름 정원</p>
+            <p className="text-t2 font-medium text-ios-secondary">{SEASON_LABEL[season]}의 구름 정원</p>
             <h3 id="garden-title" className="text-t9 font-bold text-[#1F2A55]">{garden.level.name}</h3>
           </div>
           <span className="rounded-full bg-[#1F2A55] px-3 py-1.5 text-t3 font-bold text-white">Lv.{garden.level.level}</span>
@@ -171,7 +172,7 @@ export default function Garden({ who, days, now, onSeed, splineUrl = GARDEN_SPLI
       <section className={`${card} mt-4`} aria-labelledby="garden-seeds">
         <div className="flex items-baseline justify-between">
           <h3 id="garden-seeds" className="text-t5 font-bold text-[#1F2A55]">오늘의 이야기 씨앗</h3>
-          <span className="text-t2 text-[#5A6478]">{todaySeed ? "심었어요" : "하나 골라요"}</span>
+          <span className="text-t2 text-ios-secondary">{todaySeed ? "심었어요" : "하나 골라요"}</span>
         </div>
         <ul className="mt-3 grid grid-cols-3 gap-2">
           {offered.map((seed) => {
@@ -179,7 +180,7 @@ export default function Garden({ who, days, now, onSeed, splineUrl = GARDEN_SPLI
             const picked = todaySeed?.id === seed.id;
             return (
               <li key={seed.id}>
-                <button
+                <Button variant="plain"
                   onClick={() => { pickSeed(seed.id, now); setSeeds(loadSeeds()); onSeed?.(seed.opener); }}
                   aria-pressed={picked}
                   data-sfx={picked ? "tap" : "success"}
@@ -187,7 +188,7 @@ export default function Garden({ who, days, now, onSeed, splineUrl = GARDEN_SPLI
                 >
                   <span className="text-t3 font-bold leading-snug">{seed.label}</span>
                   <span className={`mt-2 text-t1 ${picked ? "text-white/70" : "text-[#8A91A3]"}`}>{picked ? "심은 씨앗" : `${topic.plant} 씨앗`}</span>
-                </button>
+                </Button>
               </li>
             );
           })}
@@ -197,7 +198,7 @@ export default function Garden({ who, days, now, onSeed, splineUrl = GARDEN_SPLI
       <section className={`${card} mt-4`} aria-labelledby="garden-book">
         <div className="flex items-baseline justify-between">
           <h3 id="garden-book" className="text-t5 font-bold text-[#1F2A55]">정원 도감</h3>
-          <span className="text-t2 tabular-nums text-[#5A6478]">{garden.collected.size} / {COLLECTION_SIZE}</span>
+          <span className="text-t2 tabular-nums text-ios-secondary">{garden.collected.size} / {COLLECTION_SIZE}</span>
         </div>
         <table className="mt-3 w-full table-fixed border-separate border-spacing-1 text-center">
           <caption className="sr-only">주제와 그날 하늘로 모으는 식물 도감</caption>
@@ -235,7 +236,7 @@ export default function Garden({ who, days, now, onSeed, splineUrl = GARDEN_SPLI
               <li key={page.key} className="w-40 shrink-0 snap-start">
                 <Scene who={who} garden={page.garden} season={page.season} small />
                 <p className="mt-1.5 text-t3 font-bold text-[#1F2A55]">{page.label}</p>
-                <p className="text-t1 text-[#5A6478]">{page.garden.level.name} · 식물 {page.garden.plants.length}개</p>
+                <p className="text-t1 text-ios-secondary">{page.garden.level.name} · 식물 {page.garden.plants.length}개</p>
               </li>
             ))}
           </ul>

@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "./ui/Button";
 import { safeHomeOpener, withHomeOpener } from "@/lib/home-opener";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -20,6 +21,7 @@ import AuthGate from "./AuthGate";
 import MicrophonePermissionGate from "./MicrophonePermissionGate";
 import { Crisis109 } from "./Conversation";
 import ComingSoon from "./ComingSoon";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
 import Customize from "./Customize";
 import Drawer from "./Drawer";
 import Friends from "./Friends";
@@ -64,6 +66,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   const [crisis, setCrisis] = useState(false);
   const [suggest, setSuggest] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [helpSoon, setHelpSoon] = useState(false); // 도움받기는 준비 중: 화면은 두고 안내 창만 띄운다
   const [micOn, setMicOn] = useState(true);
   const [hearing, setHearing] = useState(false); // 음성에서 사용자가 말하는 중(몽글이 반응용)
@@ -77,6 +80,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   const [reportMode, setReportMode] = useState<ReportMode | null>(null);
   const [searchSources, setSearchSources] = useState<SearchSource[]>([]);
   const [showMenu, setShowMenu] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [customizing, setCustomizing] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
   const [captions, setCaptions] = useState(false); // 자막: 소리가 안 들릴 때를 위해
@@ -262,7 +266,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
       setHasMic(conn.hasMic);
       if (!conn.hasMic) {
         openText();
-        setError("마이크를 쓸 수 없어서 글로 적을 수 있게 열어 뒀어요.");
+        setError(conn.microphoneError ?? "마이크를 쓸 수 없어서 글로 적을 수 있게 열어 뒀어요.");
       }
     } catch (e) {
       if (!current()) return;
@@ -361,13 +365,13 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   }
 
   if (profile === undefined) return <main className="app-frame flex flex-col items-center justify-center gap-4 bg-cat-surface px-7">
-    {account.error && <><p role="alert">{account.error}</p><button onClick={account.retry} className="min-h-12 px-5">다시 확인</button></>}
+    {account.error && <><p role="alert">{account.error}</p><Button variant="plain" onClick={account.retry} className="min-h-12 px-5">다시 확인</Button></>}
   </main>;
 
   if (profile === null) {
     if (pendingProfile) return <main className="app-frame flex flex-col items-center justify-center gap-4 bg-cat-surface px-7">
       <p role="status">{account.error || "설정을 저장하고 있어요…"}</p>
-      {account.error && <button disabled={account.saving} className="min-h-12 px-5" onClick={() => { void account.save(pendingProfile); }}>다시 저장</button>}
+      {account.error && <Button variant="plain" disabled={account.saving} className="min-h-12 px-5" onClick={() => { void account.save(pendingProfile); }}>다시 저장</Button>}
     </main>;
     return (
       <Onboarding
@@ -405,6 +409,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
         onText={openText}
         onLibrary={() => openReport("library")}
         onMenu={() => { setHomeGreetingDone(true); setShowMenu(true); }}
+        menuButtonRef={menuButtonRef}
         outputLevel={outputLevel}
         outputShape={outputShape}
         chat={{
@@ -440,7 +445,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
         } : undefined}
         notice={started && (crisis || suggest) ? <div className="flex flex-col items-center gap-3">
           {crisis && <Crisis109 className="w-full" />}
-          {suggest && <button onClick={openHelpSoon} className="ui-press h-11 rounded-full bg-white px-5 text-t4 font-bold text-[#1F2A55]">도움받기</button>}
+          {suggest && <Button variant="plain" onClick={openHelpSoon} className="ui-press h-11 rounded-full bg-white px-5 text-t4 font-bold text-[#1F2A55]">도움받기</Button>}
         </div> : undefined}
       >
         {!homeGreetingDone && headlineReady && openingLine && <HomeEntryGreeting name={profile.companion} voice={profile.voice} opener={openingLine} onOutputLevel={onOutputLevel} onSpeaking={setHomeSpeaking} onDone={setHomeGreetingDone} />}
@@ -470,16 +475,30 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
           }}
           onSignOut={() => { void signOut(); }}
           loadQuota={async (signal) => requestQuotaStatus(await accessToken(), signal)}
-          onReset={() => {
-            if (!window.confirm(`${profile.companion} 설정을 지우고 처음부터 다시 할까요? 대화 기록은 그대로 남아요.`)) return;
-            void account.save(null).then(ok => { if (ok) { setPendingProfile(null); location.reload(); } });
-          }}
+          onReset={() => setConfirmReset(true)}
         />
+        {confirmReset && (
+          <ConfirmDialog
+            title={`${profile.companion} 설정을 초기화할까요?`}
+            description="캐릭터 설정을 지우고 처음부터 다시 시작해요. 대화 기록은 그대로 남아요."
+            confirmLabel="초기화"
+            onCancel={() => setConfirmReset(false)}
+            onConfirm={() => {
+              setConfirmReset(false);
+              void account.save(null).then(ok => { if (ok) { setPendingProfile(null); location.reload(); } });
+            }}
+          />
+        )}
         {helpSoon && (
           <ComingSoon
             title="도움받기를 준비하고 있어요"
             body="실제 상담사와 이야기할 수 있는 방법을 준비 중이에요. 열리면 이곳에서 알려 드릴게요."
-            onClose={() => setHelpSoon(false)}
+            onClose={() => {
+              setHelpSoon(false);
+              requestAnimationFrame(() => {
+                if (document.activeElement === document.body) menuButtonRef.current?.focus({ preventScroll: true });
+              });
+            }}
           />
         )}
         {customizing && (
