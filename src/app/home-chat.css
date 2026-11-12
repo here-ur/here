@@ -80,7 +80,7 @@
 .home-character-wrap .home-buddy-expanded { transform: scale(1.1); }
 /* 글 대화 중에는 큰 몽글이를 감추고, 작은 몽글이가 입력창 위에 앉는다. */
 .home-character-wrap[data-hidden="true"] { opacity: 0; scale: .8; pointer-events: none; }
-.home-chat-buddy { align-self: flex-start; margin: 0 0 -34px 14px; position: relative; z-index: 1; pointer-events: none; }
+.home-chat-buddy { align-self: flex-start; margin: 0 0 -37px 14px; position: relative; z-index: 1; pointer-events: none; }
 @media (prefers-reduced-motion: no-preference) {
   .home-chat-buddy { animation: pop var(--seed-duration-d5) var(--seed-timing-function-enter) both; }
 }
