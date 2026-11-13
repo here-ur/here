@@ -3,6 +3,8 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Binding var seedDraft: String?
+    @State private var preferencesOpen = false
     @State private var chatOpen = false
     @State private var settingsOpen = false
     @State private var draft = ""
@@ -46,8 +48,10 @@ struct HomeView: View {
                     Menu {
                         Button("캐릭터 설정", systemImage: "slider.horizontal.3") { settingsOpen = true }.disabled(model.isPreview || voice.active)
                         Button("새 대화", systemImage: "square.and.pencil") { model.messages = []; model.chatError = "" }.disabled(model.sending || voice.active)
-                        Button("로그아웃", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) { voice.stop(); Task { await model.signOut() } }.disabled(model.sending || model.busy)
-                    } label: { Image(systemName: "line.3.horizontal").accessibilityLabel("메뉴") }
+                        Button("도움받기 · 준비 중", systemImage: "heart") {}.disabled(true)
+                        Divider()
+                        Button("설정", systemImage: "gearshape") { voice.stop(); preferencesOpen = true }
+                    } label: { Image(systemName: "gearshape").accessibilityLabel("캐릭터와 설정") }
                     .buttonBorderShape(.circle)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -60,6 +64,11 @@ struct HomeView: View {
                 }
             }
             .sheet(isPresented: $settingsOpen) { ProfileView() }
+            .sheet(isPresented: $preferencesOpen) { SettingsView() }
+            .onChange(of: seedDraft, initial: true) { _, text in
+                guard let text else { return }
+                voice.stop(); draft = text; chatOpen = true; focused = true; seedDraft = nil
+            }
             .onDisappear { voice.stop() }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .background { voice.stop() }
@@ -190,6 +199,7 @@ struct HomeView: View {
             let persona = ["name": name, "voice": model.profile?.voice ?? "marin"]
             Task {
                 await voice.start(request: request, persona: persona) { role, text in
+                    model.recordConversation(role: role, text: text)
                     model.messages.append(ChatMessage(role: role, content: text))
                 }
             }

@@ -29,7 +29,7 @@ struct RootView: View {
             case .invite: InviteView()
             case .consent: ConsentView()
             case .profile: ProfileView()
-            case .home: HomeView()
+            case .home: MainTabView()
             case .retry, .configuration:
                 ContentUnavailableView {
                     Label("잠깐, 연결을 확인할게요", systemImage: "wifi.exclamationmark")

@@ -15,6 +15,10 @@ final class AppModel: ObservableObject {
     @Published var chatError = ""
     @Published var isPreview = false
     @Published var consentVersion: String?
+    @Published private(set) var journal: [JournalDay] = []
+    @Published var journalError = ""
+    private let journalStore = JournalStore()
+    private var journalLoaded = false
     private let client: SupabaseClient?
     private let apiURL: URL
     private var restored = false
@@ -41,9 +45,11 @@ final class AppModel: ObservableObject {
 
     func startPreview() {
         #if DEBUG
+        clearAccount()
         isPreview = true
         profile = .preview
         messages = []
+        journal = []; journalError = ""
         error = ""
         gate = .home
         #endif
@@ -101,7 +107,12 @@ final class AppModel: ObservableObject {
         guard let client else { throw APIError(error: "개발 연결 설정이 없어요.") }
         accountStage = "계정 인증"
         let user = try await client.auth.user()
-        if accountID != user.id { messages = []; profile = nil }
+        if accountID != user.id {
+            messages = []; profile = nil; journal = []; journalError = ""
+            journalLoaded = false
+            do { journal = try journalStore.load(account: user.id); journalLoaded = true }
+            catch { journalError = "이 기기의 기록을 불러오지 못했어요. 다시 시도해 주세요." }
+        }
         accountID = user.id
         struct Member: Decodable { let user_id: UUID }
         accountStage = "회원 정보"
@@ -192,6 +203,8 @@ final class AppModel: ObservableObject {
         let saved = try await client.auth.update(user: UserAttributes(data: ["here_profile_v1": value]))
         guard saved.id == accountID else { throw APIError(error: "설정을 저장하지 못했어요.") }
         profile = next
+        // Same public nickname used by the web friends list; no phone number shared.
+        _ = try? await client.rpc("set_display_name", params: ["p_name": next.nickname]).execute()
         gate = .home
     }
 
@@ -240,6 +253,7 @@ final class AppModel: ObservableObject {
         let content = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !content.isEmpty, content.count <= 8000 else { chatError = "1~8,000자까지 보낼 수 있어요."; return false }
         guard !isPreview else { chatError = "화면 미리보기예요. 로그인하면 실제로 대화할 수 있어요."; return false }
+        let startedAccount = accountID
         sending = true
         chatError = ""
         let pending = ChatMessage(role: "user", content: content)
@@ -247,6 +261,9 @@ final class AppModel: ObservableObject {
         defer { sending = false }
         do {
             let result: ChatReply = try await api("chat", body: JSONEncoder().encode(ChatRequest(messages: InputRules.context(messages), name: profile?.companion ?? "몽글이")))
+            guard accountID == startedAccount, !isPreview else { return false }
+            recordConversation(role: "user", text: content, crisis: result.crisis)
+            recordConversation(role: "assistant", text: result.reply)
             messages.append(ChatMessage(role: "assistant", content: result.reply))
             return true
         } catch {
@@ -271,6 +288,71 @@ final class AppModel: ObservableObject {
         if ok { clearAccount(); gate = .login }
     }
 
+    func recordConversation(role: String, text: String, crisis: Bool = false, now: Date = Date()) {
+        guard !isPreview, accountID != nil, gate == .home else { return }
+        let date = JournalCalendar.key(now)
+        var day = journal.first(where: { $0.date == date }) ?? JournalDay(date: date)
+        day.record(role: role, text: text, crisis: crisis, hour: JournalCalendar.calendar.component(.hour, from: now))
+        updateJournal(day)
+    }
+
+    func setSky(_ sky: DaySky?, date: String) {
+        guard !isPreview, JournalCalendar.date(date) != nil, date <= JournalCalendar.key(Date()) else { return }
+        var day = journal.first(where: { $0.date == date }) ?? JournalDay(date: date)
+        day.sky = sky
+        updateJournal(day)
+    }
+
+    func chooseSeed(_ seed: StorySeed) {
+        guard !isPreview else { return }
+        let date = JournalCalendar.key(Date())
+        var day = journal.first(where: { $0.date == date }) ?? JournalDay(date: date)
+        day.seed = seed.id
+        updateJournal(day)
+    }
+
+    func retryJournal() {
+        guard let accountID, !isPreview else { return }
+        do {
+            if !journalLoaded { journal = try journalStore.load(account: accountID); journalLoaded = true }
+            else { try journalStore.save(journal, account: accountID) }
+            journalError = ""
+        }
+        catch { journalError = "기록을 저장하지 못했어요. 기기 저장 공간을 확인해 주세요." }
+    }
+
+    private func updateJournal(_ day: JournalDay) {
+        guard let accountID, !isPreview, journalLoaded else { return }
+        journal.removeAll { $0.date == day.date }
+        journal.append(day); journal.sort { $0.date < $1.date }
+        do { try journalStore.save(journal, account: accountID); journalError = "" }
+        catch { journalError = "기록을 저장하지 못했어요. 기기 저장 공간을 확인해 주세요." }
+    }
+
+    func loadMemories() async throws -> MemoriesResponse {
+        guard let accountID, !isPreview else { throw APIError(error: "로그인하면 저장된 기억을 확인할 수 있어요.") }
+        return try JSONDecoder().decode(MemoriesResponse.self, from: await apiData("memories", account: accountID))
+    }
+
+    func loadQuota() async throws -> ConversationQuota {
+        guard let accountID, !isPreview else { throw APIError(error: "로그인 후 확인할 수 있어요.") }
+        return try JSONDecoder().decode(ConversationQuota.self, from: await apiData("quota", account: accountID))
+    }
+
+    func loadFriends() async throws -> [MemberFriend] {
+        guard let client, let original = accountID, !isPreview, gate == .home else { throw APIError(error: "로그인하면 친구 목록을 볼 수 있어요.") }
+        let rows: [MemberFriend] = try await client.rpc("list_friends").execute().value
+        guard accountID == original, !isPreview else { throw VoiceAccessError.revoked }
+        return rows
+    }
+
+    func createFriendInvite() async throws -> String {
+        guard let client, let original = accountID, !isPreview, gate == .home else { throw APIError(error: "로그인하면 친구를 초대할 수 있어요.") }
+        let code: String = try await client.rpc("create_invite_code").execute().value
+        guard accountID == original, !isPreview, InputRules.invite(code) != nil else { throw VoiceAccessError.revoked }
+        return code
+    }
+
     private func accountFailure(_ error: Error) -> String {
         #if DEBUG
         // Diagnostics intentionally exclude tokens, phone numbers and metadata values.
@@ -285,6 +367,6 @@ final class AppModel: ObservableObject {
     }
 
     private func clearAccount() {
-        profile = nil; messages = []; accountID = nil; pendingInvite = nil; consentVersion = nil; chatError = ""
+        profile = nil; messages = []; journal = []; journalError = ""; journalLoaded = false; accountID = nil; pendingInvite = nil; consentVersion = nil; chatError = ""
     }
 }
