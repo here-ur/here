@@ -30,6 +30,8 @@
   box-shadow: var(--f7-glass-shadow);
   backdrop-filter: blur(var(--f7-bars-translucent-blur, 20px));
 }
+/* 대화하기: 헤더의 다른 버튼보다 한 단계 작게(공통 Button의 최소 높이 44px를 이 자리에서만 낮춘다). */
+.character-header .character-talk.here-button.button { min-height: 36px; height: 36px; padding: 0 14px; font-size: var(--seed-font-size-t4); }
 .character-tabs { position: relative; display: flex; gap: 2px; padding: 4px; border-radius: 999px; }
 .character-tabs button {
   display: grid;
@@ -101,9 +103,9 @@
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 40px;
-  padding: 0 14px 0 8px;
+  gap: 2px;
+  height: 36px;
+  padding: 0 12px 0 6px;
   border-radius: 999px;
   background: rgb(255 255 255 / 90%);
   color: var(--color-cat-ink);
@@ -113,8 +115,8 @@
 .character-go {
   width: auto;
   white-space: nowrap;
-  height: 44px;
-  padding: 0 18px;
+  height: 36px;
+  padding: 0 14px;
   border-radius: 999px;
   background: var(--color-cat-accent, #E8A23C);
   color: #fff;

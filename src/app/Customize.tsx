@@ -150,7 +150,7 @@ export default function Customize({ profile, onSave, onClose, onChat, onGarden, 
             </button>
           ))}
         </div>
-        <Button size="medium" onClick={() => void leave(onChat ?? onClose)} disabled={saving} className="w-auto shrink-0 px-4">대화하기</Button>
+        <Button size="medium" onClick={() => void leave(onChat ?? onClose)} disabled={saving} className="character-talk w-auto shrink-0">대화하기</Button>
       </header>
 
       <div className="character-scene">
