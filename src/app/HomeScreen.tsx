@@ -17,6 +17,8 @@ import "./home-chat.css";
 
 // 글 버튼은 홈을 유지한 채 입력창만 펼친다. 음성 버튼은 같은 자리에서 확장한다.
 // 첨부(+)와 오른쪽 위 라이브러리 버튼은 11/11 회의에서 홈에서 빼기로 했다. 라이브러리는 메뉴로 들어간다.
+// 홈은 메뉴 버튼·몽글이·하단 버튼만 남긴다. 몽글이가 AI라는 안내는 온보딩·메뉴·대화 기록에서 보여 준다.
+// 하단 버튼 줄은 기본·글·음성 어느 상태에서도 같은 높이에 둔다(시선이 오르내리지 않게).
 
 export type HomeVoiceControls = {
   state: BuddyState;
@@ -201,9 +203,6 @@ export default function HomeScreen({
         <Button ref={menuButtonRef} variant="plain" onClick={onMenu} aria-label="메뉴" className="home-chrome-button ui-press grid size-12 place-items-center rounded-full">
           <Icon name="menu" size={22} />
         </Button>
-        <span className="home-wordmark" aria-label="Here!">here<span aria-hidden="true">!</span></span>
-        {/* 오른쪽 버튼을 뺀 자리. 워드마크가 가운데에 남도록 메뉴 버튼과 같은 너비를 비워 둔다. */}
-        <span aria-hidden="true" className="size-12" />
       </header>
 
       <div className={`home-intro absolute inset-x-gutter top-[18%] flex flex-col items-center text-center ${voice || hasMessages ? "home-intro-quiet" : ""}`} aria-hidden={Boolean(voice || hasMessages)}>
@@ -215,7 +214,6 @@ export default function HomeScreen({
       {spotlight && resting && !notice && <div className="absolute inset-x-gutter top-[calc(env(safe-area-inset-top)+76px)] z-10">{spotlight}</div>}
 
       {hasMessages && <div ref={messageListRef} className="home-messages" role="log" aria-label="대화 내용" aria-live="polite" aria-relevant="additions text">
-        <p className="pt-1 text-center text-t1 text-cat-muted">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
         {chat.messages.map((message, index) => <div key={index} className="home-message" data-role={message.role}>
           <span className="sr-only">{message.role === "user" ? "나" : name}: </span>
           {message.role === "assistant" ? <div className="home-message-bubble"><ChatMarkdown content={message.content} /></div> : <p>{message.content}</p>}
@@ -321,7 +319,6 @@ export default function HomeScreen({
             </div>
           </div>
         </div>
-        {!chatting && <p className="text-center text-t1 text-cat-muted">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>}
       </div>
       {voice?.listening && <div className="home-listening-wave" aria-hidden="true">{Array.from({ length: 32 }, (_, index) => <i key={index} style={{ animationDelay: `${(index % 7) * -160}ms`, backgroundColor: "var(--color-cat-accent)" }} />)}</div>}
       {children}

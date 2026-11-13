@@ -27,14 +27,20 @@
   border-radius: 32px;
   transition: background-color 240ms ease, box-shadow 240ms ease;
 }
-/* 펼친 입력창은 Framework7 iOS Messagebar 모양을 따른다: 글자 칸 자체가 유리 알약이고, 버튼은 그 바깥에 둔다. */
+/* 펼친 입력창은 Framework7 iOS Messagebar 모양을 따른다: 글자 칸 자체가 유리 알약이고, 버튼은 그 바깥에 둔다.
+ * 기본 40px·17px은 옆의 56px 보내기·마이크 버튼에 비해 낮아서, 높이를 버튼과 맞추고 글자는 16px로 줄인다. */
+.home-compose {
+  --f7-messagebar-textarea-height: 56px;
+  --f7-messagebar-textarea-font-size: 16px;
+  --f7-messagebar-textarea-line-height: 22px;
+  --f7-messagebar-textarea-padding: 17px 20px;
+}
 .home-compose-content {
   display: flex;
   align-items: flex-end;
   gap: 8px;
   flex: 1;
   min-width: 0;
-  padding-block: 8px;
   opacity: 0;
   translate: 8px 0;
   transition: opacity 180ms ease, translate 240ms cubic-bezier(.2,0,0,1);
@@ -58,11 +64,14 @@
   outline: none;
 }
 .home-compose textarea::placeholder { color: var(--f7-messagebar-textarea-placeholder-color, rgb(0 0 0 / 40%)); }
-/* 글자 칸의 파란 포커스 테두리 대신, 알약 둘레에 호박색 테두리를 얹어 포커스를 보여 준다. */
-.home-compose textarea:focus-visible { outline: none; box-shadow: var(--f7-glass-shadow), 0 0 0 2px var(--color-cat-accent); }
+/* 선택됐을 때 색 테두리 대신 알약을 불투명한 흰색으로 채워, iOS처럼 조용히 포커스를 보여 준다. */
+.home-compose textarea { transition: background-color 160ms ease; }
+.home-compose textarea:focus-visible { outline: none; background: #fff; }
+/* 닫기는 40px 동그라미로 두고, 한 줄일 때 56px 칸의 세로 가운데에 오게 한다(여러 줄이면 아래에 붙는다). */
 .home-compose-close {
-  width: var(--f7-messagebar-textarea-height, 40px);
-  height: var(--f7-messagebar-textarea-height, 40px);
+  width: 40px;
+  height: 40px;
+  margin-bottom: 8px;
   background: var(--f7-glass-bg-color);
   box-shadow: var(--f7-glass-shadow);
   backdrop-filter: blur(var(--f7-bars-translucent-blur));
@@ -97,8 +106,6 @@
 @media (prefers-reduced-motion: no-preference) {
   .home-chat-buddy { animation: pop var(--seed-duration-d5) var(--seed-timing-function-enter) both; }
 }
-/* 글 대화 중에는 하단 여백을 줄인다. */
-.home-screen[data-text-open="true"] .home-bottom { bottom: max(20px, calc(env(safe-area-inset-bottom) + 8px)); gap: 8px; }
 .home-screen:has(.home-safety) .home-messages { top: 255px; }
 @container (max-height: 640px) {
   .home-screen[data-text-open="true"] .home-header { top: calc(env(safe-area-inset-top) + 8px); }

@@ -1,2 +1,25 @@
-@layer framework7, theme, base, components, utilities;
+@layer framework7, theme, base, framework7-restore, components, utilities;
 @import "../../../node_modules/framework7/framework7-bundle.css" layer(framework7);
+
+/* Tailwind 기본 스타일(base 레이어)은 모든 요소의 margin·padding을 0으로 지운다. Framework7 레이어가 그보다 앞이라
+ * Framework7 목록(List·ListItem·ListInput)의 iOS 여백도 함께 사라진다. 목록에 필요한 여백만 base 뒤에서 다시 적용한다.
+ * 값은 framework7-bundle.css의 같은 규칙을 그대로 옮겼다. 다른 Framework7 컴포넌트를 쓸 때도 여백이 사라지면 여기에 더한다. */
+@layer framework7-restore {
+  .list .item-content { padding-left: calc(var(--f7-list-item-padding-horizontal) + var(--f7-safe-area-left)); }
+  .list .item-inner {
+    padding-top: var(--f7-list-item-padding-vertical);
+    padding-bottom: var(--f7-list-item-padding-vertical);
+    padding-right: calc(var(--f7-list-item-padding-horizontal) + var(--f7-safe-area-right));
+  }
+  .list .item-link .item-inner { padding-right: calc(var(--f7-list-chevron-icon-area) + var(--f7-list-item-padding-horizontal) + var(--f7-safe-area-right)); }
+  .list .item-link .item-inner::before { margin-top: -7px; } /* 화살표(›)를 줄 가운데에 */
+  .list .item-link.no-chevron .item-inner, .list .no-chevron .item-link .item-inner { padding-right: calc(var(--f7-list-item-padding-horizontal) + var(--f7-safe-area-right)); }
+  .list .item-media { padding-top: var(--f7-list-item-padding-vertical); padding-bottom: var(--f7-list-item-padding-vertical); }
+  .list .item-media + .item-inner { margin-left: var(--f7-list-item-media-margin); }
+  .list .item-after { margin-left: auto; padding-left: var(--f7-list-item-after-padding); }
+  .ios label.item-radio:not(.item-radio-icon-start) .item-inner { padding-right: calc(var(--f7-safe-area-right) + 36px); }
+  .ios .item-input-wrap {
+    margin-top: calc(-1 * var(--f7-list-item-padding-vertical));
+    margin-bottom: calc(-1 * var(--f7-list-item-padding-vertical));
+  }
+}

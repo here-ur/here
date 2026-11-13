@@ -1,7 +1,9 @@
 "use client";
 
-import { ListRow, Switch } from "./ui/Controls";
+import { Switch } from "./ui/Controls";
 import { Button } from "./ui/Button";
+import List from "framework7-react/components/list.js";
+import ListItem from "framework7-react/components/list-item.js";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { type Profile, josa } from "@/lib/onboarding";
 import { companionBackground } from "@/lib/companion-theme";
@@ -17,17 +19,20 @@ import { getSfxEnabled, setSfxEnabled, subscribeSfx } from "@/lib/sfx";
 // (진단처럼 읽힐 수 있거나, 서버 저장이 필요한 것). 대화량·하늘 같은 숫자는 기기에만 두는 리포트에서 보여 준다.
 // 메뉴에는 자주 쓰는 것만 두고, 약관·버전·계정 동작은 같은 패널 안의 설정 화면으로 모은다.
 
-function Row({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+/** 메뉴·설정의 한 줄: Framework7 iOS 목록의 링크 줄(ListItem link).
+ * List는 바로 아래 자식이 ListItem일 때만 <ul>로 감싸므로, 이 줄을 쓰는 List 안에는 <ul>을 직접 둔다.
+ * href="#"은 Framework7이 기본 이동을 막고 라우터로 넘기지 않아서, 누르면 onClick만 실행된다. */
+function MenuItem({ icon, title, onClick, danger, chevron = true }: { icon?: React.ReactNode; title: string; onClick: () => void; danger?: boolean; chevron?: boolean }) {
   return (
-    <li>
-      <ListRow
-        onClick={onClick}
-        className="ui-press flex h-11 w-full items-center gap-3 rounded-r3 px-3 text-left text-t4 font-medium text-cat-ink hover:bg-cat-soft"
-      >
-        <span className="grid size-5 place-items-center">{icon}</span>
-        {label}
-      </ListRow>
-    </li>
+    <ListItem
+      link="#"
+      noChevron={!chevron}
+      title={title}
+      className={danger ? "here-menu-danger" : undefined}
+      onClick={(event: React.MouseEvent) => { event.preventDefault(); onClick(); }}
+    >
+      {icon && <span slot="media" className="grid size-5 place-items-center text-cat-ink">{icon}</span>}
+    </ListItem>
   );
 }
 
@@ -37,21 +42,14 @@ const chevron = (
   </svg>
 );
 
-/** 설정 화면의 한 줄. 링크·버튼·값 표시를 같은 모양으로 맞춘다. */
-function SettingRow({ children, onClick, href, danger, trailing }: { children: React.ReactNode; onClick?: () => void; href?: string; danger?: boolean; trailing?: React.ReactNode }) {
-  const className = `flex min-h-11 w-full items-center justify-between gap-3 px-3.5 text-left text-t4 ${danger ? "text-[#C42A23]" : "text-cat-ink"}`;
-  if (href) return <li><a href={href} className={`ui-press ${className} hover:bg-cat-paper`}>{children}{trailing}</a></li>;
-  if (onClick) return <li><Button variant="plain" onClick={onClick} className={`ui-press ${className} hover:bg-cat-paper`}>{children}{trailing}</Button></li>;
-  return <li className={className}>{children}{trailing}</li>;
-}
-
-/** 효과음 켬/끔. 이 기기에만 저장한다. 음성 대화 중에는 설정과 상관없이 쉰다. */
+/** 효과음 켬/끔. 이 기기에만 저장한다. 음성 대화 중에는 설정과 상관없이 쉰다.
+ * 기존 Switch(키보드·스크린리더 동작 검증됨)를 Framework7 목록 한 줄 모양으로 둔다. */
 function SfxRow() {
   const on = useSyncExternalStore(subscribeSfx, getSfxEnabled, () => true);
   return (
     <li>
-      <Switch checked={on} onCheckedChange={setSfxEnabled} data-sfx="none" className="ui-press flex min-h-11 w-full items-center justify-between gap-3 px-3.5 text-left text-t4 text-cat-ink hover:bg-cat-paper">
-        <span>효과음<span className="ml-2 text-t2 text-cat-muted">버튼·화면 전환</span></span>
+      <Switch checked={on} onCheckedChange={setSfxEnabled} data-sfx="none" className="here-menu-row flex min-h-[var(--f7-list-item-min-height,44px)] w-full items-center justify-between gap-3 px-4 text-left text-cat-ink">
+        <span className="text-t4 font-medium">효과음<span className="ml-2 text-t2 text-cat-muted">버튼·화면 전환</span></span>
       </Switch>
     </li>
   );
@@ -88,7 +86,7 @@ function ReportCard({ days, onClick }: { days: DayStat[]; onClick: () => void })
   });
   const summary = talked ? `${talked}일 이야기했어요` : "이번 달 첫 이야기를 기다려요";
   return (
-    <Button variant="plain" onClick={onClick} aria-label={`${month}월 라이브러리 보기, ${summary}`} className="ui-press relative mt-4 flex w-full flex-wrap items-center gap-x-3 gap-y-3 rounded-r4 bg-cat-soft p-4 text-left hover:bg-cat-line">
+    <Button variant="plain" onClick={onClick} aria-label={`${month}월 라이브러리 보기, ${summary}`} className="here-menu-card relative mt-4 flex w-full flex-wrap items-center gap-x-3 gap-y-3 rounded-r4 p-4 text-left">
       <span aria-hidden="true" className="min-w-0 flex-1">
         <span className="block text-t1 text-cat-muted">{month}월 하늘</span>
         <b className="block truncate text-t3 font-bold text-cat-ink">{talked ? `${talked}일 이야기했어요` : "첫 이야기를 기다려요"}</b>
@@ -97,10 +95,10 @@ function ReportCard({ days, onClick }: { days: DayStat[]; onClick: () => void })
       <span aria-hidden="true" className="flex w-full items-center gap-2">
         {week.map(({ day }, index) => {
           const sky = day && !day.crisis ? effectiveSky(day) : undefined;
-          const today = index === 6 ? "ring-[1.5px] ring-cat-ink/30 ring-offset-1 ring-offset-cat-soft" : "";
+          const today = index === 6 ? "ring-[1.5px] ring-cat-ink/30 ring-offset-1 ring-offset-white" : "";
           return sky
             ? <span key={index} className={`rounded-full ${today}`}><SkyDot id={sky} size={18} /></span>
-            : <span key={index} className={`grid size-[18px] place-items-center rounded-full ${day ? "bg-cat-surface" : "border border-dashed border-cat-line"} ${today}`}>{day && <i className="size-1 rounded-full bg-cat-muted" />}</span>;
+            : <span key={index} className={`grid size-[18px] place-items-center rounded-full ${day ? "bg-cat-soft" : "border border-dashed border-cat-line"} ${today}`}>{day && <i className="size-1 rounded-full bg-cat-muted" />}</span>;
         })}
       </span>
       <span className="absolute top-4 right-3">{chevron}</span>
@@ -115,7 +113,7 @@ function QuotaLine({ status }: { status: QuotaStatus }) {
   const resetText = `${reset.getHours() < 12 ? "오전" : "오후"} ${reset.getHours() % 12 || 12}시${reset.getMinutes() ? ` ${reset.getMinutes()}분` : ""}에 다시 채워져요`;
   const counts = `글 ${chatLeft}번 · 음성 ${voiceLeft}번`;
   return (
-    <div role="group" aria-label={state === "out" ? `오늘 대화를 다 했어요. ${resetText}` : `오늘 남은 대화: ${counts}`} className="px-3 pt-2 pb-2">
+    <div role="group" aria-label={state === "out" ? `오늘 대화를 다 했어요. ${resetText}` : `오늘 남은 대화: ${counts}`} className="px-4 pb-3">
       <span aria-hidden="true" className="block h-1.5 overflow-hidden rounded-full bg-cat-soft">
         <span className="block h-full rounded-full transition-[width] duration-[var(--seed-duration-d6)]" style={{ width: `${Math.round(ratio * 100)}%`, background: state === "low" ? "#E8A23C" : "var(--color-cat-ink)" }} />
       </span>
@@ -236,7 +234,7 @@ export default function Drawer({
         role="dialog"
         aria-modal="true"
         inert={!open}
-        className={`here-panel absolute inset-y-0 left-0 flex w-[82%] max-w-[340px] flex-col overflow-y-auto rounded-r-r6 px-gutter pt-6 pb-5 transition-transform duration-300 ease-enter ${
+        className={`here-panel here-drawer here-list-compact absolute inset-y-0 left-0 flex w-[82%] max-w-[340px] flex-col overflow-y-auto rounded-r-r6 px-gutter pt-6 pb-5 transition-transform duration-300 ease-enter ${
           open ? "translate-x-0 shadow-[10px_0_40px_rgba(35,32,27,.12)]" : "-translate-x-full"
         }`}
       >
@@ -252,27 +250,27 @@ export default function Drawer({
 
           <ReportCard days={days} onClick={onLibrary} />
 
-          <ul className="mt-3 flex flex-col gap-0.5">
-            <Row onClick={onInsight} label="구름 정원" icon={ICONS.insight} />
-            <Row onClick={onLibrary} label="라이브러리" icon={ICONS.library} />
-            <Row onClick={onFriends} label="친구" icon={ICONS.friends} />
-            <Row onClick={onHelp} label="도움받기" icon={ICONS.help} />
-            <li role="separator" aria-hidden="true" className="my-1.5 ml-3 h-px w-1/3 bg-cat-line" />
-            <Row onClick={onCustomize} label="캐릭터" icon={ICONS.character} />
-          </ul>
-
-
-          <div className="mt-auto border-t border-cat-line pt-2">
-            {quota && <QuotaLine status={quota} />}
-            <ul className="flex flex-col gap-0.5">
-              <li>
-                <Button variant="plain" onClick={() => setView("settings")} className="ui-press flex h-11 w-full items-center gap-3 rounded-r3 px-3 text-left text-t4 font-medium text-cat-ink hover:bg-cat-soft">
-                  <span className="grid size-5 place-items-center">{ICONS.settings}</span>
-                  <span className="flex-1">설정</span>
-                  {chevron}
-                </Button>
-              </li>
+          <List strong inset dividersIos className="mt-4">
+            <ul>
+              <MenuItem onClick={onInsight} title="구름 정원" icon={ICONS.insight} />
+              <MenuItem onClick={onLibrary} title="라이브러리" icon={ICONS.library} />
+              <MenuItem onClick={onFriends} title="친구" icon={ICONS.friends} />
+              <MenuItem onClick={onHelp} title="도움받기" icon={ICONS.help} />
             </ul>
+          </List>
+          <List strong inset dividersIos className="mt-3">
+            <ul>
+              <MenuItem onClick={onCustomize} title="캐릭터" icon={ICONS.character} />
+            </ul>
+          </List>
+
+          <div className="mt-auto pt-6">
+            {quota && <QuotaLine status={quota} />}
+            <List strong inset dividersIos>
+              <ul>
+                <MenuItem onClick={() => setView("settings")} title="설정" icon={ICONS.settings} />
+              </ul>
+            </List>
           </div>
         </> : <>
           <div className="flex items-center gap-2">
@@ -282,21 +280,27 @@ export default function Drawer({
             <h2 className="text-t5 font-bold text-cat-ink">설정</h2>
           </div>
 
-          <ul className="mt-4 overflow-hidden rounded-r3 bg-cat-surface">
-            {/* 문서가 아직 없어서 링크 자리만 둔다 */}
-            <SettingRow href="#" trailing={chevron}>이용약관</SettingRow>
-            <SettingRow href="#" trailing={chevron}>개인정보 처리방침</SettingRow>
-            <SettingRow trailing={<span className="text-t3 tabular-nums text-cat-muted">0.1.0</span>}>앱 버전</SettingRow>
-          </ul>
+          <List strong inset dividersIos className="mt-4">
+            <ul>
+              {/* 문서가 아직 없어서 링크 자리만 둔다 */}
+              <MenuItem onClick={() => {}} title="이용약관" />
+              <MenuItem onClick={() => {}} title="개인정보 처리방침" />
+              <ListItem title="앱 버전" after="0.1.0" />
+            </ul>
+          </List>
 
-          <ul className="mt-3 overflow-hidden rounded-r3 bg-cat-surface">
-            <SfxRow />
-          </ul>
+          <List strong inset className="mt-3">
+            <ul>
+              <SfxRow />
+            </ul>
+          </List>
 
-          <ul className="mt-3 overflow-hidden rounded-r3 bg-cat-surface">
-            <SettingRow onClick={onSignOut}>로그아웃</SettingRow>
-            <SettingRow onClick={onReset} danger>{name} 처음부터 다시 만들기</SettingRow>
-          </ul>
+          <List strong inset dividersIos className="mt-3">
+            <ul>
+              <MenuItem onClick={onSignOut} title="로그아웃" chevron={false} />
+              <MenuItem onClick={onReset} title={`${name} 처음부터 다시 만들기`} danger chevron={false} />
+            </ul>
+          </List>
 
           <p className="mt-auto px-2 pt-6 text-t2 text-cat-muted">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
         </>}
