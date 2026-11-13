@@ -93,9 +93,7 @@
 .here-list-row { min-height: 44px; }
 
 .here-button:focus-visible,
-.here-button-plain:focus-visible,
-.here-field__input:focus-visible,
-.here-textarea:focus-visible {
+.here-button-plain:focus-visible {
   outline: 2px solid var(--f7-theme-color);
   outline-offset: 2px;
 }
@@ -230,6 +228,7 @@
   --f7-list-item-title-font-weight: 500;
   --f7-list-item-min-height: 44px;
   --f7-list-item-padding-vertical: 8px;
+  --f7-input-height: 44px; /* 목록 줄 높이와 같게 해야 입력 글자가 가운데에 온다 */
 }
 .here-panel.here-drawer {
   --f7-list-link-pressed-bg-color: rgb(0 0 0 / 8%);
@@ -250,3 +249,11 @@
 .here-drawer .list .item-link:focus-visible,
 .here-drawer .list .here-menu-row:focus-visible,
 .here-drawer .here-menu-card:focus-visible { outline: 2px solid var(--color-cat-ink); outline-offset: -2px; }
+
+/* 글자 입력칸은 선택돼도 사각 외곽선을 그리지 않는다(전역 보라 외곽선·Framework7 파랑 외곽선 모두).
+ * 대신 칸의 모양을 따라 테두리만 진해진다: 상자 입력칸은 칸 테두리, 목록 안 입력칸(ListInput)은 묶음 둘레,
+ * 유리 입력창(온보딩·대화 기록)은 기존 glass-focus, 홈 입력창은 칸이 흰색으로 채워진다. */
+:is(input:not([type="checkbox"], [type="radio"], [type="range"]), textarea):focus-visible { outline: none; }
+.here-field[data-variant="box"] .here-field__input { transition: border-color 120ms ease, box-shadow 120ms ease; }
+.here-field[data-variant="box"] .here-field__input:focus { border-color: var(--color-cat-ink); box-shadow: 0 0 0 1px var(--color-cat-ink); }
+.list ul:has(.item-input input:focus) { box-shadow: 0 0 0 2px var(--color-cat-ink); }

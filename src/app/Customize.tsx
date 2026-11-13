@@ -1,111 +1,221 @@
 "use client";
 
-import { Button } from "./ui/Button";
-import { useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import List from "framework7-react/components/list.js";
 import ListItem from "framework7-react/components/list-item.js";
-import ListInput from "framework7-react/components/list-input.js";
-import { ACCESSORIES, buildGarden, loadSeeds, unlockedAccessories } from "@/lib/garden";
+import { ACCESSORIES, buildGarden, loadSeeds, unlockedAccessories, type AccessoryId } from "@/lib/garden";
 import { VOICES, type Profile, cleanName } from "@/lib/onboarding";
 import { COMPANION_BACKGROUNDS, companionBackground } from "@/lib/companion-theme";
 import { loadReport } from "@/lib/report";
 import * as sfx from "@/lib/sound";
+import type { CatExpression } from "@/lib/cat-expression";
+import { Button } from "./ui/Button";
+import { TextField } from "./ui/TextField";
+import { Dialog } from "./ui/Dialog";
 import { Icon } from "./art";
-import Buddy from "./Buddy";
-import Sheet from "./Sheet";
+import AccessoryArt from "./AccessoryArt";
+import Buddy, { type BuddyState } from "./Buddy";
+import { useVoicePreview } from "./use-voice-preview";
+import "./character-page.css";
 
-// 시트 안의 Framework7 강조색(목록 체크·지우기 버튼)을 파랑 대신 몽글이와 같은 검정 계열로 맞춘다.
+// Framework7 강조색(목록 체크·지우기 버튼·기본 버튼)을 파랑 대신 고양이와 같은 검정으로 맞춘다.
 const INK_THEME = { "--f7-theme-color": "var(--color-cat-ink)", "--f7-theme-color-rgb": "41, 41, 39" } as CSSProperties;
 
-function SectionTitle({ children, trailing, htmlFor }: { children: React.ReactNode; trailing?: React.ReactNode; htmlFor?: string }) {
-  const className = "text-t3 font-semibold text-cat-muted";
-  return (
-    <div className="mb-1.5 flex items-baseline justify-between px-4">
-      {htmlFor ? <label htmlFor={htmlFor} className={className}>{children}</label> : <h3 className={className}>{children}</h3>}
-      {trailing}
-    </div>
-  );
-}
+type Tab = "accessory" | "background" | "voice";
+const TABS: { id: Tab; label: string; icon: "sparkles" | "paintbrush" | "soundOn" }[] = [
+  { id: "accessory", label: "꾸미기", icon: "sparkles" },
+  { id: "background", label: "배경", icon: "paintbrush" },
+  { id: "voice", label: "목소리", icon: "soundOn" },
+];
+// 꾸미기 부위. 아이콘은 그 부위의 대표 아이템 그림을 쓴다.
+const PARTS: { id: string; label: string; icon: AccessoryId; items: AccessoryId[] }[] = [
+  { id: "head", label: "머리", icon: "hat", items: ["hat", "flowers", "crown"] },
+  { id: "neck", label: "목", icon: "scarf", items: ["scarf"] },
+  { id: "deco", label: "장식", icon: "sprout", items: ["sprout", "rainbow"] },
+];
 
-/** 몽글이 바꾸기: 온보딩에서 고른 빛·꾸미기·목소리·이름을 언제든 다시 고른다. 위에서 바로 미리 본다.
- * Framework7 iOS 모양: 꾸미기는 칩, 목소리는 체크 목록, 이름은 입력 목록, 저장은 꽉 찬 버튼. */
-export default function Customize({ profile, onSave, onClose, saving = false, error = "" }: { profile: Profile; onSave: (p: Profile) => void; onClose: () => void; saving?: boolean; error?: string }) {
+/** 캐릭터 페이지: 온보딩에서 고른 꾸미기·배경·목소리·이름을 언제든 다시 고른다(B안: 정원 장면 + 하단 서랍).
+ * 메뉴에서 열면 오른쪽에서 밀려 들어오는 전체 페이지다. 바꾼 것은 나갈 때(뒤로·대화하기·정원 가기) 한 번에 저장하고,
+ * 저장에 실패하면 페이지에 남아 오류를 보여 준다. 무언가 바꿀 때마다 호야가 반응한다: 배경은 고개를 들고, 꾸미기는 눈웃음,
+ * 목소리는 미리듣기에 맞춰 말하고, 이름을 바꾸면 눈웃음. 모두 고른 항목으로만 움직이고 대화 내용과는 상관없다. */
+export default function Customize({ profile, onSave, onClose, onChat, onGarden, saving = false, error = "" }: {
+  profile: Profile;
+  onSave: (p: Profile) => Promise<boolean> | boolean;
+  onClose: () => void;
+  onChat?: () => void;
+  onGarden?: () => void;
+  saving?: boolean;
+  error?: string;
+}) {
   const [draft, setDraft] = useState(profile);
-  // 구름 정원이 자라며 연 꾸미기 아이템. 이 기기의 정원 기록으로만 판단한다.
-  const [unlocked] = useState(() => unlockedAccessories(buildGarden(loadReport(), loadSeeds())));
   const set = (patch: Partial<Profile>) => setDraft((d) => ({ ...d, ...patch }));
-  // Framework7 칩 모양. Tailwind 기본 스타일(base 레이어)이 Framework7 레이어보다 뒤라서,
-  // 일반 <button>에서는 모서리·테두리·배경이 지워진다. 그래서 모양을 유틸리티로 다시 적어 준다.
-  const chipBase = "chip ui-press inline-flex h-9 w-auto items-center rounded-full border px-3.5";
-  const chip = (on: boolean) => `${chipBase} ${on ? "border-cat-ink bg-cat-ink text-white" : "border-cat-line bg-white/70 text-cat-ink"}`;
+  // 구름 정원이 자라며 연 꾸미기 아이템. 이 기기의 정원 기록으로만 판단한다.
+  const [garden] = useState(() => buildGarden(loadReport(), loadSeeds()));
+  const unlocked = useMemo(() => unlockedAccessories(garden), [garden]);
+  const [tab, setTab] = useState<Tab>("accessory");
+  const [part, setPart] = useState(PARTS[0].id);
+  const [naming, setNaming] = useState<string | null>(null);
+  const [phase, setPhase] = useState<"enter" | "in" | "leave">("enter");
+  const voice = useVoicePreview();
+  const pageRef = useRef<HTMLElement>(null);
+  const backRef = useRef<HTMLButtonElement>(null);
+
+  // 반응: 잠깐 표정·자세를 바꿨다가 기본으로 돌아온다. n이 바뀌면 고양이가 한 번 톡 튄다.
+  const [reaction, setReaction] = useState<{ state: BuddyState; expression: CatExpression; n: number }>({ state: "idle", expression: "neutral", n: 0 });
+  const reactionTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const react = (state: BuddyState, expression: CatExpression, ms: number) => {
+    clearTimeout(reactionTimer.current);
+    setReaction((r) => ({ state, expression, n: r.n + 1 }));
+    reactionTimer.current = setTimeout(() => setReaction((r) => ({ ...r, state: "idle", expression: "neutral" })), ms);
+  };
+  useEffect(() => () => clearTimeout(reactionTimer.current), []);
+
+  // 들어올 때: 다음 프레임에 오른쪽에서 밀려 들어오고, 뒤로 버튼에 포커스를 둔다.
+  useEffect(() => {
+    let second = 0;
+    const first = requestAnimationFrame(() => { second = requestAnimationFrame(() => setPhase("in")); });
+    backRef.current?.focus({ preventScroll: true });
+    return () => { cancelAnimationFrame(first); cancelAnimationFrame(second); };
+  }, []);
+
+  /** 바꾼 게 있으면 저장하고, 성공하면 오른쪽으로 빠지며 다음 화면으로 간다. */
+  const leaving = useRef(false);
+  const leave = async (then: () => void) => {
+    if (leaving.current || saving) return;
+    const next = { ...draft, companion: cleanName(draft.companion) };
+    if (JSON.stringify(next) !== JSON.stringify(profile)) {
+      const ok = await onSave(next);
+      if (!ok) return;
+    }
+    leaving.current = true;
+    voice.stop();
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { then(); return; }
+    setPhase("leave");
+    setTimeout(then, 340);
+  };
+  const back = () => void leave(onClose);
+
+  // Escape는 뒤로, Tab은 페이지 안에서만 돈다(홈은 뒤에 그대로 있다).
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || naming !== null) return;
+      if (event.key === "Escape") { event.preventDefault(); back(); return; }
+      if (event.key !== "Tab") return;
+      const items = Array.from(pageRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), [tabindex="0"]') ?? []).filter((el) => el.offsetParent !== null);
+      const first = items[0], last = items.at(-1);
+      if (event.shiftKey && (document.activeElement === first || !pageRef.current?.contains(document.activeElement))) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && (document.activeElement === last || !pageRef.current?.contains(document.activeElement))) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
+
+  const pickVoice = (id: Profile["voice"]) => {
+    set({ voice: id });
+    react("idle", "neutral", 0);
+    void voice.play(id);
+  };
+  const toggleAccessory = (id: AccessoryId, index: number) => {
+    if (draft.accessory === id) { set({ accessory: undefined }); react("idle", "neutral", 0); return; }
+    sfx.pick(index);
+    set({ accessory: id });
+    react("idle", "warm", 1400);
+  };
+  const lockLabel = (id: AccessoryId) => {
+    const unlock = ACCESSORIES.find((a) => a.id === id)!.unlock;
+    return unlock.level ? `Lv.${unlock.level}` : `도감 ${unlock.collected}`;
+  };
+  const activePart = PARTS.find((p) => p.id === part)!;
+  const catState: BuddyState = voice.playing ? "speaking" : reaction.state;
 
   return (
-    <Sheet title={`${profile.companion} 바꾸기`} onClose={onClose} footer={
-      <div style={INK_THEME}>
-        {error && <p role="alert" className="mb-3 text-t3 text-[#C42A23]">{error}</p>}
-        <Button fullWidth tone="neutral" loading={saving} onClick={() => onSave({ ...draft, companion: cleanName(draft.companion) })}>
-          이대로 할게요
+    <section
+      ref={pageRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="캐릭터"
+      className="character-page"
+      data-phase={phase}
+      style={{ ...INK_THEME, backgroundColor: companionBackground(draft.color) }}
+    >
+      <header className="character-header">
+        <Button ref={backRef} variant="tonal" tone="neutral" size="medium" onClick={back} aria-label="뒤로" aria-busy={saving} className="size-11 min-h-11 shrink-0 !p-0">
+          <Icon name="back" size={20} />
         </Button>
-      </div>
-    }>
-      <div style={INK_THEME} className="here-list-compact">
-        <div className="mt-3 flex justify-center rounded-r5 py-2" style={{ backgroundColor: companionBackground(draft.color) }}>
-          <Buddy shape={draft.shape} color={draft.color} accessory={draft.accessory} size={140} look={[0, 0.25]} key={`${draft.shape}-${draft.color}-${draft.accessory ?? ""}`} className="motion-safe:animate-pop" />
+        <div role="tablist" aria-label="바꿀 것" className="character-tabs character-glass">
+          <span aria-hidden="true" className="character-bubble">{TABS.find((t) => t.id === tab)!.label}</span>
+          {TABS.map((t) => (
+            <button key={t.id} type="button" role="tab" id={`character-tab-${t.id}`} aria-controls="character-panel" aria-selected={tab === t.id} aria-label={t.label} onClick={() => setTab(t.id)}>
+              <Icon name={t.icon} size={20} />
+            </button>
+          ))}
         </div>
+        <Button size="medium" onClick={() => void leave(onChat ?? onClose)} disabled={saving} className="w-auto shrink-0 px-4">대화하기</Button>
+      </header>
 
-        <section className="mt-6">
-          <SectionTitle>배경 색</SectionTitle>
-          <div className="flex gap-3 px-4" role="radiogroup" aria-label="배경 색">
-            {COMPANION_BACKGROUNDS.map((c, i) => (
-              <Button variant="plain"
-                key={c.id}
-                role="radio"
-                aria-checked={draft.color === c.id}
-                aria-label={c.label}
-                onClick={() => {
-                  sfx.pick(i);
-                  set({ color: c.id });
-                }}
-                className={`ui-press size-11 rounded-full p-1 ring-offset-2 ${draft.color === c.id ? "ring-2 ring-cat-ink" : ""}`}
-              >
-                <span className="block size-full rounded-full border border-cat-line" style={{ background: c.surface }} />
-              </Button>
+      <div className="character-scene">
+        <div aria-hidden="true" className="character-island" />
+        <div className="character-cat">
+          <Buddy key={reaction.n} size={210} accessory={draft.accessory} className="motion-safe:animate-pop"
+            state={catState} expression={voice.playing ? "neutral" : reaction.expression} outputLevel={voice.level} outputShape={voice.shape} />
+        </div>
+        <button type="button" className="character-name" onClick={() => { voice.stop(); setNaming(draft.companion); }} aria-label={`이름 ${draft.companion}, 바꾸기`}>
+          {draft.companion}<Icon name="pencil" size={14} />
+        </button>
+        <div className="character-bar">
+          <span className="character-chip"><AccessoryArt id="sprout" size={24} />구름 정원 Lv.{garden.level.level}</span>
+          {onGarden && <button type="button" className="character-go" onClick={() => void leave(onGarden)} disabled={saving}>정원 가꾸러 가기</button>}
+        </div>
+      </div>
+
+      <div id="character-panel" role="tabpanel" aria-labelledby={`character-tab-${tab}`} className="character-drawer here-list-compact">
+        {error && <p role="alert" className="mb-3 rounded-r3 bg-[#FDECEA] px-3 py-2 text-t3 text-[#C42A23]">{error}</p>}
+
+        {tab === "accessory" && <>
+          <div className="character-parts" role="group" aria-label="꾸미기 부위">
+            {PARTS.map((p) => (
+              <button key={p.id} type="button" aria-pressed={part === p.id} aria-label={p.label} onClick={() => setPart(p.id)}>
+                <AccessoryArt id={p.icon} size={32} />
+              </button>
             ))}
           </div>
-        </section>
-
-        <section className="mt-6">
-          <SectionTitle trailing={<span className="text-t2 tabular-nums text-cat-muted">{unlocked.size} / {ACCESSORIES.length} 열림</span>}>꾸미기</SectionTitle>
-          <div className="flex flex-wrap gap-2 px-4" role="radiogroup" aria-label="꾸미기">
-            <button type="button" role="radio" aria-checked={!draft.accessory} onClick={() => set({ accessory: undefined })} className={chip(!draft.accessory)}>
-              <span className="chip-label">없음</span>
-            </button>
-            {ACCESSORIES.map((a, i) => {
-              const open = unlocked.has(a.id);
+          <h2 className="character-title">{activePart.label}</h2>
+          <div className="character-grid">
+            {activePart.items.map((id) => {
+              const item = ACCESSORIES.find((a) => a.id === id)!;
+              const open = unlocked.has(id);
+              const worn = draft.accessory === id;
               return (
-                <button
-                  type="button"
-                  key={a.id}
-                  role="radio"
-                  aria-checked={draft.accessory === a.id}
-                  aria-disabled={!open}
-                  aria-label={open ? a.label : `${a.label}, 잠김. ${a.hint}`}
-                  onClick={() => { if (!open) return; sfx.pick(i); set({ accessory: a.id }); }}
-                  className={open ? chip(draft.accessory === a.id) : `${chipBase} cursor-not-allowed border-dashed border-cat-line text-cat-muted`}
-                >
-                  {!open && <Icon name="lock" size={14} />}
-                  <span className={`chip-label ${open ? "" : "ml-1"}`}>{a.label}</span>
+                <button key={id} type="button" className="character-item" aria-pressed={worn} aria-disabled={!open}
+                  aria-label={open ? `${item.label}${worn ? ", 착용 중. 누르면 벗어요" : ""}` : `${item.label}, 잠김. ${item.hint}`}
+                  onClick={() => { if (open) toggleAccessory(id, ACCESSORIES.indexOf(item)); }}>
+                  <span aria-hidden="true" className="character-item-name">{item.label}</span>
+                  <AccessoryArt id={id} size={56} />
+                  <span aria-hidden="true" className="character-badge" data-kind={worn ? "worn" : open ? "open" : "locked"}>
+                    {worn ? "착용 중" : open ? "입기" : <><Icon name="lock" size={11} />{lockLabel(id)}</>}
+                  </span>
                 </button>
               );
             })}
           </div>
-          <p className="mt-2 px-4 text-t2 text-pretty text-cat-muted">구름 정원이 자라면 하나씩 열려요. {ACCESSORIES.find((a) => !unlocked.has(a.id))?.hint ?? "모두 열었어요!"}</p>
-        </section>
+          <p className="character-hint">구름 정원이 자라면 하나씩 열려요. {ACCESSORIES.find((a) => !unlocked.has(a.id))?.hint ?? "모두 열었어요!"}</p>
+        </>}
 
-        <section className="mt-6">
-          <SectionTitle>목소리</SectionTitle>
+        {tab === "background" && <>
+          <h2 className="character-title">배경</h2>
+          <div className="character-swatches" role="radiogroup" aria-label="배경 색">
+            {COMPANION_BACKGROUNDS.map((c, i) => (
+              <button key={c.id} type="button" role="radio" aria-checked={draft.color === c.id} onClick={() => { sfx.pick(i); set({ color: c.id }); react("attentive", "neutral", 900); }}>
+                <span style={{ background: c.surface }} />{c.label}
+              </button>
+            ))}
+          </div>
+        </>}
+
+        {tab === "voice" && <>
+          <h2 className="character-title">목소리</h2>
           <List strong inset dividersIos className="mx-0 my-0">
-            {VOICES.map((v, i) => (
+            {VOICES.map((v) => (
               <ListItem
                 key={v.id}
                 radio
@@ -115,31 +225,34 @@ export default function Customize({ profile, onSave, onClose, saving = false, er
                 title={v.label}
                 footer={v.desc}
                 checked={draft.voice === v.id}
-                onChange={() => {
-                  sfx.pick(i);
-                  set({ voice: v.id });
-                }}
+                // 고르면 그 목소리로 한 문장을 들려준다. 이미 고른 목소리를 다시 누르면 다시 들려준다.
+                onChange={() => pickVoice(v.id)}
+                onClick={() => { if (draft.voice === v.id) void voice.play(v.id); }}
               />
             ))}
           </List>
-          <p className="mt-2 px-4 text-t2 text-cat-muted">다음 대화부터 바뀌어요</p>
-        </section>
-
-        <section className="mt-6">
-          <SectionTitle htmlFor="companion-name">이름</SectionTitle>
-          <List strong inset className="mx-0 my-0">
-            <ListInput
-              inputId="companion-name"
-              type="text"
-              placeholder="이름"
-              value={draft.companion}
-              maxlength={10}
-              clearButton
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => set({ companion: e.target.value })}
-            />
-          </List>
-        </section>
+          <p className="character-hint">고르면 한 문장 들려줘요 · 다음 대화부터 바뀌어요</p>
+        </>}
       </div>
-    </Sheet>
+
+      {naming !== null && (
+        <Dialog label="이름 바꾸기" onClose={() => setNaming(null)}>
+          <form onSubmit={(event) => {
+            event.preventDefault();
+            set({ companion: cleanName(naming, draft.companion) });
+            setNaming(null);
+            react("idle", "warm", 1400);
+          }}>
+            <h2 className="text-t6 font-bold text-cat-ink">이름 바꾸기</h2>
+            <TextField label="이름" hideLabel className="mt-4" value={naming} maxLength={10} autoComplete="off" data-dialog-initial-focus
+              onChange={(event) => setNaming(event.target.value)} />
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <Button variant="tonal" tone="neutral" size="medium" onClick={() => setNaming(null)}>취소</Button>
+              <Button type="submit" size="medium">바꾸기</Button>
+            </div>
+          </form>
+        </Dialog>
+      )}
+    </section>
   );
 }

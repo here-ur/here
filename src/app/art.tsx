@@ -113,6 +113,9 @@ const ICONS = {
   add: "plus",
   menu: "line_horizontal_3",
   library: "book",
+  sparkles: "sparkles",
+  paintbrush: "paintbrush",
+  pencil: "pencil",
 } as const;
 
 export function Icon({ name, size = 24 }: { name: keyof typeof ICONS; size?: number }) {

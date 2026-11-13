@@ -18,6 +18,9 @@
   .list .item-media + .item-inner { margin-left: var(--f7-list-item-media-margin); }
   .list .item-after { margin-left: auto; padding-left: var(--f7-list-item-after-padding); }
   .ios label.item-radio:not(.item-radio-icon-start) .item-inner { padding-right: calc(var(--f7-safe-area-right) + 36px); }
+  /* 입력칸 지우기(ⓧ) 버튼을 세로 가운데에, 누르는 영역은 44px로 */
+  .input-clear-button { margin-top: calc(-1 * var(--f7-input-clear-button-size) / 2); }
+  .ios .input-clear-button::before { margin-left: -22px; margin-top: -22px; }
   .ios .item-input-wrap {
     margin-top: calc(-1 * var(--f7-list-item-padding-vertical));
     margin-bottom: calc(-1 * var(--f7-list-item-padding-vertical));

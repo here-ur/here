@@ -95,7 +95,8 @@ export type Profile = {
 };
 
 const KEY = "here.profile.v1";
-export const DEFAULT_COMPANION = "몽글이";
+// 처음 만날 때의 기본 이름. 온보딩 마지막에 사용자가 바꿀 수 있다(예전 기본값은 "몽글이").
+export const DEFAULT_COMPANION = "호야";
 
 // 몽글이 이름은 지시문에 들어가니 한글·영문·숫자·띄어쓰기만, 10자까지.
 export function cleanName(name: string, fallback = DEFAULT_COMPANION) {

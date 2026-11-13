@@ -118,7 +118,7 @@ export default function Sheet({ title, onClose, children, footer }: { title: str
             <Icon name="close" size={18} />
           </Button>
         </div>
-        <div className="min-h-0 overflow-y-auto overscroll-contain px-5 pb-6">{children}</div>
+        <div className="min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain px-5 pb-6">{children}</div>
         {footer && <div className="shrink-0 border-t border-cat-line/50 px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">{footer}</div>}
       </div>
     </div>

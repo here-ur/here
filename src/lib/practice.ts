@@ -11,7 +11,7 @@ export type Practice = { id: string; title: string; minutes: number; kind: Pract
 // 임시값: 팀이 목록·문구를 정하기 전까지의 예시. 진단·권고처럼 읽히지 않게 "해 볼 만한 것"으로만 적는다.
 export const PRACTICES: Practice[] = [
   { id: "breath", title: "1분 숨 고르기", minutes: 1, kind: "breath", steps: ["코로 4초 천천히 들이쉬고", "입으로 6초 길게 내쉬어요", "다섯 번이면 1분이에요"] },
-  { id: "good-line", title: "오늘 좋았던 것 한 줄", minutes: 2, kind: "write", steps: ["아주 작은 것도 괜찮아요", "머릿속에서 한 줄로 떠올려 봐요", "적고 싶으면 몽글이에게 말해도 돼요"] },
+  { id: "good-line", title: "오늘 좋았던 것 한 줄", minutes: 2, kind: "write", steps: ["아주 작은 것도 괜찮아요", "머릿속에서 한 줄로 떠올려 봐요", "적고 싶으면 대화로 들려줘도 돼요"] },
   { id: "water", title: "물 한 컵 마시기", minutes: 1, kind: "body", steps: ["자리에서 한 번 일어나서", "물 한 컵을 천천히 마셔요"] },
   { id: "shoulders", title: "어깨 세 바퀴 돌리기", minutes: 1, kind: "body", steps: ["어깨를 귀 쪽으로 올렸다가", "뒤로 크게 세 바퀴 돌려요"] },
   { id: "window", title: "창밖 1분 바라보기", minutes: 1, kind: "rest", steps: ["멀리 있는 것 하나를 골라", "1분 동안 눈을 쉬게 해요"] },

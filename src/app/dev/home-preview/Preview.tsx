@@ -60,6 +60,6 @@ export default function Preview() {
       body="실제 상담사와 이야기할 수 있는 방법을 준비 중이에요. 열리면 이곳에서 알려 드릴게요."
       onClose={() => setShowHelp(false)}
     />}
-    {customize && <Customize profile={profile} onClose={() => setCustomize(false)} onSave={(next) => { setProfile(next); setCustomize(false); }} />}
+    {customize && <Customize profile={profile} onClose={() => setCustomize(false)} onSave={(next) => { setProfile(next); return true; }} onChat={() => { setCustomize(false); setOpen(true); }} onGarden={() => { setCustomize(false); openScreen("insight"); }} />}
   </HomeScreen></>;
 }

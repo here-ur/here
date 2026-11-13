@@ -304,7 +304,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <p className="absolute inset-x-6 top-[282px] text-center text-t2 text-[#8c89a0]">
             계속하면 이용약관과 개인정보 처리방침에 동의하게 돼요.
             <br />
-            몽글이는 AI예요.
+            {josa(DEFAULT_COMPANION, "은", "는")} AI예요.
           </p>
           <div className="absolute inset-x-0 top-[600px] flex justify-center">
             <Next onClick={() => go("safety")} disabled={!nickname.trim()} />
@@ -326,7 +326,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <Title>시작하기 전에 세 가지만요</Title>
           <ul className="absolute inset-x-5 top-[236px] flex flex-col gap-1 rounded-r6 border border-white/10 bg-white/[.06] p-2 backdrop-blur-md">
             <li className="rounded-r4 px-4 py-3.5">
-              <b className="block text-t5">몽글이는 AI예요</b>
+              <b className="block text-t5">{josa(DEFAULT_COMPANION, "은", "는")} AI예요</b>
               <span className="text-t3 text-[#c4c1d4]">진단과 치료는 사람 전문가가 해요.</span>
             </li>
             <li className="rounded-r4 px-4 py-3.5">
@@ -353,7 +353,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
 
       {step === "finding" && (
         <div className={`absolute inset-0 ${screen}`}>
-          <p className="absolute inset-x-0 top-16 text-center text-t3 font-bold text-white/85">몽글이를 찾는 중</p>
+          <p className="absolute inset-x-0 top-16 text-center text-t3 font-bold text-white/85">{josa(DEFAULT_COMPANION, "을", "를")} 찾는 중</p>
           <div className="absolute inset-x-0 top-[150px] flex justify-center">
             {qIndex >= 0 ? (
               <LightCloud level={Object.keys(answers).length} />
@@ -365,7 +365,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
             {qIndex >= 0 ? (
               <>
                 <Caption key={qIndex}>
-                  {qIndex === 0 && `몽글이는 ${name}님과 이야기하면서 모양을 갖춰요. `}
+                  {qIndex === 0 && `${josa(DEFAULT_COMPANION, "은", "는")} ${name}님과 이야기하면서 모양을 갖춰요. `}
                   {QUESTIONS[qIndex].text}
                 </Caption>
                 <div className="flex flex-wrap justify-center gap-2" role="group" aria-label={QUESTIONS[qIndex].text}>
@@ -381,7 +381,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
                 </div>
               </>
             ) : (
-              <Caption>고마워요. 이제 몽글이가 보여요.</Caption>
+              <Caption>고마워요. 이제 {josa(DEFAULT_COMPANION, "이", "가")} 보여요.</Caption>
             )}
           </div>
         </div>
@@ -394,7 +394,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
             <LightCloud level={3} size={170} />
           </div>
           <div className="absolute inset-x-6 top-[372px] rounded-r6 border border-white/10 bg-white/[.07] px-6 py-6 text-center backdrop-blur-md">
-            <p className="text-t4 text-[#c4c1d4]">{name}님에게 어울리는 몽글이는</p>
+            <p className="text-t4 text-[#c4c1d4]">{name}님에게 어울리는 {josa(DEFAULT_COMPANION, "은", "는")}</p>
             <p className="mt-1.5 text-t8 font-bold">{matched.name}</p>
             <p className="mt-3 text-t5 text-pretty text-[#e4e2ee]">{matched.summary}</p>
           </div>
@@ -460,7 +460,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           <div className="absolute inset-x-0 top-[250px] flex justify-center">
             <Buddy shape={shape} color={color} size={160} look={[0, 0.6]} mouth="o" bob />
           </div>
-          <div className="absolute inset-x-6 top-[420px] flex items-end justify-between" role="radiogroup" aria-label="몽글이 목소리">
+          <div className="absolute inset-x-6 top-[420px] flex items-end justify-between" role="radiogroup" aria-label={`${DEFAULT_COMPANION} 목소리`}>
             {VOICES.map((v, i) => (
               <Button variant="plain"
                 key={v.id}
@@ -499,12 +499,12 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           }}
         >
           <Back onClick={() => go("voice")} />
-          <Title sub="언제든 바꿀 수 있어요.">몽글이 이름은 뭐로 할까요?</Title>
+          <Title sub="언제든 바꿀 수 있어요.">이름은 뭐로 할까요?</Title>
           <div className="absolute inset-x-0 top-[330px] flex justify-center">
             <Buddy shape={shape} color={color} size={170} look={[0.1, 0.65]} />
           </div>
           <div className="liquid-glass glass-focus absolute inset-x-5 bottom-10 flex h-14 items-center rounded-full pr-2 pl-6" style={{ "--focus-fill": 0.14 } as React.CSSProperties}>
-            <TextField label="몽글이 이름" hideLabel variant="plain" className="min-w-0 flex-1"
+            <TextField label="이름" hideLabel variant="plain" className="min-w-0 flex-1"
               id="companion"
               value={companion}
               onChange={(e) => setCompanion(e.target.value)}

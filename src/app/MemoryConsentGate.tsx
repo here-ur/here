@@ -5,6 +5,7 @@ import { Button } from "./ui/Button";
 import { useEffect, useRef, useState } from "react";
 import { browserSupabase } from "@/lib/supabase";
 import { MEMORY_CONSENT_VERSION } from "@/lib/memory-consent";
+import { DEFAULT_COMPANION, josa } from "@/lib/onboarding";
 import { consentDisplayKey, consentDisplayStorage, hasConsentDisplayHint, setConsentDisplayHint } from "@/lib/consent-display-cache";
 
 async function consentRequest(method: "GET" | "POST") {
@@ -97,7 +98,7 @@ export default function MemoryConsentGate({ children, signOut, userId = "", prev
       </> : <form onSubmit={accept} className="space-y-5">
         <header>
           <h1 className="text-balance text-t7 font-bold">이야기를 이어가기 전에</h1>
-          <p className="mt-3 text-pretty text-t4 leading-relaxed text-ios-secondary">몽글이는 대화에서 정리한 기억을 계정별로 저장하고, 다음 이야기에 참고해요. 가입을 마무리하려면 아래 내용을 각각 확인해 주세요.</p>
+          <p className="mt-3 text-pretty text-t4 leading-relaxed text-ios-secondary">{josa(DEFAULT_COMPANION, "은", "는")} 대화에서 정리한 기억을 계정별로 저장하고, 다음 이야기에 참고해요. 가입을 마무리하려면 아래 내용을 각각 확인해 주세요.</p>
         </header>
         <aside className="rounded-r3 bg-[#FFF3D6] p-4 text-t3 leading-relaxed text-[#614715]">
           개발 검증용 화면이에요. 아래 문구는 정식 동의서가 아닌 초안이에요. 실제 개인정보나 건강정보 대신 가상의 테스트 이야기만 입력해 주세요.

@@ -505,10 +505,10 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
             profile={me}
             saving={account.saving}
             error={account.error}
+            onSave={(p) => account.save(p)}
             onClose={() => setCustomizing(false)}
-            onSave={(p) => {
-              void account.save(p).then(ok => { if (ok) setCustomizing(false); });
-            }}
+            onChat={() => { setCustomizing(false); openText(); }}
+            onGarden={() => { setCustomizing(false); openReport("insight"); }}
           />
         )}
       </HomeScreen>
