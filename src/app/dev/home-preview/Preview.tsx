@@ -47,7 +47,7 @@ export default function Preview() {
   </div>}<HomeScreen
     profile={profile}
     greet={false} headline={headline}
-    onVoice={() => { setOpen(false); setMicOn(true); setVoice(true); }} onText={() => setOpen(true)} onLibrary={() => openScreen("library")} onMenu={() => setMenu(true)}
+    onVoice={() => { setOpen(false); setMicOn(true); setVoice(true); }} onText={() => setOpen(true)} onMenu={() => setMenu(true)}
     voice={voice ? { state: micOn ? "listening" : "idle", connecting: false, listening: micOn, micOn, hasMic: true, statusText: micOn ? "듣고 있어요" : "마이크가 꺼져 있어요", error: "", onEnd: () => setVoice(false), onMic: () => setMicOn(!micOn) } : undefined}
     chat={{ open, draft, sending: false, error: "", state: "idle", onDraft: setDraft, onClose: () => setOpen(false), onSend: () => {}, messages: open ? [
       { role: "user", content: "테스트 화면: 내가 좋아하는 게임과 음료는?" },

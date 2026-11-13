@@ -407,7 +407,6 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
         headline={openingLine}
         onVoice={toVoice}
         onText={openText}
-        onLibrary={() => openReport("library")}
         onMenu={() => { setHomeGreetingDone(true); setShowMenu(true); }}
         menuButtonRef={menuButtonRef}
         outputLevel={outputLevel}

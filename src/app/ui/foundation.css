@@ -153,11 +153,6 @@
   box-shadow: var(--f7-glass-shadow);
   backdrop-filter: blur(var(--f7-bars-translucent-blur));
 }
-.home-compose[data-open="true"] .home-action-icon.home-attach {
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-}
 .home-action-icon.home-mic[data-off="true"] {
   --f7-button-fill-bg-color: var(--f7-glass-bg-color);
   --f7-button-fill-text-color: var(--here-ui-ink);
@@ -206,7 +201,6 @@
 .here-textarea::placeholder { color: var(--f7-input-placeholder-color); }
 .here-list-row { padding-inline: var(--f7-list-item-padding-horizontal); }
 .here-list-row:active:not(:disabled) { background: var(--f7-list-link-pressed-bg-color); }
-.home-compose[data-open="true"],
 .home-voice-pill[data-expanded="true"] {
   background: var(--f7-glass-bg-color);
   backdrop-filter: blur(var(--f7-bars-translucent-blur));
