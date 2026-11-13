@@ -117,3 +117,35 @@ final class VoiceLifecycleTests: XCTestCase {
         XCTAssertThrowsError(try model.voiceRequest())
     }
 }
+
+final class SpeechPlaybackEnvelopeTests: XCTestCase {
+    func testQueuedSpeechWaitsForPlaybackClockAndSilenceClosesMouth() {
+        var envelope = SpeechPlaybackEnvelope()
+        envelope.append(Array(repeating: 0, count: 2400), startingAt: 0)
+        envelope.append(Array(repeating: 0.15, count: 2400), startingAt: 2400)
+        envelope.append(Array(repeating: 0, count: 4800), startingAt: 4800)
+        XCTAssertEqual(envelope.sample(at: 0), 0)
+        XCTAssertEqual(envelope.sample(at: 2399), 0)
+        XCTAssertGreaterThan(envelope.sample(at: 2400), 0.5)
+        for frame in stride(from: 4800, to: 9600, by: 480) { _ = envelope.sample(at: Int64(frame)) }
+        XCTAssertEqual(envelope.level, 0)
+    }
+    func testBargeInDiscardsQueuedEnvelopeAndNewPlaybackStartsClean() {
+        var envelope = SpeechPlaybackEnvelope()
+        envelope.append(Array(repeating: 0.3, count: 24000), startingAt: 0)
+        XCTAssertGreaterThan(envelope.sample(at: 0), 0)
+        envelope.reset()
+        XCTAssertEqual(envelope.sample(at: 0), 0)
+        envelope.append(Array(repeating: 0, count: 480), startingAt: 0)
+        XCTAssertEqual(envelope.sample(at: 0), 0)
+    }
+    func testInvalidSamplesAndLoudAudioStayWithinFaceRange() {
+        var envelope = SpeechPlaybackEnvelope()
+        envelope.append([.nan, .infinity, -.infinity], startingAt: 0)
+        XCTAssertEqual(envelope.sample(at: 0), 0)
+        envelope.append(Array(repeating: 100, count: 480), startingAt: 3)
+        for _ in 0..<20 { XCTAssertTrue((0...1).contains(envelope.sample(at: 3))) }
+        for _ in 0..<20 { _ = envelope.sample(at: 1000) }
+        XCTAssertEqual(envelope.level, 0)
+    }
+}

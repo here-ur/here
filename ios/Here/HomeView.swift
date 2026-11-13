@@ -25,15 +25,13 @@ struct HomeView: View {
                 }
                 if chatOpen {
                     transcript
-                    Image("Cat").resizable().scaledToFit().frame(height: 105)
+                    CompanionCatView(speechLevel: voice.level).frame(height: 105)
                         .accessibilityLabel(name).padding(.bottom, 4)
                 } else {
                     Spacer()
-                    Image("Cat").resizable().scaledToFit()
+                    CompanionCatView(speechLevel: voice.level)
                         .frame(maxWidth: 310, maxHeight: 320)
-                        .shadow(color: .black.opacity(voice.active ? 0.10 + Double(voice.level) * 0.12 : 0.07), radius: voice.active ? 26 : 20, y: 12)
-                        .scaleEffect(voice.active && !reduceMotion ? 1.04 : 1)
-                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: voice.active)
+                        .shadow(color: .black.opacity(0.07), radius: 20, y: 12)
                         .accessibilityLabel(name)
                     Spacer()
                 }

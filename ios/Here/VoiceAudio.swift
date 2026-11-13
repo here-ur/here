@@ -15,6 +15,8 @@ final class VoiceAudio {
     private var scheduledFrames: Int64 = 0
     private var completedFrames: Int64 = 0
     private var playbackOrigin: Int64?
+    private var envelope = SpeechPlaybackEnvelope()
+    private var meterTimer: Timer?
     private(set) var pendingBuffers = 0
     var onDrained: (() -> Void)?
     var onLevel: ((Float) -> Void)?
@@ -69,6 +71,14 @@ final class VoiceAudio {
         startedAt = Date()
         startupRecoveries = 0
         let run = audioRun
+        meterTimer = Timer(timeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.audioRun == run, self.pendingBuffers > 0 else { return }
+                let frame = self.sampleTime() - (self.playbackOrigin ?? self.sampleTime())
+                self.onLevel?(self.envelope.sample(at: frame))
+            }
+        }
+        if let meterTimer { RunLoop.main.add(meterTimer, forMode: .common) }
         // Register only after our own category/voice-processing/engine setup is complete.
         observers = [AVAudioSession.interruptionNotification, AVAudioSession.routeChangeNotification,
                      AVAudioSession.mediaServicesWereResetNotification, .AVAudioEngineConfigurationChange].map { name in
@@ -126,17 +136,16 @@ final class VoiceAudio {
         if pendingBuffers == 0 { playbackOrigin = sampleTime() - completedFrames }
         buffer.frameLength = AVAudioFrameCount(values.count)
         values.withUnsafeBufferPointer { destination.update(from: $0.baseAddress!, count: values.count) }
+        envelope.append(values, startingAt: scheduledFrames)
         scheduledFrames += Int64(values.count)
         pendingBuffers += 1
         let epoch = playbackEpoch
-        let rms = sqrt(values.reduce(Float(0)) { $0 + $1 * $1 } / Float(values.count))
-        onLevel?(min(1, rms * 5))
         player.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { [weak self] _ in
             Task { @MainActor in
                 guard let self, self.playbackEpoch == epoch else { return }
                 self.completedFrames += Int64(values.count)
                 self.pendingBuffers -= 1
-                if self.pendingBuffers == 0 { self.onLevel?(0); self.onDrained?() }
+                if self.pendingBuffers == 0 { self.envelope.reset(); self.onLevel?(0); self.onDrained?() }
             }
         }
         if !player.isPlaying { player.play() }
@@ -155,12 +164,14 @@ final class VoiceAudio {
         player?.stop()
         scheduledFrames = 0; completedFrames = 0; pendingBuffers = 0; playbackOrigin = nil
         if engine?.isRunning == true { player?.play() }
+        envelope.reset()
         onLevel?(0)
         return max(0, Int(Double(heard) / VoicePCM.sampleRate * 1000))
     }
 
     func stop() {
         audioRun = UUID()
+        meterTimer?.invalidate(); meterTimer = nil
         observers.forEach(NotificationCenter.default.removeObserver)
         observers = []
         if tapped { engine?.inputNode.removeTap(onBus: 0); tapped = false }
