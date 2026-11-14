@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Identity = { id: string; phone?: string };
 export type Entry = { kind: "login" } | { kind: "retry" } |
-  { kind: "member"; id: string } | { kind: "invite"; phone: string };
+  { kind: "member"; id: string } | { kind: "signup"; phone: string };
 
 // getUser restores/refreshes the SDK session and verifies its identity.
 // A timeout or failed lookup cannot establish that a session or membership is missing.
@@ -38,7 +38,7 @@ export async function checkEntry(client: SupabaseClient, verified?: Identity, ti
       .abortSignal(controller.signal).maybeSingle();
     if (error) return { kind: "retry" };
     if (data?.user_id === user.id) return { kind: "member", id: user.id };
-    if (data === null && user.phone) return { kind: "invite", phone: user.phone };
+    if (data === null && user.phone) return { kind: "signup", phone: user.phone };
     return { kind: "retry" };
   }
   try { return await Promise.race([check(), timeout]); }

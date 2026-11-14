@@ -1,0 +1,63 @@
+/* Figma 455:164, 393 × 852. Scope the new visual theme to the home only. */
+.home-screen.home-scene {
+  --home-control-fill: linear-gradient(180deg, rgb(82 55 22 / 80%), rgb(42 26 7 / 80%));
+  --f7-button-fill-bg-color: #523716;
+  --f7-button-fill-text-color: #fff;
+  --f7-button-large-height: 48px;
+  --f7-messagebar-textarea-bg-color: rgb(255 253 248 / 94%);
+  background: #e6a15c;
+}
+.home-scene-artwork { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.home-scene-background { position: absolute; left: -24.173028%; top: -2.816901%; width: 148.346056%; height: 121.596244%; }
+.home-scene-background img, .home-character-art img { object-fit: cover; }
+.home-scene-topShade, .home-scene-bottomShade { position: absolute; inset-inline: 0; }
+.home-scene-topShade { top: 0; height: 44.600939%; background: linear-gradient(#ffe4a9, rgb(255 223 169 / 50%) 50%, rgb(254 191 103 / 0%)); }
+.home-scene-bottomShade { bottom: 0; height: 34.859155%; background: linear-gradient(rgb(119 80 53 / 0%), #775035); }
+
+.home-screen.home-scene .home-header {
+  top: max(67px, calc(env(safe-area-inset-top) + 13px));
+  height: 48px;
+  padding-inline: 16px;
+}
+.ios .home-screen.home-scene .home-header .home-chrome-button {
+  width: 48px; height: 48px; padding: 0; color: #000; background: transparent; box-shadow: none; backdrop-filter: none;
+}
+
+.home-screen.home-scene .home-character-wrap {
+  position: absolute; left: 0; right: 0; top: 29.460094%; height: 106.870229cqw;
+  pointer-events: none;
+}
+.home-character-art { position: absolute; left: -47.83715%; top: 0; width: 195.928753%; height: 100%; }
+/* Align the existing expressive Buddy with the exact source-image geometry. */
+.home-character-live { position: absolute; left: 2.7326%; top: 4.9295cqw; width: 99.3486%; opacity: 0; }
+.home-screen.home-scene .home-character-live .buddy { display: block; width: 100%; height: auto; max-width: none; }
+.home-character-wrap[data-live="true"] .home-character-art { opacity: 0; }
+.home-character-wrap[data-live="true"] .home-character-live { opacity: 1; }
+.home-character-status { position: absolute; top: 94cqw; inset-inline: 24px; color: #2a1a07; }
+
+.home-screen.home-scene .home-bottom { inset-inline: 24px; bottom: max(56px, calc(env(safe-area-inset-bottom) + 22px)); }
+.home-screen.home-scene .home-actions { gap: 16px; }
+.home-screen.home-scene .home-compose {
+  min-height: 48px; padding-block: 0;
+  --f7-messagebar-textarea-height: 48px;
+  --f7-messagebar-textarea-padding: 13px 16px;
+}
+.home-screen.home-scene .home-right-action { min-width: 48px; min-height: 48px; }
+.home-screen.home-scene .home-voice-pill { width: 48px; height: 48px; }
+.home-screen.home-scene .home-voice-pill[data-expanded="true"] { width: 137px; height: 64px; }
+.home-screen.home-scene :is(.home-text-toggle, .home-send) { bottom: 0; }
+.home-screen.home-scene :is(.home-text-toggle, .home-mic, .home-send) {
+  width: 48px; height: 48px; min-height: 48px; padding: 0; border: 0; border-radius: 99px;
+  background: var(--home-control-fill); color: #fff; box-shadow: none; backdrop-filter: none;
+}
+.home-screen.home-scene .home-action-icon .here-button__label { width: auto; height: auto; }
+.home-screen.home-scene .home-mic[data-off="true"] { background: #e8d3b8; color: #523716; }
+.home-screen.home-scene .home-compose-close { width: 36px; height: 36px; margin-bottom: 6px; }
+.home-screen.home-scene .home-messages { top: 128px; }
+.home-screen.home-scene:has(.home-safety) .home-messages { top: 270px; }
+.home-screen.home-scene[data-text-open="true"] .home-bottom { bottom: max(24px, env(safe-area-inset-bottom)); }
+
+@container (max-height: 640px) {
+  .home-screen.home-scene[data-text-open="true"] .home-header { top: 54px; }
+  .home-screen.home-scene[data-text-open="true"] .home-messages { top: 110px; }
+}

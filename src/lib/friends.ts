@@ -23,9 +23,9 @@ export function displayNameForServer(nickname: string | undefined): string | nul
   return name;
 }
 
-/** 카톡·문자로 보내는 초대 메시지. 코드와 가입 주소만 담는다. */
-export function inviteMessage(code: string, origin: string) {
-  return `Here!에서 같이 이야기해요.\n초대코드: ${code}\n${origin} 에서 '초대코드로 가입'을 눌러 주세요. (코드 하나로 3명까지 가입할 수 있어요)`;
+/** 카톡·문자로 보내는 앱 초대. 폐지된 코드 가입 경로를 안내하지 않는다. */
+export function inviteMessage(origin: string) {
+  return `Here!에서 같이 이야기해요.\n${origin}\n휴대폰 번호로 가입하고 나만의 AI 친구를 만나 보세요.`;
 }
 
 /** 문자 앱 주소. iOS는 번호 뒤 본문 구분자로 &를 쓴다. */

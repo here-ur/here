@@ -1,0 +1,69 @@
+/* Figma 455:209. The settings view keeps its existing grouped controls. */
+.here-menu-overlay {
+  --here-menu-paper: #faf9f3;
+  --here-menu-ink: #393a3c;
+  --here-menu-muted: #868a8f;
+  --here-menu-line: #edede7;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+.here-menu-overlay[data-open="true"] { opacity: 1; pointer-events: auto; }
+.here-menu-artwork { position: absolute; inset: 0; overflow: hidden; background: #e6a15c; pointer-events: none; }
+.here-menu-background { position: absolute; left: -24.173028%; top: 0; width: 141.984733%; height: 116.431925%; }
+.here-menu-background img, .here-menu-cat img { object-fit: cover; }
+.here-menu-topShade { position: absolute; inset: 0 0 auto; height: 52.699531%; background: linear-gradient(#ffd6a9, rgb(255 214 169 / 50%) 50%, rgb(254 181 103 / 0%)); }
+.here-menu-cat { position: absolute; left: -47.83715%; top: 23.70892%; width: 195.928753%; height: 106.870229cqw; }
+.here-menu-dismiss { z-index: 1; }
+.here-menu-overlay .here-panel.here-drawer {
+  z-index: 2;
+  width: min(337px, calc(100% - 56px));
+  max-width: none;
+  border-radius: 0 48px 48px 0;
+  background: var(--here-menu-paper);
+  box-shadow: none;
+  filter: drop-shadow(8px 0 12px rgb(0 0 0 / 15%));
+}
+.here-menu-overlay .here-drawer[data-view="menu"] {
+  --f7-list-font-size: 18px;
+  --f7-list-item-title-font-weight: 600;
+  --f7-list-item-min-height: 56px;
+  --f7-list-item-padding-horizontal: 32px;
+  --f7-list-item-padding-vertical: 12px;
+  --f7-list-item-media-margin: 10px;
+  --f7-list-item-title-text-color: var(--here-menu-ink);
+  --f7-list-item-border-color: transparent;
+  --f7-list-border-color: transparent;
+  --f7-list-bg-color: transparent;
+  justify-content: space-between;
+  padding: max(72px, env(safe-area-inset-top)) 0 max(48px, env(safe-area-inset-bottom));
+  gap: 24px;
+  font-family: "Pretendard Variable", Pretendard, -apple-system, sans-serif;
+  color: var(--here-menu-ink);
+}
+.here-menu-primary, .here-menu-footer { width: 100%; flex-shrink: 0; }
+.here-menu-overlay .here-drawer[data-view="settings"] { padding-top: max(72px, env(safe-area-inset-top)); }
+.here-drawer .here-design-menu-list.list { width: 100%; margin: 0; border-radius: 0; }
+.here-drawer .here-design-menu-list.list ul { padding: 0; background: transparent; }
+.here-drawer .here-design-menu-list.list .item-link { height: 56px; color: var(--here-menu-ink); }
+.here-drawer .here-design-menu-list.list .item-content { height: 56px; min-height: 56px; padding-left: 32px; }
+.here-drawer .here-design-menu-list.list .item-media { min-width: 24px; padding-block: 0; }
+.here-drawer .here-design-menu-list.list .here-menu-icon { width: 24px; height: 24px; }
+.here-drawer .here-design-menu-list.list .item-inner { min-height: 56px; padding: 12px 32px 12px 0; margin-left: 10px; }
+.here-drawer .here-design-menu-list.list .item-title { font-size: 18px; font-weight: 600; line-height: normal; letter-spacing: -.36px; }
+.here-drawer .here-design-menu-list.list :is(ul, .item-inner)::after,
+.here-drawer .here-design-menu-list.list ul::before { display: none; }
+.here-menu-divider { height: 2px; padding-inline: 32px; }
+.here-menu-divider span { display: block; width: 27px; height: 2px; background: var(--here-menu-line); }
+.here-menu-quota { display: flex; height: 56px; flex-direction: column; justify-content: center; gap: 8px; padding: 12px 32px; }
+.here-menu-quota-track { display: block; flex-shrink: 0; height: 8px; overflow: hidden; border-radius: 99px; background: var(--here-menu-line); }
+.here-menu-quota-fill { display: block; height: 100%; border-radius: inherit; background: #1d1e1f; transition: width 300ms ease; }
+.here-menu-quota[data-state="low"] .here-menu-quota-fill { background: #b06a00; }
+.here-menu-quota-label { display: flex; flex-shrink: 0; align-items: center; gap: 10px; margin: 0; color: var(--here-menu-muted); font-size: 14px; font-weight: 600; line-height: 17px; letter-spacing: -.28px; white-space: nowrap; }
+.here-menu-quota-label b { color: var(--here-menu-ink); font-weight: inherit; }
+/* A keyboard-accessible close control without adding a visual element to the reference. */
+.here-drawer-close { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.here-drawer-close:focus-visible { top: 64px; right: 16px; display: grid; width: 40px; height: 40px; place-items: center; overflow: visible; clip-path: none; border-radius: 50%; background: var(--here-menu-paper); color: var(--here-menu-ink); outline: 2px solid currentColor; }
+@media (prefers-reduced-motion: reduce) {
+  .here-menu-overlay, .here-menu-overlay .here-drawer, .here-menu-quota-fill { transition: none; }
+}

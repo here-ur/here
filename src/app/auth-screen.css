@@ -1,0 +1,140 @@
+.here-auth-screen {
+  --auth-white: #fffdfe;
+  --auth-ink: #393a3c;
+  --auth-brown: #775035;
+  --f7-font-family: "Pretendard Variable", -apple-system, BlinkMacSystemFont, sans-serif;
+  --f7-theme-color: var(--auth-brown);
+  --f7-theme-color-rgb: 119, 80, 53;
+  --f7-button-large-height: 48px;
+  --f7-button-border-radius: 99px;
+  --f7-button-large-border-radius: 99px;
+  --f7-button-fill-bg-color: var(--auth-white);
+  --f7-button-fill-pressed-bg-color: #eee6df;
+  --f7-button-fill-text-color: var(--auth-ink);
+  --here-ui-error: #a92720;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  background: var(--auth-brown);
+  color: var(--auth-white);
+  font-family: var(--f7-font-family);
+}
+
+.here-auth-artwork {
+  position: absolute;
+  inset: 0;
+  min-height: 640px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.here-auth-imageCrop {
+  position: absolute;
+  width: 116.5394%;
+  height: 116.4319%;
+  left: -6.8702%;
+  top: -16.4319%;
+}
+.here-auth-image { object-fit: cover; }
+.here-auth-topShade, .here-auth-bottomShade { position: absolute; inset-inline: 0; height: 34.8592%; }
+.here-auth-topShade { top: 0; background: linear-gradient(#feb567, rgb(254 181 103 / 0%)); }
+.here-auth-bottomShade { bottom: 0; background: linear-gradient(rgb(119 80 53 / 0%), var(--auth-brown)); }
+
+.here-auth-welcome {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: max(640px, 100dvh);
+  padding: max(84px, 13.1455dvh) 32px max(53px, env(safe-area-inset-bottom));
+}
+.here-auth-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-self: center;
+  width: 273px;
+  max-width: 100%;
+  gap: 8px;
+  margin: 0;
+  color: #fff;
+  font-size: clamp(26px, 8.1425vw, 32px);
+  font-weight: 700;
+  line-height: 1.1875;
+  letter-spacing: -.02em;
+  white-space: nowrap;
+}
+.here-auth-welcomeBottom { margin-top: auto; padding-top: 40px; }
+.here-auth-actions { display: grid; gap: 12px; }
+.here-auth-action {
+  padding-inline: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+.here-auth-signup {
+  --f7-button-fill-bg-color: #000;
+  --f7-button-fill-pressed-bg-color: #242424;
+  --f7-button-fill-text-color: #fff;
+}
+.here-auth-footnote {
+  margin-top: 16px;
+  padding-block: 10px;
+  color: var(--auth-white);
+  opacity: .6;
+  text-align: center;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: -.02em;
+}
+.here-auth-policyText { text-decoration: underline; text-underline-position: from-font; text-decoration-skip-ink: none; }
+.here-auth-unavailable { padding: 20px; border-radius: 24px; background: rgb(57 58 60 / 75%); text-align: center; }
+
+.here-auth-formPage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding-top: max(24px, env(safe-area-inset-top));
+}
+.here-auth-smallBrand { align-self: center; font-size: 28px; font-weight: 700; line-height: 1.2; letter-spacing: -.02em; }
+.here-auth-panel {
+  --f7-button-fill-bg-color: var(--auth-ink);
+  --f7-button-fill-pressed-bg-color: #242526;
+  --f7-button-fill-text-color: var(--auth-white);
+  --f7-button-large-border-radius: 24px;
+  --here-ios-group: #f5f1ed;
+  --f7-list-item-border-color: #e5ddd6;
+  position: relative;
+  margin-top: auto;
+  padding: 20px 28px max(28px, env(safe-area-inset-bottom));
+  border-radius: 28px 28px 0 0;
+  background: var(--auth-white);
+  color: var(--auth-ink);
+  box-shadow: 0 -4px 32px rgb(57 38 24 / 10%);
+}
+.here-auth-formPage .here-auth-panel { margin-top: max(72px, 13dvh); }
+.here-auth-formPage::after { content: ""; flex: 1; background: var(--auth-white); }
+.here-auth-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  margin: -4px 0 16px -8px;
+  padding-inline: 8px;
+  color: var(--auth-brown);
+  font-size: 14px;
+}
+.here-auth-heading { margin-bottom: 24px; }
+.here-auth-title { font-size: 24px; font-weight: 700; line-height: 1.35; letter-spacing: -.02em; }
+.here-auth-description { margin-top: 8px; color: #73685f; font-size: 14px; line-height: 1.6; }
+.here-auth-progress { display: flex; gap: 8px; margin-bottom: 16px; }
+.here-auth-progressBar { flex: 1; height: 4px; border-radius: 99px; background: #e5ddd6; }
+.here-auth-progressBar[data-complete] { background: var(--auth-brown); }
+.here-auth-stepLabel { margin-bottom: 8px; color: var(--auth-brown); font-size: 12px; font-weight: 600; }
+.here-auth-form { display: flex; flex-direction: column; gap: 16px; }
+.here-auth-submit { margin-top: 8px; }
+.here-auth-secondary { margin-top: 12px; min-height: 44px; color: #73685f; font-size: 14px; }
+.here-auth-error { color: var(--here-ui-error); font-size: 14px; line-height: 1.5; }
+
+@media (max-height: 680px) {
+  .here-auth-formPage .here-auth-panel { margin-top: 24px; }
+}
