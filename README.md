@@ -15,13 +15,13 @@ npm run dev
 
 `.env.example`을 참고해 필요한 서버 환경변수를 `.env.local`에 설정한다. 비밀 키는 커밋하거나 `NEXT_PUBLIC_*`로 노출하지 않는다. Supabase publishable key만 브라우저용 공개 키로 사용한다.
 
-### 초대·휴대폰 로그인(구현 중)
+### 휴대폰 가입·로그인
 
-현재 가입 순서는 초대코드 → 휴대폰 번호 → SMS 인증번호다. 기존 회원의 로그인은 휴대폰 번호 → SMS 인증번호 순서다. 초대코드를 등록한 회원만 앱에 들어갈 수 있고, 회원은 메뉴에서 최대 3명이 사용할 수 있는 초대코드를 발급할 수 있다. `/api/chat`과 `/api/realtime`도 회원 토큰을 확인한다. Supabase 연결값이 없는 환경에서는 로그인 준비 안내만 표시된다.
+가입은 **휴대폰 번호(ID) → 문자 인증 → 비밀번호 설정(8자 이상)** 순서다. 초대코드는 필요 없으며 신규 가입에서는 비밀번호 설정을 건너뛸 수 없다. 기존 회원은 휴대폰 번호와 비밀번호로 로그인한다. 비밀번호가 없거나 잊었다면 로그인 화면에서 문자로 본인 확인을 하고 설정할 수 있다. 로그인 상태에서는 메뉴의 설정에서 비밀번호를 설정할 수 있다. `/api/chat`과 `/api/realtime`의 회원 토큰 확인은 유지한다. Supabase 연결값이 없는 환경에서는 로그인 준비 안내만 표시된다.
 
-1. Supabase 프로젝트를 만든다. Authentication에서 Phone 로그인을 켜고 [SMS 제공업체를 연결](https://supabase.com/docs/guides/auth/phone-login)한다. 가입 화면에서 초대코드를 먼저 확인하지만, 실제 배포 전에는 문자 발송 제한과 CAPTCHA도 설정한다.
+1. Supabase 프로젝트를 만든다. Authentication에서 Phone 로그인을 켜고 [SMS 제공업체를 연결](https://supabase.com/docs/guides/auth/phone-login)한다. 최소 비밀번호 길이는 앱과 동일하게 8자로 설정한다. 실제 배포 전에는 문자 발송 제한과 CAPTCHA도 설정한다.
 2. Supabase SQL Editor에서 `supabase/migrations/0001_invite_auth.sql`을 실행한다. 운영 `here-prod`(`jtgdmuenwsvjhnugytfa`)와 개발 `here-dev`(`mwjwfumpxdlllikcdvkh`)는 모두 서울 리전이며, 2026-10-31에 `members`·`invite_codes` 테이블과 접근 권한을 적용했다. 미사용 프랑크푸르트 프로젝트는 삭제했다. 개발·운영 데이터는 동기화하지 않는다.
-3. `supabase/migrations/0002_invite_three_uses.sql`도 적용한다. 이미 사용한 코드는 첫 사용자를 포함해 최대 3명이 사용할 수 있도록 이관된다. SQL Editor에서 `select public.bootstrap_invite_code();`를 실행해 첫 초대코드를 받는다. 서울 프로젝트에는 2026-10-31에 첫 코드를 한 번 발급했고, 결과는 해당 프로젝트의 SQL Editor 탭에 남겨 두었다. 기존 프로젝트의 코드는 새 프로젝트에서 사용할 수 없다. 다시 실행하면 새로운 코드가 추가로 발급되므로 필요할 때만 실행한다. 발급 결과를 공개 저장소에 기록하지 않는다.
+3. `supabase/migrations/0002_invite_three_uses.sql`부터 `0009_disable_invite_signup.sql`까지 순서대로 적용한다. `0008`은 인증된 전화번호의 비밀번호를 Auth가 실제 변경했을 때 `members`를 생성한다. SMS 가입의 임시 해시를 비밀번호 설정 완료로 판단하지 않는다. `0009`는 예전 `redeem_invite`·`invite_available`의 실행 권한을 회수하고 함수 본문도 항상 false를 반환하도록 바꿔 우회 가입을 막는다. 기존 회원·초대 관계·초대 기록은 보존한다.
 4. Project URL과 publishable key를 로컬 환경의 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`에 넣고 개발 서버를 재시작한다. 로컬에는 운영이 아닌 `here-dev` 값을 `.env.development.local`에 넣는다. 이 파일은 `.env.local`보다 우선하고 Git에서 제외된다. publishable key는 브라우저 공개용이며, service role/secret key는 브라우저에 넣지 않는다.
 
 ### 개발·운영 분리
@@ -36,13 +36,13 @@ npm run dev
 
 2026-10-31에 기존 `here-mauve.vercel.app`과 `dev-here.vercel.app` 연결을 제거했다. 두 주소는 더 이상 앱을 제공하지 않는다. DB와 회원 데이터는 유지한다. 대화·프로필은 브라우저 저장소에 있으므로 새 주소로 자동 이전되지 않으며 재로그인이 필요하다.
 
-`here-dev.vercel.app`만 Vercel 추가 로그인 보호의 예외로 등록했다. 다른 Preview 주소의 보호는 유지한다. 개발·운영 모두 Here의 초대코드·SMS 인증과 서버 API 회원 확인은 유지된다. 개발용 첫 초대코드는 개발 DB SQL Editor에서 별도로 발급하며 운영 코드와 공유하지 않는다.
+`here-dev.vercel.app`만 Vercel 추가 로그인 보호의 예외로 등록했다. 다른 Preview 주소의 보호는 유지한다. 개발 환경의 신규 가입은 초대코드 없이 SMS 인증과 비밀번호 설정으로 진행하며 서버 API 회원 확인은 유지한다. 운영은 별도 배포·DB 반영 전까지 기존 가입 방식을 사용한다.
 
 - 기능 작업은 `dev`에서 분기하고 PR을 `dev`로 병합한다. 개발 사이트에서 확인한 뒤 `dev` → `main` PR을 만들고, 사용자가 운영 반영을 명시적으로 승인했을 때만 병합한다. `main`에 직접 push하거나 개발 배포를 운영으로 Promote하지 않는다.
 - Vercel의 Supabase URL·publishable key는 Production과 Preview/Development에 별도 값으로 저장한다. 공개 값은 빌드 시 포함되므로 환경별로 새로 빌드한다. 운영 회원·초대코드를 개발로 복사하거나 개발 테스트 데이터를 운영으로 옮기지 않는다.
 - DB 구조 변경은 migration SQL로 기록하고 개발 DB에서 검증한 뒤 승인받아 운영 DB에 별도 적용한다. 코드 배포만으로 DB 변경이 자동 적용되지는 않는다. 지금까지 migration은 모두 SQL Editor로 적용했으므로 CLI migration 이력 동기화 없이 `db push`를 실행하지 않는다.
 - migration 파일은 `0001_이름.sql`처럼 네 자리 순번으로 짓고 다음 번호를 이어 붙인다(Supabase CLI는 `숫자_이름.sql`만 읽으므로 점은 쓰지 않는다). 2026-11-03에 날짜형 이름을 순번으로 바꿨으며 SQL 내용은 그대로다.
-- 적용 현황(2026-11-03): `here-prod`는 `0001`–`0002`, `here-dev`는 `0001`–`0007`. 새 migration을 적용하면 이 줄을 고친다.
+- 적용 현황(2026-11-14): `here-prod`는 `0001`–`0002`, `here-dev`는 `0001`–`0009`. 새 migration을 적용하면 이 줄을 고친다.
 - AI 키와 공용 Twilio Verify 계정은 현재 공유한다. DB와 로그인 계정은 분리되지만 외부 API 사용량·문자 비용은 공유한다. 개발에서는 테스트 계정과 테스트 대화만 사용한다.
 - 브랜치 보호 정책은 아직 별도 설정하지 않았다. 위 배포 승인 절차는 팀 작업 규칙이다.
 

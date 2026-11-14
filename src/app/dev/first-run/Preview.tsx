@@ -1,69 +1,38 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import AuthScreen, { type AuthMode, type AuthStep } from "../../AuthScreen";
+import { useState } from "react";
 import { MemoryConsentPreview } from "../../MemoryConsentGate";
 import { MicrophonePermissionNotice } from "../../MicrophonePermissionGate";
 import Onboarding from "../../Onboarding";
-import Welcome from "../../Welcome";
 import { Icon } from "../../art";
 import { Button } from "../../ui/Button";
 
-type Stage = "welcome" | "signup" | "login" | "consent" | "mic" | "onboarding" | "done";
+// 로그인 뒤 첫 실행(기억 동의 → 마이크 안내 → 캐릭터 만나기)을 로그인 없이 넘겨 보는 개발 화면.
+// 로그인·가입 화면은 실제 AuthGate에 있어서, 로그아웃한 상태로 첫 화면(/)을 열어 확인한다.
+type Stage = "consent" | "mic" | "onboarding" | "done";
 const STAGES: { id: Stage; label: string }[] = [
-  { id: "welcome", label: "1 환영" },
-  { id: "signup", label: "2 가입" },
-  { id: "login", label: "2 로그인" },
-  { id: "consent", label: "3 기억 동의" },
-  { id: "mic", label: "3 마이크 안내" },
-  { id: "onboarding", label: "4–6 캐릭터 만나기" },
+  { id: "consent", label: "1 기억 동의" },
+  { id: "mic", label: "2 마이크 안내" },
+  { id: "onboarding", label: "3 캐릭터 만나기" },
   { id: "done", label: "끝" },
 ];
 
 export default function Preview() {
-  const [stage, setStage] = useState<Stage>("welcome");
+  const [stage, setStage] = useState<Stage>("consent");
   const [run, setRun] = useState(0);
-  const [agreed, setAgreed] = useState(false);
-  const [step, setStep] = useState<AuthStep>("invite");
-  const [phone, setPhone] = useState("");
-  const [invite, setInvite] = useState("");
-  const [code, setCode] = useState("");
   const [result, setResult] = useState("");
   const [controls, setControls] = useState(true);
 
   function open(next: Stage) {
     setRun((n) => n + 1);
     setStage(next);
-    setStep(next === "login" ? "phone" : "invite");
-    setPhone(""); setInvite(""); setCode(""); setResult("");
-    if (next === "welcome") setAgreed(false);
-  }
-
-  const mode: AuthMode = stage === "login" ? "login" : "signup";
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    if (step === "invite") setStep("phone");
-    else if (step === "phone") setStep("otp");
-    else open("consent");
-  }
-  function back() {
-    if (step === "otp") setStep("phone");
-    else if (step === "phone" && mode === "signup") setStep("invite");
-    else open("welcome");
+    setResult("");
   }
 
   let screen;
   switch (stage) {
-    case "welcome":
-      screen = <Welcome agreed={agreed} onAgreedChange={setAgreed} onSignup={() => open("signup")} onLogin={() => open("login")} />;
-      break;
-    case "signup":
-    case "login":
-      screen = <AuthScreen mode={mode} step={step} verifiedPhone={null} phone={phone} invite={invite} code={code} error="" busy={false}
-        onPhone={setPhone} onInvite={setInvite} onCode={setCode} onSubmit={submit} onBack={back} />;
-      break;
     case "consent":
-      screen = <MemoryConsentPreview onAccept={() => open("mic")} onSignOut={() => open("welcome")} />;
+      screen = <MemoryConsentPreview key={run} onAccept={() => open("mic")} onSignOut={() => open("consent")} />;
       break;
     case "mic":
       screen = <MicrophonePermissionNotice busy={false} error="" onAllow={() => open("onboarding")} onSkip={() => open("onboarding")} />;
@@ -74,9 +43,9 @@ export default function Preview() {
     case "done":
       screen = <main className="app-frame flex flex-col items-center justify-center gap-4 bg-[#F5F2EB] px-gutter text-center">
         <p className="text-t6 font-bold">미리보기 끝</p>
-        <p className="text-t4 text-[#6F6C65]">실제 앱에서는 여기서 홈으로 가고, 고양이가 먼저 한마디 해요.</p>
+        <p className="text-t4 text-[#6F6C65]">실제 앱에서는 여기서 홈으로 가요.</p>
         {result && <p className="text-t3 text-[#6F6C65]">{result}</p>}
-        <Button tone="ink" onClick={() => open("welcome")}>처음부터 다시</Button>
+        <Button tone="ink" onClick={() => open("consent")}>처음부터 다시</Button>
       </main>;
       break;
   }
@@ -88,7 +57,7 @@ export default function Preview() {
       <select id="first-run-stage" value={stage} onChange={(e) => open(e.target.value as Stage)} className="rounded-md bg-[#F4F1EA] px-1 py-0.5">
         {STAGES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
       </select>
-      <Button variant="plain" onClick={() => open("welcome")} className="min-h-8 whitespace-nowrap px-1">처음부터</Button>
+      <Button variant="plain" onClick={() => open("consent")} className="min-h-8 whitespace-nowrap px-1">처음부터</Button>
       <Button variant="plain" onClick={() => setControls(false)} aria-label="미리보기 도구 숨기기" className="grid size-8 place-items-center"><Icon name="close" size={16} /></Button>
     </div>}
   </>;

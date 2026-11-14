@@ -5,6 +5,7 @@ import "framework7-icons/css/framework7-icons.css";
 import "./globals.css";
 import "./ui/foundation.css";
 import "./app-frame.css";
+import "./auth-screen.css";
 import "./chat-markdown.css";
 import { FrameworkShell } from "./ui/FrameworkShell";
 import SoundEffects from "./SoundEffects";

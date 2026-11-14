@@ -4,11 +4,10 @@ import { useId, type ReactNode } from "react";
 import { Icon } from "./art";
 import { CAT_ART, CAT_SILHOUETTE } from "./CatFace";
 import { Button } from "./ui/Button";
-import { Badge } from "./ui/Controls";
 import "./first-run.css";
 
-// 첫 실행 화면(가입·로그인, 동의, 마이크 안내, 캐릭터 만나기)이 함께 쓰는 틀.
-// 흰 바탕은 계정 단계, 크림은 길 위 장면, room은 집 안 장면이다.
+// 첫 실행 화면(기억 동의, 마이크 안내, 캐릭터 만나기)이 함께 쓰는 틀. 로그인·가입 화면은 AuthGate·AuthScreen에 따로 있다.
+// 흰 바탕은 안내 단계, 크림은 길 위 장면, room은 집 안 장면이다.
 
 const uid = (id: string) => id.replace(/[^a-zA-Z0-9]/g, "");
 
@@ -30,10 +29,6 @@ export function FirstRunTopBar({ onBack, backLabel = "뒤로", end }: { onBack?:
       {end ?? <span className="size-11" aria-hidden="true" />}
     </div>
   );
-}
-
-export function StepChip({ children }: { children: ReactNode }) {
-  return <Badge className="fr-chip">{children}</Badge>;
 }
 
 /** 소리 켜고 끄기. 캐릭터 만나기의 배경 소리에만 쓴다. */

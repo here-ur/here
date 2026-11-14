@@ -22,9 +22,10 @@ test("서버에 올릴 닉네임은 1~20자이고 제어 문자가 없어야 한
   for (const bad of [undefined, "", "   ", "가".repeat(21), "줄\n바꿈"]) assert.equal(displayNameForServer(bad), null);
 });
 
-test("초대 메시지와 문자 주소는 코드·주소만 담고 본문을 인코딩한다", () => {
-  const text = inviteMessage("ABCDEF0123456789", "https://here-dev.vercel.app");
-  assert.match(text, /ABCDEF0123456789/);
+test("초대 메시지는 가입 주소를 공유하고 폐지된 초대코드를 안내하지 않는다", () => {
+  const text = inviteMessage("https://here-dev.vercel.app");
+  assert.doesNotMatch(text, /초대코드|3명/);
+  assert.match(text, /휴대폰 번호로 가입/);
   assert.match(text, /https:\/\/here-dev\.vercel\.app/);
   assert.equal(smsHref("a b&c", "01012345678"), "sms:01012345678?body=a%20b%26c");
   assert.equal(smsHref("hi", "010", true), "sms:010&body=hi");

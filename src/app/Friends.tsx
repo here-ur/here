@@ -31,10 +31,9 @@ const joinedText = (iso: string) => {
 export default function Friends({ who, onBack, preview = false }: { who: Who; onBack: () => void; preview?: boolean }) {
   const [friends, setFriends] = useState<Friend[] | null>(preview ? [] : null);
   const [loadError, setLoadError] = useState(false);
-  const [code, setCode] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
-  const [showCode, setShowCode] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const tint = COLORS.find((c) => c.id === who.color)?.light ?? "#EEE8FF";
@@ -54,33 +53,26 @@ export default function Friends({ who, onBack, preview = false }: { who: Who; on
     return () => { active = false; };
   }, [preview]);
 
-  /** 이 화면에서 처음 초대할 때 코드를 한 번 만들고, 카톡·문자·초대장에 같은 코드를 쓴다. */
-  async function copyInviteCode(value: string) {
+  async function copyInviteLink(value: string) {
     try {
       await navigator.clipboard.writeText(value);
-      setNotice("초대코드를 복사했어요.");
-      setShowCode(false);
+      setNotice("초대 링크를 복사했어요.");
+      setShowInvite(false);
     } catch {
       setCopyFailed(true);
     }
   }
 
-  async function ensureCode() {
-    if (preview) { setNotice("미리보기에서는 초대코드를 발급하지 않아요."); return null; }
-    if (code) return code;
-    setBusy(true);
+  function prepareInvite() {
+    if (preview) { setNotice("미리보기에서는 초대장을 공유하지 않아요."); return null; }
     setNotice("");
-    const { data, error } = await browserSupabase()!.rpc("create_invite_code");
-    setBusy(false);
-    if (error || typeof data !== "string") { setNotice("초대코드를 만들지 못했어요. 다시 시도해 주세요."); return null; }
-    setCode(data);
-    return data;
+    return location.origin;
   }
 
   async function inviteByKakao() {
-    const next = await ensureCode();
+    const next = prepareInvite();
     if (!next) return;
-    const text = inviteMessage(next, location.origin);
+    const text = inviteMessage(next);
     // 휴대폰의 공유창에서 카카오톡을 고른다. 공유창이 없으면 메시지를 복사해 둔다.
     if (navigator.share) {
       try { await navigator.share({ title: "Here! 초대장", text }); } catch { /* 사용자가 공유를 닫았다 */ }
@@ -89,13 +81,13 @@ export default function Friends({ who, onBack, preview = false }: { who: Who; on
     try {
       await navigator.clipboard.writeText(text);
       setNotice("초대 메시지를 복사했어요. 카카오톡에 붙여 넣어 보내 주세요.");
-    } catch { setNotice("이 기기에서는 공유할 수 없어요. 초대장 공유하기로 코드를 보내 주세요."); }
+    } catch { setNotice("이 기기에서는 공유할 수 없어요. 초대장 공유하기로 링크를 보내 주세요."); }
   }
 
   async function inviteByContact() {
-    const next = await ensureCode();
+    const next = prepareInvite();
     if (!next) return;
-    const text = inviteMessage(next, location.origin);
+    const text = inviteMessage(next);
     const ios = /iP(hone|ad|od)/.test(navigator.userAgent);
     const picker = (navigator as Navigator & { contacts?: ContactPicker }).contacts;
     let phone = "";
@@ -107,8 +99,9 @@ export default function Friends({ who, onBack, preview = false }: { who: Who; on
     location.href = smsHref(text, phone, ios);
   }
 
-  async function openInviteCard() {
-    if (await ensureCode()) setShowCode(true);
+  function openInviteCard() {
+    const next = prepareInvite();
+    if (next) { setInviteUrl(next); setCopyFailed(false); setShowInvite(true); }
   }
 
   const card = "here-card p-4";
@@ -147,15 +140,16 @@ export default function Friends({ who, onBack, preview = false }: { who: Who; on
               ))}
             </ul>
           ) : (
-            <p className="mt-3 text-t3 text-pretty text-ios-secondary">{loadError ? "친구 목록을 불러오지 못했어요." : "아직 친구가 없어요. 초대장을 보내 함께 이야기해 보세요."}</p>
+            <p className="mt-3 text-t3 text-pretty text-ios-secondary">{loadError ? "친구 목록을 불러오지 못했어요." : "아직 연결된 친구가 없어요."}</p>
           )}
           <p className="mt-3 text-t2 text-[#8A91A3]">친구에게는 내 닉네임과 가입일만 보여요. 대화·기억·리포트는 보이지 않아요.</p>
         </section>
 
         <section className={`${card} mt-4`} aria-labelledby="friends-invite">
           <h2 id="friends-invite" className="text-t5 font-bold text-[#1F2A55]">친구 초대하기</h2>
+          <p className="mt-2 text-t2 text-ios-secondary">친구에게 Here 가입 링크를 보내요. 링크로 가입해도 친구 목록에 자동 추가되지는 않아요.</p>
           <div className="mt-2 flex flex-col">
-            <Button variant="plain" onClick={() => { void inviteByKakao(); }} disabled={busy} className={inviteRow}>
+            <Button variant="plain" onClick={() => { void inviteByKakao(); }} className={inviteRow}>
               <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-full bg-[#FEE500] text-[#191600]">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 3 7.1 3 11c0 2.5 1.7 4.7 4.2 6l-1 3.6c-.1.3.3.6.6.4l4.3-2.9H12c5 0 9-3.1 9-7S17 4 12 4Z" /></svg>
               </span>
@@ -164,7 +158,7 @@ export default function Friends({ who, onBack, preview = false }: { who: Who; on
                 <span className="text-t2 text-ios-secondary">공유창에서 카카오톡을 골라 보내요</span>
               </span>
             </Button>
-            <Button variant="plain" onClick={() => { void inviteByContact(); }} disabled={busy} className={inviteRow}>
+            <Button variant="plain" onClick={() => { void inviteByContact(); }} className={inviteRow}>
               <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-full bg-[#E6F4EC] text-[#1E7A46]">
                 <svg width="20" height="20" viewBox="0 0 24 24" {...stroke}><circle cx="12" cy="8.5" r="3.5" /><path d="M5 19.5c1-3.6 3.8-5.5 7-5.5s6 1.9 7 5.5" /></svg>
               </span>
@@ -173,17 +167,16 @@ export default function Friends({ who, onBack, preview = false }: { who: Who; on
                 <span className="text-t2 text-ios-secondary">문자로 초대 메시지를 보내요 · 연락처는 저장하지 않아요</span>
               </span>
             </Button>
-            <Button variant="plain" onClick={() => { void openInviteCard(); }} disabled={busy} className={inviteRow}>
+            <Button variant="plain" onClick={openInviteCard} className={inviteRow}>
               <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-full bg-[#EEF2FF] text-[#1E4FE0]">
                 <svg width="20" height="20" viewBox="0 0 24 24" {...stroke}><rect x="3.5" y="6" width="17" height="12" rx="2" /><path d="m4 7 8 6 8-6" /></svg>
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-t4 font-medium text-[#1F2A55]">초대장 공유하기</span>
-                <span className="text-t2 text-ios-secondary">초대코드를 직접 보여 주거나 복사해요</span>
+                <span className="text-t2 text-ios-secondary">가입 링크를 직접 보여 주거나 복사해요</span>
               </span>
             </Button>
           </div>
-          {busy && <p role="status" className="mt-2 text-t2 text-ios-secondary">초대코드를 만드는 중이에요…</p>}
           {notice && <p role="status" className="mt-2 text-t2 text-pretty text-[#3D4559]">{notice}</p>}
         </section>
 
@@ -205,15 +198,15 @@ export default function Friends({ who, onBack, preview = false }: { who: Who; on
         </section>
       </div>
 
-      {showCode && code && (
-        <Dialog label="초대장" onClose={() => { setShowCode(false); setCopyFailed(false); }}>
+      {showInvite && inviteUrl && (
+        <Dialog label="초대장" onClose={() => { setShowInvite(false); setCopyFailed(false); }}>
           <h2 className="text-t7 font-bold">초대장</h2>
-          <p className="mt-2 text-t3 text-ios-secondary">이 코드는 최대 3명이 사용할 수 있어요.</p>
-          <p className="mt-6 rounded-r4 bg-ios-group px-4 py-5 text-center font-mono text-t7 font-bold tracking-wider select-all">{code}</p>
-          {copyFailed && <p role="alert" className="mt-3 text-t3 text-ios-secondary">자동으로 복사할 수 없어요. 위 코드를 직접 선택해 복사해 주세요.</p>}
+          <p className="mt-2 text-t3 text-ios-secondary">이 링크에서 휴대폰 번호로 가입할 수 있어요.</p>
+          <p className="mt-6 break-all rounded-r4 bg-ios-group px-4 py-5 text-center text-t4 font-bold select-all">{inviteUrl}</p>
+          {copyFailed && <p role="alert" className="mt-3 text-t3 text-ios-secondary">자동으로 복사할 수 없어요. 위 링크를 직접 선택해 복사해 주세요.</p>}
           <div className="mt-6 flex gap-3">
-            <Button onClick={() => { setShowCode(false); setCopyFailed(false); }} tone="neutral" variant="tonal" className="flex-1">닫기</Button>
-            <Button onClick={() => { void copyInviteCode(code); }} className="flex-1">코드 복사</Button>
+            <Button onClick={() => { setShowInvite(false); setCopyFailed(false); }} tone="neutral" variant="tonal" className="flex-1">닫기</Button>
+            <Button onClick={() => { void copyInviteLink(inviteUrl); }} className="flex-1">링크 복사</Button>
           </div>
         </Dialog>
       )}

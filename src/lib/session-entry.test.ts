@@ -45,7 +45,7 @@ test("갱신 서버 장애는 재인증을 요구하지 않고 복구 대기", a
   assert.deepEqual(await checkEntry(mock(rejected, undefined, async () => ({ error: { status: 503 } }))), { kind: "retry" });
   assert.deepEqual(await checkEntry(mock(rejected, undefined, async () => ({ error: { code: "refresh_token_not_found" } }))), { kind: "login" });
 });
-test("인증된 번호에 회원 행이 없다고 확인된 경우만 초대 단계로 간다", async () => {
-  assert.deepEqual(await checkEntry(mock(undefined, async () => ({ data: null, error: null }))), { kind: "invite", phone: user.phone });
+test("인증된 번호에 회원 행이 없으면 비밀번호 설정부터 가입을 이어간다", async () => {
+  assert.deepEqual(await checkEntry(mock(undefined, async () => ({ data: null, error: null }))), { kind: "signup", phone: user.phone });
   assert.deepEqual(await checkEntry(mock(undefined, async () => ({ data: { user_id: "other" }, error: null }))), { kind: "retry" });
 });

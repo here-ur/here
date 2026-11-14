@@ -25,7 +25,7 @@ export async function requireMember(request: Request, clientForToken = requestSu
       .abortSignal(AbortSignal.any([request.signal, AbortSignal.timeout(5000)]))
       .maybeSingle();
     if (memberError) return deny("계정 상태를 확인하지 못했어요.", 503);
-    if (!member || member.user_id !== auth.user.id) return deny("초대받은 계정만 이용할 수 있어요.", 403);
+    if (!member || member.user_id !== auth.user.id) return deny("회원가입을 완료한 뒤 이용해 주세요.", 403);
     return { userId: auth.user.id, supabase };
   } catch { return deny("계정 상태를 확인하지 못했어요. 잠시 뒤 다시 시도해 주세요.", 503); }
 }
