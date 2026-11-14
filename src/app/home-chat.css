@@ -49,6 +49,7 @@
 .home-compose textarea {
   flex: 1;
   min-width: 0;
+  height: var(--f7-messagebar-textarea-height, 40px);
   min-height: var(--f7-messagebar-textarea-height, 40px);
   max-height: 104px;
   padding: var(--f7-messagebar-textarea-padding, 10px 16px 6px);

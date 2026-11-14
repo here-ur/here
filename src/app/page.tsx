@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
 import { companionState } from "@/lib/companion-state";
 import { ChatRequestError, requestChat } from "@/lib/chat";
+import { waitForCatYawn } from "@/lib/cat-yawn";
 import { type Msg, type Session, loadStoredSessions, pruneLog, saveSession } from "@/lib/log";
 import { DEFAULT_COMPANION, type Profile, josa } from "@/lib/onboarding";
 import { useAccountProfile } from "./use-account-profile";
@@ -73,6 +74,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   const [hasMic, setHasMic] = useState(false);
   const [typing, setTyping] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
+  const [yawning, setYawning] = useState(false);
   const [draft, setDraft] = useState("");
   const [pendingText, setPendingText] = useState("");
   const [error, setError] = useState("");
@@ -229,8 +231,14 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
     setStatus("connecting");
     setError("");
     setMemoryWarning("");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setYawning(!reducedMotion);
     try {
+      await waitForCatYawn(controller.signal, reducedMotion);
+      if (!current()) return;
+      setYawning(false);
       const token = await accessToken();
+      if (!current()) return;
       const conn = await connectRealtime({
         onOutputLevel: (level, shape) => { if (current()) { outputLevel.current = level; outputShape.current = shape; } },
         onStatus: (next) => { if (current()) setStatus(next); },
@@ -272,6 +280,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
       }
     } catch (e) {
       if (!current()) return;
+      setYawning(false);
       setError((e as Error).message);
       setStatus("idle");
     }
@@ -279,6 +288,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
 
   /** 채팅 진입 시 음성 연결은 닫고, 첫 전송 전에는 API를 호출하지 않는다. */
   function openText() {
+    setYawning(false);
     headlineLocked.current = true;
     setHomeGreetingDone(true);
     setHearing(false);
@@ -301,7 +311,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
 
   /** 글 대화 → 통화: 별도의 음성 연결을 시작한다. */
   function toVoice() {
-    if (chatRequest.current) return;
+    if (chatRequest.current || voiceRequest.current) return;
     setTyping(false);
     setMicOn(true);
     void begin();
@@ -314,6 +324,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   }
 
   function stopVoice() {
+    setYawning(false);
     setHearing(false);
     setSearchSources([]);
     connectionAttempt.current += 1;
@@ -425,7 +436,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
           onClose: closeText,
         }}
         voice={voiceMode ? {
-          state: companionState({ error: Boolean(error), connecting, listening, thinking: status === "thinking", speaking: status === "speaking" }),
+          state: yawning ? "yawning" : companionState({ error: Boolean(error), connecting, listening, thinking: status === "thinking", speaking: status === "speaking" }),
           connecting,
           listening,
           micOn,

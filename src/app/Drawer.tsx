@@ -52,7 +52,7 @@ function QuotaLine({ status }: { status: QuotaStatus }) {
   const resetText = `${reset.getHours() < 12 ? "오전" : "오후"} ${reset.getHours() % 12 || 12}시${reset.getMinutes() ? ` ${reset.getMinutes()}분` : ""}에 다시 채워져요`;
   const counts = `글 ${chatLeft}번 · 음성 ${voiceLeft}번`;
   return (
-    <div role="group" aria-label={state === "out" ? `오늘 대화를 다 했어요. ${resetText}` : `오늘 남은 대화: ${counts}`} className="here-menu-quota" data-state={state}>
+    <div role="group" aria-label={`오늘 남은 대화: ${counts}${state === "out" ? `. 글 대화는 ${resetText}` : ""}`} className="here-menu-quota" data-state={state}>
       <span aria-hidden="true" className="here-menu-quota-track">
         <span className="here-menu-quota-fill" style={{ width: `${Math.round(ratio * 100)}%` }} />
       </span>

@@ -2,7 +2,7 @@
 
 import { TextArea } from "./ui/Controls";
 import { Button } from "./ui/Button";
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useLayoutEffect, useRef } from "react";
 import { flushSync } from "react-dom";
 import Image from "next/image";
 import type { Msg } from "@/lib/log";
@@ -11,6 +11,7 @@ import { safeSearchSource, type SearchSource } from "@/lib/web-search-protocol";
 import { COLORS, type ColorId, type Profile, josa } from "@/lib/onboarding";
 import { catExpression } from "@/lib/cat-expression";
 import Buddy, { type BuddyState } from "./Buddy";
+import CatArtwork from "./CatArtwork";
 import { Icon } from "./art";
 import "./home-voice.css";
 import "./home-chat.css";
@@ -131,7 +132,6 @@ export default function HomeScreen({
   const hasMessages = chat.open && !voice && (chat.messages.length > 0 || chat.sending);
   const chatting = chat.open && !voice; // 글 대화 중: 몽글이를 입력창 바로 위로 작게 옮긴다
   const resting = !chat.open && !voice; // 기본 홈: 글 없이 고정된 몽글이와 햇빛 배경을 보여 준다
-  const liveCharacter = Boolean(voice || profile.accessory || chat.state !== "idle");
   const bottomRef = useRef<HTMLDivElement>(null);
   const canSend = chat.open && Boolean(chat.draft.trim());
 
@@ -171,11 +171,26 @@ export default function HomeScreen({
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const input = composerRef.current;
     if (!input) return;
-    input.style.height = "auto";
-    input.style.height = `${Math.min(input.scrollHeight, 104)}px`;
+    const resize = () => {
+      // Empty drafts always use the shared single-line height. A placeholder can
+      // wrap while the voice capsule collapses; it must not make the field taller.
+      input.style.height = "";
+      if (input.value) input.style.height = `${Math.min(input.scrollHeight, 104)}px`;
+    };
+    resize();
+    let width = input.clientWidth;
+    const observer = new ResizeObserver(() => {
+      // Remeasure actual text after width transitions or viewport changes, while
+      // ignoring the height changes made by resize itself.
+      if (input.clientWidth === width) return;
+      width = input.clientWidth;
+      resize();
+    });
+    observer.observe(input);
+    return () => observer.disconnect();
   }, [chat.draft, chat.open]);
 
   useEffect(() => {
@@ -233,25 +248,10 @@ export default function HomeScreen({
         </div>}
       </div>}
 
-      <div className="home-character-wrap" data-hidden={chatting} data-live={liveCharacter} aria-hidden={chatting}>
+      <div className="home-character-wrap" data-hidden={chatting} aria-hidden={chatting}>
         <div className="home-character-art" aria-hidden="true">
-          <Image src="/home/main-cat.png" alt="" fill sizes="(max-width: 430px) 196vw, 843px" preload unoptimized />
+          <CatArtwork state={voice?.state ?? chat.state} accessory={profile.accessory} outputLevel={outputLevel} outputShape={outputShape} />
         </div>
-        <div className="home-character-live" aria-hidden="true"><div className={`home-buddy ${voice ? "home-buddy-expanded" : ""}`}>
-          <Buddy
-            shape={profile.shape}
-            color={profile.color}
-            accessory={profile.accessory}
-            size={390.44}
-            outputLevel={outputLevel} outputShape={outputShape}
-            expression={expression}
-            state={voice?.state ?? chat.state}
-            bob
-            tap={chat.open && !voice ? chat.draft.length : undefined}
-            hearing={voice ? Boolean(voice.hearing) : undefined}
-            voice={Boolean(voice)}
-          />
-        </div></div>
         {voice && <div className="home-character-status max-w-full px-4 text-center">
           <p role="status" className="text-t4 font-medium text-cat-ink">{voice.error ? "연결하지 못했어요" : voice.statusText}</p>
           {voice.caption && !voice.error && <div className="mt-2 line-clamp-2 text-t3 text-cat-muted"><ChatMarkdown content={voice.caption.split("\n\n출처:")[0]} /></div>}
