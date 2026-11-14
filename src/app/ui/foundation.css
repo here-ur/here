@@ -93,9 +93,7 @@
 .here-list-row { min-height: 44px; }
 
 .here-button:focus-visible,
-.here-button-plain:focus-visible,
-.here-field__input:focus-visible,
-.here-textarea:focus-visible {
+.here-button-plain:focus-visible {
   outline: 2px solid var(--f7-theme-color);
   outline-offset: 2px;
 }
@@ -153,10 +151,15 @@
   box-shadow: var(--f7-glass-shadow);
   backdrop-filter: blur(var(--f7-bars-translucent-blur));
 }
-.home-compose[data-open="true"] .home-action-icon.home-attach {
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
+/* 마이크는 홈의 주요 동작이라 고양이와 같은 검정으로 채운다(글을 쓰면 나오는 보내기 버튼과 같은 색).
+ * 말풍선은 유리 버튼으로 두어 위계를 나눈다. */
+.home-action-icon.home-mic {
+  --f7-theme-color: var(--color-cat-ink);
+  --f7-theme-color-rgb: 41, 41, 39;
+  --f7-theme-color-tint: #3d3d3a;
+  --f7-button-fill-bg-color: var(--color-cat-ink);
+  --f7-button-fill-pressed-bg-color: #3d3d3a;
+  --f7-button-fill-text-color: #fff;
 }
 .home-action-icon.home-mic[data-off="true"] {
   --f7-button-fill-bg-color: var(--f7-glass-bg-color);
@@ -206,7 +209,6 @@
 .here-textarea::placeholder { color: var(--f7-input-placeholder-color); }
 .here-list-row { padding-inline: var(--f7-list-item-padding-horizontal); }
 .here-list-row:active:not(:disabled) { background: var(--f7-list-link-pressed-bg-color); }
-.home-compose[data-open="true"],
 .home-voice-pill[data-expanded="true"] {
   background: var(--f7-glass-bg-color);
   backdrop-filter: blur(var(--f7-bars-translucent-blur));
@@ -217,3 +219,41 @@
   --f7-button-fill-bg-color: #b42318;
   --f7-button-fill-pressed-bg-color: #8d1b13;
 }
+
+/* 드로어 메뉴: Framework7 iOS 목록(List strong inset · ListItem link). 패널은 불투명하게 두고,
+ * 상태는 회색 한 가지 계열만 쓴다(올림 4%, 누름 8%). 줄어들거나 흐려지지 않고, 키보드 테두리는 줄 안쪽에 그린다. */
+/* Framework7 iOS 목록 기본(17px·52px)은 이 앱의 다른 글자보다 커서, 메뉴·시트 목록은 예전 메뉴 줄과 같은 14px·굵기 500·44px로 줄인다. */
+.here-list-compact {
+  --f7-list-font-size: var(--seed-font-size-t4);
+  --f7-list-item-title-font-weight: 500;
+  --f7-list-item-min-height: 44px;
+  --f7-list-item-padding-vertical: 8px;
+  --f7-input-height: 44px; /* 목록 줄 높이와 같게 해야 입력 글자가 가운데에 온다 */
+}
+.here-panel.here-drawer {
+  --f7-list-link-pressed-bg-color: rgb(0 0 0 / 8%);
+  background: var(--color-cat-paper);
+  backdrop-filter: none;
+}
+.here-drawer .list .item-link { color: var(--color-cat-ink); }
+.here-drawer .list .here-menu-danger .item-title { color: #C42A23; }
+.here-drawer .list .item-after { color: var(--color-cat-muted); font-variant-numeric: tabular-nums; }
+@media (hover: hover) {
+  .here-drawer .list .item-link:hover:not(.active-state),
+  .here-drawer .list .here-menu-row:hover { background-color: rgb(0 0 0 / 4%); }
+  .here-drawer .here-menu-card:hover { background: color-mix(in srgb, #fff, #000 4%); }
+}
+.here-drawer .list .here-menu-row:active:not(:disabled) { background-color: rgb(0 0 0 / 8%); opacity: 1; scale: 1; }
+.here-drawer .here-menu-card { background: #fff; transition: background-color 120ms ease; }
+.here-drawer .here-menu-card:active:not(:disabled) { background: color-mix(in srgb, #fff, #000 8%); opacity: 1; scale: 1; }
+.here-drawer .list .item-link:focus-visible,
+.here-drawer .list .here-menu-row:focus-visible,
+.here-drawer .here-menu-card:focus-visible { outline: 2px solid var(--color-cat-ink); outline-offset: -2px; }
+
+/* 글자 입력칸은 선택돼도 사각 외곽선을 그리지 않는다(전역 보라 외곽선·Framework7 파랑 외곽선 모두).
+ * 대신 칸의 모양을 따라 테두리만 진해진다: 상자 입력칸은 칸 테두리, 목록 안 입력칸(ListInput)은 묶음 둘레,
+ * 유리 입력창(온보딩·대화 기록)은 기존 glass-focus, 홈 입력창은 칸이 흰색으로 채워진다. */
+:is(input:not([type="checkbox"], [type="radio"], [type="range"]), textarea):focus-visible { outline: none; }
+.here-field[data-variant="box"] .here-field__input { transition: border-color 120ms ease, box-shadow 120ms ease; }
+.here-field[data-variant="box"] .here-field__input:focus { border-color: var(--color-cat-ink); box-shadow: 0 0 0 1px var(--color-cat-ink); }
+.list ul:has(.item-input input:focus) { box-shadow: 0 0 0 2px var(--color-cat-ink); }

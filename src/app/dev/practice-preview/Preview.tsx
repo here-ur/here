@@ -87,7 +87,7 @@ export default function Preview() {
       <HomeScreen
         profile={PROFILE}
         greet={false}
-        onVoice={() => {}} onText={() => {}} onLibrary={() => {}} onMenu={() => {}}
+        onVoice={() => {}} onText={() => {}} onMenu={() => {}}
         chat={{ open: false, draft: "", sending: false, error: "", state: "idle", onDraft: () => {}, onClose: () => {}, onSend: () => {}, messages: [] }}
         notice={scene === "crisis" ? <Crisis109 /> : undefined}
         spotlight={scene === "rest" ? <PracticeMini practices={today} doneIds={doneIds} onOpen={setSheet} /> : undefined}

@@ -4,6 +4,7 @@ import { Button } from "./ui/Button";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { markMicrophoneNoticeSeen, microphoneErrorMessage, microphoneNoticeSeen, microphonePermission, requestMicrophonePermission } from "@/lib/microphone-permission";
 import Buddy from "./Buddy";
+import { DEFAULT_COMPANION, josa } from "@/lib/onboarding";
 
 export function MicrophonePermissionNotice({ busy, error, onAllow, onSkip }: {
   busy: boolean; error: string; onAllow: () => void; onSkip: () => void;
@@ -13,7 +14,7 @@ export function MicrophonePermissionNotice({ busy, error, onAllow, onSkip }: {
     <div className="flex flex-1 flex-col items-center justify-center py-8 text-center">
       <div aria-hidden="true"><Buddy shape="cloud" color="lavender" size={180} state="idle" bob /></div>
       <h1 className="mt-6 text-balance text-t7 font-bold">목소리로도 이야기해요</h1>
-      <p className="mt-4 max-w-xs text-pretty text-t4 leading-relaxed text-ios-secondary">마이크를 허용해 두면, 홈에서 음성 버튼을 눌렀을 때 몽글이가 먼저 인사해요.</p>
+      <p className="mt-4 max-w-xs text-pretty text-t4 leading-relaxed text-ios-secondary">마이크를 허용해 두면, 홈에서 음성 버튼을 눌렀을 때 {josa(DEFAULT_COMPANION, "이", "가")} 먼저 인사해요.</p>
       <p className="mt-5 max-w-xs text-pretty text-t3 leading-relaxed text-ios-secondary">지금은 권한만 확인해요.<br />음성 대화를 시작하기 전에는 녹음하거나 전송하지 않아요.</p>
     </div>
     <div className="space-y-3">

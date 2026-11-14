@@ -113,11 +113,12 @@ export default function Sheet({ title, onClose, children, footer }: { title: str
         <div aria-hidden="true" className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-cat-line" />
         <div className="mb-1 flex shrink-0 items-center justify-between gap-3 px-5">
           <h2 id={titleId} className="text-t7 font-bold text-balance text-cat-ink">{title}</h2>
-          <Button onClick={requestClose} aria-label="닫기" tone="neutral" variant="tonal" size="medium" className="shrink-0">
+          {/* Framework7 버튼은 기본 너비가 100%라서, 아이콘 버튼은 크기를 직접 정해야 제목을 밀어내지 않는다. */}
+          <Button onClick={requestClose} aria-label="닫기" tone="neutral" variant="tonal" size="medium" className="size-11 min-h-11 shrink-0 !p-0">
             <Icon name="close" size={18} />
           </Button>
         </div>
-        <div className="min-h-0 overflow-y-auto overscroll-contain px-5 pb-6">{children}</div>
+        <div className="min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain px-5 pb-6">{children}</div>
         {footer && <div className="shrink-0 border-t border-cat-line/50 px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">{footer}</div>}
       </div>
     </div>

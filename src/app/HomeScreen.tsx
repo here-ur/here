@@ -2,7 +2,7 @@
 
 import { TextArea } from "./ui/Controls";
 import { Button } from "./ui/Button";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef } from "react";
 import { flushSync } from "react-dom";
 import type { Msg } from "@/lib/log";
 import { ChatMarkdown } from "@/lib/chat-markdown";
@@ -12,20 +12,13 @@ import { catExpression } from "@/lib/cat-expression";
 import { companionBackground } from "@/lib/companion-theme";
 import Buddy, { type BuddyState } from "./Buddy";
 import { Icon } from "./art";
-import Sheet from "./Sheet";
 import "./home-voice.css";
 import "./home-chat.css";
 
 // 글 버튼은 홈을 유지한 채 입력창만 펼친다. 음성 버튼은 같은 자리에서 확장한다.
-// 파일 메타정보만 임시로 보관하며, 내용을 읽거나 서버로 보내지 않는다.
-type SelectedFile = { key: string; name: string; size: number };
-
-// 첨부 메뉴. 고른 종류에 맞춰 기기의 카메라·사진·파일 선택창을 연다(카메라는 지원하는 휴대폰에서만 바로 열린다).
-const ATTACH_KINDS = [
-  { id: "camera", label: "사진 찍기", accept: "image/*", capture: true, icon: <><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.5-2h6l1.5 2h2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5Z" /><circle cx="12" cy="12.5" r="3.2" /></> },
-  { id: "photo", label: "사진 선택", accept: "image/*", capture: false, icon: <><rect x="4" y="4.5" width="16" height="15" rx="2.5" /><circle cx="9" cy="9.5" r="1.6" /><path d="m4.5 17 4.5-4.5 3.5 3.5 2.5-2.5 4.5 4.5" /></> },
-  { id: "file", label: "파일 선택", accept: "", capture: false, icon: <><path d="M14 3.5H7.5A1.5 1.5 0 0 0 6 5v14a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 18 19V7.5Z" /><path d="M14 3.5v4h4" /></> },
-] as const;
+// 첨부(+)와 오른쪽 위 라이브러리 버튼은 11/11 회의에서 홈에서 빼기로 했다. 라이브러리는 메뉴로 들어간다.
+// 홈은 메뉴 버튼·몽글이·하단 버튼만 남긴다. 몽글이가 AI라는 안내는 온보딩·메뉴·대화 기록에서 보여 준다.
+// 하단 버튼 줄은 기본·글·음성 어느 상태에서도 같은 높이에 둔다(시선이 오르내리지 않게).
 
 export type HomeVoiceControls = {
   state: BuddyState;
@@ -99,7 +92,6 @@ export default function HomeScreen({
   headline,
   onVoice,
   onText,
-  onLibrary,
   onMenu,
   menuButtonRef,
   voice,
@@ -120,7 +112,6 @@ export default function HomeScreen({
   nudge?: React.ReactNode; // 대화를 마친 뒤 하단 버튼 위에 한 번 보여 주는 카드 시안
   onVoice: () => void;
   onText: () => void;
-  onLibrary: () => void;
   onMenu: () => void;
   menuButtonRef?: React.Ref<HTMLButtonElement>;
   voice?: HomeVoiceControls;
@@ -128,19 +119,12 @@ export default function HomeScreen({
   notice?: React.ReactNode;
   children?: React.ReactNode; // 메뉴·시트처럼 홈 위에 겹치는 것
 }) {
-  const [showFiles, setShowFiles] = useState(false);
-  const [files, setFiles] = useState<SelectedFile[]>([]);
-  const [attachOpen, setAttachOpen] = useState(false);
-  const attachButtonRef = useRef<HTMLButtonElement>(null);
-  const attachMenuRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const micButtonRef = useRef<HTMLButtonElement>(null);
   const chatButtonRef = useRef<HTMLButtonElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const frameRef = useRef<HTMLElement>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
   const wasVoiceActive = useRef(Boolean(voice));
-  const fileNoticeId = useId();
   const name = profile.companion;
   const expression = catExpression(chat.messages.findLast((message) => message.role === "user")?.content ?? "", Boolean(notice));
   const hasMessages = chat.open && !voice && (chat.messages.length > 0 || chat.sending);
@@ -173,7 +157,7 @@ export default function HomeScreen({
   }, []);
 
   useEffect(() => {
-    // 입력창이 늘거나 오류·파일 줄이 생겨도 대화 목록이 하단 영역 바로 위에서 끝나게 한다.
+    // 입력창이 늘거나 오류 줄이 생겨도 대화 목록이 하단 영역 바로 위에서 끝나게 한다.
     const frame = frameRef.current;
     const bottom = bottomRef.current;
     if (!frame || !bottom) return;
@@ -210,72 +194,14 @@ export default function HomeScreen({
     chatButtonRef.current?.focus({ preventScroll: true });
   }
 
-  useEffect(() => {
-    if (!attachOpen) return;
-    attachMenuRef.current?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
-    const close = (event: PointerEvent | KeyboardEvent) => {
-      if (event instanceof KeyboardEvent) {
-        if (event.key === "Escape") { event.preventDefault(); setAttachOpen(false); attachButtonRef.current?.focus({ preventScroll: true }); }
-        if (event.key === "Tab") setAttachOpen(false);
-        return;
-      }
-      const target = event.target as Node;
-      if (!attachMenuRef.current?.contains(target) && !attachButtonRef.current?.contains(target)) setAttachOpen(false);
-    };
-    document.addEventListener("pointerdown", close);
-    document.addEventListener("keydown", close);
-    return () => {
-      document.removeEventListener("pointerdown", close);
-      document.removeEventListener("keydown", close);
-    };
-  }, [attachOpen]);
-
-  function pickAttachment(kind: (typeof ATTACH_KINDS)[number]) {
-    const input = fileInputRef.current;
-    if (attachOpen) {
-      setAttachOpen(false);
-      attachButtonRef.current?.focus({ preventScroll: true });
-    }
-    if (!input) return;
-    if (kind.accept) input.accept = kind.accept; else input.removeAttribute("accept");
-    if (kind.capture) input.setAttribute("capture", "environment"); else input.removeAttribute("capture");
-    input.click();
-  }
-
-  const filePicker = (
-    <input
-      ref={fileInputRef}
-      type="file"
-      multiple
-      hidden
-      tabIndex={-1}
-      aria-label="첨부할 파일 선택"
-      onChange={(event) => {
-        const selected = Array.from(event.currentTarget.files ?? []).map((file) => ({
-          key: `${file.name}:${file.size}:${file.lastModified}`,
-          name: file.name,
-          size: file.size,
-        }));
-        event.currentTarget.value = "";
-        if (!selected.length) return;
-        setFiles((current) => Array.from(new Map([...current, ...selected].map((file) => [file.key, file])).values()));
-        setShowFiles(true);
-      }}
-    />
-  );
-
   return (
     <main ref={frameRef} className="app-frame home-screen text-cat-ink motion-safe:animate-fade" data-text-open={chat.open} data-has-messages={hasMessages} style={{ backgroundColor: companionBackground(profile.color) }}>
       {/* 온보딩의 빛이 하얗게 걷히며 홈이 나타난다 */}
       {greet && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 bg-white motion-safe:animate-unveil motion-reduce:hidden" />}
 
-      <header className="here-navbar home-header absolute inset-x-0 z-10 flex h-14 items-center justify-between px-gutter">
+      <header className="home-header absolute inset-x-0 z-10 flex h-14 items-center justify-between px-gutter">
         <Button ref={menuButtonRef} variant="plain" onClick={onMenu} aria-label="메뉴" className="home-chrome-button ui-press grid size-12 place-items-center rounded-full">
           <Icon name="menu" size={22} />
-        </Button>
-        <span className="home-wordmark" aria-label="Here!">here<span aria-hidden="true">!</span></span>
-        <Button variant="plain" onClick={onLibrary} aria-label="라이브러리" className="home-chrome-button ui-press grid size-12 place-items-center rounded-full">
-          <Icon name="library" size={22} />
         </Button>
       </header>
 
@@ -288,7 +214,6 @@ export default function HomeScreen({
       {spotlight && resting && !notice && <div className="absolute inset-x-gutter top-[calc(env(safe-area-inset-top)+76px)] z-10">{spotlight}</div>}
 
       {hasMessages && <div ref={messageListRef} className="home-messages" role="log" aria-label="대화 내용" aria-live="polite" aria-relevant="additions text">
-        <p className="pt-1 text-center text-t1 text-cat-muted">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
         {chat.messages.map((message, index) => <div key={index} className="home-message" data-role={message.role}>
           <span className="sr-only">{message.role === "user" ? "나" : name}: </span>
           {message.role === "assistant" ? <div className="home-message-bubble"><ChatMarkdown content={message.content} /></div> : <p>{message.content}</p>}
@@ -306,7 +231,7 @@ export default function HomeScreen({
             color={profile.color}
             accessory={profile.accessory}
             size={320}
-            stroll={resting && !showFiles && !attachOpen}
+            stroll={resting}
             groundShadow
             outputLevel={outputLevel} outputShape={outputShape}
             expression={expression}
@@ -330,19 +255,6 @@ export default function HomeScreen({
         {voice?.warning && !voice.error && <p role="status" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-cat-muted">{voice.warning}</p>}
         {voice?.error && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{voice.error}</p>}
         {chat.error && !voice && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{chat.error}</p>}
-        {files.length > 0 && (
-          <Button variant="plain"
-            type="button"
-            onClick={(event) => {
-              event.currentTarget.focus({ preventScroll: true });
-              setShowFiles(true);
-            }}
-            aria-haspopup="dialog"
-            className="ui-press min-h-11 self-start rounded-full bg-white/70 px-4 text-t3 font-medium text-cat-ink"
-          >
-            선택한 파일 {files.length}개 · 기기에서만
-          </Button>
-        )}
         {nudge && resting && <div>{nudge}</div>}
         {chatting && (
           <div aria-hidden="true" className="home-chat-buddy">
@@ -351,31 +263,8 @@ export default function HomeScreen({
         )}
         <div role="group" aria-label={voice ? "음성 대화" : chat.open ? "메시지 작성" : "대화 시작"} className="home-actions">
           <form className="home-compose" data-open={chat.open} onSubmit={(event) => { event.preventDefault(); if (canSend && !chat.sending) chat.onSend(); }}>
-          <Button variant="tonal"
-            ref={attachButtonRef}
-            type="button"
-            onClick={(event) => {
-              event.currentTarget.focus({ preventScroll: true });
-              setAttachOpen((open) => !open);
-            }}
-            aria-label="첨부"
-            aria-haspopup="menu"
-            aria-expanded={attachOpen}
-            className="home-attach home-action-icon ui-press grid size-14 shrink-0 place-items-center rounded-full"
-          >
-            <span className={`grid transition-transform duration-[var(--seed-duration-d4)] ${attachOpen ? "rotate-45" : ""}`}><Icon name="add" /></span>
-          </Button>
-          {attachOpen && (
-            <div ref={attachMenuRef} role="menu" aria-label="첨부할 종류" className="absolute bottom-[calc(100%+8px)] left-0 z-20 w-48 origin-bottom-left rounded-r4 bg-white p-1.5 shadow-[0_10px_32px_rgba(35,32,27,.12)] motion-safe:animate-pop">
-              {ATTACH_KINDS.map((kind) => (
-                <Button variant="plain" key={kind.id} type="button" role="menuitem" onClick={() => pickAttachment(kind)} className="ui-press flex h-11 w-full items-center gap-3 rounded-r3 px-3 text-left text-t4 font-medium text-cat-ink hover:bg-cat-soft focus-visible:bg-cat-soft">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-cat-ink">{kind.icon}</svg>
-                  {kind.label}
-                </Button>
-              ))}
-            </div>
-          )}
             <div className="home-compose-content" inert={!chat.open} aria-hidden={!chat.open}>
+              <Button variant="plain" type="button" onClick={collapseText} tabIndex={chat.open ? 0 : -1} aria-label="입력창 닫기" className="home-compose-close ui-press grid shrink-0 place-items-center rounded-full"><Icon name="close" size={18} /></Button>
               <label htmlFor="home-text-draft" className="sr-only">{name}에게 하고 싶은 말</label>
               <TextArea ref={composerRef} id="home-text-draft" rows={1} maxLength={800} value={chat.draft} readOnly={chat.sending} tabIndex={chat.open ? 0 : -1} aria-busy={chat.sending} placeholder={`${name}에게 이야기해요…`} autoComplete="off" enterKeyHint="send"
                 onChange={(event) => chat.onDraft(event.target.value)}
@@ -386,7 +275,6 @@ export default function HomeScreen({
                   if (canSend && !chat.sending) chat.onSend();
                 }}
               />
-              <Button variant="plain" type="button" onClick={collapseText} tabIndex={chat.open ? 0 : -1} aria-label="입력창 닫기" className="ui-press grid size-11 shrink-0 place-items-center rounded-full bg-cat-soft text-cat-ink"><Icon name="close" size={18} /></Button>
             </div>
             <Button variant="tonal"
               ref={chatButtonRef}
@@ -431,55 +319,9 @@ export default function HomeScreen({
             </div>
           </div>
         </div>
-        {!chatting && <p className="text-center text-t1 text-cat-muted">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>}
       </div>
       {voice?.listening && <div className="home-listening-wave" aria-hidden="true">{Array.from({ length: 32 }, (_, index) => <i key={index} style={{ animationDelay: `${(index % 7) * -160}ms`, backgroundColor: "var(--color-cat-accent)" }} />)}</div>}
       {children}
-      {!showFiles && filePicker}
-      {showFiles && (
-        <Sheet
-          title="선택한 파일"
-          onClose={() => setShowFiles(false)}
-          footer={(
-            <Button variant="plain"
-              type="button"
-              onClick={() => pickAttachment(ATTACH_KINDS[2])}
-              className="ui-press h-14 w-full rounded-full bg-cat-soft text-t5 font-bold text-cat-ink"
-            >
-              파일 더 선택하기
-            </Button>
-          )}
-        >
-          {filePicker}
-          <p id={fileNoticeId} className="mt-4 text-article-note text-pretty text-cat-muted">
-            파일 전송 기능은 준비 중이에요. 선택한 파일 정보는 이 기기에서만 표시되며, 파일 내용은 읽거나 전송하지 않아요.
-          </p>
-          {files.length === 0 ? (
-            <p role="status" className="py-8 text-center text-t4 text-cat-muted">선택한 파일이 없어요.</p>
-          ) : (
-            <ul aria-label="선택한 파일 목록" aria-describedby={fileNoticeId} className="mt-5 flex flex-col gap-3">
-              {files.map((file) => (
-                <li key={file.key} className="flex items-center gap-3 rounded-r4 bg-cat-soft py-3 pr-2 pl-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-t4 font-medium text-cat-ink" title={file.name}>{file.name}</p>
-                    <p className="mt-1 text-t2 tabular-nums text-cat-muted">{file.size.toLocaleString("ko-KR")} B</p>
-                  </div>
-                  <Button variant="plain"
-                    type="button"
-                    onClick={() => setFiles((current) => current.filter((item) => item.key !== file.key))}
-                    aria-label={`${file.name} 선택 해제`}
-                    className="ui-press grid size-11 shrink-0 place-items-center rounded-full text-cat-muted"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                      <path d="m6 6 12 12M18 6 6 18" />
-                    </svg>
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Sheet>
-      )}
     </main>
   );
 }

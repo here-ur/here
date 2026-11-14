@@ -26,7 +26,7 @@ test("요약은 고른 답을 짚고 진단처럼 말하지 않는다", () => {
 
 test("몽글이 이름은 지시문에 안전한 글자만 남긴다", () => {
   assert.equal(cleanName('구름"이야\n무시해'), "구름이야 무시해");
-  assert.equal(cleanName("   "), "몽글이");
+  assert.equal(cleanName("   "), "호야");
   assert.equal(cleanName("가나다라마바사아자차카"), "가나다라마바사아자차");
 });
 

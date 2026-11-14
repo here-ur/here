@@ -88,7 +88,7 @@ test("채팅은 Runyour 키와 확정한 모델·endpoint만 사용한다", asyn
   const instructions = String(calls[0].body.instructions);
   assert.match(instructions, /Joyscript/);
   assert.ok(instructions.startsWith('너의 이름은 "Joyscript"'));
-  assert.doesNotMatch(instructions, /몽글이/);
+  assert.doesNotMatch(instructions, /몽글이|호야/);
   assert.match(instructions, /질문 없이 반응만 하고 끝내도 돼/);
   assert.doesNotMatch(instructions, /<script>/);
   assert.match(instructions, /정해진 인사를 먼저 하지 마/);
