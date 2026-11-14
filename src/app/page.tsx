@@ -473,6 +473,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
             openFriends();
           }}
           onSignOut={() => { void signOut(); }}
+          allowPasswordSetup
           loadQuota={async (signal) => requestQuotaStatus(await accessToken(), signal)}
           onReset={() => setConfirmReset(true)}
         />

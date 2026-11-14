@@ -4,21 +4,22 @@ import { TextArea } from "./ui/Controls";
 import { Button } from "./ui/Button";
 import { useEffect, useId, useRef } from "react";
 import { flushSync } from "react-dom";
+import Image from "next/image";
 import type { Msg } from "@/lib/log";
 import { ChatMarkdown } from "@/lib/chat-markdown";
 import { safeSearchSource, type SearchSource } from "@/lib/web-search-protocol";
 import { COLORS, type ColorId, type Profile, josa } from "@/lib/onboarding";
 import { catExpression } from "@/lib/cat-expression";
-import { companionBackground } from "@/lib/companion-theme";
 import Buddy, { type BuddyState } from "./Buddy";
 import { Icon } from "./art";
 import "./home-voice.css";
 import "./home-chat.css";
+import "./home-scene.css";
 
 // 글 버튼은 홈을 유지한 채 입력창만 펼친다. 음성 버튼은 같은 자리에서 확장한다.
 // 첨부(+)와 오른쪽 위 라이브러리 버튼은 11/11 회의에서 홈에서 빼기로 했다. 라이브러리는 메뉴로 들어간다.
-// 홈은 메뉴 버튼·몽글이·하단 버튼만 남긴다. 몽글이가 AI라는 안내는 온보딩·메뉴·대화 기록에서 보여 준다.
-// 하단 버튼 줄은 기본·글·음성 어느 상태에서도 같은 높이에 둔다(시선이 오르내리지 않게).
+// 기본 홈은 Figma 455:164의 고정 캐릭터·햇빛 배경. 말하기·듣기 반응과 꾸미기는 기존 Buddy를 사용한다.
+// 기본·음성 버튼은 피그마 위치를 유지하고, 글 입력 중에는 키보드 위 공간을 확보한다.
 
 export type HomeVoiceControls = {
   state: BuddyState;
@@ -129,7 +130,8 @@ export default function HomeScreen({
   const expression = catExpression(chat.messages.findLast((message) => message.role === "user")?.content ?? "", Boolean(notice));
   const hasMessages = chat.open && !voice && (chat.messages.length > 0 || chat.sending);
   const chatting = chat.open && !voice; // 글 대화 중: 몽글이를 입력창 바로 위로 작게 옮긴다
-  const resting = !chat.open && !voice; // 기본 홈: 글 없이 몽글이와 배경 움직임으로 대화를 권한다
+  const resting = !chat.open && !voice; // 기본 홈: 글 없이 고정된 몽글이와 햇빛 배경을 보여 준다
+  const liveCharacter = Boolean(voice || profile.accessory || chat.state !== "idle");
   const bottomRef = useRef<HTMLDivElement>(null);
   const canSend = chat.open && Boolean(chat.draft.trim());
 
@@ -195,13 +197,20 @@ export default function HomeScreen({
   }
 
   return (
-    <main ref={frameRef} className="app-frame home-screen text-cat-ink motion-safe:animate-fade" data-text-open={chat.open} data-has-messages={hasMessages} style={{ backgroundColor: companionBackground(profile.color) }}>
+    <main ref={frameRef} className="app-frame home-screen home-scene text-cat-ink motion-safe:animate-fade" data-text-open={chat.open} data-has-messages={hasMessages}>
+      <div className="home-scene-artwork" aria-hidden="true">
+        <div className="home-scene-background">
+          <Image src="/home/sunlit-background.png" alt="" fill sizes="(max-width: 430px) 149vw, 638px" preload unoptimized />
+        </div>
+        <div className="home-scene-topShade" />
+        <div className="home-scene-bottomShade" />
+      </div>
       {/* 온보딩의 빛이 하얗게 걷히며 홈이 나타난다 */}
       {greet && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 bg-white motion-safe:animate-unveil motion-reduce:hidden" />}
 
       <header className="home-header absolute inset-x-0 z-10 flex h-14 items-center justify-between px-gutter">
         <Button ref={menuButtonRef} variant="plain" onClick={onMenu} aria-label="메뉴" className="home-chrome-button ui-press grid size-12 place-items-center rounded-full">
-          <Icon name="menu" size={22} />
+          <Image src="/home/menu.svg" alt="" width={28} height={28} />
         </Button>
       </header>
 
@@ -224,15 +233,16 @@ export default function HomeScreen({
         </div>}
       </div>}
 
-      <div className="home-character-wrap absolute inset-x-gutter top-[32%] flex flex-col items-center" data-hidden={chatting} aria-hidden={chatting}>
-        <div className={`home-buddy ${voice ? "home-buddy-expanded" : ""}`}>
+      <div className="home-character-wrap" data-hidden={chatting} data-live={liveCharacter} aria-hidden={chatting}>
+        <div className="home-character-art" aria-hidden="true">
+          <Image src="/home/main-cat.png" alt="" fill sizes="(max-width: 430px) 196vw, 843px" preload unoptimized />
+        </div>
+        <div className="home-character-live" aria-hidden="true"><div className={`home-buddy ${voice ? "home-buddy-expanded" : ""}`}>
           <Buddy
             shape={profile.shape}
             color={profile.color}
             accessory={profile.accessory}
-            size={320}
-            stroll={resting}
-            groundShadow
+            size={390.44}
             outputLevel={outputLevel} outputShape={outputShape}
             expression={expression}
             state={voice?.state ?? chat.state}
@@ -241,8 +251,8 @@ export default function HomeScreen({
             hearing={voice ? Boolean(voice.hearing) : undefined}
             voice={Boolean(voice)}
           />
-        </div>
-        {voice && <div className="mt-5 max-w-full px-4 text-center">
+        </div></div>
+        {voice && <div className="home-character-status max-w-full px-4 text-center">
           <p role="status" className="text-t4 font-medium text-cat-ink">{voice.error ? "연결하지 못했어요" : voice.statusText}</p>
           {voice.caption && !voice.error && <div className="mt-2 line-clamp-2 text-t3 text-cat-muted"><ChatMarkdown content={voice.caption.split("\n\n출처:")[0]} /></div>}
         </div>}
@@ -288,7 +298,7 @@ export default function HomeScreen({
               aria-hidden={chat.open}
               className="home-text-toggle home-action-icon ui-press grid size-14 place-items-center rounded-full disabled:opacity-40"
             >
-              <Icon name="help" />
+              <Image src="/home/chat.svg" alt="" width={24} height={24} />
             </Button>
           </form>
           <div className="home-right-action" data-send={canSend}>
@@ -313,7 +323,8 @@ export default function HomeScreen({
                 className="home-mic home-action-icon ui-press grid size-14 shrink-0 place-items-center rounded-full disabled:opacity-40"
                 data-off={Boolean(voice && !voice.micOn && !voice.error)}
               >
-                <Icon name={voice && !voice.micOn && !voice.error ? "micOff" : "mic"} size={26} />
+                {voice && !voice.micOn && !voice.error ? <Icon name="micOff" size={24} />
+                  : <Image src="/home/microphone.svg" alt="" width={24} height={24} />}
               </Button>
             </div>
             </div>
