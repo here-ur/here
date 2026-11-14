@@ -8,11 +8,11 @@ import "./buddy-motion.css";
 // Keep legacy profile props compatible; the MVP has one fixed cat appearance.
 export type Look = readonly [number, number];
 export type Mouth = "smile" | "tongue" | "o" | "calm";
-export type BuddyState = "idle" | "attentive" | "listening" | "thinking" | "speaking";
+export type BuddyState = "idle" | "attentive" | "listening" | "thinking" | "speaking" | "yawning";
 
 // 구름 정원에서 연 꾸미기 아이템. 기존 위치와 크기를 유지한다.
 type AccessoryId = "sprout" | "hat" | "scarf" | "flowers" | "crown" | "rainbow";
-function Accessory({ id, shape }: { id: AccessoryId; shape: ShapeId }) {
+export function Accessory({ id, shape }: { id: AccessoryId; shape: ShapeId }) {
   const head = shape === "round" ? { x: 114, y: 53, r: 0 } : { x: 150, y: 66, r: -6 };
   const side = shape === "round" ? { x: 163, y: 55 } : { x: 188, y: 100 };
   const flower = (x: number, y: number, fill: string, key: number) => (

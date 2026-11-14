@@ -20,13 +20,13 @@ export function parseQuotaStatus(data: unknown): QuotaStatus | null {
 
 export type QuotaSummary = { chatLeft: number; voiceLeft: number; ratio: number; state: "ok" | "low" | "out" };
 
-/** 남은 횟수와 막대 길이. 둘 중 덜 남은 쪽을 막대로 보이고, 20% 아래면 low, 둘 다 다 썼으면 out. */
+/** 메뉴에 표시하는 글 대화 횟수와 같은 기준으로 막대·부족 상태를 계산한다. */
 export function quotaSummary(status: QuotaStatus): QuotaSummary {
   const left = (count: QuotaCount) => Math.max(0, count.limit - count.used);
   const chatLeft = left(status.chat);
   const voiceLeft = left(status.realtime);
-  const ratio = Math.min(chatLeft / status.chat.limit, voiceLeft / status.realtime.limit);
-  const state = chatLeft === 0 && voiceLeft === 0 ? "out" : ratio < 0.2 ? "low" : "ok";
+  const ratio = chatLeft / status.chat.limit;
+  const state = chatLeft === 0 ? "out" : ratio < 0.2 ? "low" : "ok";
   return { chatLeft, voiceLeft, ratio, state };
 }
 

@@ -28,11 +28,6 @@
   pointer-events: none;
 }
 .home-character-art { position: absolute; left: -47.83715%; top: 0; width: 195.928753%; height: 100%; }
-/* Align the existing expressive Buddy with the exact source-image geometry. */
-.home-character-live { position: absolute; left: 2.7326%; top: 4.9295cqw; width: 99.3486%; opacity: 0; }
-.home-screen.home-scene .home-character-live .buddy { display: block; width: 100%; height: auto; max-width: none; }
-.home-character-wrap[data-live="true"] .home-character-art { opacity: 0; }
-.home-character-wrap[data-live="true"] .home-character-live { opacity: 1; }
 .home-character-status { position: absolute; top: 94cqw; inset-inline: 24px; color: #2a1a07; }
 
 .home-screen.home-scene .home-bottom { inset-inline: 24px; bottom: max(56px, calc(env(safe-area-inset-bottom) + 22px)); }
@@ -43,8 +38,21 @@
   --f7-messagebar-textarea-padding: 13px 16px;
 }
 .home-screen.home-scene .home-right-action { min-width: 48px; min-height: 48px; }
-.home-screen.home-scene .home-voice-pill { width: 48px; height: 48px; }
-.home-screen.home-scene .home-voice-pill[data-expanded="true"] { width: 137px; height: 64px; }
+.home-screen.home-scene .home-voice-pill { position: relative; isolation: isolate; width: 48px; height: 48px; }
+/* Expand leftwards while keeping the microphone on its original 48px hit area. */
+.home-screen.home-scene .home-voice-pill[data-expanded="true"] {
+  width: 129px; height: 48px; padding-inline: 8px 0; background: transparent; box-shadow: none;
+}
+/* Draw the 8px surround outside the layout so adding breathing room never moves the buttons. */
+.home-screen.home-scene .home-voice-pill::before {
+  content: ""; position: absolute; inset: -8px -8px -8px 0; z-index: -1; pointer-events: none;
+  border-radius: inherit; background: var(--color-cat-surface); box-shadow: 0 0 0 1px var(--color-cat-line);
+  opacity: 0; transition: opacity var(--seed-duration-d3) ease;
+}
+.home-screen.home-scene .home-voice-pill[data-expanded="true"]::before { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .home-screen.home-scene .home-voice-pill::before { transition: none; }
+}
 .home-screen.home-scene :is(.home-text-toggle, .home-send) { bottom: 0; }
 .home-screen.home-scene :is(.home-text-toggle, .home-mic, .home-send) {
   width: 48px; height: 48px; min-height: 48px; padding: 0; border: 0; border-radius: 99px;
@@ -55,7 +63,6 @@
 .home-screen.home-scene .home-compose-close { width: 36px; height: 36px; margin-bottom: 6px; }
 .home-screen.home-scene .home-messages { top: 128px; }
 .home-screen.home-scene:has(.home-safety) .home-messages { top: 270px; }
-.home-screen.home-scene[data-text-open="true"] .home-bottom { bottom: max(24px, env(safe-area-inset-bottom)); }
 
 @container (max-height: 640px) {
   .home-screen.home-scene[data-text-open="true"] .home-header { top: 54px; }
