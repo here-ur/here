@@ -5,6 +5,15 @@
  * Framework7 목록(List·ListItem·ListInput)의 iOS 여백도 함께 사라진다. 목록에 필요한 여백만 base 뒤에서 다시 적용한다.
  * 값은 framework7-bundle.css의 같은 규칙을 그대로 옮겼다. 다른 Framework7 컴포넌트를 쓸 때도 여백이 사라지면 여기에 더한다. */
 @layer framework7-restore {
+  /* 체크박스 상자도 base의 border 초기화로 테두리가 사라져 체크 전에는 보이지 않는다. */
+  .checkbox i { border: var(--f7-checkbox-border-width) solid var(--f7-checkbox-inactive-color); }
+  .checkbox input[type='checkbox']:checked ~ i,
+  .checkbox input[type='checkbox']:indeterminate ~ i { border-color: var(--f7-checkbox-active-color, var(--f7-theme-color)); }
+  /* 목록의 체크 줄(ListItem checkbox)도 같은 이유로 상자 테두리를 되살린다. */
+  .icon-checkbox { border: var(--f7-checkbox-border-width) solid var(--f7-checkbox-inactive-color); }
+  label.item-checkbox input[type='checkbox']:checked ~ .icon-checkbox,
+  label.item-checkbox input[type='checkbox']:indeterminate ~ .icon-checkbox { border-color: var(--f7-checkbox-active-color, var(--f7-theme-color)); }
+  label.item-checkbox > .icon-checkbox { margin-right: calc(var(--f7-list-item-media-margin) + var(--f7-checkbox-extra-margin)); }
   .list .item-content { padding-left: calc(var(--f7-list-item-padding-horizontal) + var(--f7-safe-area-left)); }
   .list .item-inner {
     padding-top: var(--f7-list-item-padding-vertical);

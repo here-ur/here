@@ -5,10 +5,10 @@ import { normalizeInviteCode, normalizePhone } from "@/lib/invite";
 import { setLocalOwner } from "@/lib/local-scope";
 import { browserSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { checkEntry, type Entry } from "@/lib/session-entry";
-import Segmented from "framework7-react/components/segmented.js";
 import { Button } from "./ui/Button";
-import { TextField } from "./ui/TextField";
+import AuthScreen from "./AuthScreen";
 import MemoryConsentGate from "./MemoryConsentGate";
+import Welcome from "./Welcome";
 
 type Mode = "login" | "signup";
 type Step = "phone" | "otp" | "invite";
@@ -21,6 +21,9 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   const [attempt, setAttempt] = useState(0);
   const [mode, setMode] = useState<Mode>("login");
   const [step, setStep] = useState<Step>("phone");
+  // 로그인 전에는 환영 화면을 먼저 보여 주고, 가입·로그인을 고르면 카드로 넘어간다.
+  const [started, setStarted] = useState(false);
+  const [agreed, setAgreed] = useState(false);
   const [phone, setPhone] = useState("");
   const [invite, setInvite] = useState("");
   const [code, setCode] = useState("");
@@ -37,6 +40,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     setLocalOwner(result.kind === "member" ? result.id : null);
     setUserId(result.kind === "member" ? result.id : null);
     if (result.kind === "invite") {
+      setStarted(true);
       setMode("signup"); setStep("invite");
       setVerifiedPhone(result.phone); setPhone(result.phone);
     } else if (result.kind === "login") {
@@ -56,7 +60,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   useEffect(() => {
     if (!client) return;
     const { data } = client.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") { checkGeneration.current++; enter({ kind: "login" }); }
+      if (event === "SIGNED_OUT") { checkGeneration.current++; setStarted(false); enter({ kind: "login" }); }
       if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && !userId && !busy && step === "phone") setAttempt(n => n + 1);
     });
     const recover = () => { if (checkFailed && !busy) setAttempt(n => n + 1); };
@@ -71,6 +75,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
 
   const signOut = useCallback(async () => {
     const result = await client?.auth.signOut({ scope: "local" });
+    if (!result?.error) setStarted(false);
     enter({ kind: result?.error ? "retry" : "login" });
   }, [client, enter]);
 
@@ -148,9 +153,12 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     enter(await checkEntry(client));
   }
 
+  const atStart = (mode === "login" && step === "phone") || (mode === "signup" && step === "invite" && !verifiedPhone);
+
   async function goBack() {
     if (busy) return;
     setError("");
+    if (atStart) { setStarted(false); return; }
     if (step === "invite" && verifiedPhone) {
       await signOut();
       return;
@@ -161,41 +169,19 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     setStep("phone");
   }
 
-  if (loading) return <main className="app-frame bg-ios-page" />;
+  if (loading) return <main className="app-frame bg-white" />;
   if (checkFailed) return <main className="app-frame flex flex-col items-center justify-center gap-4 px-7">
     <p role="alert">로그인 상태를 확인하지 못했어요. 연결을 확인하고 다시 시도해 주세요.</p>
     <Button variant="tonal" size="medium" onClick={() => { setLoading(true); setAttempt(n => n + 1); }}>다시 확인</Button>
   </main>;
   if (userId) return <MemoryConsentGate key={userId} userId={userId} signOut={signOut}>{children(userId, signOut)}</MemoryConsentGate>;
+  if (!started) return <Welcome agreed={agreed} onAgreedChange={setAgreed}
+    onSignup={() => { setMode("signup"); setStep("invite"); setError(""); setStarted(true); }}
+    onLogin={() => { setMode("login"); setStep("phone"); setError(""); setStarted(true); }} />;
 
-  const currentSteps: Step[] = mode === "login" ? ["phone", "otp"] : ["invite", "phone", "otp"];
-  const stepNumber = currentSteps.indexOf(step) + 1;
-  const title = step === "phone" ? (mode === "login" ? "다시 만나서 반가워요" : "휴대폰 번호로 인증해요")
-    : step === "otp" ? "인증번호를 입력해 주세요" : "초대코드를 입력해 주세요";
-  const description = step === "phone" ? (mode === "login" ? "문자로 받은 인증번호로 로그인해요." : "초대코드를 확인했어요. 휴대폰 번호를 입력해 주세요.")
-    : step === "otp" ? `${phone}로 보낸 6자리 인증번호를 입력해 주세요.`
-      : verifiedPhone ? "휴대폰 인증이 끝났어요. 다른 초대코드로 가입을 마무리해요." : "받은 초대코드를 먼저 입력해 주세요.";
-
-  return <main className="app-frame flex min-h-dvh flex-col justify-center bg-[linear-gradient(170deg,#F8FBFF,#E6EFFF_65%,#DCD9FF)] px-7 py-12 text-[#1F2A55]">
-    <div className="here-card mx-auto w-full max-w-sm p-7">
-      <div className="mb-8 text-center"><span className="text-3xl font-bold">Here!</span><p className="mt-3 text-sm text-ios-secondary">초대받은 사람만 몽글이와 이야기할 수 있어요.</p></div>
-      {!client ? <p role="status" className="text-center text-sm leading-6">로그인 설정이 아직 준비되지 않았어요.<br />Supabase 연결 후 이용할 수 있어요.</p> : <>
-        {((mode === "login" && step === "phone") || (mode === "signup" && step === "invite" && !verifiedPhone)) ? <Segmented className="here-segmented mb-7 grid grid-cols-2 gap-2 rounded-full bg-ios-group p-1" {...{ role: "group", "aria-label": "로그인 방식" }}>
-          {(["login", "signup"] as const).map((next) => <Button variant="plain" key={next} type="button" onClick={() => { setMode(next); setStep(next === "login" ? "phone" : "invite"); setError(""); }} aria-pressed={mode === next} className={`min-h-11 rounded-full text-sm font-semibold transition-[background-color,box-shadow,color,transform] duration-200 active:scale-[0.96] ${mode === next ? "bg-white shadow-sm" : "text-[#69728B]"}`}>{next === "login" ? "로그인" : "초대코드로 가입"}</Button>)}
-        </Segmented> : <Button variant="plain" type="button" onClick={() => { void goBack(); }} className="mb-5 -ml-2 min-h-11 rounded-full px-2 text-sm font-medium text-ios-secondary hover:text-[#1F2A55] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6F4FF0]">← {step === "invite" ? "처음부터" : step === "otp" ? "번호 다시 입력" : "초대코드 다시 입력"}</Button>}
-        <div className="mb-7" aria-label={`${mode === "login" ? "로그인" : "가입"} ${stepNumber}단계, 전체 ${currentSteps.length}단계`}>
-          <div className="mb-5 flex gap-2" aria-hidden="true">{currentSteps.map((item, index) => <span key={item} className={`h-1.5 flex-1 rounded-full transition-colors duration-200 ${index < stepNumber ? "bg-[#6F4FF0]" : "bg-[#D8DDF0]"}`} />)}</div>
-          <p className="mb-2 text-xs font-semibold tracking-wide text-[#6F4FF0]">{stepNumber} / {currentSteps.length} · {step === "phone" ? "휴대폰 번호" : step === "otp" ? "인증번호" : "초대코드"}</p>
-          <h1 className="text-balance text-2xl font-bold leading-snug">{title}</h1>
-          <p className="mt-2 text-pretty text-sm leading-6 text-ios-secondary">{description}</p>
-        </div>
-        <form onSubmit={step === "phone" ? sendOtp : step === "otp" ? verifyOtp : redeemInvite} className="flex flex-col gap-4">
-          {step === "phone" && <TextField label="휴대폰 번호" id="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="01012345678" value={phone} onChange={(event) => setPhone(event.target.value)} error={error} required />}
-          {step === "otp" && <TextField label="인증번호" ref={stepInputRef} id="sms-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="6자리 숫자" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} error={error} required />}
-          {step === "invite" && <TextField label="초대코드" ref={stepInputRef} id="invite" autoCapitalize="characters" autoComplete="off" placeholder="초대코드 16자리" value={invite} onChange={(event) => setInvite(event.target.value.toUpperCase())} error={error} required />}
-          <Button type="submit" fullWidth loading={busy} className="mt-3">{step === "invite" ? verifiedPhone ? "가입 완료하기" : "초대코드 확인" : step === "phone" ? "인증번호 받기" : mode === "login" ? "로그인하기" : "가입 완료하기"}</Button>
-        </form>
-      </>}
-    </div>
-  </main>;
+  return <AuthScreen mode={mode} step={step} verifiedPhone={verifiedPhone} phone={phone} invite={invite} code={code} error={error} busy={busy}
+    configured={!!client} inputRef={stepInputRef}
+    onPhone={setPhone} onInvite={setInvite} onCode={setCode}
+    onSubmit={step === "phone" ? sendOtp : step === "otp" ? verifyOtp : redeemInvite}
+    onBack={() => { void goBack(); }} />;
 }

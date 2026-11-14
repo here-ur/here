@@ -1,0 +1,232 @@
+/* 첫 실행(가입·로그인, 동의, 마이크 안내, 캐릭터 만나기) 공통 모양.
+ * 배치는 Tailwind 대신 여기서 정한다. 장면 안 위치는 --u(390pt 너비 시안의 1/100)로 쓰고,
+ * 화면이 낮으면 높이에 맞춰 함께 줄어든다. */
+.first-run {
+  --fr-ink: var(--color-cat-ink);
+  --fr-muted: #857D71;
+  --fr-faint: #9A9184;
+  --fr-line: #ECE4D8;
+  --fr-sun: #FBB400;
+  --u: min(1cqw, calc(max(100dvh, 640px) * .00462));
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  color: var(--fr-ink);
+}
+.first-run--white { background: #fff; }
+.first-run--cream { background: radial-gradient(140% 75% at 50% 0%, #FFEBD6 0%, #FFF6EC 48%, #FFFCF8 100%); }
+.first-run--room { background: linear-gradient(180deg, #FFF8F0 0%, #FFF2E4 100%); }
+.first-run.app-frame-scrollable { overflow-y: auto; }
+/* 내용이 길어도 아바타·입력칸·카드가 세로로 눌리지 않게 한다(스크롤로 넘긴다). */
+.first-run > * { flex-shrink: 0; }
+
+/* 위 줄: 뒤로 가기와 단계·소리 버튼 */
+.fr-topbar { position: relative; z-index: 10; display: flex; align-items: center; justify-content: space-between; min-height: 60px; padding: max(16px, env(safe-area-inset-top)) 20px 0; }
+.first-run .fr-round { width: 44px; height: 44px; border-radius: 50%; background: #fff; color: var(--fr-ink); box-shadow: 0 0 0 1px rgb(41 41 39 / 6%), 0 4px 14px -6px rgb(60 40 10 / 25%); display: grid; place-items: center; }
+.first-run .fr-round:focus-visible { outline: 2px solid var(--fr-ink); outline-offset: 2px; }
+.first-run .here-badge.fr-chip { --f7-badge-bg-color: #F4EEE5; --f7-badge-text-color: #6E6658; --f7-badge-font-size: 12px; --f7-badge-font-weight: 700; height: 26px; padding: 0 11px; border-radius: 13px; font-variant-numeric: tabular-nums; }
+
+/* 제목 묶음: 큰 글씨는 제목(캐릭터 장면에서는 캐릭터의 말), 작은 글씨는 설명 */
+.fr-heading { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0 28px; text-align: center; }
+.fr-eyebrow { font-size: 13px; font-weight: 600; color: var(--fr-faint); }
+.fr-title { font-size: 23px; line-height: 1.35; font-weight: 800; letter-spacing: -.025em; text-wrap: balance; }
+.fr-title--cat { font-size: 28px; }
+.fr-desc { font-size: 14.5px; line-height: 1.5; color: var(--fr-muted); text-wrap: balance; }
+.fr-note { font-size: 13px; font-weight: 600; color: var(--fr-faint); text-align: center; }
+.fr-avatar { display: block; margin: 8px auto 20px; }
+/* 내용이 짧은 화면: 키 큰 화면에서만 위를 조금 더 띄운다. 펼치기로 내용이 늘어도 위쪽이 움직이지 않게 auto 여백은 쓰지 않는다. */
+.fr-avatar.fr-avatar--balanced { width: clamp(80px, 11dvh, 96px); height: clamp(80px, 11dvh, 96px); margin-top: clamp(8px, calc((100dvh - 660px) * .8), 150px); }
+
+/* 아래 버튼 묶음 */
+.fr-footer { position: relative; z-index: 10; margin-top: auto; display: flex; flex-direction: column; gap: 12px; padding: 12px 24px max(24px, env(safe-area-inset-bottom)); }
+.fr-footer--sticky { position: sticky; bottom: 0; padding-top: 28px; background: linear-gradient(to bottom, rgb(255 255 255 / 0), #fff 24px); }
+/* 첫 실행의 긴 화면은 휴대폰처럼 스크롤바를 숨긴다. 데스크톱 브라우저의 스크롤바가 프레임 폭을 15px 줄여
+ * 내용이 한쪽으로 밀리던 문제. 바닥 여백은 각 화면의 바닥 버튼(safe-area 포함)이 맡는다. */
+.app-frame.first-run.app-frame-scrollable { padding-bottom: 0; scrollbar-width: none; }
+.app-frame.first-run.app-frame-scrollable::-webkit-scrollbar { display: none; }
+.first-run .here-button.button-large { min-height: 52px; border-radius: 999px; font-size: 16px; font-weight: 700; }
+.first-run .here-button.fr-ghost { box-shadow: inset 0 0 0 1.5px var(--fr-line); }
+
+/* 입력칸 */
+.fr-field { position: relative; z-index: 10; padding: 0 24px; }
+.first-run .fr-input { width: 100%; height: 56px; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--fr-line); text-align: center; font-size: 18px; font-weight: 700; letter-spacing: .02em; color: var(--fr-ink); outline: none; transition: box-shadow 120ms ease; }
+.first-run .fr-input::placeholder { color: #BDB4A6; font-weight: 600; letter-spacing: 0; }
+.first-run .fr-input:focus { box-shadow: inset 0 0 0 2px var(--fr-ink); }
+.first-run .fr-input[aria-invalid="true"] { box-shadow: inset 0 0 0 2px #C8352B; }
+.first-run .fr-input--code { letter-spacing: .1em; text-transform: uppercase; }
+.first-run .here-field__message { margin-top: 8px; text-align: center; font-size: 13px; line-height: 1.45; color: #B4322A; }
+.fr-error { margin-top: 8px; text-align: center; font-size: 13px; line-height: 1.45; color: #B4322A; }
+
+/* 인증번호 여섯 칸: 실제 입력은 칸 위에 투명하게 겹친 공통 입력칸(TextField) 하나가 받는다(문자 자동 채우기 유지) */
+.fr-otp { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 9px; }
+.fr-otp > .here-field { display: contents; }
+.fr-otp > span { height: 56px; border-radius: 14px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--fr-line); display: grid; place-items: center; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.fr-otp:focus-within span[data-current] { box-shadow: inset 0 0 0 2px var(--fr-ink); }
+.fr-otp[data-invalid] span { box-shadow: inset 0 0 0 1.5px #E7A49D; }
+.first-run .fr-otp .fr-otp-input { position: absolute; inset: 0 0 auto; width: 100%; height: 56px; opacity: 0; font-size: 16px; caret-color: transparent; }
+.first-run .fr-otp .here-field__message { grid-column: 1 / -1; margin-top: 0; }
+
+/* 흰 카드 목록: Framework7 iOS 목록(List strong inset)을 첫 실행 톤으로.
+ * 좌우 여백은 Tailwind 기본 스타일이 목록 margin을 지우므로 화면에서 mx-5로 준다. */
+.fr-list {
+  --f7-list-margin-vertical: 0px;
+  --f7-list-inset-border-radius: 24px;
+  --f7-list-strong-bg-color: #fff;
+  --f7-list-item-border-color: #F2ECE3;
+  --f7-list-item-padding-horizontal: 18px;
+  --f7-list-item-padding-vertical: 14px;
+  --f7-list-item-media-margin: 14px;
+  --f7-list-item-title-font-size: 15px;
+  --f7-list-item-title-font-weight: 700;
+  --f7-list-item-title-text-color: var(--fr-ink);
+  --f7-list-item-title-white-space: normal;
+  --f7-list-item-footer-font-size: 12.5px;
+  --f7-list-item-footer-line-height: 1.45;
+  --f7-list-item-footer-text-color: var(--fr-muted);
+  position: relative; z-index: 10;
+}
+.fr-list ul { box-shadow: 0 0 0 1px rgb(41 41 39 / 4%), 0 12px 30px -20px rgb(60 40 10 / 35%); }
+.fr-list .item-footer { margin-top: 2px; white-space: normal; }
+.fr-icon { flex: none; width: 42px; height: 42px; border-radius: 50%; background: #FFF0D6; color: #B9770E; display: grid; place-items: center; }
+
+/* 기억 동의: 연한 카드 안의 체크 줄 두 개. '보기'는 줄 오른쪽에 겹치고, 펼친 본문은 그 줄 아래 흰 상자로 열린다. */
+.fr-checks {
+  --f7-list-strong-bg-color: #F7F4EF;
+  --f7-list-item-min-height: 54px;
+  --f7-list-item-padding-vertical: 8px;
+  --f7-list-item-title-font-size: 15px;
+  --f7-checkbox-active-color: var(--fr-ink);
+  --f7-checkbox-border-radius: 7px;
+  --f7-checkbox-inactive-color: #CFC6B8;
+}
+.fr-checks ul { box-shadow: none; }
+.fr-checks li + li { border-top: 1px solid #ECE5DA; }
+.fr-checks .item-inner { padding-right: 84px; }
+.fr-req { display: inline-grid; place-items: center; height: 19px; margin-right: 7px; padding: 0 6px; border-radius: 6px; background: #FFE9B8; color: #8A5A00; font-size: 11px; font-weight: 800; vertical-align: 1px; }
+.first-run .fr-more { position: absolute; top: 0; right: 0; height: var(--f7-list-item-min-height); display: flex; align-items: center; gap: 3px; padding: 0 18px 0 12px; list-style: none; cursor: pointer; font-size: 13px; font-weight: 600; color: #9C9384; }
+.fr-more::-webkit-details-marker { display: none; }
+.fr-more .f7-icons { transition: rotate 200ms ease; }
+details[open] > .fr-more .f7-icons { rotate: 180deg; }
+.first-run .fr-more:focus-visible { outline: 2px solid var(--fr-ink); outline-offset: -8px; border-radius: 14px; }
+.fr-detail { margin: 0 10px 10px; padding: 12px 14px; border-radius: 14px; background: #fff; font-size: 12.5px; line-height: 1.6; color: var(--fr-muted); }
+.fr-detail dt { font-weight: 700; color: var(--fr-ink); }
+.fr-detail dd { margin: 0 0 10px; }
+.fr-detail dd:last-child { margin-bottom: 0; }
+.fr-fineprint { position: relative; z-index: 10; display: grid; gap: 4px; margin: 16px 24px 0; font-size: 12.5px; line-height: 1.5; color: #9C9384; text-align: center; }
+.fr-fineprint p { display: flex; align-items: center; justify-content: center; gap: 4px; }
+.fr-fineprint .f7-icons { flex: none; }
+.fr-fineprint [data-tone="dev"] { color: #9A6B12; font-weight: 600; }
+/* 펼친 본문을 보이게 내릴 때 바닥 버튼 높이만큼 남긴다. */
+.fr-consent { scroll-padding-bottom: 128px; }
+.first-run .fr-ready { transition: background-color 220ms ease, color 220ms ease; }
+
+/* 기억 동의 인터랙션: 차례로 떠오르기, 체크 상자 톡, 고양이 들썩, 본문 부드럽게 펼치기, 버튼 켜질 때 살짝 커지기 */
+@keyframes fr-rise { from { opacity: 0; translate: 0 14px; } }
+@keyframes fr-pop { 0% { scale: .7; } 60% { scale: 1.14; } 100% { scale: 1; } }
+@keyframes fr-hop { 0%, 100% { translate: 0 0; scale: 1; } 30% { translate: 0 -10px; scale: 1.03 .97; } 55% { translate: 0 0; scale: .97 1.03; } 75% { translate: 0 -3px; scale: 1; } }
+@keyframes fr-hop-big { 0%, 100% { translate: 0 0; rotate: 0deg; scale: 1; } 25% { translate: 0 -18px; rotate: -5deg; scale: 1.02 .98; } 50% { translate: 0 0; rotate: 3deg; scale: .96 1.04; } 70% { translate: 0 -5px; rotate: -1deg; scale: 1; } }
+@keyframes fr-ready { 0%, 100% { scale: 1; } 40% { scale: 1.03; } }
+@media (prefers-reduced-motion: no-preference) {
+  .fr-consent > *, .fr-consent > form > * { animation: fr-rise 440ms cubic-bezier(.2, .8, .2, 1) both; }
+  .fr-consent > .fr-avatar-hop { animation-delay: 40ms; }
+  .fr-consent .fr-heading { animation-delay: 90ms; }
+  .fr-consent .fr-checks { animation-delay: 150ms; }
+  .fr-consent .fr-fineprint { animation-delay: 210ms; }
+  .fr-consent .fr-footer { animation-delay: 270ms; }
+  .fr-hop { transform-origin: 50% 100%; animation: fr-hop 560ms cubic-bezier(.3, .7, .4, 1); }
+  .fr-avatar-hop[data-checked="2"] .fr-hop { animation: fr-hop-big 760ms cubic-bezier(.3, .7, .4, 1); }
+  .fr-checks label.item-checkbox input:checked ~ .icon-checkbox { animation: fr-pop 280ms cubic-bezier(.3, 1.5, .5, 1); }
+  .fr-checks details { interpolate-size: allow-keywords; }
+  .fr-checks details::details-content { block-size: 0; overflow: clip; opacity: 0; transition: block-size 260ms cubic-bezier(.2, .8, .2, 1), opacity 200ms ease, content-visibility 260ms allow-discrete; }
+  .fr-checks details[open]::details-content { block-size: auto; opacity: 1; }
+  .first-run .fr-ready:not(:disabled) { animation: fr-ready 380ms ease; }
+}
+.fr-sos { position: relative; z-index: 10; margin: 12px 20px 0; padding: 18px; border-radius: 22px; background: #FCEAE8; display: flex; align-items: center; gap: 14px; color: #8E2A22; text-decoration: none; }
+.fr-sos b { display: block; font-size: 15px; }
+.fr-sos small { display: block; margin-top: 2px; font-size: 12.5px; color: #A3564D; }
+.fr-sos .fr-call { flex: none; margin-left: auto; height: 40px; padding: 0 16px; border-radius: 20px; background: #C8352B; color: #fff; font-size: 14px; font-weight: 700; display: grid; place-items: center; }
+.fr-sos:focus-visible { outline: 2px solid #8E2A22; outline-offset: 2px; }
+
+/* 고르기: 답 · 색 · 목소리 */
+.fr-options { position: relative; z-index: 10; display: flex; flex-direction: column; gap: 10px; padding: 0 24px; }
+.first-run .fr-option { width: 100%; height: 50px; border-radius: 25px; background: rgb(255 255 255 / 92%); box-shadow: inset 0 0 0 1.5px #F0E6D8; font-size: 15px; font-weight: 600; color: var(--fr-ink); display: grid; place-items: center; transition: background-color 150ms ease, color 150ms ease; }
+.first-run .fr-option[aria-pressed="true"], .first-run .fr-option[aria-checked="true"] { background: var(--fr-ink); color: #fff; box-shadow: none; }
+.first-run .fr-option:focus-visible, .first-run .fr-swatch:focus-visible { outline: 2px solid var(--fr-ink); outline-offset: 3px; }
+.fr-voices { position: relative; z-index: 10; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 0 24px; }
+.fr-voices .fr-option { height: 52px; font-weight: 700; }
+.fr-swatches { display: flex; justify-content: center; gap: 20px; }
+.first-run .fr-swatch { width: 44px; height: 44px; border-radius: 50%; }
+.first-run .fr-swatch[aria-checked="true"] { box-shadow: 0 0 0 3px #FFF6EC, 0 0 0 5.5px var(--fr-ink); }
+.fr-pick-label { text-align: center; font-size: 14px; font-weight: 700; }
+
+/* 장면: 풍경, 문, 바닥, 빛. 모두 화면 아래를 기준으로 놓는다. */
+.fr-land { position: absolute; left: 0; bottom: 0; width: 100%; height: auto; pointer-events: none; }
+.fr-cat, .fr-tree, .fr-door, .fr-floor, .fr-glow, .fr-cushion, .fr-hold { position: absolute; }
+.fr-cat { left: 50%; translate: -50% 0; pointer-events: none; }
+.fr-cat > svg { display: block; width: 100%; height: auto; }
+/* 누를 수 있는 고양이: 칸 전체가 버튼이다(장면 자체는 누르기를 막아 둔다) */
+.fr-cat-tap { all: unset; display: block; width: 100%; cursor: pointer; pointer-events: auto; border-radius: 24px; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.fr-cat-tap:focus-visible { outline: 2px solid var(--fr-ink); outline-offset: 4px; }
+.fr-name-cat { position: relative; z-index: 10; width: calc(var(--u) * 50); margin: -4px auto -10px; }
+.fr-cat--far { width: calc(var(--u) * 34); left: calc(50% + var(--u) * 16); bottom: calc(var(--u) * 40); }
+.fr-cat--peek { width: calc(var(--u) * 18); left: calc(50% + var(--u) * 12.3); bottom: calc(var(--u) * 46); }
+.fr-tree--front { width: calc(var(--u) * 15.4); left: calc(50% + var(--u) * 1.3); translate: -50% 0; bottom: calc(var(--u) * 47); }
+.fr-cat--near { width: calc(var(--u) * 52); bottom: calc(var(--u) * 18); }
+.fr-cat--meet { width: calc(var(--u) * 72.6); bottom: calc(var(--u) * 30); }
+.fr-cat--adopt { width: calc(var(--u) * 86); bottom: calc(var(--u) * 46); transform-origin: 50% 85%; transition: scale 300ms ease-out; }
+.fr-cat--adopt[data-holding] { scale: 1.08; transition-duration: 1400ms; }
+.fr-floor { left: 0; right: 0; bottom: 0; height: calc(var(--u) * 72); background: linear-gradient(#F6E6D3, #F2DFC9); }
+.fr-door { left: 50%; translate: -50% 0; bottom: calc(var(--u) * 72); width: calc(var(--u) * 51); height: calc(var(--u) * 93); overflow: hidden; border-radius: 999px 999px 4px 4px; background: linear-gradient(180deg, #FFD2A6 0%, #F8AF84 100%); box-shadow: 0 0 0 10px #EFDCC6, 0 0 70px 14px rgb(255 196 140 / 35%); }
+.fr-door .fr-land { left: 50%; width: calc(var(--u) * 100); translate: -50% 0; bottom: calc(var(--u) * -10); }
+.fr-cat--door { width: calc(var(--u) * 61.5); bottom: calc(var(--u) * 65); }
+.fr-glow { left: 50%; translate: -50% 0; border-radius: 50%; filter: blur(30px); pointer-events: none; }
+.fr-cushion { left: 50%; translate: -50% 0; width: calc(var(--u) * 66); bottom: calc(var(--u) * 64); }
+.fr-cushion > svg { display: block; width: 100%; height: auto; }
+.fr-cat--spot { width: calc(var(--u) * 62); bottom: calc(var(--u) * 67.8); }
+.fr-glow--warm { width: calc(var(--u) * 59); height: calc(var(--u) * 59); bottom: calc(var(--u) * 85.6); background: rgb(251 180 0 / 35%); }
+.fr-cat--name { width: calc(var(--u) * 63); bottom: calc(var(--u) * 69); }
+.fr-hold { left: 50%; translate: -50% 0; bottom: calc(var(--u) * 18 + env(safe-area-inset-bottom)); z-index: 10; }
+.first-run .fr-hold-button { position: relative; display: grid; place-items: center; width: 96px; height: 96px; border-radius: 50%; color: var(--fr-ink); touch-action: none; user-select: none; -webkit-user-select: none; }
+.first-run .fr-hold-button > svg { position: absolute; inset: 0; }
+.first-run .fr-hold-button > .f7-icons { position: relative; }
+.first-run .fr-hold-button:focus-visible { outline: 2px solid var(--fr-ink); outline-offset: 4px; }
+.fr-hold-ring { transition: stroke-dashoffset 250ms linear; }
+
+/* 목소리·마이크 장면: 고양이 둘레 동그라미 */
+.fr-rings { position: relative; margin: 0 auto; display: grid; place-items: center; }
+.fr-rings > span { position: absolute; border-radius: 50%; box-shadow: inset 0 0 0 1.5px rgb(233 162 59 / 30%); }
+.fr-rings > span:last-of-type { background: rgb(251 180 0 / 8%); }
+.fr-rings > svg { position: relative; }
+.fr-rings > .fr-mic-cat { position: relative; }
+
+/* 마이크 안내 모션: 동그라미가 안에서부터 차례로 펼쳐지고, 고양이가 가운데로 톡 내려앉는다.
+ * 그 뒤로는 숨 쉬듯 움직이고, 동그라미가 안쪽부터 번갈아 숨 쉬며, 7초에 한 번 인사하듯 살짝 들썩인다.
+ * 동그라미는 장식이며 소리 크기와 관계없다. */
+@keyframes fr-ring-in { from { scale: .55; opacity: 0; } }
+@keyframes fr-ring-breathe { 0%, 100% { scale: 1; } 50% { scale: 1.04; } }
+@keyframes fr-cat-drop { 0% { translate: 0 -40px; opacity: 0; scale: .95 1.05; } 55% { translate: 0 0; opacity: 1; scale: 1.07 .91; } 78% { scale: .98 1.03; } 100% { translate: 0 0; scale: 1; } }
+@keyframes fr-cat-hello { 0%, 82%, 100% { translate: 0 0; scale: 1; } 86% { translate: 0 0; scale: 1.04 .95; } 91% { translate: 0 -12px; scale: .97 1.04; } 96% { translate: 0 0; scale: 1.03 .97; } }
+@keyframes fr-cat-breathe { 0%, 100% { scale: 1; } 50% { scale: 1.008 1.018; } }
+@media (prefers-reduced-motion: no-preference) {
+  .fr-mic .fr-rings > span { animation: fr-ring-in 640ms cubic-bezier(.2, .8, .2, 1) both, fr-ring-breathe 3.4s ease-in-out infinite; }
+  .fr-mic .fr-rings > span:nth-of-type(3) { animation-delay: 60ms, 1.1s; }
+  .fr-mic .fr-rings > span:nth-of-type(2) { animation-delay: 150ms, 1.35s; }
+  .fr-mic .fr-rings > span:nth-of-type(1) { animation-delay: 240ms, 1.6s; }
+  .fr-mic-cat { transform-origin: 50% 85%; animation: fr-cat-drop 640ms cubic-bezier(.3, .7, .4, 1) 200ms both, fr-cat-hello 7s ease-in-out 2.6s infinite; }
+  .fr-mic-cat > .buddy { transform-origin: 50% 85%; animation: fr-cat-breathe 3.6s ease-in-out infinite; }
+  .fr-mic .fr-heading { animation: fr-rise 440ms cubic-bezier(.2, .8, .2, 1) 320ms both; }
+  .fr-mic-screen > .fr-footer { animation: fr-rise 440ms cubic-bezier(.2, .8, .2, 1) 400ms both; }
+}
+
+@keyframes fr-breathe { 0%, 100% { scale: 1; opacity: .65; } 50% { scale: 1.08; opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  .fr-glow--warm { animation: fr-breathe 1.8s ease-in-out infinite; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fr-cat--adopt, .fr-hold-ring { transition: none; }
+}
+
+/* 캐릭터 이름 입력: 입력칸과 확인 버튼을 한 칸에 */
+.fr-namefield { display: flex; align-items: center; gap: 8px; height: 60px; padding: 0 7px 0 22px; border-radius: 20px; background: #fff; box-shadow: 0 12px 30px -16px rgb(60 40 10 / 35%), inset 0 0 0 1.5px var(--fr-line); transition: box-shadow 120ms ease; }
+.fr-namefield:focus-within { box-shadow: 0 12px 30px -16px rgb(60 40 10 / 35%), inset 0 0 0 2px var(--fr-ink); }
+.first-run .fr-name-input { width: 100%; min-width: 0; background: transparent; font-size: 17px; font-weight: 700; color: var(--fr-ink); outline: none; }

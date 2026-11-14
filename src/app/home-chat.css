@@ -98,6 +98,11 @@
 .home-message[data-role="user"] > p { max-width: 85%; border-radius: 20px 20px 5px 20px; background: var(--color-cat-ink); color: var(--color-cat-surface); border-color: transparent; }
 .home-character-wrap { transition: opacity var(--seed-duration-d4) ease, scale var(--seed-duration-d6) var(--seed-timing-function-enter); }
 .home-character-wrap .buddy { width: min(320px, 82vw, 45svh); height: auto; }
+.home-character-wrap .pose-cat { width: min(320px, 82vw, 45svh); }
+/* 쉬는 홈의 고양이는 누를 수 있다. 대화 중에는 눌러지지 않는다. */
+.home-cat-tap { all: unset; display: block; cursor: pointer; border-radius: 32px; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.home-cat-tap:disabled { cursor: default; }
+.home-cat-tap:focus-visible { outline: 2px solid var(--color-cat-ink); outline-offset: 4px; }
 .home-character-wrap:has(.home-buddy-expanded) { top: 27%; }
 .home-character-wrap .home-buddy-expanded { transform: scale(1.1); }
 /* 글 대화 중에는 큰 몽글이를 감추고, 작은 몽글이가 입력창 위에 앉는다. */

@@ -2,7 +2,7 @@
 
 import { TextArea } from "./ui/Controls";
 import { Button } from "./ui/Button";
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { Msg } from "@/lib/log";
 import { ChatMarkdown } from "@/lib/chat-markdown";
@@ -11,6 +11,8 @@ import { COLORS, type ColorId, type Profile, josa } from "@/lib/onboarding";
 import { catExpression } from "@/lib/cat-expression";
 import { companionBackground } from "@/lib/companion-theme";
 import Buddy, { type BuddyState } from "./Buddy";
+import PoseCat from "./PoseCat";
+import { useCatReactions } from "./use-cat-reactions";
 import { Icon } from "./art";
 import "./home-voice.css";
 import "./home-chat.css";
@@ -133,6 +135,28 @@ export default function HomeScreen({
   const bottomRef = useRef<HTMLDivElement>(null);
   const canSend = chat.open && Boolean(chat.draft.trim());
 
+  // 쉬는 홈에서만 고양이가 혼자 논다: 가끔 뭔가 발견한 듯 눈이 동그래지고, 심심하면 발을 핥고, 오래 두면 웅크려 잔다.
+  // 누르면 깜짝 놀랐다가 귀찮다는 듯 울고(세 번 연달아면 하악), 자고 있으면 째려보며 깬다. 대화 중에는 기존 Buddy 상태를 그대로 쓴다.
+  const [napping, setNapping] = useState(false);
+  const [catPokes, setCatPokes] = useState(0);
+  const homeCat = useCatReactions(resting && napping ? "sleep" : "base");
+  const { notice: catNotice, play: catPlay } = homeCat;
+  useEffect(() => {
+    if (!resting || napping) return;
+    const timers = [
+      window.setTimeout(catNotice, 14000),
+      window.setTimeout(() => catPlay([["groom", 4400]]), 32000),
+      window.setTimeout(() => setNapping(true), 75000),
+    ];
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [resting, napping, catPokes, catNotice, catPlay]);
+  function pokeCat() {
+    setCatPokes((n) => n + 1);
+    if (napping) { setNapping(false); catPlay([["glare", 1800]]); return; }
+    homeCat.tap();
+  }
+  function wakeForTalk() { setNapping(false); homeCat.reset(); }
+
   useEffect(() => {
     if (wasVoiceActive.current && !voice && !chat.open) micButtonRef.current?.focus({ preventScroll: true });
     wasVoiceActive.current = Boolean(voice);
@@ -184,6 +208,7 @@ export default function HomeScreen({
 
   function expandText() {
     // 사용자 클릭 안에서 포커스를 옮겨 모바일에서도 키보드가 바로 열린다.
+    wakeForTalk();
     flushSync(onText);
     composerRef.current?.focus({ preventScroll: true });
   }
@@ -226,21 +251,27 @@ export default function HomeScreen({
 
       <div className="home-character-wrap absolute inset-x-gutter top-[32%] flex flex-col items-center" data-hidden={chatting} aria-hidden={chatting}>
         <div className={`home-buddy ${voice ? "home-buddy-expanded" : ""}`}>
-          <Buddy
-            shape={profile.shape}
-            color={profile.color}
-            accessory={profile.accessory}
-            size={320}
-            stroll={resting}
-            groundShadow
-            outputLevel={outputLevel} outputShape={outputShape}
-            expression={expression}
-            state={voice?.state ?? chat.state}
-            bob
-            tap={chat.open && !voice ? chat.draft.length : undefined}
-            hearing={voice ? Boolean(voice.hearing) : undefined}
-            voice={Boolean(voice)}
-          />
+          <button type="button" className="home-cat-tap" onClick={pokeCat} disabled={!resting} aria-label={`${name} 건드려 보기`}>
+            <PoseCat
+              pose={resting ? homeCat.pose : "base"}
+              fx={resting ? homeCat.fx : undefined}
+              cue={homeCat.cue}
+              size={320}
+              buddy={{
+                shape: profile.shape,
+                color: profile.color,
+                accessory: profile.accessory,
+                stroll: resting && !napping && !homeCat.busy,
+                outputLevel, outputShape,
+                expression,
+                state: voice?.state ?? chat.state,
+                bob: true,
+                tap: chat.open && !voice ? chat.draft.length : undefined,
+                hearing: voice ? Boolean(voice.hearing) : undefined,
+                voice: Boolean(voice),
+              }}
+            />
+          </button>
         </div>
         {voice && <div className="mt-5 max-w-full px-4 text-center">
           <p role="status" className="text-t4 font-medium text-cat-ink">{voice.error ? "연결하지 못했어요" : voice.statusText}</p>
@@ -304,7 +335,7 @@ export default function HomeScreen({
               <Button variant="fill"
                 ref={micButtonRef}
                 type="button"
-                onClick={voice ? voice.onMic : onVoice}
+                onClick={voice ? voice.onMic : () => { wakeForTalk(); onVoice(); }}
                 disabled={chat.sending || Boolean(voice && (voice.connecting || (!voice.hasMic && !voice.error)))}
                 tabIndex={canSend ? -1 : 0}
                 aria-label={voice ? voice.error ? "음성 연결 다시 시도" : voice.micOn ? "마이크 끄기" : "마이크 켜기" : `${josa(name, "과", "와")} 음성 대화 시작`}

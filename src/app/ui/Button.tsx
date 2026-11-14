@@ -3,7 +3,7 @@ import type { ComponentPropsWithRef } from "react";
 
 type ButtonProps = Omit<ComponentPropsWithRef<"button">, "color"> & {
   variant?: "fill" | "tonal" | "plain";
-  tone?: "primary" | "neutral";
+  tone?: "primary" | "neutral" | "ink" | "sun";
   size?: "medium" | "large";
   fullWidth?: boolean;
   loading?: boolean;

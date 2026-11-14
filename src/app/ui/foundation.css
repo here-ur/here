@@ -26,10 +26,29 @@
   --f7-theme-color: var(--here-ui-ink);
   --f7-theme-color-rgb: 31, 42, 85;
   --f7-theme-color-tint: #354572;
-  --f7-button-tonal-bg-color: rgb(var(--f7-theme-color-rgb) / 15%);
-  --f7-button-tonal-pressed-bg-color: rgb(var(--f7-theme-color-rgb) / 25%);
+  /* --f7-theme-color-rgb는 쉼표로 나눈 값이라 rgba(…, 알파)로 써야 한다. "rgb(31, 42, 85 / 15%)"처럼 섞으면 무효가 돼 배경이 투명해진다. */
+  --f7-button-tonal-bg-color: rgba(var(--f7-theme-color-rgb), .15);
+  --f7-button-tonal-pressed-bg-color: rgba(var(--f7-theme-color-rgb), .25);
   --f7-button-tonal-text-color: var(--f7-theme-color);
 }
+/* 첫 실행 화면의 버튼: ink는 홈 마이크와 같은 검정, sun은 환영 화면의 노랑(글자는 검정). */
+.here-button[data-tone="ink"] {
+  --f7-theme-color: var(--color-cat-ink);
+  --f7-theme-color-rgb: 41, 41, 39;
+  --f7-theme-color-tint: #45453f;
+  --f7-button-fill-text-color: #fff;
+  --f7-button-tonal-bg-color: #fff;
+  --f7-button-tonal-pressed-bg-color: #f3efe8;
+  --f7-button-tonal-text-color: var(--color-cat-ink);
+}
+.here-button[data-tone="sun"] {
+  --f7-theme-color: #FBB400;
+  --f7-theme-color-rgb: 251, 180, 0;
+  --f7-theme-color-tint: #E5A400;
+  --f7-button-fill-text-color: var(--color-cat-ink);
+}
+.here-button[data-tone="ink"]:disabled { --f7-theme-color: #DED8CE; opacity: 1; }
+.here-button[data-tone="sun"]:disabled { --f7-theme-color: #A9A9AB; --f7-button-fill-text-color: #3A3A3C; opacity: 1; }
 .here-button[data-full-width] { width: 100%; }
 .here-button:active:not(:disabled) { background-color: var(--f7-button-pressed-bg-color); }
 .here-button:disabled { opacity: .55; }

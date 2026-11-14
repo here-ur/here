@@ -57,10 +57,11 @@ export const QUESTIONS = [
 
 export type Answers = Partial<Record<(typeof QUESTIONS)[number]["id"], string>>;
 
+// tell: 첫 만남 화면에서 캐릭터의 퉁명한 첫마디 아래 서비스가 조용히 덧붙이는 한 줄(고른 대화 방식).
 const STYLES = {
-  listen: { name: "차분히 들어 주는 친구", line: "서두르지 않고, 천천히 들어 줄게요." },
-  sort: { name: "같이 정리해 주는 친구", line: "엉킨 생각을 하나씩 같이 풀어 볼게요." },
-  chat: { name: "편하게 수다 떠는 친구", line: "무겁지 않게, 아무 이야기나 편하게 해요." },
+  listen: { name: "차분히 들어 주는 친구", line: "서두르지 않고, 천천히 들어 줄게요.", tell: "조용히 들어 줄 거래요." },
+  sort: { name: "같이 정리해 주는 친구", line: "엉킨 생각을 하나씩 같이 풀어 볼게요.", tell: "같이 정리해 줄 거래요." },
+  chat: { name: "편하게 수다 떠는 친구", line: "무겁지 않게, 아무 이야기나 편하게 해요.", tell: "편하게 수다 떨어 줄 거래요." },
 } as const;
 
 export type StyleId = keyof typeof STYLES;
@@ -81,7 +82,7 @@ const LATELY_LINE: Record<string, string> = {
 export function describeStyle(style: StyleId, answers: Answers) {
   const s = STYLES[style];
   const opener = (answers.lately && LATELY_LINE[answers.lately]) || "";
-  return { name: s.name, summary: [opener, s.line].filter(Boolean).join(" ") };
+  return { name: s.name, summary: [opener, s.line].filter(Boolean).join(" "), tell: s.tell };
 }
 
 export type Profile = {

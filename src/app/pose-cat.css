@@ -1,0 +1,17 @@
+/* 고양이 한 칸(PoseCat). 칸은 정사각형이고, 고양이 키는 칸의 70.3%, 바닥선은 위에서 85.4%다(Buddy 그림과 같은 자리). */
+.pose-cat { position: relative; width: 100%; aspect-ratio: 1; }
+.pose-cat__body, .pose-cat__base, .pose-cat__breath { position: absolute; inset: 0; }
+.pose-cat__body { transform-origin: 50% 85.4%; }
+.pose-cat__base { transition: opacity 140ms ease; }
+.pose-cat .pose-cat__base > svg.buddy { display: block; width: 100%; height: 100%; }
+.pose-cat__img { position: absolute; left: calc(50% + var(--pose-x, 0%)); translate: -50% 0; max-width: none; pointer-events: none; transition: opacity 140ms ease; }
+/* 영상·그림에는 그림자가 없어서 바닥 그림자를 따로 깐다. 기본 자세는 Buddy의 그림자를 쓴다. */
+.pose-cat__shadow { position: absolute; left: calc(50% + var(--pose-x, 0%)); bottom: calc(14.6% - 1.4%); height: 2.8%; translate: -50% 0; border-radius: 50%; background: rgb(45 38 26 / 13%); filter: blur(2px); opacity: 0; transition: opacity 140ms ease, width 200ms ease; }
+.pose-cat:not([data-kind="base"]) .pose-cat__shadow { opacity: 1; }
+@keyframes pose-cat-breathe { 0%, 100% { scale: 1 1; } 50% { scale: 1.006 1.016; } }
+@media (prefers-reduced-motion: no-preference) {
+  .pose-cat[data-kind="still"] .pose-cat__breath { transform-origin: 50% 85.4%; animation: pose-cat-breathe 3.6s ease-in-out infinite; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pose-cat__base, .pose-cat__img, .pose-cat__shadow { transition: none; }
+}
