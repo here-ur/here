@@ -6,11 +6,13 @@ import { MIN_PASSWORD_LENGTH, passwordSetupError } from "@/lib/password-policy";
 import { Button } from "./ui/Button";
 import { TextField } from "./ui/TextField";
 
-export default function PasswordSetup({ onSaved, onSkip, onCancel, signup = false }: {
+/** 비밀번호 정하기. sheet면 로그인·가입 시트 모양(위에 이름표, 큰 입력칸, 검정 버튼)으로, 아니면 설정 화면 안의 작은 폼으로 그린다. */
+export default function PasswordSetup({ onSaved, onSkip, onCancel, signup = false, sheet = false }: {
   onSaved: () => void;
   onSkip?: () => void;
   onCancel?: () => Promise<void>;
   signup?: boolean;
+  sheet?: boolean;
 }) {
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -51,6 +53,22 @@ export default function PasswordSetup({ onSaved, onSkip, onCancel, signup = fals
       setBusy(false);
     }
   }
+
+  if (sheet) return (
+    <form onSubmit={save} className="auth-sheet-form">
+      <div className="auth-sheet-fields">
+        <TextField ref={passwordInput} label="비밀번호" variant="plain" placeholder={`${MIN_PASSWORD_LENGTH}자 이상`} type="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH}
+          value={password} onChange={(event) => setPassword(event.target.value)} required disabled={busy} inputClassName="fr-input" />
+        <TextField label="비밀번호 확인" variant="plain" placeholder="한 번 더 입력" type="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH}
+          value={confirmation} onChange={(event) => setConfirmation(event.target.value)} error={error} required disabled={busy} inputClassName="fr-input" />
+      </div>
+      <div className="auth-sheet-actions">
+        <Button type="submit" tone="ink" fullWidth loading={busy}>{signup ? "가입 완료" : "저장"}</Button>
+        {!signup && onSkip && <Button variant="plain" disabled={busy} className="fr-link" onClick={onSkip}>나중에 할게요</Button>}
+        {onCancel && <Button variant="plain" disabled={busy} className="fr-link" onClick={() => { void onCancel(); }}>로그아웃</Button>}
+      </div>
+    </form>
+  );
 
   return (
     <form onSubmit={save} className="flex flex-col gap-4">

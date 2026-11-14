@@ -8,6 +8,9 @@ import ComingSoon from "../../ComingSoon";
 import ReportPreview from "../report-preview/Preview";
 import { DEFAULT_COMPANION, type Profile } from "@/lib/onboarding";
 
+// 메뉴 아래 "오늘 남은 대화" 막대를 보려는 예시 숫자. 실제 앱은 /api/quota에서 받아 온다.
+const SAMPLE_QUOTA = { chat: { limit: 200, used: 46 }, realtime: { limit: 60, used: 12 }, resetAt: Math.floor(Date.now() / 86400000 + 1) * 86400 };
+
 export default function Preview() {
   const [menu, setMenu] = useState(false);
   const [screen, setScreen] = useState<"home" | "library" | "insight" | "friends">("home");
@@ -54,7 +57,8 @@ export default function Preview() {
       { role: "assistant", content: "가장 좋아하는 보드게임은 **아줄**, 음료는 **따뜻한 보리차**였어.\n\n- 타일 한 장\n- 이야기 한 조각\n\n| 게임 | 음료 |\n| --- | --- |\n| 아줄 | 따뜻한 보리차 |\n\n`테스트 코드`도 읽기 쉽게 보여." },
     ] : [] }}
   >
-    <Drawer open={menu} profile={profile} onClose={() => setMenu(false)} onCustomize={() => { setMenu(false); setCustomize(true); }} onLibrary={() => openScreen("library")} onInsight={() => openScreen("insight")} onHelp={() => { setMenu(false); setShowHelp(true); }} onFriends={() => openScreen("friends")} onSignOut={() => setMenu(false)} onReset={() => setMenu(false)} />
+    <Drawer open={menu} profile={profile} onClose={() => setMenu(false)} onCustomize={() => { setMenu(false); setCustomize(true); }} onLibrary={() => openScreen("library")} onInsight={() => openScreen("insight")} onHelp={() => { setMenu(false); setShowHelp(true); }} onFriends={() => openScreen("friends")} onSignOut={() => setMenu(false)} onReset={() => setMenu(false)}
+      loadQuota={async () => SAMPLE_QUOTA} />
     {showHelp && <ComingSoon
       title="도움받기를 준비하고 있어요"
       body="실제 상담사와 이야기할 수 있는 방법을 준비 중이에요. 열리면 이곳에서 알려 드릴게요."

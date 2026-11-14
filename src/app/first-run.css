@@ -1,12 +1,14 @@
 /* 첫 실행(기억 동의, 마이크 안내, 캐릭터 만나기) 공통 모양.
  * 배치는 Tailwind 대신 여기서 정한다. 장면 안 위치는 --u(390pt 너비 시안의 1/100)로 쓰고,
  * 화면이 낮으면 높이에 맞춰 함께 줄어든다. */
-.first-run {
+/* 색 이름과 입력칸 모양은 로그인·가입 시트(fr-scope)도 같이 쓴다. */
+.first-run, .fr-scope {
   --fr-ink: var(--color-cat-ink);
   --fr-muted: #857D71;
   --fr-faint: #9A9184;
-  --fr-line: #ECE4D8;
-  --fr-sun: #FBB400;
+  --fr-line: #E9E1D5;
+}
+.first-run {
   --u: min(1cqw, calc(max(100dvh, 640px) * .00462));
   container-type: inline-size;
   display: flex;
@@ -27,14 +29,14 @@
 
 /* 제목 묶음: 큰 글씨는 제목(캐릭터 장면에서는 캐릭터의 말), 작은 글씨는 설명 */
 .fr-heading { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0 28px; text-align: center; }
-.fr-eyebrow { font-size: 13px; font-weight: 600; color: var(--fr-faint); }
-.fr-title { font-size: 23px; line-height: 1.35; font-weight: 800; letter-spacing: -.025em; text-wrap: balance; }
-.fr-title--cat { font-size: 28px; }
-.fr-desc { font-size: 14.5px; line-height: 1.5; color: var(--fr-muted); text-wrap: balance; }
-.fr-note { font-size: 13px; font-weight: 600; color: var(--fr-faint); text-align: center; }
-.fr-avatar { display: block; margin: 8px auto 20px; }
-/* 내용이 짧은 화면: 키 큰 화면에서만 위를 조금 더 띄운다. 펼치기로 내용이 늘어도 위쪽이 움직이지 않게 auto 여백은 쓰지 않는다. */
-.fr-avatar.fr-avatar--balanced { width: clamp(80px, 11dvh, 96px); height: clamp(80px, 11dvh, 96px); margin-top: clamp(8px, calc((100dvh - 660px) * .8), 150px); }
+.fr-eyebrow { font-size: 12.5px; font-weight: 600; color: var(--fr-faint); }
+.fr-title { font-size: 21px; line-height: 1.35; font-weight: 800; letter-spacing: -.025em; text-wrap: balance; }
+.fr-title--cat { font-size: 25px; }
+.fr-desc { font-size: 14px; line-height: 1.5; color: var(--fr-muted); text-wrap: balance; }
+.fr-note { font-size: 12.5px; font-weight: 600; color: var(--fr-faint); text-align: center; }
+/* 기억 동의의 고양이. 키 큰 화면에서만 위를 조금 더 띄운다. 펼치기로 내용이 늘어도 위쪽이 움직이지 않게 auto 여백은 쓰지 않는다. */
+.fr-consent-cat { position: relative; z-index: 10; width: clamp(112px, 15dvh, 132px); margin: clamp(0px, calc((100dvh - 660px) * .7), 130px) auto 8px; }
+
 
 /* 아래 버튼 묶음 */
 .fr-footer { position: relative; z-index: 10; margin-top: auto; display: flex; flex-direction: column; gap: 12px; padding: 12px 24px max(24px, env(safe-area-inset-bottom)); }
@@ -43,17 +45,33 @@
  * 내용이 한쪽으로 밀리던 문제. 바닥 여백은 각 화면의 바닥 버튼(safe-area 포함)이 맡는다. */
 .app-frame.first-run.app-frame-scrollable { padding-bottom: 0; scrollbar-width: none; }
 .app-frame.first-run.app-frame-scrollable::-webkit-scrollbar { display: none; }
-.first-run .here-button.button-large { min-height: 52px; border-radius: 999px; font-size: 16px; font-weight: 700; }
-.first-run .here-button.fr-ghost { box-shadow: inset 0 0 0 1.5px var(--fr-line); }
+/* 첫 실행 전체(환영 → 로그인·가입 → 동의 → 마이크 → 캐릭터 만나기)의 버튼은 하나로 맞춘다: 높이 52px 알약, 15px 굵게.
+ * 주요 동작은 검정(tone="ink"), 보조 동작은 흰 버튼(variant="tonal" tone="ink" + fr-ghost), 덜 중요한 것은 글자 버튼(fr-link). */
+:is(.first-run, .here-auth-screen) .here-button.button-large { min-height: 52px; border-radius: 999px; font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+:is(.first-run, .here-auth-screen) .here-button.fr-ghost { box-shadow: inset 0 0 0 1.5px var(--fr-line); }
+:is(.first-run, .fr-scope) .fr-link { align-self: center; min-height: 40px; padding-inline: 8px; font-size: 13.5px; font-weight: 600; color: var(--fr-muted); }
 
 /* 입력칸 */
 .fr-field { position: relative; z-index: 10; padding: 0 24px; }
-.first-run .fr-input { width: 100%; height: 56px; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--fr-line); text-align: center; font-size: 18px; font-weight: 700; letter-spacing: .02em; color: var(--fr-ink); outline: none; transition: box-shadow 120ms ease; }
-.first-run .fr-input::placeholder { color: #BDB4A6; font-weight: 600; letter-spacing: 0; }
-.first-run .fr-input:focus { box-shadow: inset 0 0 0 2px var(--fr-ink); }
-.first-run .fr-input[aria-invalid="true"] { box-shadow: inset 0 0 0 2px #C8352B; }
-.first-run .here-field__message { margin-top: 8px; text-align: center; font-size: 13px; line-height: 1.45; color: #B4322A; }
+:is(.first-run, .fr-scope) .fr-input { width: 100%; height: 56px; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--fr-line); text-align: center; font-size: 17px; font-weight: 700; letter-spacing: .02em; color: var(--fr-ink); outline: none; transition: box-shadow 120ms ease; }
+:is(.first-run, .fr-scope) .fr-input::placeholder { color: #BDB4A6; font-weight: 600; letter-spacing: 0; }
+:is(.first-run, .fr-scope) .fr-input:focus { box-shadow: inset 0 0 0 2px var(--fr-ink); }
+:is(.first-run, .fr-scope) .fr-input[aria-invalid="true"] { box-shadow: inset 0 0 0 2px #C8352B; }
+:is(.first-run, .fr-scope) .here-field__message { margin-top: 8px; text-align: center; font-size: 13px; line-height: 1.45; color: #B4322A; }
 .fr-error { margin-top: 8px; text-align: center; font-size: 13px; line-height: 1.45; color: #B4322A; }
+
+/* 인증번호 여섯 칸: 실제 입력은 칸 위에 투명하게 겹친 입력칸(TextField) 하나가 받는다(문자 자동 채우기 유지) */
+.fr-otp { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.fr-otp > .here-field { display: contents; }
+.fr-otp > span { height: 54px; border-radius: 14px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--fr-line); display: grid; place-items: center; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.fr-otp:focus-within span[data-current] { box-shadow: inset 0 0 0 2px var(--fr-ink); }
+.fr-otp[data-invalid] span { box-shadow: inset 0 0 0 1.5px #E7A49D; }
+:is(.first-run, .fr-scope) .fr-otp .fr-otp-input { position: absolute; inset: 0 0 auto; width: 100%; height: 54px; opacity: 0; font-size: 16px; caret-color: transparent; }
+:is(.first-run, .fr-scope) .fr-otp .here-field__message { grid-column: 1 / -1; margin-top: 0; }
+/* 로그인·가입 진행: 위 줄 오른쪽의 짧은 막대들 */
+.fr-steps { display: flex; gap: 5px; margin-right: 4px; }
+.fr-steps i { width: 20px; height: 4px; border-radius: 99px; background: var(--fr-line); }
+.fr-steps i[data-done] { background: var(--fr-ink); }
 
 
 /* 흰 카드 목록: Framework7 iOS 목록(List strong inset)을 첫 실행 톤으로.
@@ -66,11 +84,11 @@
   --f7-list-item-padding-horizontal: 18px;
   --f7-list-item-padding-vertical: 14px;
   --f7-list-item-media-margin: 14px;
-  --f7-list-item-title-font-size: 15px;
+  --f7-list-item-title-font-size: 14.5px;
   --f7-list-item-title-font-weight: 700;
   --f7-list-item-title-text-color: var(--fr-ink);
   --f7-list-item-title-white-space: normal;
-  --f7-list-item-footer-font-size: 12.5px;
+  --f7-list-item-footer-font-size: 12px;
   --f7-list-item-footer-line-height: 1.45;
   --f7-list-item-footer-text-color: var(--fr-muted);
   position: relative; z-index: 10;
@@ -84,7 +102,7 @@
   --f7-list-strong-bg-color: #F7F4EF;
   --f7-list-item-min-height: 54px;
   --f7-list-item-padding-vertical: 8px;
-  --f7-list-item-title-font-size: 15px;
+  --f7-list-item-title-font-size: 14.5px;
   --f7-checkbox-active-color: var(--fr-ink);
   --f7-checkbox-border-radius: 7px;
   --f7-checkbox-inactive-color: #CFC6B8;
@@ -93,16 +111,16 @@
 .fr-checks li + li { border-top: 1px solid #ECE5DA; }
 .fr-checks .item-inner { padding-right: 84px; }
 .fr-req { display: inline-grid; place-items: center; height: 19px; margin-right: 7px; padding: 0 6px; border-radius: 6px; background: #FFE9B8; color: #8A5A00; font-size: 11px; font-weight: 800; vertical-align: 1px; }
-.first-run .fr-more { position: absolute; top: 0; right: 0; height: var(--f7-list-item-min-height); display: flex; align-items: center; gap: 3px; padding: 0 18px 0 12px; list-style: none; cursor: pointer; font-size: 13px; font-weight: 600; color: #9C9384; }
+.first-run .fr-more { position: absolute; top: 0; right: 0; height: var(--f7-list-item-min-height); display: flex; align-items: center; gap: 3px; padding: 0 18px 0 12px; list-style: none; cursor: pointer; font-size: 12.5px; font-weight: 600; color: #9C9384; }
 .fr-more::-webkit-details-marker { display: none; }
 .fr-more .f7-icons { transition: rotate 200ms ease; }
 details[open] > .fr-more .f7-icons { rotate: 180deg; }
 .first-run .fr-more:focus-visible { outline: 2px solid var(--fr-ink); outline-offset: -8px; border-radius: 14px; }
-.fr-detail { margin: 0 10px 10px; padding: 12px 14px; border-radius: 14px; background: #fff; font-size: 12.5px; line-height: 1.6; color: var(--fr-muted); }
+.fr-detail { margin: 0 10px 10px; padding: 12px 14px; border-radius: 14px; background: #fff; font-size: 12px; line-height: 1.6; color: var(--fr-muted); }
 .fr-detail dt { font-weight: 700; color: var(--fr-ink); }
 .fr-detail dd { margin: 0 0 10px; }
 .fr-detail dd:last-child { margin-bottom: 0; }
-.fr-fineprint { position: relative; z-index: 10; display: grid; gap: 4px; margin: 16px 24px 0; font-size: 12.5px; line-height: 1.5; color: #9C9384; text-align: center; }
+.fr-fineprint { position: relative; z-index: 10; display: grid; gap: 4px; margin: 16px 24px 0; font-size: 12px; line-height: 1.5; color: #9C9384; text-align: center; }
 .fr-fineprint p { display: flex; align-items: center; justify-content: center; gap: 4px; }
 .fr-fineprint .f7-icons { flex: none; }
 .fr-fineprint [data-tone="dev"] { color: #9A6B12; font-weight: 600; }
@@ -110,21 +128,17 @@ details[open] > .fr-more .f7-icons { rotate: 180deg; }
 .fr-consent { scroll-padding-bottom: 128px; }
 .first-run .fr-ready { transition: background-color 220ms ease, color 220ms ease; }
 
-/* 기억 동의 인터랙션: 차례로 떠오르기, 체크 상자 톡, 고양이 들썩, 본문 부드럽게 펼치기, 버튼 켜질 때 살짝 커지기 */
+/* 기억 동의 인터랙션: 차례로 떠오르기, 체크 상자 톡, 본문 부드럽게 펼치기, 버튼 켜질 때 살짝 커지기(고양이 반응은 PoseCat) */
 @keyframes fr-rise { from { opacity: 0; translate: 0 14px; } }
 @keyframes fr-pop { 0% { scale: .7; } 60% { scale: 1.14; } 100% { scale: 1; } }
-@keyframes fr-hop { 0%, 100% { translate: 0 0; scale: 1; } 30% { translate: 0 -10px; scale: 1.03 .97; } 55% { translate: 0 0; scale: .97 1.03; } 75% { translate: 0 -3px; scale: 1; } }
-@keyframes fr-hop-big { 0%, 100% { translate: 0 0; rotate: 0deg; scale: 1; } 25% { translate: 0 -18px; rotate: -5deg; scale: 1.02 .98; } 50% { translate: 0 0; rotate: 3deg; scale: .96 1.04; } 70% { translate: 0 -5px; rotate: -1deg; scale: 1; } }
 @keyframes fr-ready { 0%, 100% { scale: 1; } 40% { scale: 1.03; } }
 @media (prefers-reduced-motion: no-preference) {
   .fr-consent > *, .fr-consent > form > * { animation: fr-rise 440ms cubic-bezier(.2, .8, .2, 1) both; }
-  .fr-consent > .fr-avatar-hop { animation-delay: 40ms; }
+  .fr-consent > .fr-consent-cat { animation-delay: 40ms; }
   .fr-consent .fr-heading { animation-delay: 90ms; }
   .fr-consent .fr-checks { animation-delay: 150ms; }
   .fr-consent .fr-fineprint { animation-delay: 210ms; }
   .fr-consent .fr-footer { animation-delay: 270ms; }
-  .fr-hop { transform-origin: 50% 100%; animation: fr-hop 560ms cubic-bezier(.3, .7, .4, 1); }
-  .fr-avatar-hop[data-checked="2"] .fr-hop { animation: fr-hop-big 760ms cubic-bezier(.3, .7, .4, 1); }
   .fr-checks label.item-checkbox input:checked ~ .icon-checkbox { animation: fr-pop 280ms cubic-bezier(.3, 1.5, .5, 1); }
   .fr-checks details { interpolate-size: allow-keywords; }
   .fr-checks details::details-content { block-size: 0; overflow: clip; opacity: 0; transition: block-size 260ms cubic-bezier(.2, .8, .2, 1), opacity 200ms ease, content-visibility 260ms allow-discrete; }
@@ -132,14 +146,14 @@ details[open] > .fr-more .f7-icons { rotate: 180deg; }
   .first-run .fr-ready:not(:disabled) { animation: fr-ready 380ms ease; }
 }
 .fr-sos { position: relative; z-index: 10; margin: 12px 20px 0; padding: 18px; border-radius: 22px; background: #FCEAE8; display: flex; align-items: center; gap: 14px; color: #8E2A22; text-decoration: none; }
-.fr-sos b { display: block; font-size: 15px; }
-.fr-sos small { display: block; margin-top: 2px; font-size: 12.5px; color: #A3564D; }
-.fr-sos .fr-call { flex: none; margin-left: auto; height: 40px; padding: 0 16px; border-radius: 20px; background: #C8352B; color: #fff; font-size: 14px; font-weight: 700; display: grid; place-items: center; }
+.fr-sos b { display: block; font-size: 14.5px; }
+.fr-sos small { display: block; margin-top: 2px; font-size: 12px; color: #A3564D; }
+.fr-sos .fr-call { flex: none; margin-left: auto; height: 40px; padding: 0 16px; border-radius: 20px; background: #C8352B; color: #fff; font-size: 13.5px; font-weight: 700; display: grid; place-items: center; }
 .fr-sos:focus-visible { outline: 2px solid #8E2A22; outline-offset: 2px; }
 
 /* 고르기: 답 · 색 · 목소리 */
 .fr-options { position: relative; z-index: 10; display: flex; flex-direction: column; gap: 10px; padding: 0 24px; }
-.first-run .fr-option { width: 100%; height: 50px; border-radius: 25px; background: rgb(255 255 255 / 92%); box-shadow: inset 0 0 0 1.5px #F0E6D8; font-size: 15px; font-weight: 600; color: var(--fr-ink); display: grid; place-items: center; transition: background-color 150ms ease, color 150ms ease; }
+.first-run .fr-option { width: 100%; height: 50px; border-radius: 25px; background: rgb(255 255 255 / 92%); box-shadow: inset 0 0 0 1.5px #F0E6D8; font-size: 14.5px; font-weight: 600; color: var(--fr-ink); display: grid; place-items: center; transition: background-color 150ms ease, color 150ms ease; }
 .first-run .fr-option[aria-pressed="true"], .first-run .fr-option[aria-checked="true"] { background: var(--fr-ink); color: #fff; box-shadow: none; }
 .first-run .fr-option:focus-visible, .first-run .fr-swatch:focus-visible { outline: 2px solid var(--fr-ink); outline-offset: 3px; }
 .fr-voices { position: relative; z-index: 10; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 0 24px; }
@@ -147,7 +161,7 @@ details[open] > .fr-more .f7-icons { rotate: 180deg; }
 .fr-swatches { display: flex; justify-content: center; gap: 20px; }
 .first-run .fr-swatch { width: 44px; height: 44px; border-radius: 50%; }
 .first-run .fr-swatch[aria-checked="true"] { box-shadow: 0 0 0 3px #FFF6EC, 0 0 0 5.5px var(--fr-ink); }
-.fr-pick-label { text-align: center; font-size: 14px; font-weight: 700; }
+.fr-pick-label { text-align: center; font-size: 13.5px; font-weight: 700; }
 
 /* 장면: 풍경, 문, 바닥, 빛. 모두 화면 아래를 기준으로 놓는다. */
 .fr-land { position: absolute; left: 0; bottom: 0; width: 100%; height: auto; pointer-events: none; }
@@ -184,8 +198,8 @@ details[open] > .fr-more .f7-icons { rotate: 180deg; }
 
 /* 목소리·마이크 장면: 고양이 둘레 동그라미 */
 .fr-rings { position: relative; margin: 0 auto; display: grid; place-items: center; }
-.fr-rings > span { position: absolute; border-radius: 50%; box-shadow: inset 0 0 0 1.5px rgb(233 162 59 / 30%); }
-.fr-rings > span:last-of-type { background: rgb(251 180 0 / 8%); }
+.fr-rings > span { position: absolute; border-radius: 50%; box-shadow: inset 0 0 0 1.5px rgb(41 41 39 / 7%); }
+.fr-rings > span:last-of-type { background: rgb(41 41 39 / 3.5%); }
 .fr-rings > svg { position: relative; }
 .fr-rings > .fr-mic-cat { position: relative; }
 
@@ -217,6 +231,3 @@ details[open] > .fr-more .f7-icons { rotate: 180deg; }
 }
 
 /* 캐릭터 이름 입력: 입력칸과 확인 버튼을 한 칸에 */
-.fr-namefield { display: flex; align-items: center; gap: 8px; height: 60px; padding: 0 7px 0 22px; border-radius: 20px; background: #fff; box-shadow: 0 12px 30px -16px rgb(60 40 10 / 35%), inset 0 0 0 1.5px var(--fr-line); transition: box-shadow 120ms ease; }
-.fr-namefield:focus-within { box-shadow: 0 12px 30px -16px rgb(60 40 10 / 35%), inset 0 0 0 2px var(--fr-ink); }
-.first-run .fr-name-input { width: 100%; min-width: 0; background: transparent; font-size: 17px; font-weight: 700; color: var(--fr-ink); outline: none; }

@@ -5,10 +5,28 @@ import { Button } from "./ui/Button";
 import { Icon } from "./art";
 
 const EXIT_MS = 150;
+const SLIDE_EXIT_MS = 260;
 const FOCUSABLE = 'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]:not([tabindex="-1"])';
 
-/** 아래에서 올라오는 시트. 화면(main, relative) 안에 둔다. */
-export default function Sheet({ title, onClose, children, footer }: { title: string; onClose: () => void; children: React.ReactNode; footer?: React.ReactNode }) {
+/** 아래에서 올라오는 시트. 화면(main, relative) 안에 둔다.
+ * onBack이 있으면 제목 앞에 뒤로 가기 버튼을 둔다. dismissible이 false면 닫기 버튼·바깥 누르기·Escape로 닫히지 않는다.
+ * locked면 버튼은 그대로 두고 누를 수만 없게 한다(보내는 중에 버튼이 사라져 제목 줄이 흔들리지 않게).
+ * slide면 화면 아래에서 끝까지 밀려 올라오고 닫을 때 아래로 내려간다(키 큰 시트용). 아니면 살짝 떠오르고 흐려지며 닫힌다.
+ * keyboardAware면 휴대폰 키보드가 가린 높이(--sheet-kb)와 보이는 높이(--sheet-vvh)를 시트에 알려, 화면 쪽 CSS가 버튼을 키보드 위로 올린다. */
+export default function Sheet({ title, onClose, children, footer, onBack, backLabel = "뒤로", dismissible = true, locked = false, slide = false, keyboardAware = false, className = "" }: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  onBack?: () => void;
+  backLabel?: string;
+  dismissible?: boolean;
+  locked?: boolean;
+  slide?: boolean;
+  keyboardAware?: boolean;
+  className?: string;
+}) {
+  const exitMs = slide ? SLIDE_EXIT_MS : EXIT_MS;
   const titleId = useId();
   const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -26,8 +44,10 @@ export default function Sheet({ title, onClose, children, footer }: { title: str
     onCloseRef.current();
   }, []);
 
+  const canClose = useRef(dismissible && !locked);
+  useEffect(() => { canClose.current = dismissible && !locked; }, [dismissible, locked]);
   const requestClose = useCallback(() => {
-    if (closeRequested.current) return;
+    if (closeRequested.current || !canClose.current) return;
     closeRequested.current = true;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) finishClose();
     else setClosing(true);
@@ -35,9 +55,29 @@ export default function Sheet({ title, onClose, children, footer }: { title: str
 
   useEffect(() => {
     if (!closing) return;
-    const timer = window.setTimeout(finishClose, EXIT_MS + 50);
+    const timer = window.setTimeout(finishClose, exitMs + 50);
     return () => window.clearTimeout(timer);
-  }, [closing, finishClose]);
+  }, [closing, finishClose, exitMs]);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const overlay = overlayRef.current;
+    if (!keyboardAware || !viewport || !overlay) return;
+    // 키보드가 올라오면 보이는 영역(visual viewport)이 줄어든다. 화면 아래에서 가려진 높이와 보이는 높이를 넘겨 준다.
+    const sync = () => {
+      const covered = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      overlay.style.setProperty("--sheet-vvh", `${viewport.height}px`);
+      overlay.style.setProperty("--sheet-kb", `${covered}px`);
+      overlay.toggleAttribute("data-keyboard", covered > 80);
+    };
+    sync();
+    viewport.addEventListener("resize", sync);
+    viewport.addEventListener("scroll", sync);
+    return () => {
+      viewport.removeEventListener("resize", sync);
+      viewport.removeEventListener("scroll", sync);
+    };
+  }, [keyboardAware]);
 
   useEffect(() => {
     const panel = panelRef.current;
@@ -71,11 +111,13 @@ export default function Sheet({ title, onClose, children, footer }: { title: str
   return (
     <div
       ref={overlayRef}
-      className={`ui-transition absolute inset-0 z-40 flex items-end bg-[rgba(35,32,27,.28)] backdrop-blur-[2px] ${closing ? "opacity-0" : "motion-safe:animate-fade"}`}
-      style={closing ? { transitionDuration: `${EXIT_MS}ms` } : undefined}
+      // overflow-clip: 아래에서 올라오는 중인 시트가 화면(main)에 스크롤을 만들지 않게 자른다.
+      // 닫을 때 배경은 애니메이션으로 흐려진다. 여는 애니메이션(animate-fade)을 떼는 순간과 겹쳐 transition은 시작되지 않고 바로 사라졌다.
+      className={`ui-transition absolute inset-0 z-40 flex items-end overflow-clip bg-[rgba(35,32,27,.28)] backdrop-blur-[2px] ${closing ? "here-scrim-out" : "motion-safe:animate-fade"}`}
+      style={closing ? { animationDuration: `${exitMs}ms` } : undefined}
       onClick={requestClose}
-      onTransitionEnd={(event) => {
-        if (closing && event.target === event.currentTarget && event.propertyName === "opacity") finishClose();
+      onAnimationEnd={(event) => {
+        if (closing && event.target === event.currentTarget) finishClose();
       }}
     >
       <div
@@ -107,16 +149,22 @@ export default function Sheet({ title, onClose, children, footer }: { title: str
             first.focus();
           }
         }}
-        className={`here-sheet ui-transition flex max-h-[88%] w-full flex-col overflow-hidden rounded-t-r6 bg-cat-surface pt-3 shadow-[0_-10px_40px_rgba(35,32,27,.12)] transition-[translate,opacity] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-cat-ink ${closing ? "translate-y-3 opacity-0" : "motion-safe:animate-rise"}`}
-        style={closing ? { transitionDuration: `${EXIT_MS}ms` } : undefined}
+        className={`here-sheet ${className} ui-transition flex max-h-[88%] w-full flex-col overflow-hidden rounded-t-r6 bg-cat-surface pt-3 shadow-[0_-10px_40px_rgba(35,32,27,.12)] transition-[translate,opacity] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-cat-ink ${
+          slide ? (closing ? "here-sheet--out" : "here-sheet--slide") : closing ? "translate-y-3 opacity-0" : "motion-safe:animate-rise"}`}
+        style={closing ? { transitionDuration: `${exitMs}ms` } : undefined}
       >
         <div aria-hidden="true" className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-cat-line" />
-        <div className="mb-1 flex shrink-0 items-center justify-between gap-3 px-5">
-          <h2 id={titleId} className="text-t7 font-bold text-balance text-cat-ink">{title}</h2>
-          {/* Framework7 버튼은 기본 너비가 100%라서, 아이콘 버튼은 크기를 직접 정해야 제목을 밀어내지 않는다. */}
-          <Button onClick={requestClose} aria-label="닫기" tone="neutral" variant="tonal" size="medium" className="size-11 min-h-11 shrink-0 !p-0">
-            <Icon name="close" size={18} />
-          </Button>
+        {/* 제목 줄은 높이 44px로 고정한다. 아이콘 버튼은 배경 없는 글자 버튼(here-sheet-icon)이고, 잠긴 동안에도 자리를 지킨다. */}
+        <div className="mb-1 flex min-h-11 shrink-0 items-center gap-1 px-5">
+          {onBack && <Button variant="plain" onClick={onBack} disabled={locked} aria-label={backLabel} className="here-sheet-icon -ml-2.5">
+            <Icon name="back" size={22} />
+          </Button>}
+          <h2 id={titleId} className="mr-auto text-t7 font-bold text-balance text-cat-ink">{title}</h2>
+          {dismissible
+            ? <Button variant="plain" onClick={requestClose} disabled={locked} aria-label="닫기" className="here-sheet-icon -mr-2.5">
+              <Icon name="close" size={20} />
+            </Button>
+            : <span aria-hidden="true" className="size-11 shrink-0" />}
         </div>
         <div className="min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain px-5 pb-6">{children}</div>
         {footer && <div className="shrink-0 border-t border-cat-line/50 px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">{footer}</div>}

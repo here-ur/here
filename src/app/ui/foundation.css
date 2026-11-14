@@ -141,6 +141,20 @@
   background: var(--f7-sheet-bg-color);
   backdrop-filter: blur(var(--f7-bars-translucent-blur));
 }
+/* 키 큰 시트(Sheet slide): iOS 시트처럼 화면 아래에서 끝까지 올라오고, 닫을 때는 빨라지며 아래로 내려간다. */
+@keyframes here-sheet-up { from { translate: 0 100%; } }
+@media (prefers-reduced-motion: no-preference) {
+  .here-sheet.here-sheet--slide { animation: here-sheet-up 480ms cubic-bezier(.32, .72, 0, 1) backwards; }
+}
+.here-sheet.here-sheet--out { translate: 0 100%; transition: translate 260ms cubic-bezier(.4, 0, .9, .4); }
+/* 시트 제목 줄의 뒤로·닫기: 배경 없는 아이콘 버튼. 누르는 동안만 옅은 원이 보인다. */
+.here-sheet-icon { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; color: var(--color-cat-ink); transition: background-color 120ms ease, opacity 120ms ease; }
+.here-sheet-icon:not(:disabled):active { background: rgb(41 41 39 / 7%); }
+.here-sheet-icon:disabled { opacity: .3; }
+.here-sheet-icon:focus-visible { outline: 2px solid var(--color-cat-ink); outline-offset: -2px; }
+/* 시트를 닫을 때 뒤 배경이 함께 흐려진다(길이는 Sheet가 정한다). */
+@keyframes here-scrim-out { to { opacity: 0; } }
+.here-scrim-out { animation: here-scrim-out 150ms ease forwards; }
 
 .ios .home-header .home-chrome-button {
   background: var(--f7-glass-bg-color);

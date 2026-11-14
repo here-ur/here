@@ -4,11 +4,15 @@ import List from "framework7-react/components/list.js";
 import ListItem from "framework7-react/components/list-item.js";
 import { Icon } from "./art";
 import { Button } from "./ui/Button";
-import { CatAvatar, FirstRunFooter, FirstRunHeading, FirstRunTopBar } from "./FirstRun";
+import { FirstRunFooter, FirstRunHeading, FirstRunTopBar } from "./FirstRun";
+import PoseCat from "./PoseCat";
+import { useCatReactions } from "./use-cat-reactions";
 import { useEffect, useRef, useState } from "react";
 import { browserSupabase } from "@/lib/supabase";
 import { MEMORY_CONSENT_VERSION } from "@/lib/memory-consent";
 import { consentDisplayKey, consentDisplayStorage, hasConsentDisplayHint, setConsentDisplayHint } from "@/lib/consent-display-cache";
+
+const CONSENT_POSES = ["round", "grumble", "purr"] as const;
 
 async function consentRequest(method: "GET" | "POST") {
   // Bound session refresh as well as the HTTP request, not just fetch.
@@ -37,8 +41,8 @@ export default function MemoryConsentGate({ children, signOut, userId = "", prev
   const [status, setStatus] = useState<"checking" | "required" | "ready" | "error">(() => preview ? "required" : hasConsentDisplayHint(consentDisplayStorage(), userId) ? "ready" : "checking");
   const [privacy, setPrivacy] = useState(false);
   const [sensitive, setSensitive] = useState(false);
-  // 체크할 때마다 고양이가 한 번 들썩인다(좋은 티를 안 내려는데 티가 난다). 숫자가 바뀌면 같은 동작을 다시 재생한다.
-  const [hops, setHops] = useState(0);
+  // 체크할 때마다 고양이가 눈을 동그랗게 뜨고, 둘 다 체크하면 식빵 자세로 골골한다.
+  const cat = useCatReactions(privacy && sensitive ? "purr" : "base");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
@@ -96,7 +100,7 @@ export default function MemoryConsentGate({ children, signOut, userId = "", prev
   const checked = Number(privacy) + Number(sensitive);
   const tick = (set: (value: boolean) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
     set(e.target.checked);
-    if (e.target.checked) setHops(n => n + 1);
+    if (e.target.checked && checked === 0) cat.notice();
   };
   // 펼친 본문이 아래 버튼에 가려지면 보이게 살짝 내린다. 펼침 동작(260ms)이 끝난 뒤에 잰다.
   const reveal = (e: React.MouseEvent<HTMLElement>) => {
@@ -112,8 +116,10 @@ export default function MemoryConsentGate({ children, signOut, userId = "", prev
 
   return <main className="app-frame app-frame-scrollable first-run first-run--white fr-consent">
     <FirstRunTopBar onBack={leave} backLabel="로그아웃하고 처음으로" />
-    <div className="fr-avatar-hop" data-checked={checked}>
-      <CatAvatar key={hops} size={96} className={`fr-avatar fr-avatar--balanced${hops ? " fr-hop" : ""}`} />
+    <div className="fr-consent-cat">
+      <button type="button" className="fr-cat-tap" onClick={cat.tap} aria-label="고양이 건드려 보기">
+        <PoseCat pose={cat.pose} fx={cat.fx} cue={cat.cue} preload={CONSENT_POSES} />
+      </button>
     </div>
     {status === "error" ? <>
       <FirstRunHeading title="연결을 확인하지 못했어요" />

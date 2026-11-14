@@ -18,7 +18,11 @@ const SHAKE = [{ transform: "translateX(0)" }, { transform: "translateX(-2%)" },
  * 바꿀 때는 살짝 눌렸다가 그 순간 바꾸고(140ms 겹치기) 통 튀어 오른다. 기본↔동그란 눈은 눈만 바뀌게 겹치기만 한다.
  * fx는 바꾼 뒤 한 번 더 하는 몸짓(hop 깜짝, tilt 갸웃, shake 하악)이고, cue가 바뀌면 같은 자세에서도 다시 한다.
  * 처음 그릴 때와 동작 줄이기에서는 움직임 없이 바로 바꾼다. */
-export default function PoseCat({ pose, fx, cue = 0, buddy, size = 240 }: { pose: CatPose; fx?: CatFx; cue?: number; buddy?: BuddyProps; size?: number }) {
+export default function PoseCat({ pose, fx, cue = 0, buddy, size = 240, preload }: {
+  pose: CatPose; fx?: CatFx; cue?: number; buddy?: BuddyProps; size?: number;
+  /** 미리 받아 둘 자세. 없으면 전부 받는다. 영상은 하나에 1MB 가까이 되어, 로그인 전처럼 몇 개만 쓰는 화면은 줄여 둔다. */
+  preload?: readonly CatPose[];
+}) {
   const root = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const base = useRef<HTMLDivElement>(null);
@@ -27,9 +31,14 @@ export default function PoseCat({ pose, fx, cue = 0, buddy, size = 240 }: { pose
   const imgB = useRef<HTMLImageElement>(null);
   const run = useRef({ shown: "base" as CatPose, front: 0, first: true, latest: 0, queue: Promise.resolve() });
 
+  const preloadList = preload?.join(",");
   useEffect(() => {
-    for (const art of Object.values(CAT_POSE_ART)) { const img = new Image(); img.src = art.src; }
-  }, []);
+    const poses = preloadList === undefined ? Object.keys(CAT_POSE_ART) : preloadList.split(",");
+    for (const name of poses) {
+      const art = CAT_POSE_ART[name as Exclude<CatPose, "base">];
+      if (art) { const img = new Image(); img.src = art.src; }
+    }
+  }, [preloadList]);
 
   useEffect(() => {
     const s = run.current;

@@ -1,23 +1,22 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
+import { useId, type ComponentProps, type ReactNode } from "react";
 import { Icon } from "./art";
-import { CAT_ART, CAT_SILHOUETTE } from "./CatFace";
 import { Button } from "./ui/Button";
 import "./first-run.css";
 
-// 첫 실행 화면(기억 동의, 마이크 안내, 캐릭터 만나기)이 함께 쓰는 틀. 로그인·가입 화면은 AuthGate·AuthScreen에 따로 있다.
+// 첫 실행 화면(로그인·가입 입력, 기억 동의, 마이크 안내, 캐릭터 만나기)이 함께 쓰는 틀. 환영 영상 화면은 AuthScreen에 따로 있다.
 // 흰 바탕은 안내 단계, 크림은 길 위 장면, room은 집 안 장면이다.
 
 const uid = (id: string) => id.replace(/[^a-zA-Z0-9]/g, "");
 
-export function FirstRunScreen({ tone, children, className = "", scroll = false }: {
+export function FirstRunScreen({ tone, children, className = "", scroll = false, ...events }: {
   tone: "white" | "cream" | "room";
   children: ReactNode;
   className?: string;
   scroll?: boolean;
-}) {
-  return <main className={`app-frame first-run first-run--${tone} ${scroll ? "app-frame-scrollable" : ""} ${className}`}>{children}</main>;
+} & Pick<ComponentProps<"main">, "onFocus" | "onBlur">) {
+  return <main className={`app-frame first-run first-run--${tone} ${scroll ? "app-frame-scrollable" : ""} ${className}`} {...events}>{children}</main>;
 }
 
 export function FirstRunTopBar({ onBack, backLabel = "뒤로", end }: { onBack?: () => void; backLabel?: string; end?: ReactNode }) {
@@ -60,25 +59,6 @@ export function FirstRunHeading({ eyebrow, title, description, cat, className = 
 /** 바닥 버튼 자리. sticky면 내용이 길어져도 화면 아래에 붙어 있고, 내용은 그 뒤로 지나간다. */
 export function FirstRunFooter({ children, sticky = false }: { children: ReactNode; sticky?: boolean }) {
   return <div className={sticky ? "fr-footer fr-footer--sticky" : "fr-footer"}>{children}</div>;
-}
-
-/** 노란 원 안의 고양이 얼굴. 환영 화면의 얼굴 연출을 작게 이어 쓴다. */
-export function CatAvatar({ size = 96, className = "fr-avatar" }: { size?: number; className?: string }) {
-  const id = `ava${uid(useId())}`;
-  return (
-    <svg width={size} height={size} viewBox="0 0 96 96" aria-hidden="true" className={className}>
-      <defs>
-        <clipPath id={`${id}-circle`}><circle cx="48" cy="48" r="48" /></clipPath>
-        <clipPath id={`${id}-cat`}><path d={CAT_SILHOUETTE} /></clipPath>
-      </defs>
-      <circle cx="48" cy="48" r="48" fill="#FBB400" />
-      <g clipPath={`url(#${id}-circle)`}>
-        <svg x="-6" y="12" width="108" height="108" viewBox="1290 330 820 820">
-          <image href={CAT_ART} width="3396" height="1852" clipPath={`url(#${id}-cat)`} />
-        </svg>
-      </g>
-    </svg>
-  );
 }
 
 /** 고양이 둘레의 옅은 동그라미(마이크·목소리 화면). */

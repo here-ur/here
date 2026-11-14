@@ -349,13 +349,9 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           {tappableCat("fr-cat--name")}
           <form className="contents" onSubmit={(e) => { e.preventDefault(); finish(); }}>
             <FirstRunFooter>
-              <div className="fr-namefield">
-                <TextField label="이름" hideLabel variant="plain" className="min-w-0 flex-1" id="companion" value={companion}
-                  onChange={(e) => setCompanion(e.target.value)} maxLength={10} enterKeyHint="done" inputClassName="fr-name-input" />
-                <Button type="submit" tone="ink" size="medium" aria-label="정하기" className="size-[46px] min-h-0 shrink-0 !p-0">
-                  <Icon name="check" size={20} />
-                </Button>
-              </div>
+              <TextField label="이름" hideLabel variant="plain" id="companion" value={companion}
+                onChange={(e) => setCompanion(e.target.value)} maxLength={10} enterKeyHint="done" inputClassName="fr-input" />
+              <Button type="submit" tone="ink" fullWidth>이 이름으로 할게요</Button>
             </FirstRunFooter>
           </form>
         </FirstRunScreen>
