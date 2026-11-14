@@ -153,6 +153,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   }
 
   function cancelChat() {
+    if (chatRequest.current) setDraft((current) => current || pendingText);
     chatRequest.current?.abort();
     chatRequest.current = null;
     setPendingText("");
@@ -176,6 +177,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
     headlineLocked.current = true;
     const next: Msg[] = [...withHomeOpener(messages, openingLine), { role: "user", content: text, at: Date.now() }];
     setPendingText(text);
+    setDraft("");
     setError("");
     setStatus("thinking");
     try {
@@ -187,15 +189,15 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
       if (session.current) saveSession({ ...session.current, messages: completed });
       if (result.crisis) setCrisis(true);
       if (result.suggest) setSuggest(true);
-      setDraft("");
     } catch (e) {
       if (chatRequest.current !== controller || controller.signal.aborted) return;
+      setDraft((current) => current || draft);
       if (e instanceof ChatRequestError) {
         if (e.crisis) setCrisis(true);
         if (e.suggest) setSuggest(true);
         setError(e.message);
       } else setError("답변을 받지 못했어요. 다시 시도해 주세요.");
-      // 실패한 글은 입력창에 그대로 두고, 재시도 때 중복 대화로 보내지 않는다.
+      // 실패한 글은 입력창에 복원하고, 재시도 때 중복 대화로 보내지 않는다.
     } finally {
       if (chatRequest.current === controller) {
         chatRequest.current = null;

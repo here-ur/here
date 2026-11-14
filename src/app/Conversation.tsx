@@ -91,8 +91,8 @@ export function Bubbles({ who, messages, live, thinking, follow = true }: { who:
             <div
               className={`min-w-0 max-w-[78%] whitespace-pre-wrap px-4 py-2.5 text-article-body motion-safe:animate-fade ${
                 mine
-                  ? "rounded-r5 rounded-br-r1_5 bg-linear-to-b from-[#3B76FF] to-[#1E4FE0] text-white shadow-[0_6px_16px_rgba(30,79,224,.25)]"
-                  : "rounded-r5 rounded-bl-r1_5 bg-white text-ios-label shadow-[0_4px_14px_rgba(28,38,80,.08)]"
+                  ? "rounded-r5 bg-linear-to-b from-[#3B76FF] to-[#1E4FE0] text-white shadow-[0_6px_16px_rgba(30,79,224,.25)]"
+                  : "rounded-r5 bg-white text-ios-label shadow-[0_4px_14px_rgba(28,38,80,.08)]"
               }`}
             >
               {m.typing ? (
