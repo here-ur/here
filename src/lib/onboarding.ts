@@ -79,6 +79,21 @@ const LATELY_LINE: Record<string, string> = {
   "잘 모르겠어요": "요즘 마음이 어떤지 잘 모르겠군요. 그럴 수 있어요.",
 };
 
+// 첫 대면에서 고양이의 첫마디. 질문 1(요즘 어떻게 지내요?) 답에 맞춰 말투의 세기를 조절한다.
+// "많이 힘들어요"면 퉁명한 말 대신 쉬라고 말하고(tough), 화면은 109 안내를 그 자리에서 바로 보여 준다.
+// 문구는 시안 초안이며 팀 확인 전이다.
+const MEET_LINE: Record<string, string> = {
+  "그럭저럭 지내요": "…뭘 봐.",
+  "조금 지쳤어요": "…피곤해 보이네.",
+  "많이 힘들어요": "…오늘은 좀 쉬어.",
+  "잘 모르겠어요": "…그런 날도 있지.",
+};
+const TOUGH_LATELY = "많이 힘들어요";
+
+export function meetLine(answers: Answers): { line: string; tough: boolean } {
+  return { line: (answers.lately && MEET_LINE[answers.lately]) || "…뭘 봐.", tough: answers.lately === TOUGH_LATELY };
+}
+
 export function describeStyle(style: StyleId, answers: Answers) {
   const s = STYLES[style];
   const opener = (answers.lately && LATELY_LINE[answers.lately]) || "";

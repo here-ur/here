@@ -3,7 +3,7 @@
 import { flushSync } from "react-dom";
 import "./page-move.css";
 
-/** 화면 넘김 종류. enter: 로그인·가입을 마치고 다음 화면(기억 동의·홈)으로. */
+/** 화면 넘김 종류. enter: 로그인·가입 또는 기억 동의 시트를 마치고 다음 화면(캐릭터 만나기·홈)으로. */
 export type PageMove = "enter";
 
 type ViewTransitionDocument = Document & { startViewTransition?: (update: () => void) => { updateCallbackDone: Promise<void>; finished: Promise<void> } };

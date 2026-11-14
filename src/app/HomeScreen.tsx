@@ -113,7 +113,7 @@ export default function HomeScreen({
   greet: boolean; // 온보딩 직후 등장 모션
   headline?: string | null;
   spotlight?: React.ReactNode; // 기본 홈 위쪽에 작게 두는 것(오늘 해 볼 만한 것 시안). 대화 중에는 감춘다
-  nudge?: React.ReactNode; // 대화를 마친 뒤 하단 버튼 위에 한 번 보여 주는 카드 시안
+  nudge?: React.ReactNode; // 쉬는 동안 하단 버튼 바로 위에 보여 주는 작은 카드(지금은 홈 첫 방문 안내 HomeHint)
   onVoice: () => void;
   onText: () => void;
   onMenu: () => void;

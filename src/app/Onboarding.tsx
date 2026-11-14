@@ -4,19 +4,14 @@ import List from "framework7-react/components/list.js";
 import ListItem from "framework7-react/components/list-item.js";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "./art";
-import Buddy from "./Buddy";
-import { CatRings, Cushion, FirstRunFooter, FirstRunHeading, FirstRunScreen, FirstRunTopBar, FrontTree, SoundToggle, StreetLand } from "./FirstRun";
+import { FirstRunFooter, FirstRunHeading, FirstRunScreen, FirstRunTopBar, FrontTree, SoundToggle, StreetLand } from "./FirstRun";
 import PoseCat from "./PoseCat";
-import { useCatReactions } from "./use-cat-reactions";
 import type { CatPose } from "@/lib/cat-poses";
 import { Button } from "./ui/Button";
 import { TextField } from "./ui/TextField";
-import { useVoicePreview } from "./use-voice-preview";
 import {
-  COLORS,
   DEFAULT_COMPANION,
   QUESTIONS,
-  VOICES,
   type Answers,
   type ColorId,
   type Profile,
@@ -26,64 +21,74 @@ import {
   describeStyle,
   josa,
   matchStyle,
+  meetLine,
 } from "@/lib/onboarding";
 import * as sfx from "@/lib/sound";
 
-// 첫 실행의 '캐릭터 만나기'. 길고양이 이야기: 길 위에서 나무 뒤의 고양이를 발견하고(질문 두 개),
-// 대답할수록 다가오고, 꾹 눌러 데려가고, 문을 지나 집 안에서 앉을 자리·목소리·이름을 정한다.
+// 첫 실행의 '캐릭터 만나기'. 내 이름을 알려 주고, 길 위에서 나무 뒤의 고양이를 발견해(질문 두 개),
+// 만나서 꾹 눌러 데려간 뒤 집 안에서 이름을 지어 주고, 마지막에 안내(AI·기록·109)를 본다.
+// 앉을 자리 색과 목소리는 기본값으로 시작하고 메뉴 → 캐릭터에서 언제든 바꾼다(첫 대화까지 화면을 줄이려고).
+// 고양이는 장면마다 한 가지 동작만 끊김 없이 반복한다(장면 안에서 다른 동작으로 바꿔 끼우지 않는다).
 // 큰 글씨는 고양이의 말, 작은 글씨는 서비스가 덧붙이는 속마음이다. 안내·질문·109는 고양이 말투를 쓰지 않는다.
-type Step = "name" | "safety" | "q1" | "q2" | "meet" | "adopt" | "door" | "spot" | "voice" | "naming";
-const ORDER: Step[] = ["name", "safety", "q1", "q2", "meet", "adopt", "door", "spot", "voice", "naming"];
+export type OnboardingStep = "name" | "q1" | "q2" | "meet" | "naming" | "safety";
+type Step = OnboardingStep;
+// 안내(AI·기록·109)는 이야기를 끊지 않도록 맨 끝, 홈으로 가기 직전에 둔다.
+export const ONBOARDING_STEPS: readonly Step[] = ["name", "q1", "q2", "meet", "naming", "safety"];
+const ORDER = ONBOARDING_STEPS;
+
+// 장면마다 고양이가 반복하는 한 가지 동작. 여러 동작을 이어 붙이면 영상이 바뀔 때마다 끊겨 보여서, 장면 안에서는 바꾸지 않는다.
+// 만나서 데려가기는 앉아서 숨 쉬고 깜박이며 힐끔 보는 기본 자세다(덮칠 준비 자세는 이를 드러내 하악질처럼 보여서
+// "꾹 누르면 다가와요"와 맞지 않았다). 꾹 누르는 동안 살짝 커지며 다가오는 것만 더한다. 안내 장면에는 고양이가 없다.
+const SCENE_POSE: Partial<Record<Step, CatPose>> = { name: "sleep", q1: "groom", q2: "glare", meet: "base", naming: "purr" };
+const SCENE_POSES = Object.values(SCENE_POSE); // 온보딩에서 쓰는 동작만 미리 받는다
+
+// 처음 시작할 때의 꾸미기 기본값(메뉴 → 캐릭터에서 바꾼다).
+const START_COLOR: ColorId = "lavender";
+const START_VOICE: VoiceId = "marin";
 
 const HOLD_MS = 1400;
 const LEAVE_MS = 150;
 const RING = 2 * Math.PI * 44;
 
-export default function Onboarding({ onDone }: { onDone: (p: Profile) => void }) {
-  const [step, setStep] = useState<Step>("name");
+/** initialStep·initialAnswers는 개발용 미리보기에서 중간 장면부터 열 때만 쓴다. */
+export default function Onboarding({ onDone, initialStep = "name", initialAnswers = {} }: {
+  onDone: (p: Profile) => void; initialStep?: Step; initialAnswers?: Answers;
+}) {
+  const [step, setStep] = useState<Step>(initialStep);
   const [nickname, setNickname] = useState("");
-  const [answers, setAnswers] = useState<Answers>({});
+  const [answers, setAnswers] = useState<Answers>(initialAnswers);
   const shape: ShapeId = "cloud"; // Legacy profile value; the character is now a cat.
-  const [color, setColor] = useState<ColorId>("lavender");
-  const [voice, setVoice] = useState<VoiceId>("marin");
   const [companion, setCompanion] = useState(DEFAULT_COMPANION);
   const [muted, setMuted] = useState(false);
   const [holding, setHolding] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const answerTimer = useRef<ReturnType<typeof setTimeout> | null>(null); // 답을 고른 뒤 잠깐 보여 주고 넘어가는 타이머
   const stopRiser = useRef<() => void>(() => {});
   const [soundStarted, setSoundStarted] = useState(false);
   const advancing = useRef(false);
-  const preview = useVoicePreview();
-  const stopPreview = preview.stop;
 
   useEffect(() => () => sfx.stopPad(), []);
-  useEffect(() => () => { if (holdTimer.current) clearTimeout(holdTimer.current); }, []);
+  useEffect(() => () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    if (answerTimer.current) clearTimeout(answerTimer.current);
+  }, []);
 
   const name = nickname.trim() || "친구";
   const style = matchStyle(answers);
   const companionName = cleanName(companion);
-  const swatch = COLORS.find((c) => c.id === color)!;
-  const voiceInfo = VOICES.find((v) => v.id === voice)!;
+  const meet = meetLine(answers);
 
-  // 장면마다 고양이가 쉬는 자세. 누르기·고르기에 잠깐 반응하고 다시 이 자세로 돌아간다(목소리 장면은 입 모양 때문에 Buddy를 그대로 쓴다).
-  const rest: CatPose = step === "name" ? (nickname.trim() ? "glare" : "sleep")
-    : step === "q1" ? "groom" : step === "q2" ? "glare"
-      : step === "adopt" ? (holding ? "ready" : "base")
-        : step === "spot" ? "sleep" : step === "naming" ? "purr" : "base";
-  const cat = useCatReactions(rest);
-  const catPose = <PoseCat pose={cat.pose} fx={cat.fx} cue={cat.cue} />;
-  const tappableCat = (place: string) => (
-    <div className={`fr-cat ${place}`}>
-      <button type="button" className="fr-cat-tap" onClick={cat.tap} aria-label="고양이 건드려 보기">{catPose}</button>
-    </div>
-  );
+  const catPose = <PoseCat pose={SCENE_POSE[step] ?? "base"} preload={SCENE_POSES} />;
+  const sceneCat = (place: string) => <div className={`fr-cat ${place}`} aria-hidden="true">{catPose}</div>;
 
   // 화면 전환: 지금 화면이 잠깐 흐려지며 사라지고(LEAVE_MS), 다음 화면이 위로 살짝 떠오르며 나타난다.
   function go(next: Step, sound = true) {
     if (leaving) return;
+    // 넘어가기 전에 남은 타이머(답 고른 뒤 넘어가기·꾹 누르기)를 정리해, 바뀐 장면에서 늦게 실행되지 않게 한다.
+    if (answerTimer.current) { clearTimeout(answerTimer.current); answerTimer.current = null; }
+    holdEnd();
     advancing.current = false;
-    cat.reset();
     if (sound) sfx.tick();
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setStep(next);
@@ -99,8 +104,7 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
   function back() {
     const i = ORDER.indexOf(step);
     if (i <= 0) return;
-    stopPreview();
-    go(ORDER[i - 1]);
+    go(ORDER[i - 1]); // go가 남은 타이머를 정리한다(답을 고른 직후 뒤로 가도 앞으로 넘어가지 않는다)
   }
 
   // 배경 소리는 첫 버튼을 누른 뒤에만 켤 수 있다(브라우저 자동 재생 제한).
@@ -114,7 +118,6 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
   function toggleSound() {
     setMuted(!muted);
     sfx.setMuted(!muted);
-    if (!muted) stopPreview();
   }
 
   function answer(id: (typeof QUESTIONS)[number]["id"], value: string, i: number, next: Step) {
@@ -122,11 +125,11 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
     advancing.current = true;
     sfx.pick(i);
     setAnswers((current) => ({ ...current, [id]: value }));
-    cat.notice(); // 고른 답에 고양이가 눈을 동그랗게 뜨고 갸웃한다(흥미로운 걸 발견)
-    setTimeout(() => go(next, false), 800); // 고른 답과 고양이 반응이 잠깐 보이게
+    answerTimer.current = setTimeout(() => { answerTimer.current = null; go(next, false); }, 500); // 고른 답이 잠깐 보이게
   }
 
   function holdStart() {
+    if (holdTimer.current || leaving) return; // 이미 누르는 중이거나 넘어가는 중이면 다시 시작하지 않는다
     setHolding(true);
     sfx.buzz(20);
     stopRiser.current = sfx.riser(HOLD_MS);
@@ -147,21 +150,12 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
     sfx.buzz([40, 60, 120]);
     sfx.burst();
     setHolding(false);
-    cat.play([["swat", 1000, "hop"]], () => go("door", false)); // 앞발로 툭 치고 따라온다
-  }
-
-  function pickVoice(id: VoiceId, i: number) {
-    sfx.pick(i);
-    setVoice(id);
-    if (muted) return;
-    sfx.stopPad(); // 목소리를 들을 때는 배경 소리를 끈다
-    void preview.play(id);
+    go("naming", false);
   }
 
   function finish() {
-    stopPreview();
     sfx.stopPad();
-    onDone({ nickname: nickname.trim(), companion: companionName, shape, color, voice, style });
+    onDone({ nickname: nickname.trim(), companion: companionName, shape, color: START_COLOR, voice: START_VOICE, style });
   }
 
   // 나갈 때는 짧게 흐려지고, 들어올 때는 위에서부터 차례로 떠오른다. 동작 줄이기를 켜면 바로 바뀐다.
@@ -170,53 +164,28 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
     : "motion-safe:[&>*]:animate-screen-in [&>*:nth-child(2)]:[animation-delay:60ms] [&>*:nth-child(3)]:[animation-delay:120ms] [&>*:nth-child(4)]:[animation-delay:180ms] [&>*:nth-child(n+5)]:[animation-delay:240ms]";
   const sound = soundStarted ? <SoundToggle muted={muted} onToggle={toggleSound} /> : undefined;
   const top = <FirstRunTopBar onBack={step === "name" ? undefined : back} end={sound} />;
-  const next = (to: Step, label = "다음") => <FirstRunFooter><Button tone="ink" fullWidth onClick={() => go(to)}>{label}</Button></FirstRunFooter>;
 
   switch (step) {
     case "name":
       return (
         <FirstRunScreen key={step} tone="cream" className={motion}>
           {top}
-          {/* 길 위에서 웅크려 자다가, 글자를 치면 실눈 뜨고 째려보고, 이름을 정하면 하품하고 넘어간다 */}
-          <div className="fr-name-cat">
-            <button type="button" className="fr-cat-tap" onClick={cat.tap} aria-label="고양이 건드려 보기">{catPose}</button>
-          </div>
+          {/* 길 위에서 웅크려 자는 고양이(자는 동작만 반복) */}
+          <div className="fr-name-cat" aria-hidden="true">{catPose}</div>
           <FirstRunHeading title="뭐라고 부르면 될까요?" description={`${josa(DEFAULT_COMPANION, "이", "가")} 이 이름으로 불러요.`} />
-          {/* 약관 동의는 첫 환영 화면의 체크로 옮겼다. */}
           <form className="contents" onSubmit={(e) => {
             e.preventDefault();
             if (!nickname.trim() || advancing.current) return;
-            advancing.current = true;
             startSound();
-            cat.play([["yawn", 1100]], () => go("safety"));
+            go("q1");
           }}>
-            <div className="fr-field mt-9">
-              <TextField label="이름이나 별명" hideLabel variant="plain" id="nickname" value={nickname} onChange={(e) => setNickname(e.target.value)}
-                maxLength={12} placeholder="이름이나 별명" autoComplete="nickname" enterKeyHint="next" inputClassName="fr-input" />
+            {/* 이름표는 입력칸 위에 따로, 칸 안은 왼쪽부터 적는다(로그인 시트 입력칸과 같은 결). */}
+            <div className="fr-field fr-labeled mt-9">
+              <TextField label="이름이나 별명" variant="plain" id="nickname" value={nickname} onChange={(e) => setNickname(e.target.value)}
+                maxLength={12} placeholder="부를 이름을 적어 주세요" autoComplete="nickname" enterKeyHint="next" inputClassName="fr-input fr-input--left" />
             </div>
             <FirstRunFooter><Button type="submit" tone="ink" fullWidth disabled={!nickname.trim()}>다음</Button></FirstRunFooter>
           </form>
-        </FirstRunScreen>
-      );
-
-    case "safety":
-      return (
-        <FirstRunScreen key={step} tone="cream" className={motion} scroll>
-          {top}
-          <FirstRunHeading eyebrow={`반가워요, ${name}님`} title="시작하기 전에 세 가지만요" className="mt-4" />
-          <List strong inset dividersIos className="fr-list mx-5 mt-7">
-            <ListItem title={`${josa(DEFAULT_COMPANION, "은", "는")} AI예요`} footer="진단과 치료는 사람 전문가가 해요.">
-              <span slot="media" className="fr-icon"><Icon name="chat" size={20} /></span>
-            </ListItem>
-            <ListItem title="기록은 이렇게 둬요" footer="원문은 이 기기에, 동의한 기억은 계정에 둬요. 답변을 만들 때는 AI 서비스로 보내요.">
-              <span slot="media" className="fr-icon"><Icon name="lock" size={20} /></span>
-            </ListItem>
-          </List>
-          <a href="tel:109" className="fr-sos">
-            <span><b>위급할 때는 109</b><small>24시간 사람과 이야기할 수 있어요</small></span>
-            <span className="fr-call" aria-hidden="true">전화</span>
-          </a>
-          {next("q1", "알겠어요")}
         </FirstRunScreen>
       );
 
@@ -234,31 +203,26 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
           </div>
           <StreetLand />
           {step === "q1" ? <>
-            {tappableCat("fr-cat--far")}
+            {sceneCat("fr-cat--far")}
             <FrontTree />
-          </> : tappableCat("fr-cat--near")}
+          </> : sceneCat("fr-cat--near")}
         </FirstRunScreen>
       );
     }
 
+    // 만나서 데려가기: 첫마디는 요즘 상태에 맞춰 세기를 낮춘다. 많이 힘들다고 했으면 109 안내를 그 자리에서 바로 보여 준다.
     case "meet":
       return (
         <FirstRunScreen key={step} tone="cream" className={motion}>
           {top}
-          <FirstRunHeading eyebrow="산전수전 다 겪은 길고양이" title="…뭘 봐." description={describeStyle(style, answers).tell} cat className="mt-2" />
+          <FirstRunHeading eyebrow="산전수전 다 겪은 길고양이" title={meet.line}
+            description={meet.tough ? "많이 힘든 날엔 사람과 바로 이야기할 수도 있어요." : describeStyle(style, answers).tell} cat className="mt-2" />
+          {meet.tough && <a href="tel:109" className="fr-sos fr-sos--meet">
+            <span><b>지금 이야기하고 싶다면 109</b><small>24시간 사람과 이야기할 수 있어요</small></span>
+            <span className="fr-call" aria-hidden="true">전화</span>
+          </a>}
           <StreetLand />
-          {tappableCat("fr-cat--meet")}
-          {next("adopt")}
-        </FirstRunScreen>
-      );
-
-    case "adopt":
-      return (
-        <FirstRunScreen key={step} tone="cream" className={motion}>
-          {top}
-          <FirstRunHeading title="데려갈까요?" description="꾹 누르고 있으면 다가와요." className="mt-2" />
-          <StreetLand />
-          <div className="fr-cat fr-cat--adopt" data-holding={holding || undefined}>{catPose}</div>
+          <div className="fr-cat fr-cat--adopt" data-holding={holding || undefined} aria-hidden="true">{catPose}</div>
           <div className="fr-hold">
             <Button variant="plain"
               aria-label="꾹 눌러서 데려가기"
@@ -279,63 +243,8 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
               </svg>
               <Icon name="paw" size={34} />
             </Button>
+            <p className="fr-hold-hint" aria-hidden="true">꾹 누르면 다가와요</p>
           </div>
-        </FirstRunScreen>
-      );
-
-    case "door":
-      return (
-        <FirstRunScreen key={step} tone="room" className={motion}>
-          {top}
-          <FirstRunHeading title="…따라가는 거 아니다." description="꼬리가 서 있어요." cat className="mt-2" />
-          <div className="fr-door" aria-hidden="true"><StreetLand /></div>
-          <div className="fr-floor" aria-hidden="true" />
-          {tappableCat("fr-cat--door")}
-          {next("spot")}
-        </FirstRunScreen>
-      );
-
-    case "spot":
-      return (
-        <FirstRunScreen key={step} tone="room" className={motion}>
-          {top}
-          <FirstRunHeading title="…아무 데나." description="그래도 고르면 그쪽에 앉아요." cat className="mt-2" />
-          <div className="fr-floor" aria-hidden="true" />
-          {/* 고른 색의 방석 위에서 웅크려 잔다. 색을 바꾸면 눈이 동그래졌다가 다시 잔다. */}
-          <div className="fr-cushion" aria-hidden="true"><Cushion base={swatch.base} light={swatch.light} /></div>
-          {tappableCat("fr-cat--spot")}
-          <FirstRunFooter>
-            <p className="fr-pick-label" aria-hidden="true">{swatch.label}</p>
-            <div className="fr-swatches" role="radiogroup" aria-label="앉을 자리 색">
-              {COLORS.map((c, i) => (
-                <Button key={c.id} variant="plain" role="radio" aria-checked={color === c.id} aria-label={c.label} className="fr-swatch"
-                  onClick={() => { sfx.pick(i); setColor(c.id); cat.notice(); }}
-                  style={{ background: `linear-gradient(160deg, ${c.light}, ${c.base})` }} />
-              ))}
-            </div>
-            <Button tone="ink" fullWidth onClick={() => go("voice")}>다음</Button>
-          </FirstRunFooter>
-        </FirstRunScreen>
-      );
-
-    case "voice":
-      return (
-        <FirstRunScreen key={step} tone="room" className={motion}>
-          {top}
-          <FirstRunHeading title="…들어 보고 골라." description="언제든 바꿀 수 있어요." cat className="mt-2" />
-          <div className="flex min-h-0 flex-1 items-center justify-center py-4">
-            <CatRings size={220}>
-              <Buddy size={170} state={preview.playing ? "speaking" : "idle"} outputLevel={preview.level} outputShape={preview.shape} groundShadow />
-            </CatRings>
-          </div>
-          <div className="fr-voices" role="radiogroup" aria-label="목소리">
-            {VOICES.map((v, i) => (
-              <Button key={v.id} variant="plain" role="radio" aria-checked={voice === v.id} aria-label={`${v.label}, ${v.desc}`} className="fr-option"
-                onClick={() => pickVoice(v.id, i)}>{v.label}</Button>
-            ))}
-          </div>
-          <p className="fr-desc mt-4 text-center" aria-live="polite">{voiceInfo.label} · {voiceInfo.desc}</p>
-          <FirstRunFooter><Button tone="ink" fullWidth onClick={() => { stopPreview(); go("naming"); }}>다음</Button></FirstRunFooter>
         </FirstRunScreen>
       );
 
@@ -344,16 +253,40 @@ export default function Onboarding({ onDone }: { onDone: (p: Profile) => void })
         <FirstRunScreen key={step} tone="room" className={motion}>
           {top}
           <FirstRunHeading title={`${companionName}? …촌스럽네.`} description="골골 소리가 나요." cat className="mt-2" />
-          <div className="fr-floor" aria-hidden="true" />
-          <div className="fr-glow fr-glow--warm" aria-hidden="true" />
-          {tappableCat("fr-cat--name")}
-          <form className="contents" onSubmit={(e) => { e.preventDefault(); finish(); }}>
+          {/* 집 안, 작은 러그 위에서 식빵 자세로 골골(이 동작만 반복). 바닥 띠 없이 고양이만 가운데 둔다. */}
+          <div className="fr-name-scene" aria-hidden="true">
+            <div className="fr-name-scene-cat"><span className="fr-rug" />{catPose}</div>
+          </div>
+          <form className="contents" onSubmit={(e) => { e.preventDefault(); if (companion.trim()) go("safety"); }}>
             <FirstRunFooter>
-              <TextField label="이름" hideLabel variant="plain" id="companion" value={companion}
-                onChange={(e) => setCompanion(e.target.value)} maxLength={10} enterKeyHint="done" inputClassName="fr-input" />
-              <Button type="submit" tone="ink" fullWidth>이 이름으로 할게요</Button>
+              <div className="fr-labeled">
+                <TextField label="고양이 이름" variant="plain" id="companion" value={companion} placeholder="이름을 적어 주세요"
+                  onChange={(e) => setCompanion(e.target.value)} maxLength={10} enterKeyHint="done" inputClassName="fr-input fr-input--left" />
+              </div>
+              <Button type="submit" tone="ink" fullWidth disabled={!companion.trim()}>이 이름으로 할게요</Button>
             </FirstRunFooter>
           </form>
+        </FirstRunScreen>
+      );
+
+    case "safety":
+      return (
+        <FirstRunScreen key={step} tone="room" className={motion} scroll>
+          {top}
+          <FirstRunHeading eyebrow={`${name}님, ${josa(companionName, "과", "와")} 이야기하기 전에`} title="세 가지만 알아 두세요" className="mt-4" />
+          <List strong inset dividersIos className="fr-list mx-5 mt-7">
+            <ListItem title={`${josa(companionName, "은", "는")} AI예요`} footer="진단과 치료는 사람 전문가가 해요.">
+              <span slot="media" className="fr-icon"><Icon name="chat" size={20} /></span>
+            </ListItem>
+            <ListItem title="기록은 이렇게 둬요" footer="원문은 이 기기에, 동의한 기억은 계정에 둬요. 답변을 만들 때는 AI 서비스로 보내요.">
+              <span slot="media" className="fr-icon"><Icon name="lock" size={20} /></span>
+            </ListItem>
+          </List>
+          <a href="tel:109" className="fr-sos">
+            <span><b>위급할 때는 109</b><small>24시간 사람과 이야기할 수 있어요</small></span>
+            <span className="fr-call" aria-hidden="true">전화</span>
+          </a>
+          <FirstRunFooter><Button tone="ink" fullWidth onClick={finish}>알겠어요</Button></FirstRunFooter>
         </FirstRunScreen>
       );
   }

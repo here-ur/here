@@ -12,8 +12,10 @@ const FOCUSABLE = 'button:not(:disabled), a[href], input:not(:disabled), select:
  * onBack이 있으면 제목 앞에 뒤로 가기 버튼을 둔다. dismissible이 false면 닫기 버튼·바깥 누르기·Escape로 닫히지 않는다.
  * locked면 버튼은 그대로 두고 누를 수만 없게 한다(보내는 중에 버튼이 사라져 제목 줄이 흔들리지 않게).
  * slide면 화면 아래에서 끝까지 밀려 올라오고 닫을 때 아래로 내려간다(키 큰 시트용). 아니면 살짝 떠오르고 흐려지며 닫힌다.
- * keyboardAware면 휴대폰 키보드가 가린 높이(--sheet-kb)와 보이는 높이(--sheet-vvh)를 시트에 알려, 화면 쪽 CSS가 버튼을 키보드 위로 올린다. */
-export default function Sheet({ title, onClose, children, footer, onBack, backLabel = "뒤로", dismissible = true, locked = false, slide = false, keyboardAware = false, className = "" }: {
+ * keyboardAware면 휴대폰 키보드가 가린 높이(--sheet-kb)와 보이는 높이(--sheet-vvh)를 시트에 알려, 화면 쪽 CSS가 버튼을 키보드 위로 올린다.
+ * appear가 false면 열리는 움직임 없이 그 자리에 바로 있다(앞 화면의 시트에서 내용만 이어질 때).
+ * headerless면 제목 줄 없이 본문만 보인다(제목은 화면 낭독기에만 읽힌다). 바깥 누르기·Escape로는 그대로 닫힌다. */
+export default function Sheet({ title, onClose, children, footer, onBack, backLabel = "뒤로", dismissible = true, locked = false, slide = false, keyboardAware = false, appear: appearProp = true, headerless = false, className = "" }: {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
@@ -24,8 +26,11 @@ export default function Sheet({ title, onClose, children, footer, onBack, backLa
   locked?: boolean;
   slide?: boolean;
   keyboardAware?: boolean;
+  appear?: boolean;
+  headerless?: boolean;
   className?: string;
 }) {
+  const [appear] = useState(appearProp);
   const exitMs = slide ? SLIDE_EXIT_MS : EXIT_MS;
   const titleId = useId();
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -113,7 +118,7 @@ export default function Sheet({ title, onClose, children, footer, onBack, backLa
       ref={overlayRef}
       // overflow-clip: 아래에서 올라오는 중인 시트가 화면(main)에 스크롤을 만들지 않게 자른다.
       // 닫을 때 배경은 애니메이션으로 흐려진다. 여는 애니메이션(animate-fade)을 떼는 순간과 겹쳐 transition은 시작되지 않고 바로 사라졌다.
-      className={`ui-transition absolute inset-0 z-40 flex items-end overflow-clip bg-[rgba(35,32,27,.28)] backdrop-blur-[2px] ${closing ? "here-scrim-out" : "motion-safe:animate-fade"}`}
+      className={`ui-transition absolute inset-0 z-40 flex items-end overflow-clip bg-[rgba(35,32,27,.28)] backdrop-blur-[2px] ${closing ? "here-scrim-out" : appear ? "motion-safe:animate-fade" : ""}`}
       style={closing ? { animationDuration: `${exitMs}ms` } : undefined}
       onClick={requestClose}
       onAnimationEnd={(event) => {
@@ -150,12 +155,12 @@ export default function Sheet({ title, onClose, children, footer, onBack, backLa
           }
         }}
         className={`here-sheet ${className} ui-transition flex max-h-[88%] w-full flex-col overflow-hidden rounded-t-r6 bg-cat-surface pt-3 shadow-[0_-10px_40px_rgba(35,32,27,.12)] transition-[translate,opacity] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-cat-ink ${
-          slide ? (closing ? "here-sheet--out" : "here-sheet--slide") : closing ? "translate-y-3 opacity-0" : "motion-safe:animate-rise"}`}
+          slide ? (closing ? "here-sheet--out" : appear ? "here-sheet--slide" : "") : closing ? "translate-y-3 opacity-0" : appear ? "motion-safe:animate-rise" : ""}`}
         style={closing ? { transitionDuration: `${exitMs}ms` } : undefined}
       >
         <div aria-hidden="true" className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-cat-line" />
         {/* 제목 줄은 높이 44px로 고정한다. 아이콘 버튼은 배경 없는 글자 버튼(here-sheet-icon)이고, 잠긴 동안에도 자리를 지킨다. */}
-        <div className="mb-1 flex min-h-11 shrink-0 items-center gap-1 px-5">
+        {headerless ? <h2 id={titleId} className="sr-only">{title}</h2> : <div className="mb-1 flex min-h-11 shrink-0 items-center gap-1 px-5">
           {onBack && <Button variant="plain" onClick={onBack} disabled={locked} aria-label={backLabel} className="here-sheet-icon -ml-2.5">
             <Icon name="back" size={22} />
           </Button>}
@@ -165,7 +170,7 @@ export default function Sheet({ title, onClose, children, footer, onBack, backLa
               <Icon name="close" size={20} />
             </Button>
             : <span aria-hidden="true" className="size-11 shrink-0" />}
-        </div>
+        </div>}
         <div className="min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain px-5 pb-6">{children}</div>
         {footer && <div className="shrink-0 border-t border-cat-line/50 px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">{footer}</div>}
       </div>

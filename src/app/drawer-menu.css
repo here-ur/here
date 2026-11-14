@@ -61,9 +61,11 @@
 .here-menu-quota[data-state="low"] .here-menu-quota-fill { background: #b06a00; }
 .here-menu-quota-label { display: flex; flex-shrink: 0; align-items: center; gap: 10px; margin: 0; color: var(--here-menu-muted); font-size: 13px; font-weight: 600; line-height: 16px; letter-spacing: -.28px; white-space: nowrap; }
 .here-menu-quota-label b { color: var(--here-menu-ink); font-weight: inherit; }
-/* A keyboard-accessible close control without adding a visual element to the reference. */
+/* 화면에는 닫기 버튼이 없다(바깥 누르기·왼쪽으로 밀기·Escape). 키보드로 포커스할 때만 나타난다. */
 .here-drawer-close { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .here-drawer-close:focus-visible { top: 64px; right: 16px; display: grid; width: 40px; height: 40px; place-items: center; overflow: visible; clip-path: none; border-radius: 50%; background: var(--here-menu-paper); color: var(--here-menu-ink); outline: 2px solid currentColor; }
+/* 왼쪽으로 밀어 닫기: 세로 스크롤은 브라우저에 두고 가로 움직임만 받는다. */
+.here-menu-overlay .here-drawer { touch-action: pan-y pinch-zoom; }
 @media (prefers-reduced-motion: reduce) {
   .here-menu-overlay, .here-menu-overlay .here-drawer, .here-menu-quota-fill { transition: none; }
 }

@@ -18,7 +18,9 @@ import { syncReport } from "@/lib/report";
 import { browserSupabase } from "@/lib/supabase";
 import type { SearchSource } from "@/lib/web-search-protocol";
 import AuthGate from "./AuthGate";
-import MicrophonePermissionGate from "./MicrophonePermissionGate";
+import { useMicrophoneAsk } from "./MicrophoneAsk";
+import HomeHint from "./HomeHint";
+import { homeHintSeen, markHomeHintSeen } from "@/lib/home-hint";
 import { Crisis109 } from "./Conversation";
 import ComingSoon from "./ComingSoon";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
@@ -50,7 +52,7 @@ const DEV_PROFILE: Profile | null =
     : null;
 
 export default function Page() {
-  return <AuthGate>{(userId, signOut) => <MicrophonePermissionGate key={userId}><Home userId={userId} signOut={signOut} /></MicrophonePermissionGate>}</AuthGate>;
+  return <AuthGate>{(userId, signOut) => <Home key={userId} userId={userId} signOut={signOut} />}</AuthGate>;
 }
 
 function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void> }) {
@@ -59,6 +61,9 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   const [pendingProfile, setPendingProfile] = useState<Profile | null>(null);
 
   const [justMet, setJustMet] = useState(false); // 온보딩을 막 끝냈으면 홈에서 몽글이가 처음 인사한다
+  // 홈 첫 방문 안내: 이 기기에서 한 번. 글·음성·메뉴를 열거나 안내를 누르면 닫는다.
+  const [showHint, setShowHint] = useState(() => !homeHintSeen());
+  const dismissHint = useCallback(() => { markHomeHintSeen(); setShowHint(false); }, []);
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [live, setLive] = useState(""); // 몽글이가 말하는 중인 문장
@@ -277,6 +282,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
 
   /** 채팅 진입 시 음성 연결은 닫고, 첫 전송 전에는 API를 호출하지 않는다. */
   function openText() {
+    dismissHint();
     headlineLocked.current = true;
     setHomeGreetingDone(true);
     setHearing(false);
@@ -298,11 +304,22 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   }
 
   /** 글 대화 → 통화: 별도의 음성 연결을 시작한다. */
-  function toVoice() {
+  function startVoice() {
     if (chatRequest.current) return;
     setTyping(false);
     setMicOn(true);
     void begin();
+  }
+  // 마이크 권한은 처음 마이크를 누를 때 묻는다(권한이 있거나 이미 거쳤으면 바로 연결). 글을 고르면 글 입력창을 열고 바로 포커스한다.
+  const micAsk = useMicrophoneAsk(startVoice, () => openText(),
+    () => document.getElementById("home-text-draft")?.focus({ preventScroll: true }));
+  function toVoice() {
+    dismissHint();
+    if (chatRequest.current) return;
+    // 안내 시트가 떠도 홈 인사가 뒤에서 계속 말하지 않게 먼저 멈춘다.
+    headlineLocked.current = true;
+    setHomeGreetingDone(true);
+    micAsk.ask();
   }
 
   function closeText() {
@@ -407,7 +424,8 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
         headline={openingLine}
         onVoice={toVoice}
         onText={openText}
-        onMenu={() => { setHomeGreetingDone(true); setShowMenu(true); }}
+        onMenu={() => { dismissHint(); setHomeGreetingDone(true); setShowMenu(true); }}
+        nudge={showHint ? <HomeHint name={profile.companion} onDismiss={dismissHint} /> : undefined}
         menuButtonRef={menuButtonRef}
         outputLevel={outputLevel}
         outputShape={outputShape}
@@ -447,6 +465,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
           {suggest && <Button variant="plain" onClick={openHelpSoon} className="ui-press h-11 rounded-full bg-white px-5 text-t4 font-bold text-[#1F2A55]">도움받기</Button>}
         </div> : undefined}
       >
+        {micAsk.sheet}
         {!homeGreetingDone && headlineReady && openingLine && <HomeEntryGreeting name={profile.companion} voice={profile.voice} opener={openingLine} onOutputLevel={onOutputLevel} onSpeaking={setHomeSpeaking} onDone={setHomeGreetingDone} />}
         <Drawer
           open={showMenu}

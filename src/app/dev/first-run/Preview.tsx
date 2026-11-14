@@ -2,18 +2,16 @@
 
 import { useState } from "react";
 import { MemoryConsentPreview } from "../../MemoryConsentGate";
-import { MicrophonePermissionNotice } from "../../MicrophonePermissionGate";
 import Onboarding from "../../Onboarding";
 import { Icon } from "../../art";
 import { Button } from "../../ui/Button";
 
-// 로그인 뒤 첫 실행(기억 동의 → 마이크 안내 → 캐릭터 만나기)을 로그인 없이 넘겨 보는 개발 화면.
+// 로그인 뒤 첫 실행(기억 동의 → 캐릭터 만나기)을 로그인 없이 넘겨 보는 개발 화면. 마이크 안내는 홈에서 처음 마이크를 누를 때 나온다(/dev/microphone-permission).
 // 로그인·가입 화면은 실제 AuthGate에 있어서, 로그아웃한 상태로 첫 화면(/)을 열어 확인한다.
-type Stage = "consent" | "mic" | "onboarding" | "done";
+type Stage = "consent" | "onboarding" | "done";
 const STAGES: { id: Stage; label: string }[] = [
   { id: "consent", label: "1 기억 동의" },
-  { id: "mic", label: "2 마이크 안내" },
-  { id: "onboarding", label: "3 캐릭터 만나기" },
+  { id: "onboarding", label: "2 캐릭터 만나기" },
   { id: "done", label: "끝" },
 ];
 
@@ -32,10 +30,7 @@ export default function Preview() {
   let screen;
   switch (stage) {
     case "consent":
-      screen = <MemoryConsentPreview key={run} onAccept={() => open("mic")} onSignOut={() => open("consent")} />;
-      break;
-    case "mic":
-      screen = <MicrophonePermissionNotice busy={false} error="" onAllow={() => open("onboarding")} onSkip={() => open("onboarding")} />;
+      screen = <MemoryConsentPreview key={run} onAccept={() => open("onboarding")} onSignOut={() => open("consent")} />;
       break;
     case "onboarding":
       screen = <Onboarding key={run} onDone={(p) => { setResult(`이름 ${p.companion} · 목소리 ${p.voice} · 자리 ${p.color} · 대화 방식 ${p.style}`); setStage("done"); }} />;

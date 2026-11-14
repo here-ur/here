@@ -5,13 +5,13 @@ import { Icon } from "./art";
 import { Button } from "./ui/Button";
 import "./first-run.css";
 
-// 첫 실행 화면(로그인·가입 입력, 기억 동의, 마이크 안내, 캐릭터 만나기)이 함께 쓰는 틀. 환영 영상 화면은 AuthScreen에 따로 있다.
-// 흰 바탕은 안내 단계, 크림은 길 위 장면, room은 집 안 장면이다.
+// 캐릭터 만나기(온보딩)가 쓰는 첫 실행 틀과 장면 그림. 로그인·기억 동의 시트는 AuthGate·MemoryConsentGate, 환영 영상은 AuthScreen에 있다.
+// 크림은 길 위 장면, room은 집 안 장면(이름 짓기·마지막 안내)이다.
 
 const uid = (id: string) => id.replace(/[^a-zA-Z0-9]/g, "");
 
 export function FirstRunScreen({ tone, children, className = "", scroll = false, ...events }: {
-  tone: "white" | "cream" | "room";
+  tone: "cream" | "room";
   children: ReactNode;
   className?: string;
   scroll?: boolean;
@@ -56,21 +56,9 @@ export function FirstRunHeading({ eyebrow, title, description, cat, className = 
   );
 }
 
-/** 바닥 버튼 자리. sticky면 내용이 길어져도 화면 아래에 붙어 있고, 내용은 그 뒤로 지나간다. */
-export function FirstRunFooter({ children, sticky = false }: { children: ReactNode; sticky?: boolean }) {
-  return <div className={sticky ? "fr-footer fr-footer--sticky" : "fr-footer"}>{children}</div>;
-}
-
-/** 고양이 둘레의 옅은 동그라미(마이크·목소리 화면). */
-export function CatRings({ size, children }: { size: number; children: ReactNode }) {
-  return (
-    <div className="fr-rings" style={{ width: size, height: size }}>
-      <span style={{ width: size, height: size }} />
-      <span style={{ width: size * 0.8, height: size * 0.8 }} />
-      <span style={{ width: size * 0.62, height: size * 0.62 }} />
-      {children}
-    </div>
-  );
+/** 바닥 버튼 자리. 장면의 맨 아래에 붙는다. */
+export function FirstRunFooter({ children }: { children: ReactNode }) {
+  return <div className="fr-footer">{children}</div>;
 }
 
 const TREE_TRUNK = "#C9A47F";
@@ -120,24 +108,6 @@ export function FrontTree({ className = "" }: { className?: string }) {
       <ellipse cx="30" cy="68" rx="20" ry="2.5" fill="rgb(150 95 55 / 18%)" />
       <rect x="28" y="40" width="4" height="28" rx="2" fill={TREE_TRUNK} />
       <circle cx="30" cy="29" r="27" fill={`url(#${id})`} />
-    </svg>
-  );
-}
-
-/** 자리 고르기의 방석. 고른 색으로 칠하고, 고양이가 그 위에 웅크려 잔다. */
-export function Cushion({ base, light }: { base: string; light: string }) {
-  const id = `cushion${uid(useId())}`;
-  return (
-    <svg viewBox="0 0 200 72" aria-hidden="true">
-      <defs>
-        <linearGradient id={`${id}-top`} x1="0" y1="0" x2="0" y2="1"><stop stopColor={light} /><stop offset="1" stopColor={base} /></linearGradient>
-        <radialGradient id={`${id}-floor`} cx=".5" cy=".5" r=".5"><stop stopColor="rgb(90 60 30 / 22%)" /><stop offset="1" stopColor="rgb(90 60 30 / 0)" /></radialGradient>
-      </defs>
-      <ellipse cx="100" cy="52" rx="100" ry="20" fill={`url(#${id}-floor)`} />
-      <ellipse cx="100" cy="42" rx="94" ry="24" fill={base} />
-      <ellipse cx="100" cy="42" rx="94" ry="24" fill="rgb(40 20 10 / 12%)" />
-      <ellipse cx="100" cy="33" rx="90" ry="21" fill={`url(#${id}-top)`} />
-      <ellipse cx="100" cy="33" rx="73" ry="15" fill="none" stroke="rgb(255 255 255 / 50%)" strokeWidth="1.6" strokeDasharray="4 5" />
     </svg>
   );
 }

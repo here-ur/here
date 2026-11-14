@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clearProfile, cleanName, describeStyle, josa, loadProfile, matchStyle, saveProfile } from "./onboarding.ts";
+import { QUESTIONS, clearProfile, cleanName, describeStyle, josa, loadProfile, matchStyle, meetLine, saveProfile } from "./onboarding.ts";
 import { setLocalOwner } from "./local-scope.ts";
 
 const store = new Map<string, string>();
@@ -64,4 +64,15 @@ test("다른 계정의 프로필은 보이지 않는다", () => {
   assert.equal(loadProfile(), null);
   setLocalOwner("member-a");
   assert.equal(loadProfile()?.companion, "구름");
+});
+
+test("첫 대면 첫마디는 요즘 상태에 맞춰 세기를 낮추고, 많이 힘들 때만 109를 바로 보여 준다", () => {
+  assert.deepEqual(meetLine({ lately: "그럭저럭 지내요" }), { line: "…뭘 봐.", tough: false });
+  assert.deepEqual(meetLine({ lately: "조금 지쳤어요" }), { line: "…피곤해 보이네.", tough: false });
+  assert.deepEqual(meetLine({ lately: "많이 힘들어요" }), { line: "…오늘은 좀 쉬어.", tough: true });
+  assert.deepEqual(meetLine({ lately: "잘 모르겠어요" }), { line: "…그런 날도 있지.", tough: false });
+  assert.deepEqual(meetLine({}), { line: "…뭘 봐.", tough: false });
+  // 질문 1의 모든 선택지에 첫마디가 있다(선택지를 바꾸면 여기서 알린다).
+  for (const option of QUESTIONS[0].options) assert.notEqual(meetLine({ lately: option }).line, "", option);
+  assert.equal(QUESTIONS[0].options.filter((option) => meetLine({ lately: option }).tough).length, 1);
 });

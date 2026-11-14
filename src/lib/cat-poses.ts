@@ -3,7 +3,9 @@
 // 영상은 public/characters/motion/에 있고, Magnific으로 뽑은 영상에서 배경을 지우고 처음·끝을 겹쳐 반복되게 만든 것이다.
 // 앱 상태와 사용자의 조작(누르기·고르기·기다리기)으로만 바꾸고, 대화 내용으로 고르지 않는다.
 
-export type CatPose = "base" | "round" | "grumble" | "purr" | "sleep" | "glare" | "yawn" | "hiss" | "groom" | "ready" | "swat" | "belly";
+// 하품(yawn)·앞발 툭(swat)·배 보이기(belly)·덮칠 준비(ready) 영상은 public/characters/motion/에 남겨 두지만
+// 지금 쓰는 장면이 없어 목록에서 뺐다(미리 받지 않게).
+export type CatPose = "base" | "round" | "grumble" | "purr" | "sleep" | "glare" | "hiss" | "groom";
 export type CatFx = "hop" | "tilt" | "shake";
 export type ReactionStep = readonly [CatPose, number, CatFx?];
 
@@ -23,12 +25,8 @@ export const CAT_POSE_ART: Record<Exclude<CatPose, "base">, PoseArt> = {
   purr: still("purr", 0.6315, 0.9618), // 식빵 자세로 실눈 골골
   sleep: clip("sleep", 1.06),
   glare: clip("glare", 1.25),
-  yawn: clip("yawn", 0.75),
   hiss: clip("hiss", 1),
   groom: clip("groom", 0.72),
-  ready: clip("ready", 0.86),
-  swat: clip("swat", 1.05),
-  belly: clip("belly", 1.1),
 };
 
 /** 칸 안에서 그림이 차지할 자리(%). 칸은 정사각형이라 높이·너비 모두 칸 크기 기준이다. */

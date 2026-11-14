@@ -6,6 +6,7 @@ import Customize from "../../Customize";
 import Friends from "../../Friends";
 import ComingSoon from "../../ComingSoon";
 import ReportPreview from "../report-preview/Preview";
+import HomeHint from "../../HomeHint";
 import { DEFAULT_COMPANION, type Profile } from "@/lib/onboarding";
 
 // 메뉴 아래 "오늘 남은 대화" 막대를 보려는 예시 숫자. 실제 앱은 /api/quota에서 받아 온다.
@@ -23,6 +24,7 @@ export default function Preview() {
   const [voice, setVoice] = useState(false); // 마이크 버튼으로 음성 모드 모양만 확인한다(실제 연결 없음)
   const [micOn, setMicOn] = useState(true);
   const [mode, setMode] = useState<"first" | "return" | "memory">("first");
+  const [hint, setHint] = useState(true); // 첫 만남에서만 보이는 홈 첫 방문 안내
   const headline = mode === "memory" ? "그 종이접기, 요즘도 해?\n뭐 만들었는지 얘기 좀 해 봐." : null;
   function openScreen(next: typeof screen) {
     setMenu(false);
@@ -50,7 +52,8 @@ export default function Preview() {
   </div>}<HomeScreen
     profile={profile}
     greet={false} headline={headline}
-    onVoice={() => { setOpen(false); setMicOn(true); setVoice(true); }} onText={() => setOpen(true)} onMenu={() => setMenu(true)}
+    nudge={mode === "first" && hint ? <HomeHint name={profile.companion} onDismiss={() => setHint(false)} /> : undefined}
+    onVoice={() => { setHint(false); setOpen(false); setMicOn(true); setVoice(true); }} onText={() => { setHint(false); setOpen(true); }} onMenu={() => { setHint(false); setMenu(true); }}
     voice={voice ? { state: micOn ? "listening" : "idle", connecting: false, listening: micOn, micOn, hasMic: true, statusText: micOn ? "듣고 있어요" : "마이크가 꺼져 있어요", error: "", onEnd: () => setVoice(false), onMic: () => setMicOn(!micOn) } : undefined}
     chat={{ open, draft, sending: false, error: "", state: "idle", onDraft: setDraft, onClose: () => setOpen(false), onSend: () => {}, messages: open ? [
       { role: "user", content: "테스트 화면: 내가 좋아하는 게임과 음료는?" },

@@ -4,15 +4,14 @@ import List from "framework7-react/components/list.js";
 import ListItem from "framework7-react/components/list-item.js";
 import { Icon } from "./art";
 import { Button } from "./ui/Button";
-import { FirstRunFooter, FirstRunHeading, FirstRunTopBar } from "./FirstRun";
-import PoseCat from "./PoseCat";
-import { useCatReactions } from "./use-cat-reactions";
+import AuthScreen from "./AuthScreen";
+import Sheet from "./Sheet";
+import { movePage } from "./page-move";
 import { useEffect, useRef, useState } from "react";
 import { browserSupabase } from "@/lib/supabase";
 import { MEMORY_CONSENT_VERSION } from "@/lib/memory-consent";
 import { consentDisplayKey, consentDisplayStorage, hasConsentDisplayHint, setConsentDisplayHint } from "@/lib/consent-display-cache";
-
-const CONSENT_POSES = ["round", "grumble", "purr"] as const;
+import "./first-run.css";
 
 async function consentRequest(method: "GET" | "POST") {
   // Bound session refresh as well as the HTTP request, not just fetch.
@@ -37,15 +36,22 @@ async function consentRequest(method: "GET" | "POST") {
   })()]); } finally { clearTimeout(timer!); }
 }
 
-export default function MemoryConsentGate({ children, signOut, userId = "", preview = false, onPreviewAccept }: { children: React.ReactNode; signOut: () => Promise<void>; userId?: string; preview?: boolean; onPreviewAccept?: () => void }) {
+/** 기억 동의. 영상 위 바텀시트로 보여 준다. continueSheet면 방금 로그인한 시트에서 내용만 이어지도록 시트가 움직이지 않고 그 자리에 있다.
+ * 동의를 마치면(또는 로그인 시트에서 이어 왔는데 이미 동의한 회원이면) 화면이 살짝 작아지며 다음 화면(캐릭터 만나기·홈)으로 넘어간다. */
+export default function MemoryConsentGate({ children, signOut, userId = "", preview = false, onPreviewAccept, continueSheet = false }: {
+  children: React.ReactNode; signOut: () => Promise<void>; userId?: string; preview?: boolean; onPreviewAccept?: () => void; continueSheet?: boolean;
+}) {
   const [status, setStatus] = useState<"checking" | "required" | "ready" | "error">(() => preview ? "required" : hasConsentDisplayHint(consentDisplayStorage(), userId) ? "ready" : "checking");
   const [privacy, setPrivacy] = useState(false);
   const [sensitive, setSensitive] = useState(false);
-  // 체크할 때마다 고양이가 눈을 동그랗게 뜨고, 둘 다 체크하면 식빵 자세로 골골한다.
-  const cat = useCatReactions(privacy && sensitive ? "purr" : "base");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
+  // 시트가 한 번 보였으면 다시 확인하는 동안에도 사진 화면으로 바꾸지 않고 시트 안에서 기다린다(깜박임·포커스 잃음 방지).
+  const [sheetShown, setSheetShown] = useState(continueSheet);
+  // 창에 다시 들어올 때마다 확인하므로, 이미 홈에 있으면 넘어가는 전환을 다시 하지 않는다.
+  const statusRef = useRef(status);
+  useEffect(() => { statusRef.current = status; }, [status]);
   const generation = useRef(0);
   const accepting = useRef(false);
   useEffect(() => {
@@ -58,12 +64,15 @@ export default function MemoryConsentGate({ children, signOut, userId = "", prev
         if (!active || request !== generation.current) return;
         if (typeof body.required !== "boolean") throw new Error("동의 상태를 확인하지 못했어요.");
         setConsentDisplayHint(consentDisplayStorage(), userId, !body.required);
-        setStatus(body.required ? "required" : "ready");
+        if (body.required) setSheetShown(true);
+        if (!body.required && continueSheet && statusRef.current !== "ready") void movePage("enter", () => setStatus("ready"));
+        else setStatus(body.required ? "required" : "ready");
       }).catch(() => {
         if (!active || request !== generation.current) return;
         // Keep an already-confirmed user's home visible during transient failures.
         // This never bypasses API-side authorization or consent enforcement.
         setStatus(current => current === "ready" ? current : "error");
+        setSheetShown(true);
         setError("연결을 확인하지 못했어요. 다시 시도해 주세요.");
       });
     };
@@ -77,7 +86,7 @@ export default function MemoryConsentGate({ children, signOut, userId = "", prev
     window.addEventListener("focus", check);
     window.addEventListener("storage", onStorage);
     return () => { active = false; window.removeEventListener("focus", check); window.removeEventListener("storage", onStorage); };
-  }, [retry, preview, userId]);
+  }, [retry, preview, userId, continueSheet]);
 
   async function accept(event: React.FormEvent) {
     event.preventDefault();
@@ -90,18 +99,15 @@ export default function MemoryConsentGate({ children, signOut, userId = "", prev
       const body = await consentRequest("POST");
       if (body.ok !== true) throw new Error("동의를 저장하지 못했어요.");
       setConsentDisplayHint(consentDisplayStorage(), userId, true);
-      setStatus("ready");
+      await movePage("enter", () => setStatus("ready"));
     } catch { setError("동의를 저장하지 못했어요. 다시 시도해 주세요."); }
     finally { accepting.current = false; setBusy(false); }
   }
 
   if (status === "ready") return children;
-  if (status === "checking") return <main className="app-frame bg-white" aria-busy="true" aria-label="앱 준비 중" />;
-  const checked = Number(privacy) + Number(sensitive);
-  const tick = (set: (value: boolean) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    set(e.target.checked);
-    if (e.target.checked && checked === 0) cat.notice();
-  };
+  // 확인 중: 로그인 시트에서 이어 왔거나 시트가 이미 보였으면 같은 시트에 잠깐 기다림 표시, 아니면(앱을 다시 연 경우) 사진만 보여 준다.
+  if (status === "checking" && !sheetShown) return <AuthScreen loading />;
+  const tick = (set: (value: boolean) => void) => (e: React.ChangeEvent<HTMLInputElement>) => set(e.target.checked);
   // 펼친 본문이 아래 버튼에 가려지면 보이게 살짝 내린다. 펼침 동작(260ms)이 끝난 뒤에 잰다.
   const reveal = (e: React.MouseEvent<HTMLElement>) => {
     const details = e.currentTarget.parentElement;
@@ -111,63 +117,67 @@ export default function MemoryConsentGate({ children, signOut, userId = "", prev
       details.scrollIntoView({ block: "nearest", behavior: smooth ? "smooth" : "auto" });
     }, 280);
   };
-  // 뒤로 가기는 로그아웃하고 처음 화면으로 돌아간다. 동의하지 않는 사람이 이 화면에 갇히지 않게 하는 출구다.
+  // 로그아웃은 동의하지 않는 사람이 이 화면에 갇히지 않게 하는 출구다.
   const leave = () => { if (!busy) void signOut(); };
 
-  return <main className="app-frame app-frame-scrollable first-run first-run--white fr-consent">
-    <FirstRunTopBar onBack={leave} backLabel="로그아웃하고 처음으로" />
-    <div className="fr-consent-cat">
-      <button type="button" className="fr-cat-tap" onClick={cat.tap} aria-label="고양이 건드려 보기">
-        <PoseCat pose={cat.pose} fx={cat.fx} cue={cat.cue} preload={CONSENT_POSES} />
-      </button>
-    </div>
-    {status === "error" ? <>
-      <FirstRunHeading title="연결을 확인하지 못했어요" />
-      <p role="alert" className="fr-note mt-3 px-7">{error}</p>
-      <FirstRunFooter>
-        <Button fullWidth tone="ink" onClick={() => { setStatus("checking"); setError(""); setRetry(n => n + 1); }}>다시 확인</Button>
-      </FirstRunFooter>
-    </> : <form onSubmit={accept} className="contents">
-      <FirstRunHeading title="이야기를 기억하려면" description="대화에서 정리한 기억을 내 계정에 저장해요." />
-      {/* Framework7 iOS 목록의 체크 줄. 펼치기(details)는 같은 줄(li)의 끝 슬롯에 두어 체크 영역 바깥에 있고,
-       * '보기'는 줄 오른쪽에 겹쳐 보이며 펼친 본문은 그 줄 아래에 열린다. */}
-      <List strong inset className="fr-list fr-checks mx-5 mt-7">
-        <ListItem checkbox checked={privacy} onChange={tick(setPrivacy)} required>
-          <span slot="title"><span className="fr-req">필수</span>개인정보 수집·이용<span className="sr-only"> 내용을 확인했어요</span></span>
-          <div slot="root-end">
-            <details>
-              <summary id="privacy-title" className="fr-more" onClick={reveal}><span className="sr-only">개인정보 수집·이용 내용 </span>보기<Icon name="down" size={14} /></summary>
-              <dl className="fr-detail">
-                <dt>목적</dt><dd>회원 확인과 사용자별 대화 기억·맞춤 답변 제공</dd>
-                <dt>항목</dt><dd>계정 식별자, 대화 요약, 기억 검색용 임베딩, 생성 시점과 동의 이력. 휴대폰 번호는 로그인에 이용해요.</dd>
-                <dt>처리 방식</dt><dd>텍스트 답변은 Runyour AI, 음성 대화와 받아쓰기는 OpenAI로 처리해요. 텍스트와 받아쓰기의 사용자 발언을 Runyour AI로 요약하고, 요약과 검색 문장은 OpenAI로 임베딩해요. 기억은 Supabase에 저장해요. 대화 원문·음성 파일을 기억 DB에 저장하지 않아요.</dd>
-                <dt>보관기간 초안</dt><dd>회원 탈퇴 전까지 보유하고 탈퇴 후 1년 보관하는 정책을 검토 중이에요. 탈퇴 후 보관 목적·근거, 자동 파기와 국외 처리 고지는 운영 전 확정해야 해요.</dd>
-                <dt>공용 모델 학습</dt><dd>공용 모델 학습 동의는 이번 항목에 포함되지 않아요.</dd>
-              </dl>
-            </details>
+  return <AuthScreen welcome>
+    <Sheet title={status === "error" ? "연결을 확인하지 못했어요" : "이야기를 기억하려면"} onClose={() => {}} className="auth-sheet consent-sheet"
+      slide dismissible={false} locked={busy} appear={!continueSheet}>
+      <div key={status === "checking" ? "checking" : "content"} className="fr-scope auth-sheet-step" data-direction={status === "checking" ? "fade" : continueSheet ? "forward" : "open"}>
+        {status === "checking" ? <div className="consent-wait" role="status"><span aria-hidden="true" /><span className="sr-only">동의 상태를 확인하고 있어요</span></div>
+        : status === "error" ? <>
+          <p role="alert" className="auth-sheet-desc">{error}</p>
+          <div className="auth-sheet-actions">
+            <Button fullWidth tone="ink" onClick={() => { setStatus("checking"); setError(""); setRetry(n => n + 1); }}>다시 확인</Button>
+            <Button variant="plain" className="fr-link" onClick={leave}>로그아웃</Button>
           </div>
-        </ListItem>
-        <ListItem checkbox checked={sensitive} onChange={tick(setSensitive)} required>
-          <span slot="title"><span className="fr-req">필수</span>민감정보 처리<span className="sr-only"> 내용을 확인했어요</span></span>
-          <div slot="root-end">
-            <details>
-              <summary id="sensitive-title" className="fr-more" onClick={reveal}><span className="sr-only">민감정보 처리 내용 </span>보기<Icon name="down" size={14} /></summary>
-              <p className="fr-detail">사용자가 직접 이야기한 정신·신체 건강 관련 내용이 요약과 기억에 포함될 수 있어요. 개인별 대화를 이어가기 위한 용도로 처리하며, 공용 모델 학습에는 자동으로 사용하지 않아요. 목적·보관기간은 위 초안과 같아요.</p>
-            </details>
+        </> : <form onSubmit={accept} className="auth-sheet-form">
+          <p className="auth-sheet-desc">대화에서 정리한 기억을 내 계정에 저장해요.</p>
+          {/* Framework7 iOS 목록의 체크 줄. 맨 위는 두 항목을 한 번에 고르는 줄이다.
+           * 펼치기(details)는 같은 줄(li)의 끝 슬롯에 두어 체크 영역 바깥에 있고, '보기'는 줄 오른쪽에 겹쳐 보이며 펼친 본문은 그 줄 아래에 열린다. */}
+          <List strong inset className="fr-list fr-checks consent-checks">
+            <ListItem checkbox checked={privacy && sensitive} onChange={(e) => { setPrivacy(e.target.checked); setSensitive(e.target.checked); }} className="consent-all">
+              <span slot="title">모두 동의해요</span>
+            </ListItem>
+            <ListItem checkbox checked={privacy} onChange={tick(setPrivacy)} required>
+              <span slot="title"><span className="fr-req">필수</span>개인정보 수집·이용<span className="sr-only"> 내용을 확인했어요</span></span>
+              <div slot="root-end">
+                <details>
+                  <summary id="privacy-title" className="fr-more" onClick={reveal}><span className="sr-only">개인정보 수집·이용 내용 </span>보기<Icon name="down" size={14} /></summary>
+                  <dl className="fr-detail">
+                    <dt>목적</dt><dd>회원 확인과 사용자별 대화 기억·맞춤 답변 제공</dd>
+                    <dt>항목</dt><dd>계정 식별자, 대화 요약, 기억 검색용 임베딩, 생성 시점과 동의 이력. 휴대폰 번호는 로그인에 이용해요.</dd>
+                    <dt>처리 방식</dt><dd>텍스트 답변은 Runyour AI, 음성 대화와 받아쓰기는 OpenAI로 처리해요. 텍스트와 받아쓰기의 사용자 발언을 Runyour AI로 요약하고, 요약과 검색 문장은 OpenAI로 임베딩해요. 기억은 Supabase에 저장해요. 대화 원문·음성 파일을 기억 DB에 저장하지 않아요.</dd>
+                    <dt>보관기간 초안</dt><dd>회원 탈퇴 전까지 보유하고 탈퇴 후 1년 보관하는 정책을 검토 중이에요. 탈퇴 후 보관 목적·근거, 자동 파기와 국외 처리 고지는 운영 전 확정해야 해요.</dd>
+                    <dt>공용 모델 학습</dt><dd>공용 모델 학습 동의는 이번 항목에 포함되지 않아요.</dd>
+                  </dl>
+                </details>
+              </div>
+            </ListItem>
+            <ListItem checkbox checked={sensitive} onChange={tick(setSensitive)} required>
+              <span slot="title"><span className="fr-req">필수</span>민감정보 처리<span className="sr-only"> 내용을 확인했어요</span></span>
+              <div slot="root-end">
+                <details>
+                  <summary id="sensitive-title" className="fr-more" onClick={reveal}><span className="sr-only">민감정보 처리 내용 </span>보기<Icon name="down" size={14} /></summary>
+                  <p className="fr-detail">사용자가 직접 이야기한 정신·신체 건강 관련 내용이 요약과 기억에 포함될 수 있어요. 개인별 대화를 이어가기 위한 용도로 처리하며, 공용 모델 학습에는 자동으로 사용하지 않아요. 목적·보관기간은 위 초안과 같아요.</p>
+                </details>
+              </div>
+            </ListItem>
+          </List>
+          {/* 아래 두 줄은 줄인 안내다. 공용 모델 학습 안내는 개인정보 본문으로 옮겼다. */}
+          <div className="fr-fineprint">
+            <p data-tone="dev"><Icon name="info" size={13} />테스트용 초안 · 실제 개인·건강 정보는 쓰지 마세요</p>
+            <p>거부할 수 있지만, 동의해야 대화를 시작할 수 있어요</p>
           </div>
-        </ListItem>
-      </List>
-      {/* 아래 두 줄은 줄인 안내다. 공용 모델 학습 안내는 개인정보 본문으로 옮겼다. */}
-      <div className="fr-fineprint">
-        <p data-tone="dev"><Icon name="info" size={13} />테스트용 초안 · 실제 개인·건강 정보는 쓰지 마세요</p>
-        <p>거부할 수 있지만, 동의해야 대화를 시작할 수 있어요</p>
+          {error && <p role="alert" className="fr-error">{error}</p>}
+          <div className="auth-sheet-actions">
+            <Button type="submit" tone="ink" disabled={!privacy || !sensitive || busy} loading={busy} fullWidth className="fr-ready">{busy ? "저장 중…" : "동의하고 시작하기"}</Button>
+            <Button variant="plain" className="fr-link" disabled={busy} onClick={leave}>로그아웃</Button>
+          </div>
+        </form>}
       </div>
-      {error && <p role="alert" className="fr-error mx-7">{error}</p>}
-      <FirstRunFooter sticky>
-        <Button type="submit" tone="ink" disabled={!privacy || !sensitive || busy} loading={busy} fullWidth className="fr-ready">{busy ? "저장 중…" : "동의하고 시작하기"}</Button>
-      </FirstRunFooter>
-    </form>}
-  </main>;
+    </Sheet>
+  </AuthScreen>;
 }
 
 export function MemoryConsentPreview({ onAccept, onSignOut }: { onAccept?: () => void; onSignOut?: () => void } = {}) {

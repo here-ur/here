@@ -5,6 +5,7 @@ import { normalizePhone } from "@/lib/invite";
 import { setLocalOwner } from "@/lib/local-scope";
 import { browserSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { checkEntry, type Entry } from "@/lib/session-entry";
+import { consentDisplayStorage, hasConsentDisplayHint } from "@/lib/consent-display-cache";
 import { Button } from "./ui/Button";
 import { TextField } from "./ui/TextField";
 import AuthScreen from "./AuthScreen";
@@ -35,6 +36,8 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   const [error, setError] = useState("");
   // 시트 안에서 단계가 바뀔 때 새 내용이 들어오는 방향
   const [direction, setDirection] = useState<"open" | "forward" | "back">("open");
+  // 방금 시트에서 로그인·가입을 마쳤으면 기억 동의가 같은 시트에서 이어진다.
+  const [continueSheet, setContinueSheet] = useState(false);
   const stepInputRef = useRef<HTMLInputElement>(null);
   const welcomeActionRef = useRef<HTMLButtonElement>(null);
   const checkGeneration = useRef(0);
@@ -46,6 +49,8 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     setCheckFailed(result.kind === "retry");
     setLocalOwner(result.kind === "member" ? result.id : null);
     setUserId(result.kind === "member" ? result.id : null);
+    // 시트에서 이어 가기는 회원으로 들어갈 때만 유지한다(로그아웃·재시도·가입 계속이면 지운다).
+    if (result.kind !== "member") setContinueSheet(false);
     if (result.kind === "signup") {
       setShowWelcome(false);
       setMode("signup"); setStep("new-password");
@@ -109,7 +114,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
         return;
       }
       const entry = await checkEntry(client, data.user);
-      if (entry.kind === "member") await movePage("enter", () => enter(entry));
+      if (entry.kind === "member") await finishInSheet(entry);
       else { setDirection("forward"); enter(entry); }
     } catch {
       setError("로그인하지 못했어요. 잠시 후 다시 시도해 주세요.");
@@ -192,8 +197,16 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     setBusy(true);
     const entry = await checkEntry(client);
     if (generation !== checkGeneration.current) return;
-    if (entry.kind === "member") await movePage("enter", () => enter(entry));
+    if (entry.kind === "member") await finishInSheet(entry);
     else enter(entry);
+  }
+
+  // 로그인·가입을 마쳤을 때: 이 기기에서 이미 동의한 회원이면 시트가 작아지며 바로 다음 화면으로 넘어가고,
+  // 아니면 시트를 그대로 두고 기억 동의를 같은 자리에서 잇는다. 마이크 권한은 홈에서 처음 마이크를 누를 때 묻는다.
+  async function finishInSheet(entry: Extract<Entry, { kind: "member" }>) {
+    if (hasConsentDisplayHint(consentDisplayStorage(), entry.id)) { await movePage("enter", () => enter(entry)); return; }
+    setContinueSheet(true);
+    enter(entry);
   }
 
   function openForm(next: Step, nextMode: Mode = "login") {
@@ -211,7 +224,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     <p role="alert">로그인 상태를 확인하지 못했어요. 연결을 확인하고 다시 시도해 주세요.</p>
     <Button variant="tonal" size="medium" onClick={() => { setLoading(true); setAttempt(n => n + 1); }}>다시 확인</Button>
   </main>;
-  if (userId) return <MemoryConsentGate key={userId} userId={userId} signOut={signOut}>{children(userId, signOut)}</MemoryConsentGate>;
+  if (userId) return <MemoryConsentGate key={userId} userId={userId} signOut={signOut} continueSheet={continueSheet}>{children(userId, signOut)}</MemoryConsentGate>;
 
   const currentSteps: Step[] = mode === "signup" ? ["phone", "otp", "new-password"]
     : step === "password" ? ["password"] : ["phone", "otp", "new-password"];
@@ -238,8 +251,8 @@ export default function AuthGate({ children }: { children: (userId: string, sign
         </span>}
         {copy.description && <p className="auth-sheet-desc">{copy.description}</p>}
       </div>}
-      {step === "new-password" ? <PasswordSetup sheet onSaved={() => { void finishPasswordSetup(); }} signup={mode === "signup"}
-        onSkip={mode === "login" ? () => { void finishPasswordSetup(); } : undefined} onCancel={signOut} />
+      {/* 비밀번호 재설정·가입 모두 새 비밀번호를 정해야 끝난다('나중에'는 두지 않는다). 그만두려면 로그아웃한다. */}
+      {step === "new-password" ? <PasswordSetup sheet onSaved={() => { void finishPasswordSetup(); }} signup={mode === "signup"} onCancel={signOut} />
       : <form onSubmit={step === "password" ? signIn : step === "phone" ? sendOtp : verifyOtp} className="auth-sheet-form" aria-describedby={error ? "auth-error" : undefined}>
         <div className="auth-sheet-fields">
           {/* 이름표는 입력칸 위에 따로 두고, 입력칸 안에는 예시만 흐리게 보인다. */}
