@@ -2,7 +2,7 @@
 
 import { TextArea } from "./ui/Controls";
 import { Button } from "./ui/Button";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import Image from "next/image";
 import type { Msg } from "@/lib/log";
@@ -135,6 +135,11 @@ export default function HomeScreen({
   const expression = catExpression(chat.messages.findLast((message) => message.role === "user")?.content ?? "", Boolean(notice));
   const hasMessages = chat.open && !voice && (chat.messages.length > 0 || chat.sending);
   const chatting = chat.open && !voice; // 글 대화 중: 몽글이를 입력창 바로 위로 작게 옮긴다
+  const yawning = voice?.state === "yawning"; // 음성을 열기 직전 하품(dev #39). 끝나면 연결 상태로 넘어간다
+  // 처음 들어갈 때는 하품을 마친 뒤 커진다. 이미 커진 뒤(오류 뒤 다시 시도)의 하품은 그 크기 그대로 한다.
+  const [grown, setGrown] = useState(false);
+  const expanded = Boolean(voice) && (!yawning || grown);
+  if (expanded !== grown) setGrown(expanded);
   const resting = !chat.open && !voice; // 기본 홈: 글 없이 몽글이와 배경 움직임으로 대화를 권한다
   const bottomRef = useRef<HTMLDivElement>(null);
   const canSend = chat.open && Boolean(chat.draft.trim());
@@ -197,11 +202,26 @@ export default function HomeScreen({
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const input = composerRef.current;
     if (!input) return;
-    input.style.height = "auto";
-    input.style.height = `${Math.min(input.scrollHeight, 104)}px`;
+    const resize = () => {
+      // Empty drafts always use the shared single-line height. A placeholder can
+      // wrap while the voice capsule collapses; it must not make the field taller.
+      input.style.height = "";
+      if (input.value) input.style.height = `${Math.min(input.scrollHeight, 104)}px`;
+    };
+    resize();
+    let width = input.clientWidth;
+    const observer = new ResizeObserver(() => {
+      // Remeasure actual text after width transitions or viewport changes, while
+      // ignoring the height changes made by resize itself.
+      if (input.clientWidth === width) return;
+      width = input.clientWidth;
+      resize();
+    });
+    observer.observe(input);
+    return () => observer.disconnect();
   }, [chat.draft, chat.open]);
 
   useEffect(() => {
@@ -261,21 +281,23 @@ export default function HomeScreen({
       </div>}
 
       <div className="home-character-wrap absolute inset-x-gutter top-[32%] flex flex-col items-center" data-hidden={chatting} aria-hidden={chatting}>
-        <div className={`home-buddy ${voice ? "home-buddy-expanded" : ""}`}>
+        {/* 하품(음성 열기 전 2.4초) 동안은 키우지 않고 제자리에서 하품만 한다. 연결을 시작하면 그때 커진다. */}
+        <div className={`home-buddy ${expanded ? "home-buddy-expanded" : ""}`}>
           <button type="button" className="home-cat-tap" onClick={pokeCat} disabled={!resting} aria-label={`${name} 건드려 보기`}>
             <PoseCat
               pose={resting ? homeCat.pose : "base"}
               fx={resting ? homeCat.fx : undefined}
               cue={homeCat.cue}
               size={320}
+              yawning={yawning}
               buddy={{
                 shape: profile.shape,
                 color: profile.color,
                 accessory: profile.accessory,
-                stroll: resting && !napping && !homeCat.busy,
                 outputLevel, outputShape,
                 expression,
-                state: voice?.state ?? chat.state,
+                // 하품 동안 기본 자세는 감춰지므로 평소(idle) 표정 그대로 두어, 바꿔 끼우는 순간 눈 모양이 달라 보이지 않게 한다.
+                state: yawning ? "idle" : voice?.state ?? chat.state,
                 bob: true,
                 tap: chat.open && !voice ? chat.draft.length : undefined,
                 hearing: voice ? Boolean(voice.hearing) : undefined,

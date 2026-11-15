@@ -1,6 +1,7 @@
 "use client";
 import AudioPreview from "./AudioPreview";
 import MeowPreview from "./MeowPreview";
+import YawnPreview from "./YawnPreview";
 import { useState } from "react";
 import { catExpression } from "@/lib/cat-expression";
 import Buddy, { type BuddyState } from "../../Buddy";
@@ -32,6 +33,7 @@ export default function Preview() {
           <Buddy stroll groundShadow accessory={accessory} size={300} expression={catExpression(draft)} state={state} bob tap={state === "attentive" ? draft.length : undefined} hearing={voice ? hearing : undefined} voice={voice} />
         </div>
       </div>
+      <YawnPreview />
       <MeowPreview />
       <AudioPreview />
       <section className="mt-8">

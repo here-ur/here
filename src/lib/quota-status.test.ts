@@ -14,11 +14,13 @@ test("남은 대화량 응답은 모양이 맞을 때만 읽고, 아니면 감�
   }
 });
 
-test("막대는 덜 남은 쪽 기준이고, 20% 아래면 low, 둘 다 다 쓰면 out", () => {
+test("막대와 부족 상태는 표시된 글 대화 잔여량 기준이며 음성 잔여량과 독립적이다", () => {
   assert.deepEqual(quotaSummary(status(20, 6)), { chatLeft: 180, voiceLeft: 54, ratio: 0.9, state: "ok" });
+  assert.deepEqual(quotaSummary(status(10, 35)), { chatLeft: 190, voiceLeft: 25, ratio: 0.95, state: "ok" });
+  assert.deepEqual(quotaSummary(status(0, 60)), { chatLeft: 200, voiceLeft: 0, ratio: 1, state: "ok" });
   assert.equal(quotaSummary(status(170, 0)).state, "low");
-  assert.equal(quotaSummary(status(0, 55)).state, "low");
-  assert.equal(quotaSummary(status(200, 10)).state, "low");
+  assert.equal(quotaSummary(status(160, 0)).state, "ok");
+  assert.equal(quotaSummary(status(200, 10)).state, "out");
   assert.deepEqual(quotaSummary(status(230, 60)), { chatLeft: 0, voiceLeft: 0, ratio: 0, state: "out" });
 });
 

@@ -23,7 +23,6 @@
   .buddy .cat-eye-blink { animation: cat-blink 7.3s linear infinite; }
   .buddy[data-state="idle"]:not([data-look-override]) .cat-head-idle { animation: cat-head-turn 15s ease-in-out infinite; }
   .buddy[data-state="idle"]:not([data-look-override]) .cat-face-turn { animation: cat-face-turn 15s ease-in-out infinite; }
-  .buddy[data-state="idle"]:not([data-look-override]) .cat-pupil-glance { animation: cat-glance 15s ease-in-out infinite; }
   .buddy[data-state="listening"][data-hearing] .cat-head-response { animation: cat-listen-nod 4.6s ease-in-out infinite; }
   .buddy[data-state="speaking"] .cat-head-response { animation: cat-speaking-nod 5.8s ease-in-out infinite; }
 }
@@ -44,11 +43,6 @@
   0%, 22%, 56%, 100% { transform: translateX(0); }
   30%, 44% { transform: translateX(-8px); }
   70%, 84% { transform: translateX(7px); }
-}
-@keyframes cat-glance {
-  0%, 17%, 53%, 100% { transform: translate(0, 0); }
-  23%, 42% { transform: translate(-24px, -4px); }
-  64%, 82% { transform: translate(18px, 6px); }
 }
 @keyframes cat-listen-nod {
   0%, 28%, 62%, 100% { transform: rotate(0) scaleY(1); }

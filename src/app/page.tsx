@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
 import { companionState } from "@/lib/companion-state";
 import { ChatRequestError, requestChat } from "@/lib/chat";
+import { waitForCatYawn } from "@/lib/cat-yawn";
 import { type Msg, type Session, loadStoredSessions, pruneLog, saveSession } from "@/lib/log";
 import { DEFAULT_COMPANION, type Profile, josa } from "@/lib/onboarding";
 import { useAccountProfile } from "./use-account-profile";
@@ -112,6 +113,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   const [hasMic, setHasMic] = useState(false);
   const [typing, setTyping] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
+  const [yawning, setYawning] = useState(false);
   const [draft, setDraft] = useState("");
   const [pendingText, setPendingText] = useState("");
   const [error, setError] = useState("");
@@ -193,6 +195,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   }
 
   function cancelChat() {
+    if (chatRequest.current) setDraft((current) => current || pendingText);
     chatRequest.current?.abort();
     chatRequest.current = null;
     setPendingText("");
@@ -216,6 +219,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
     headlineLocked.current = true;
     const next: Msg[] = [...withHomeOpener(messages, openingLine), { role: "user", content: text, at: Date.now() }];
     setPendingText(text);
+    setDraft("");
     setError("");
     setStatus("thinking");
     try {
@@ -227,15 +231,15 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
       if (session.current) saveSession({ ...session.current, messages: completed });
       if (result.crisis) setCrisis(true);
       if (result.suggest) setSuggest(true);
-      setDraft("");
     } catch (e) {
       if (chatRequest.current !== controller || controller.signal.aborted) return;
+      setDraft((current) => current || draft);
       if (e instanceof ChatRequestError) {
         if (e.crisis) setCrisis(true);
         if (e.suggest) setSuggest(true);
         setError(e.message);
       } else setError("답변을 받지 못했어요. 다시 시도해 주세요.");
-      // 실패한 글은 입력창에 그대로 두고, 재시도 때 중복 대화로 보내지 않는다.
+      // 실패한 글은 입력창에 복원하고, 재시도 때 중복 대화로 보내지 않는다.
     } finally {
       if (chatRequest.current === controller) {
         chatRequest.current = null;
@@ -267,8 +271,14 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
     setStatus("connecting");
     setError("");
     setMemoryWarning("");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setYawning(!reducedMotion);
     try {
+      await waitForCatYawn(controller.signal, reducedMotion);
+      if (!current()) return;
+      setYawning(false);
       const token = await accessToken();
+      if (!current()) return;
       const conn = await connectRealtime({
         onOutputLevel: (level, shape) => { if (current()) { outputLevel.current = level; outputShape.current = shape; } },
         onStatus: (next) => { if (current()) setStatus(next); },
@@ -310,6 +320,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
       }
     } catch (e) {
       if (!current()) return;
+      setYawning(false);
       setError((e as Error).message);
       setStatus("idle");
     }
@@ -319,6 +330,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   function openText() {
     dismissHint();
     setResetNote(null);
+    setYawning(false);
     headlineLocked.current = true;
     setHomeGreetingDone(true);
     setHearing(false);
@@ -341,7 +353,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
 
   /** 글 대화 → 통화: 별도의 음성 연결을 시작한다. */
   function startVoice() {
-    if (chatRequest.current) return;
+    if (chatRequest.current || voiceRequest.current) return;
     setTyping(false);
     setMicOn(true);
     void begin();
@@ -354,7 +366,8 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   function toVoice() {
     dismissHint();
     setResetNote(null);
-    if (chatRequest.current) return;
+    // 글 답변을 기다리는 중이거나 이미 음성을 여는 중(하품 포함)이면 다시 시작하지 않는다.
+    if (chatRequest.current || voiceRequest.current) return;
     // 안내 시트가 떠도 홈 인사가 뒤에서 계속 말하지 않게 먼저 멈춘다.
     headlineLocked.current = true;
     setHomeGreetingDone(true);
@@ -368,6 +381,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   }
 
   function stopVoice() {
+    setYawning(false);
     setHearing(false);
     setSearchSources([]);
     connectionAttempt.current += 1;
@@ -480,7 +494,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
           onClose: closeText,
         }}
         voice={voiceMode ? {
-          state: companionState({ error: Boolean(error), connecting, listening, thinking: status === "thinking", speaking: status === "speaking" }),
+          state: yawning ? "yawning" : companionState({ error: Boolean(error), connecting, listening, thinking: status === "thinking", speaking: status === "speaking" }),
           connecting,
           listening,
           micOn,

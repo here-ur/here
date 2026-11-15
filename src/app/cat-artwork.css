@@ -1,0 +1,6 @@
+.cat-artwork { position: relative; width: 100%; height: 100%; }
+.cat-artwork-original { object-fit: cover; }
+.cat-artwork-canvas, .cat-artwork-accessory { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.cat-artwork-canvas { opacity: 0; }
+.cat-artwork[data-ready="true"] .cat-artwork-original { visibility: hidden; }
+.cat-artwork[data-ready="true"] .cat-artwork-canvas { opacity: 1; }
