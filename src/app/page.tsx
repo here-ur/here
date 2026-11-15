@@ -524,10 +524,6 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
           open={showMenu}
           profile={me}
           onClose={() => setShowMenu(false)}
-          onInsight={() => {
-            setShowMenu(false);
-            openReport("insight");
-          }}
           onLibrary={() => {
             setShowMenu(false);
             openReport("library");
