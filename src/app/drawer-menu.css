@@ -2,7 +2,7 @@
 .here-menu-overlay {
   --here-menu-paper: #faf9f3;
   --here-menu-ink: #393a3c;
-  --here-menu-muted: #868a8f;
+  --here-menu-muted: #6e7277; /* 종이 바탕(#faf9f3) 위 4.5:1 이상(작은 글자 기준) */
   --here-menu-line: #edede7;
   opacity: 0;
   pointer-events: none;
@@ -25,7 +25,7 @@
   filter: drop-shadow(8px 0 12px rgb(0 0 0 / 15%));
 }
 .here-menu-overlay .here-drawer[data-view="menu"] {
-  --f7-list-font-size: 18px;
+  --f7-list-font-size: 16px;
   --f7-list-item-title-font-weight: 600;
   --f7-list-item-min-height: 56px;
   --f7-list-item-padding-horizontal: 32px;
@@ -50,7 +50,7 @@
 .here-drawer .here-design-menu-list.list .item-media { min-width: 24px; padding-block: 0; }
 .here-drawer .here-design-menu-list.list .here-menu-icon { width: 24px; height: 24px; }
 .here-drawer .here-design-menu-list.list .item-inner { min-height: 56px; padding: 12px 32px 12px 0; margin-left: 10px; }
-.here-drawer .here-design-menu-list.list .item-title { font-size: 18px; font-weight: 600; line-height: normal; letter-spacing: -.36px; }
+.here-drawer .here-design-menu-list.list .item-title { font-size: 16px; font-weight: 600; line-height: normal; letter-spacing: -.3px; }
 .here-drawer .here-design-menu-list.list :is(ul, .item-inner)::after,
 .here-drawer .here-design-menu-list.list ul::before { display: none; }
 .here-menu-divider { height: 2px; padding-inline: 32px; }
@@ -59,11 +59,13 @@
 .here-menu-quota-track { display: block; flex-shrink: 0; height: 8px; overflow: hidden; border-radius: 99px; background: var(--here-menu-line); }
 .here-menu-quota-fill { display: block; height: 100%; border-radius: inherit; background: #1d1e1f; transition: width 300ms ease; }
 .here-menu-quota[data-state="low"] .here-menu-quota-fill { background: #b06a00; }
-.here-menu-quota-label { display: flex; flex-shrink: 0; align-items: center; gap: 10px; margin: 0; color: var(--here-menu-muted); font-size: 14px; font-weight: 600; line-height: 17px; letter-spacing: -.28px; white-space: nowrap; }
+.here-menu-quota-label { display: flex; flex-shrink: 0; align-items: center; gap: 10px; margin: 0; color: var(--here-menu-muted); font-size: 13px; font-weight: 600; line-height: 16px; letter-spacing: -.28px; white-space: nowrap; }
 .here-menu-quota-label b { color: var(--here-menu-ink); font-weight: inherit; }
-/* A keyboard-accessible close control without adding a visual element to the reference. */
+/* 화면에는 닫기 버튼이 없다(바깥 누르기·왼쪽으로 밀기·Escape). 키보드로 포커스할 때만 나타난다. */
 .here-drawer-close { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .here-drawer-close:focus-visible { top: 64px; right: 16px; display: grid; width: 40px; height: 40px; place-items: center; overflow: visible; clip-path: none; border-radius: 50%; background: var(--here-menu-paper); color: var(--here-menu-ink); outline: 2px solid currentColor; }
+/* 왼쪽으로 밀어 닫기: 세로 스크롤은 브라우저에 두고 가로 움직임만 받는다. */
+.here-menu-overlay .here-drawer { touch-action: pan-y pinch-zoom; }
 @media (prefers-reduced-motion: reduce) {
   .here-menu-overlay, .here-menu-overlay .here-drawer, .here-menu-quota-fill { transition: none; }
 }

@@ -116,6 +116,9 @@ const ICONS = {
   sparkles: "sparkles",
   paintbrush: "paintbrush",
   pencil: "pencil",
+  check: "checkmark",
+  chat: "chat_bubble",
+  paw: "paw",
 } as const;
 
 export function Icon({ name, size = 24 }: { name: keyof typeof ICONS; size?: number }) {

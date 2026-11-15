@@ -1,0 +1,12 @@
+/* 캐릭터 만나기 6단계 펼쳐 보기. 휴대폰 크기(375×812) 칸을 줄여서 나란히 둔다. */
+.ob-overview { flex-shrink: 0; min-height: 100dvh; padding: 24px 16px 48px; background: #ECE8E1; color: #2B2A28; }
+.ob-overview-head { max-width: 640px; margin: 0 auto 20px; text-align: center; }
+.ob-overview-head h1 { font-size: 18px; font-weight: 800; }
+.ob-overview-head p { margin-top: 4px; font-size: 13px; color: #6F6A62; }
+.ob-overview-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 24px 20px; }
+.ob-overview-item { display: grid; gap: 8px; justify-items: center; margin: 0; }
+.ob-overview-item figcaption { display: grid; gap: 2px; max-width: 220px; text-align: center; font-size: 12px; line-height: 1.4; color: #6F6A62; }
+.ob-overview-item figcaption b { font-size: 14px; color: #2B2A28; }
+.ob-overview-frame { position: relative; isolation: isolate; width: 375px; height: 812px; zoom: .5; overflow: hidden; border-radius: 44px; background: #fff; box-shadow: 0 0 0 8px #1F1E1C, 0 30px 60px -24px rgb(0 0 0 / 45%); }
+.ob-overview-frame .app-frame { height: 100%; min-height: 0; max-width: none; }
+@media (min-width: 1400px) { .ob-overview-frame { zoom: .62; } }

@@ -1,6 +1,6 @@
 # Cat motion
 
-The home uses the same approved transparent artwork for idle, yawn and speech. Do not swap the image, change its scale or split off a head layer on voice entry. The first and final yawn frames have no displacement. Keep the body, paws and tail still.
+The home cat is `PoseCat` (Buddy base) for idle, reactions and speech. On voice entry it swaps to `CatArtwork` for the yawn only, overlaid at exactly the same geometry as the base (see `pose-cat.css`), and swaps back when the intro ends. Do not change the cat's scale or split off a head layer during the yawn; the home enlarges the cat only after the intro. The first and final yawn frames have no displacement, so the swap in matches the resting art. On the swap back the base returns already in the connecting ('thinking') look and then enlarges, so that swap is a short fade into a different pose. Keep the body, paws and tail still.
 
 ## References and interpretation
 

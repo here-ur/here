@@ -19,7 +19,9 @@ import { syncReport } from "@/lib/report";
 import { browserSupabase } from "@/lib/supabase";
 import type { SearchSource } from "@/lib/web-search-protocol";
 import AuthGate from "./AuthGate";
-import MicrophonePermissionGate from "./MicrophonePermissionGate";
+import { useMicrophoneAsk } from "./MicrophoneAsk";
+import HomeHint from "./HomeHint";
+import { homeHintSeen, markHomeHintSeen } from "@/lib/home-hint";
 import { Crisis109 } from "./Conversation";
 import ComingSoon from "./ComingSoon";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
@@ -31,6 +33,7 @@ import HomeEntryGreeting from "./HomeEntryGreeting";
 import GetHelp from "./GetHelp";
 import Report, { type ReportMode } from "./Report";
 import Onboarding from "./Onboarding";
+import { FirstRunFooter, FirstRunScreen } from "./FirstRun";
 
 type Status = "connecting" | "idle" | "listening" | "thinking" | "speaking";
 
@@ -51,7 +54,40 @@ const DEV_PROFILE: Profile | null =
     : null;
 
 export default function Page() {
-  return <AuthGate>{(userId, signOut) => <MicrophonePermissionGate key={userId}><Home userId={userId} signOut={signOut} /></MicrophonePermissionGate>}</AuthGate>;
+  return <AuthGate>{(userId, signOut) => <Home key={userId} userId={userId} signOut={signOut} />}</AuthGate>;
+}
+
+/** 이 기기에 남은 설정이 없어 계정의 캐릭터 설정을 처음 불러오는 동안(새로 가입했거나 이 기기에서 처음 로그인).
+ * 로그인·기억 동의에서 넘어오는 화면 전환이 빈 화면에 내려앉지 않게 캐릭터 만나기와 같은 크림 바탕에 작은 원만 돌린다.
+ * 오래 걸리면 로그아웃을, 불러오지 못하면 다시 확인·로그아웃을 보여 준다(이때는 메뉴가 없어 나갈 곳이 여기뿐이다). */
+function ProfileLoading({ error, onRetry, onSignOut }: { error: string; onRetry: () => void; onSignOut: () => void }) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSlow(true), 4000);
+    return () => window.clearTimeout(timer);
+  }, []);
+  if (error) return <FirstRunScreen tone="cream">
+    <div className="grid flex-1 place-items-center">
+      <div role="alert" className="fr-heading">
+        <p className="fr-title">{error}</p>
+        <p className="fr-desc">연결을 확인하고 다시 시도해 주세요.</p>
+      </div>
+    </div>
+    <FirstRunFooter>
+      <Button tone="ink" fullWidth onClick={onRetry}>다시 확인</Button>
+      <Button variant="plain" className="fr-link" onClick={onSignOut}>로그아웃</Button>
+    </FirstRunFooter>
+  </FirstRunScreen>;
+  // 로그아웃 자리는 처음부터 잡아 두고 늦어질 때만 보이게 해서, 나타날 때 원이 움직이지 않게 한다.
+  return <FirstRunScreen tone="cream">
+    <div className="grid flex-1 place-items-center" aria-hidden="true">
+      <span className="size-7 rounded-full border-[2.5px] border-cat-ink/60 border-e-transparent motion-safe:animate-spin" />
+    </div>
+    <p role="status" className="sr-only">캐릭터 설정을 불러오고 있어요</p>
+    <FirstRunFooter>
+      <Button variant="plain" className={`fr-link ${slow ? "" : "invisible"}`} onClick={onSignOut}>로그아웃</Button>
+    </FirstRunFooter>
+  </FirstRunScreen>;
 }
 
 function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void> }) {
@@ -60,6 +96,9 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   const [pendingProfile, setPendingProfile] = useState<Profile | null>(null);
 
   const [justMet, setJustMet] = useState(false); // 온보딩을 막 끝냈으면 홈에서 몽글이가 처음 인사한다
+  // 홈 첫 방문 안내: 이 기기에서 한 번. 글·음성·메뉴를 열거나 안내를 누르면 닫는다.
+  const [showHint, setShowHint] = useState(() => !homeHintSeen());
+  const dismissHint = useCallback(() => { markHomeHintSeen(); setShowHint(false); }, []);
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [live, setLive] = useState(""); // 몽글이가 말하는 중인 문장
@@ -83,6 +122,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   const [searchSources, setSearchSources] = useState<SearchSource[]>([]);
   const [showMenu, setShowMenu] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [resetNote, setResetNote] = useState<{ text: string; error?: boolean } | null>(null); // 처음부터 다시 만들기의 진행·실패
   const [customizing, setCustomizing] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
   const [captions, setCaptions] = useState(false); // 자막: 소리가 안 들릴 때를 위해
@@ -184,7 +224,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
     setStatus("thinking");
     try {
       const token = await accessToken();
-      const result = await requestChat(next.slice(-60), profile?.companion ?? DEFAULT_COMPANION, controller.signal, token);
+      const result = await requestChat(next.slice(-60), { name: profile?.companion ?? DEFAULT_COMPANION, nickname: profile?.nickname, style: profile?.style }, controller.signal, token);
       if (chatRequest.current !== controller) return;
       const completed: Msg[] = [...next, { role: "assistant", content: result.reply, at: Date.now() }];
       setMessages(completed);
@@ -267,7 +307,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
         onError: (message) => { if (current()) setError(message); },
         onMemoryWarning: (message) => { if (current()) setMemoryWarning(message); },
         onSearchSources: (sources) => { if (current()) setSearchSources(sources); },
-      }, { name: profile?.companion, voice: profile?.voice }, controller.signal, token, { greeting: false, opener: messages.length ? undefined : openingLine });
+      }, { name: profile?.companion, voice: profile?.voice, nickname: profile?.nickname || undefined, style: profile?.style }, controller.signal, token, { greeting: false, opener: messages.length ? undefined : openingLine });
       if (!current()) { conn.close(); return; }
       rt.current = conn;
       conn.setSound(true);
@@ -288,6 +328,8 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
 
   /** 채팅 진입 시 음성 연결은 닫고, 첫 전송 전에는 API를 호출하지 않는다. */
   function openText() {
+    dismissHint();
+    setResetNote(null);
     setYawning(false);
     headlineLocked.current = true;
     setHomeGreetingDone(true);
@@ -310,11 +352,26 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   }
 
   /** 글 대화 → 통화: 별도의 음성 연결을 시작한다. */
-  function toVoice() {
+  function startVoice() {
     if (chatRequest.current || voiceRequest.current) return;
     setTyping(false);
     setMicOn(true);
     void begin();
+  }
+  // 마이크 권한은 처음 마이크를 누를 때 묻는다(권한이 있거나 이미 거쳤으면 바로 연결). 글을 고르면 글 입력창을 열고 바로 포커스한다.
+  // 허용 뒤에는 시트가 돌려주려는 마이크 버튼이 연결 중이라 눌리지 않으므로, 바로 옆 '음성 대화 종료' 버튼으로 포커스를 옮긴다.
+  const micAsk = useMicrophoneAsk(startVoice, () => openText(),
+    () => document.getElementById("home-text-draft")?.focus({ preventScroll: true }),
+    () => document.getElementById("home-voice-end")?.focus({ preventScroll: true }));
+  function toVoice() {
+    dismissHint();
+    setResetNote(null);
+    // 글 답변을 기다리는 중이거나 이미 음성을 여는 중(하품 포함)이면 다시 시작하지 않는다.
+    if (chatRequest.current || voiceRequest.current) return;
+    // 안내 시트가 떠도 홈 인사가 뒤에서 계속 말하지 않게 먼저 멈춘다.
+    headlineLocked.current = true;
+    setHomeGreetingDone(true);
+    micAsk.ask();
   }
 
   function closeText() {
@@ -377,17 +434,16 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
     setShowHelp(true);
   }
 
-  if (profile === undefined) return <main className="app-frame flex flex-col items-center justify-center gap-4 bg-cat-surface px-7">
-    {account.error && <><p role="alert">{account.error}</p><Button variant="plain" onClick={account.retry} className="min-h-12 px-5">다시 확인</Button></>}
-  </main>;
+  if (profile === undefined) return <ProfileLoading error={account.loadError} onRetry={account.retry} onSignOut={() => { void signOut(); }} />;
 
   if (profile === null) {
-    if (pendingProfile) return <main className="app-frame flex flex-col items-center justify-center gap-4 bg-cat-surface px-7">
-      <p role="status">{account.error || "설정을 저장하고 있어요…"}</p>
-      {account.error && <Button variant="plain" disabled={account.saving} className="min-h-12 px-5" onClick={() => { void account.save(pendingProfile); }}>다시 저장</Button>}
-    </main>;
+    // 마지막 '알겠어요' 뒤 저장하는 동안에도 같은 화면을 두고, 버튼에 진행·실패·다시 저장을 보여 준다.
+    // 저장이 끝나면 홈이 온보딩의 빛이 걷히는 모션(greet)으로 바로 이어진다.
     return (
       <Onboarding
+        saving={pendingProfile !== null && account.saving}
+        saveError={pendingProfile ? account.saveError : undefined}
+        onRetry={() => { if (pendingProfile) void account.save(pendingProfile); }}
         onDone={(p) => {
           setPendingProfile(p);
           void account.save(p);
@@ -405,7 +461,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
 
   if (showFriends) return <Friends who={who} onBack={() => setShowFriends(false)} />;
 
-  if (reportMode) return <Report key={reportMode} mode={reportMode} who={who} accessToken={accessToken} onBack={() => setReportMode(null)} onSeed={startSeed} onDecorate={() => { setReportMode(null); setCustomizing(true); }} />;
+  if (reportMode) return <Report key={reportMode} mode={reportMode} who={who} accessToken={accessToken} onBack={() => setReportMode(null)} onSeed={startSeed} onDecorate={() => { setReportMode(null); account.clearSaveError(); setCustomizing(true); }} />;
 
   const listening = !error && hasMic && micOn && (status === "listening" || status === "idle");
   const lastAssistant = live || messages.findLast((m) => m.role === "assistant")?.content;
@@ -420,7 +476,9 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
         headline={openingLine}
         onVoice={toVoice}
         onText={openText}
-        onMenu={() => { setHomeGreetingDone(true); setShowMenu(true); }}
+        onMenu={() => { dismissHint(); setResetNote(null); setHomeGreetingDone(true); setShowMenu(true); }}
+        nudge={showHint ? <HomeHint name={profile.companion} onDismiss={dismissHint} /> : undefined}
+        banner={resetNote ?? undefined}
         menuButtonRef={menuButtonRef}
         outputLevel={outputLevel}
         outputShape={outputShape}
@@ -460,6 +518,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
           {suggest && <Button variant="plain" onClick={openHelpSoon} className="ui-press h-11 rounded-full bg-white px-5 text-t4 font-bold text-[#1F2A55]">도움받기</Button>}
         </div> : undefined}
       >
+        {micAsk.sheet}
         {!homeGreetingDone && headlineReady && openingLine && <HomeEntryGreeting name={profile.companion} voice={profile.voice} opener={openingLine} onOutputLevel={onOutputLevel} onSpeaking={setHomeSpeaking} onDone={setHomeGreetingDone} />}
         <Drawer
           open={showMenu}
@@ -475,6 +534,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
           }}
           onCustomize={() => {
             setShowMenu(false);
+            account.clearSaveError(); // 앞서 실패한 초기화의 오류를 캐릭터 화면에 끌고 가지 않는다
             setCustomizing(true);
           }}
           onHelp={() => {
@@ -497,8 +557,15 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
             confirmLabel="초기화"
             onCancel={() => setConfirmReset(false)}
             onConfirm={() => {
+              // 메뉴를 닫아 홈에서 진행·실패를 보이게 한다. 실패하면 설정은 그대로 두고 알린다.
               setConfirmReset(false);
-              void account.save(null).then(ok => { if (ok) { setPendingProfile(null); location.reload(); } });
+              setShowMenu(false);
+              setResetNote({ text: "설정을 초기화하고 있어요…" });
+              void account.save(null).then(ok => {
+                if (ok) { setPendingProfile(null); location.reload(); return; }
+                account.clearSaveError();
+                setResetNote({ text: "설정을 초기화하지 못했어요. 연결을 확인하고 다시 시도해 주세요.", error: true });
+              });
             }}
           />
         )}
@@ -518,7 +585,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
           <Customize
             profile={me}
             saving={account.saving}
-            error={account.error}
+            error={account.saveError}
             onSave={(p) => account.save(p)}
             onClose={() => setCustomizing(false)}
             onChat={() => { setCustomizing(false); openText(); }}

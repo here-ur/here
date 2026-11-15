@@ -2,7 +2,7 @@
 
 import { TextArea } from "./ui/Controls";
 import { Button } from "./ui/Button";
-import { useEffect, useId, useLayoutEffect, useRef } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import Image from "next/image";
 import type { Msg } from "@/lib/log";
@@ -11,7 +11,8 @@ import { safeSearchSource, type SearchSource } from "@/lib/web-search-protocol";
 import { COLORS, type ColorId, type Profile, josa } from "@/lib/onboarding";
 import { catExpression } from "@/lib/cat-expression";
 import Buddy, { type BuddyState } from "./Buddy";
-import CatArtwork from "./CatArtwork";
+import PoseCat from "./PoseCat";
+import { useCatReactions } from "./use-cat-reactions";
 import { Icon } from "./art";
 import "./home-voice.css";
 import "./home-chat.css";
@@ -19,8 +20,9 @@ import "./home-scene.css";
 
 // 글 버튼은 홈을 유지한 채 입력창만 펼친다. 음성 버튼은 같은 자리에서 확장한다.
 // 첨부(+)와 오른쪽 위 라이브러리 버튼은 11/11 회의에서 홈에서 빼기로 했다. 라이브러리는 메뉴로 들어간다.
-// 기본 홈은 Figma 455:164의 고정 캐릭터·햇빛 배경. 말하기·듣기 반응과 꾸미기는 기존 Buddy를 사용한다.
-// 기본·음성 버튼은 피그마 위치를 유지하고, 글 입력 중에는 키보드 위 공간을 확보한다.
+// 홈은 메뉴 버튼·몽글이·하단 버튼만 남긴다. 몽글이가 AI라는 안내는 온보딩·메뉴·대화 기록에서 보여 준다.
+// 배경은 피그마 455:164의 햇빛 그림(home-scene.css)만 쓰고, 고양이·버튼 배치는 기존 홈 그대로다.
+// 하단 버튼 줄은 기본·글·음성 어느 상태에서도 같은 높이에 둔다(시선이 오르내리지 않게).
 
 export type HomeVoiceControls = {
   state: BuddyState;
@@ -101,6 +103,7 @@ export default function HomeScreen({
   notice,
   spotlight,
   nudge,
+  banner,
   children,
   outputLevel,
   outputShape,
@@ -111,7 +114,8 @@ export default function HomeScreen({
   greet: boolean; // 온보딩 직후 등장 모션
   headline?: string | null;
   spotlight?: React.ReactNode; // 기본 홈 위쪽에 작게 두는 것(오늘 해 볼 만한 것 시안). 대화 중에는 감춘다
-  nudge?: React.ReactNode; // 대화를 마친 뒤 하단 버튼 위에 한 번 보여 주는 카드 시안
+  nudge?: React.ReactNode; // 쉬는 동안 하단 버튼 바로 위에 보여 주는 작은 카드(지금은 홈 첫 방문 안내 HomeHint)
+  banner?: { text: string; error?: boolean }; // 메뉴에서 한 일의 진행·실패를 하단 버튼 위에 알린다(지금은 처음부터 다시 만들기)
   onVoice: () => void;
   onText: () => void;
   onMenu: () => void;
@@ -131,9 +135,36 @@ export default function HomeScreen({
   const expression = catExpression(chat.messages.findLast((message) => message.role === "user")?.content ?? "", Boolean(notice));
   const hasMessages = chat.open && !voice && (chat.messages.length > 0 || chat.sending);
   const chatting = chat.open && !voice; // 글 대화 중: 몽글이를 입력창 바로 위로 작게 옮긴다
-  const resting = !chat.open && !voice; // 기본 홈: 글 없이 고정된 몽글이와 햇빛 배경을 보여 준다
+  const yawning = voice?.state === "yawning"; // 음성을 열기 직전 하품(dev #39). 끝나면 연결 상태로 넘어간다
+  // 처음 들어갈 때는 하품을 마친 뒤 커진다. 이미 커진 뒤(오류 뒤 다시 시도)의 하품은 그 크기 그대로 한다.
+  const [grown, setGrown] = useState(false);
+  const expanded = Boolean(voice) && (!yawning || grown);
+  if (expanded !== grown) setGrown(expanded);
+  const resting = !chat.open && !voice; // 기본 홈: 글 없이 몽글이와 배경 움직임으로 대화를 권한다
   const bottomRef = useRef<HTMLDivElement>(null);
   const canSend = chat.open && Boolean(chat.draft.trim());
+
+  // 쉬는 홈에서만 고양이가 혼자 논다: 가끔 뭔가 발견한 듯 눈이 동그래지고, 심심하면 발을 핥고, 오래 두면 웅크려 잔다.
+  // 누르면 깜짝 놀랐다가 귀찮다는 듯 울고(세 번 연달아면 하악), 자고 있으면 째려보며 깬다. 대화 중에는 기존 Buddy 상태를 그대로 쓴다.
+  const [napping, setNapping] = useState(false);
+  const [catPokes, setCatPokes] = useState(0);
+  const homeCat = useCatReactions(resting && napping ? "sleep" : "base");
+  const { notice: catNotice, play: catPlay } = homeCat;
+  useEffect(() => {
+    if (!resting || napping) return;
+    const timers = [
+      window.setTimeout(catNotice, 14000),
+      window.setTimeout(() => catPlay([["groom", 4400]]), 32000),
+      window.setTimeout(() => setNapping(true), 75000),
+    ];
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [resting, napping, catPokes, catNotice, catPlay]);
+  function pokeCat() {
+    setCatPokes((n) => n + 1);
+    if (napping) { setNapping(false); catPlay([["glare", 1800]]); return; }
+    homeCat.tap();
+  }
+  function wakeForTalk() { setNapping(false); homeCat.reset(); }
 
   useEffect(() => {
     if (wasVoiceActive.current && !voice && !chat.open) micButtonRef.current?.focus({ preventScroll: true });
@@ -201,6 +232,7 @@ export default function HomeScreen({
 
   function expandText() {
     // 사용자 클릭 안에서 포커스를 옮겨 모바일에서도 키보드가 바로 열린다.
+    wakeForTalk();
     flushSync(onText);
     composerRef.current?.focus({ preventScroll: true });
   }
@@ -225,13 +257,13 @@ export default function HomeScreen({
 
       <header className="home-header absolute inset-x-0 z-10 flex h-14 items-center justify-between px-gutter">
         <Button ref={menuButtonRef} variant="plain" onClick={onMenu} aria-label="메뉴" className="home-chrome-button ui-press grid size-12 place-items-center rounded-full">
-          <Image src="/home/menu.svg" alt="" width={28} height={28} />
+          <Icon name="menu" size={22} />
         </Button>
       </header>
 
       <div className={`home-intro absolute inset-x-gutter top-[18%] flex flex-col items-center text-center ${voice || hasMessages ? "home-intro-quiet" : ""}`} aria-hidden={Boolean(voice || hasMessages)}>
         {/* 실제 기억에 연결되는 문구가 있을 때만 표시. 기본 인사는 없음. */}
-        {headline && <h1 className="min-h-[2.6em] max-w-80 whitespace-pre-line text-t9 leading-relaxed font-medium tracking-tight text-balance">{headline}</h1>}
+        {headline && <h1 className="min-h-[2.6em] max-w-80 whitespace-pre-line text-t8 leading-relaxed font-medium tracking-tight text-balance">{headline}</h1>}
       </div>
 
       {notice && <div className="home-safety absolute inset-x-gutter top-[18%] z-10">{notice}</div>}
@@ -248,11 +280,33 @@ export default function HomeScreen({
         </div>}
       </div>}
 
-      <div className="home-character-wrap" data-hidden={chatting} aria-hidden={chatting}>
-        <div className="home-character-art" aria-hidden="true">
-          <CatArtwork state={voice?.state ?? chat.state} accessory={profile.accessory} outputLevel={outputLevel} outputShape={outputShape} />
+      <div className="home-character-wrap absolute inset-x-gutter top-[32%] flex flex-col items-center" data-hidden={chatting} aria-hidden={chatting}>
+        {/* 하품(음성 열기 전 2.4초) 동안은 키우지 않고 제자리에서 하품만 한다. 연결을 시작하면 그때 커진다. */}
+        <div className={`home-buddy ${expanded ? "home-buddy-expanded" : ""}`}>
+          <button type="button" className="home-cat-tap" onClick={pokeCat} disabled={!resting} aria-label={`${name} 건드려 보기`}>
+            <PoseCat
+              pose={resting ? homeCat.pose : "base"}
+              fx={resting ? homeCat.fx : undefined}
+              cue={homeCat.cue}
+              size={320}
+              yawning={yawning}
+              buddy={{
+                shape: profile.shape,
+                color: profile.color,
+                accessory: profile.accessory,
+                outputLevel, outputShape,
+                expression,
+                // 하품 동안 기본 자세는 감춰지므로 평소(idle) 표정 그대로 두어, 바꿔 끼우는 순간 눈 모양이 달라 보이지 않게 한다.
+                state: yawning ? "idle" : voice?.state ?? chat.state,
+                bob: true,
+                tap: chat.open && !voice ? chat.draft.length : undefined,
+                hearing: voice ? Boolean(voice.hearing) : undefined,
+                voice: Boolean(voice),
+              }}
+            />
+          </button>
         </div>
-        {voice && <div className="home-character-status max-w-full px-4 text-center">
+        {voice && <div className="mt-5 max-w-full px-4 text-center">
           <p role="status" className="text-t4 font-medium text-cat-ink">{voice.error ? "연결하지 못했어요" : voice.statusText}</p>
           {voice.caption && !voice.error && <div className="mt-2 line-clamp-2 text-t3 text-cat-muted"><ChatMarkdown content={voice.caption.split("\n\n출처:")[0]} /></div>}
         </div>}
@@ -265,6 +319,7 @@ export default function HomeScreen({
         {voice?.warning && !voice.error && <p role="status" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-cat-muted">{voice.warning}</p>}
         {voice?.error && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{voice.error}</p>}
         {chat.error && !voice && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{chat.error}</p>}
+        {banner && <p key={banner.error ? "alert" : "status"} role={banner.error ? "alert" : "status"} className={`rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty ${banner.error ? "text-[#C42A23]" : "text-cat-muted"}`}>{banner.text}</p>}
         {nudge && resting && <div>{nudge}</div>}
         {chatting && (
           <div aria-hidden="true" className="home-chat-buddy">
@@ -298,7 +353,7 @@ export default function HomeScreen({
               aria-hidden={chat.open}
               className="home-text-toggle home-action-icon ui-press grid size-14 place-items-center rounded-full disabled:opacity-40"
             >
-              <Image src="/home/chat.svg" alt="" width={24} height={24} />
+              <Icon name="help" />
             </Button>
           </form>
           <div className="home-right-action" data-send={canSend}>
@@ -306,7 +361,7 @@ export default function HomeScreen({
             <div inert={canSend} aria-hidden={canSend} className="home-mic-action">
             <div className="home-voice-pill" data-expanded={Boolean(voice)}>
               <div className="home-voice-end" inert={!voice} aria-hidden={!voice}>
-                <Button variant="plain" type="button" onClick={voice?.onEnd} tabIndex={voice ? 0 : -1} aria-label="음성 대화 종료" className="ui-press grid size-12 shrink-0 place-items-center rounded-full bg-[#E5484D] text-white">
+                <Button variant="plain" type="button" id="home-voice-end" onClick={voice?.onEnd} tabIndex={voice ? 0 : -1} aria-label="음성 대화 종료" className="ui-press grid size-12 shrink-0 place-items-center rounded-full bg-[#E5484D] text-white">
                   <Icon name="close" size={20} />
                 </Button>
                 <span className="h-8 w-px shrink-0 bg-cat-line" />
@@ -314,17 +369,16 @@ export default function HomeScreen({
               <Button variant="fill"
                 ref={micButtonRef}
                 type="button"
-                onClick={voice ? voice.onMic : onVoice}
+                onClick={voice ? voice.onMic : () => { wakeForTalk(); onVoice(); }}
                 disabled={chat.sending || Boolean(voice && (voice.connecting || (!voice.hasMic && !voice.error)))}
                 tabIndex={canSend ? -1 : 0}
+                // 이름이 지금 할 일(끄기·켜기)을 말하므로 aria-pressed는 두지 않는다. 함께 쓰면 '마이크 끄기, 선택됨'처럼 상태가 거꾸로 읽힌다.
                 aria-label={voice ? voice.error ? "음성 연결 다시 시도" : voice.micOn ? "마이크 끄기" : "마이크 켜기" : `${josa(name, "과", "와")} 음성 대화 시작`}
                 aria-expanded={Boolean(voice)}
-                aria-pressed={voice && !voice.error ? voice.micOn : undefined}
                 className="home-mic home-action-icon ui-press grid size-14 shrink-0 place-items-center rounded-full disabled:opacity-40"
                 data-off={Boolean(voice && !voice.micOn && !voice.error)}
               >
-                {voice && !voice.micOn && !voice.error ? <Icon name="micOff" size={24} />
-                  : <Image src="/home/microphone.svg" alt="" width={24} height={24} />}
+                <Icon name={voice && !voice.micOn && !voice.error ? "micOff" : "mic"} size={26} />
               </Button>
             </div>
             </div>
