@@ -1,4 +1,8 @@
 import type { Msg } from "./log.ts";
+import type { StyleId } from "./onboarding.ts";
+
+/** 캐릭터 이름과, 사용자가 불러 달라고 한 이름·고른 대화 방식. 서버가 다시 걸러 지시문에 넣는다. */
+export type ChatPersona = { name: string; nickname?: string; style?: StyleId };
 
 export type ChatReply = {
   reply: string;
@@ -31,7 +35,7 @@ function isAborted(error: unknown, signal?: AbortSignal): boolean {
 
 export async function requestChat(
   messages: Msg[],
-  name: string,
+  persona: ChatPersona,
   signal?: AbortSignal,
   accessToken?: string,
 ): Promise<ChatReply> {
@@ -41,8 +45,13 @@ export async function requestChat(
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
-      // 메시지 시각 같은 기기 전용 정보는 빼고 role·content만 보낸다.
-      body: JSON.stringify({ messages: messages.map(({ role, content }) => ({ role, content })), name }),
+      // 메시지 시각 같은 기기 전용 정보는 빼고 role·content만 보낸다. 이름·대화 방식은 지시문에만 쓰인다.
+      body: JSON.stringify({
+        messages: messages.map(({ role, content }) => ({ role, content })),
+        name: persona.name,
+        ...(persona.nickname?.trim() ? { nickname: persona.nickname.trim() } : {}),
+        ...(persona.style ? { style: persona.style } : {}),
+      }),
       signal,
     });
   } catch (error) {

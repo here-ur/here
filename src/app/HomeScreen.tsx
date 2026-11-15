@@ -103,6 +103,7 @@ export default function HomeScreen({
   notice,
   spotlight,
   nudge,
+  banner,
   children,
   outputLevel,
   outputShape,
@@ -114,6 +115,7 @@ export default function HomeScreen({
   headline?: string | null;
   spotlight?: React.ReactNode; // 기본 홈 위쪽에 작게 두는 것(오늘 해 볼 만한 것 시안). 대화 중에는 감춘다
   nudge?: React.ReactNode; // 쉬는 동안 하단 버튼 바로 위에 보여 주는 작은 카드(지금은 홈 첫 방문 안내 HomeHint)
+  banner?: { text: string; error?: boolean }; // 메뉴에서 한 일의 진행·실패를 하단 버튼 위에 알린다(지금은 처음부터 다시 만들기)
   onVoice: () => void;
   onText: () => void;
   onMenu: () => void;
@@ -295,6 +297,7 @@ export default function HomeScreen({
         {voice?.warning && !voice.error && <p role="status" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-cat-muted">{voice.warning}</p>}
         {voice?.error && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{voice.error}</p>}
         {chat.error && !voice && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{chat.error}</p>}
+        {banner && <p key={banner.error ? "alert" : "status"} role={banner.error ? "alert" : "status"} className={`rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty ${banner.error ? "text-[#C42A23]" : "text-cat-muted"}`}>{banner.text}</p>}
         {nudge && resting && <div>{nudge}</div>}
         {chatting && (
           <div aria-hidden="true" className="home-chat-buddy">
@@ -336,7 +339,7 @@ export default function HomeScreen({
             <div inert={canSend} aria-hidden={canSend} className="home-mic-action">
             <div className="home-voice-pill" data-expanded={Boolean(voice)}>
               <div className="home-voice-end" inert={!voice} aria-hidden={!voice}>
-                <Button variant="plain" type="button" onClick={voice?.onEnd} tabIndex={voice ? 0 : -1} aria-label="음성 대화 종료" className="ui-press grid size-12 shrink-0 place-items-center rounded-full bg-[#E5484D] text-white">
+                <Button variant="plain" type="button" id="home-voice-end" onClick={voice?.onEnd} tabIndex={voice ? 0 : -1} aria-label="음성 대화 종료" className="ui-press grid size-12 shrink-0 place-items-center rounded-full bg-[#E5484D] text-white">
                   <Icon name="close" size={20} />
                 </Button>
                 <span className="h-8 w-px shrink-0 bg-cat-line" />
@@ -347,9 +350,9 @@ export default function HomeScreen({
                 onClick={voice ? voice.onMic : () => { wakeForTalk(); onVoice(); }}
                 disabled={chat.sending || Boolean(voice && (voice.connecting || (!voice.hasMic && !voice.error)))}
                 tabIndex={canSend ? -1 : 0}
+                // 이름이 지금 할 일(끄기·켜기)을 말하므로 aria-pressed는 두지 않는다. 함께 쓰면 '마이크 끄기, 선택됨'처럼 상태가 거꾸로 읽힌다.
                 aria-label={voice ? voice.error ? "음성 연결 다시 시도" : voice.micOn ? "마이크 끄기" : "마이크 켜기" : `${josa(name, "과", "와")} 음성 대화 시작`}
                 aria-expanded={Boolean(voice)}
-                aria-pressed={voice && !voice.error ? voice.micOn : undefined}
                 className="home-mic home-action-icon ui-press grid size-14 shrink-0 place-items-center rounded-full disabled:opacity-40"
                 data-off={Boolean(voice && !voice.micOn && !voice.error)}
               >

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ComponentProps } from "react";
+import { useEffect, useRef, useSyncExternalStore, type ComponentProps } from "react";
 import Buddy from "./Buddy";
 import { CAT_POSE_ART, isSoftSwap, poseBox, type CatFx, type CatPose } from "@/lib/cat-poses";
 import "./pose-cat.css";
@@ -14,10 +14,18 @@ const HOP = [{ transform: "scale(1, 1)" }, { transform: "translateY(-7%) scale(.
 const TILT = [{ transform: "none" }, { transform: "translateY(-2%) rotate(-4deg)", offset: .22 }, { transform: "rotate(-4deg)", offset: .82 }, { transform: "none" }];
 const SHAKE = [{ transform: "translateX(0)" }, { transform: "translateX(-2%)" }, { transform: "translateX(2%)" }, { transform: "translateX(-1.2%)" }, { transform: "translateX(0)" }];
 
+const REDUCE = "(prefers-reduced-motion: reduce)";
+const subscribeReduce = (onChange: () => void) => {
+  const query = matchMedia(REDUCE);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+};
+
 /** 고양이 한 칸(정사각형). 기본 자세는 Buddy(눈 깜박임·입 모양), 동작은 영상·그림을 바꿔 끼운다.
  * 바꿀 때는 살짝 눌렸다가 그 순간 바꾸고(140ms 겹치기) 통 튀어 오른다. 기본↔동그란 눈은 눈만 바뀌게 겹치기만 한다.
  * fx는 바꾼 뒤 한 번 더 하는 몸짓(hop 깜짝, tilt 갸웃, shake 하악)이고, cue가 바뀌면 같은 자세에서도 다시 한다.
- * 처음 그릴 때와 동작 줄이기에서는 움직임 없이 바로 바꾼다. */
+ * 처음 그릴 때와 동작 줄이기에서는 움직임 없이 바로 바꾼다. 동작 줄이기에서는 계속 반복되는 영상 자세(잠·째려보기·하악·발 핥기)도
+ * 기본 자세(Buddy, 반복 모션은 CSS가 끈다)로 대신하고, 멈춘 그림(동그란 눈·울기·골골)만 바꿔 끼운다. 설정을 바꾸면 바로 따라간다. */
 export default function PoseCat({ pose, fx, cue = 0, buddy, size = 240, preload }: {
   pose: CatPose; fx?: CatFx; cue?: number; buddy?: BuddyProps; size?: number;
   /** 미리 받아 둘 자세. 없으면 전부 받는다. 영상은 하나에 1MB 가까이 되어, 로그인 전처럼 몇 개만 쓰는 화면은 줄여 둔다. */
@@ -29,25 +37,35 @@ export default function PoseCat({ pose, fx, cue = 0, buddy, size = 240, preload 
   const shadow = useRef<HTMLSpanElement>(null);
   const imgA = useRef<HTMLImageElement>(null);
   const imgB = useRef<HTMLImageElement>(null);
-  const run = useRef({ shown: "base" as CatPose, front: 0, first: true, latest: 0, queue: Promise.resolve() });
+  const run = useRef({ shown: "base" as CatPose, front: 0, first: true, latest: 0, queue: Promise.resolve(), key: "" });
+  // 바뀔 때 다시 그리기만 하는 값이다. 실제로 줄일지는 바꾸는 그 순간의 설정을 다시 읽어 정한다(첫 화면에서 서버 값과 어긋나지 않게).
+  const reduced = useSyncExternalStore(subscribeReduce, () => matchMedia(REDUCE).matches, () => false);
 
   const preloadList = preload?.join(",");
   useEffect(() => {
     const poses = preloadList === undefined ? Object.keys(CAT_POSE_ART) : preloadList.split(",");
+    // 동작 줄이기에서는 영상 자세를 보여 주지 않으니 받지 않는다. 첫 화면(서버 값 false)에서도 맞게 지금 설정을 읽는다.
+    const reduce = matchMedia(REDUCE).matches;
     for (const name of poses) {
       const art = CAT_POSE_ART[name as Exclude<CatPose, "base">];
-      if (art) { const img = new Image(); img.src = art.src; }
+      if (art && !(reduce && art.clip)) { const img = new Image(); img.src = art.src; }
     }
-  }, [preloadList]);
+  }, [preloadList, reduced]);
 
   useEffect(() => {
     const s = run.current;
     // 바꾸는 동안(화면이 가려져 애니메이션이 멈춘 때 포함) 다음 요청이 오면, 밀린 요청은 건너뛰고 마지막 것만 보여 준다.
     const token = ++s.latest;
-    async function swap(next: CatPose, effect?: CatFx) {
+    // 동작 줄이기 설정만 바뀐 경우에는 자세만 다시 맞추고, 몸짓(fx)은 되풀이하지 않는다.
+    const key = `${pose}|${fx ?? ""}|${cue}`;
+    const replay = key !== s.key;
+    s.key = key;
+    async function swap(want: CatPose, effect?: CatFx) {
       const box = root.current, el = body.current, layer = base.current, ground = shadow.current, a = imgA.current, b = imgB.current;
       if (!box || !el || !layer || !ground || !a || !b || token !== s.latest) return;
-      const still = s.first || matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const reduce = matchMedia(REDUCE).matches;
+      const still = s.first || reduce;
+      const next: CatPose = reduce && want !== "base" && CAT_POSE_ART[want].clip ? "base" : want;
       s.first = false;
       const prev = s.shown;
       if (next === prev && !effect) return;
@@ -79,8 +97,8 @@ export default function PoseCat({ pose, fx, cue = 0, buddy, size = 240, preload 
       if (moves) await el.animate(moves, { duration: effect === "tilt" ? 1400 : effect === "hop" ? 480 : 380, easing: "cubic-bezier(.3,.7,.4,1)", fill: "forwards" }).finished;
       if (effect === "shake") await el.animate(SHAKE, { duration: 320, easing: "linear" }).finished;
     }
-    s.queue = s.queue.then(() => swap(pose, fx)).catch(() => {});
-  }, [pose, fx, cue]);
+    s.queue = s.queue.then(() => swap(pose, replay ? fx : undefined)).catch(() => {});
+  }, [pose, fx, cue, reduced]);
 
   return (
     <div ref={root} className="pose-cat" data-kind="base">

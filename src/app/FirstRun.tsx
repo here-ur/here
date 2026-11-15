@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ComponentProps, type ReactNode } from "react";
 import { Icon } from "./art";
 import { Button } from "./ui/Button";
 import "./first-run.css";
@@ -30,27 +30,36 @@ export function FirstRunTopBar({ onBack, backLabel = "뒤로", end }: { onBack?:
   );
 }
 
-/** 소리 켜고 끄기. 캐릭터 만나기의 배경 소리에만 쓴다. */
+/** 소리 켜고 끄기. 캐릭터 만나기의 배경 소리에만 쓴다.
+ * 이름은 그대로 두고 눌림 상태(aria-pressed)로 꺼졌는지 알린다(이름까지 바꾸면 '소리 켜기, 선택됨'처럼 거꾸로 읽힌다). */
 export function SoundToggle({ muted, onToggle }: { muted: boolean; onToggle: () => void }) {
   return (
-    <Button variant="plain" onClick={onToggle} aria-pressed={muted} aria-label={muted ? "소리 켜기" : "소리 끄기"} className="fr-round">
+    <Button variant="plain" onClick={onToggle} aria-pressed={muted} aria-label="소리 끄기" className="fr-round">
       <Icon name={muted ? "soundOff" : "soundOn"} size={20} />
     </Button>
   );
 }
 
-export function FirstRunHeading({ eyebrow, title, description, cat, className = "" }: {
+export function FirstRunHeading({ eyebrow, title, description, cat, focusOnMount, className = "" }: {
   eyebrow?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
   /** 캐릭터가 하는 말이면 더 크게 쓴다. */
   cat?: boolean;
+  /** 장면이 바뀌어 나타날 때 제목으로 포커스를 옮겨, 화면 낭독기가 새 질문·말부터 읽게 한다. */
+  focusOnMount?: boolean;
   className?: string;
 }) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    // 앞 장면이 통째로 사라져 포커스가 body로 떨어졌을 때만 옮긴다(다른 곳을 보고 있으면 빼앗지 않는다).
+    const active = document.activeElement;
+    if (focusOnMount && (!active || active === document.body)) headingRef.current?.focus({ preventScroll: true });
+  }, [focusOnMount]);
   return (
     <header className={`fr-heading ${className}`}>
       {eyebrow && <p className="fr-eyebrow">{eyebrow}</p>}
-      <h1 className={cat ? "fr-title fr-title--cat" : "fr-title"}>{title}</h1>
+      <h1 ref={headingRef} tabIndex={focusOnMount ? -1 : undefined} className={cat ? "fr-title fr-title--cat" : "fr-title"}>{title}</h1>
       {description && <p className="fr-desc">{description}</p>}
     </header>
   );

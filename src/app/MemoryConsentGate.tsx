@@ -64,16 +64,17 @@ export default function MemoryConsentGate({ children, signOut, userId = "", prev
         if (!active || request !== generation.current) return;
         if (typeof body.required !== "boolean") throw new Error("동의 상태를 확인하지 못했어요.");
         setConsentDisplayHint(consentDisplayStorage(), userId, !body.required);
+        // 확인에 성공하면 전에 남은 오류(저장 실패 등)를 지워, 동의 화면이 예전 오류와 함께 열리지 않게 한다.
+        setError("");
         if (body.required) setSheetShown(true);
         if (!body.required && continueSheet && statusRef.current !== "ready") void movePage("enter", () => setStatus("ready"));
         else setStatus(body.required ? "required" : "ready");
       }).catch(() => {
         if (!active || request !== generation.current) return;
-        // Keep an already-confirmed user's home visible during transient failures.
-        // This never bypasses API-side authorization or consent enforcement.
-        setStatus(current => current === "ready" ? current : "error");
+        // 창에 다시 들어올 때의 확인이 잠깐 실패해도, 이미 보이는 홈(ready)이나 고르던 동의 화면(required)은 그대로 둔다.
+        // 처음 확인하거나 다시 확인할 때만 오류 화면으로 바꾼다. 서버 쪽 회원·동의 확인을 건너뛰는 것은 아니다.
+        setStatus(current => current === "required" || current === "ready" ? current : "error");
         setSheetShown(true);
-        setError("연결을 확인하지 못했어요. 다시 시도해 주세요.");
       });
     };
     const onStorage = (event: StorageEvent) => {
@@ -126,7 +127,8 @@ export default function MemoryConsentGate({ children, signOut, userId = "", prev
       <div key={status === "checking" ? "checking" : "content"} className="fr-scope auth-sheet-step" data-direction={status === "checking" ? "fade" : continueSheet ? "forward" : "open"}>
         {status === "checking" ? <div className="consent-wait" role="status"><span aria-hidden="true" /><span className="sr-only">동의 상태를 확인하고 있어요</span></div>
         : status === "error" ? <>
-          <p role="alert" className="auth-sheet-desc">{error}</p>
+          {/* 오류 화면 문구는 고정이다. error 상태는 동의 화면의 저장 실패 안내에만 쓴다(오래된 문구가 남지 않게). */}
+          <p role="alert" className="auth-sheet-desc">연결을 확인하지 못했어요. 다시 시도해 주세요.</p>
           <div className="auth-sheet-actions">
             <Button fullWidth tone="ink" onClick={() => { setStatus("checking"); setError(""); setRetry(n => n + 1); }}>다시 확인</Button>
             <Button variant="plain" className="fr-link" onClick={leave}>로그아웃</Button>

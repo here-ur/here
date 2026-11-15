@@ -310,6 +310,13 @@ test("홈 자동재생이 막히면 첫 제스처에서만 재시도하고 종�
   assert.equal(peer.connectionState, "closed");
 });
 
+test("음성 연결 요청에 사용자가 불러 달라고 한 이름과 고른 대화 방식을 함께 보낸다", async (t) => {
+  const m = setup(t);
+  const realtime = await connectRealtime(m.handlers, { name: "보리", voice: "marin", nickname: "민주", style: "sort" });
+  t.after(() => realtime.close());
+  assert.deepEqual(JSON.parse(m.requests[0].init?.body as string), { name: "보리", voice: "marin", nickname: "민주", style: "sort" });
+});
+
 test("연결 요청과 마이크는 모두 스텁으로 처리하고 트랙을 추가하기 전에 음소거한다", async (t) => {
   const m = setup(t);
   const controller = new AbortController();

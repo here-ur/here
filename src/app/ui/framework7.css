@@ -14,6 +14,16 @@
   label.item-checkbox input[type='checkbox']:checked ~ .icon-checkbox,
   label.item-checkbox input[type='checkbox']:indeterminate ~ .icon-checkbox { border-color: var(--f7-checkbox-active-color, var(--f7-theme-color)); }
   label.item-checkbox > .icon-checkbox { margin-right: calc(var(--f7-list-item-media-margin) + var(--f7-checkbox-extra-margin)); }
+  /* 목록의 체크 줄(ListItem checkbox): framework7-bundle.css가 진짜 input을 display: none으로 숨겨서
+   * Tab으로 갈 수 없고 화면 낭독기에도 체크 상자로 읽히지 않는다. 모양은 그대로 두고 줄 전체를 덮는 투명한 input으로 되살린다.
+   * 줄(label)을 기준으로 덮어서, 같은 li에 있는 펼친 본문(details)은 덮지 않는다. 글자·상자는 input 위에 그려져 누르는 동작도 그대로다.
+   * 선택 줄(ListItem radio)도 같은 이유로 숨어 있지만, 쓰는 화면(캐릭터의 목소리)의 Tab 순환이 라디오 묶음을 따로 다뤄야 해서 아직 그대로 둔다. */
+  label.item-checkbox { position: relative; }
+  label.item-checkbox > input[type='checkbox'] {
+    display: block; position: absolute; inset: 0; width: 100%; height: 100%;
+    margin: 0; padding: 0; border: 0; appearance: none; opacity: 0; cursor: inherit;
+  }
+  label.item-checkbox:has(> input:focus-visible) { outline: 2px solid var(--color-cat-ink); outline-offset: -6px; border-radius: 18px; }
   .list .item-content { padding-left: calc(var(--f7-list-item-padding-horizontal) + var(--f7-safe-area-left)); }
   .list .item-inner {
     padding-top: var(--f7-list-item-padding-vertical);

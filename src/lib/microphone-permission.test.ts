@@ -32,7 +32,7 @@ test("안내 확인은 저장소 사용 불가 상태에서도 같은 탭에서 
   assert.equal(microphoneNoticeSeen(), true);
 });
 
-test("마이크 안내는 앱 진입 때가 아니라 홈의 마이크 버튼을 처음 누를 때 띄우고, 녹음·전송하지 않는다", () => {
+test("마이크 안내는 앱 진입 때가 아니라 홈의 마이크 버튼을 처음 누를 때 띄우고, 권한 확인 자체는 녹음·전송하지 않는다", () => {
   const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(page, /MicrophonePermissionGate/);
   assert.match(page, /useMicrophoneAsk\(startVoice/);
@@ -45,6 +45,21 @@ test("마이크 안내는 앱 진입 때가 아니라 홈의 마이크 버튼을
   assert.match(ask, /microphoneNoticeSeen\(\)/);
   assert.match(ask, /microphoneAskStep\(/);
   assert.doesNotMatch(ask, /MediaRecorder|fetch\(/);
+});
+
+test("허용하면 바로 음성 대화가 시작되므로, 안내는 녹음·전송하지 않는다고 말하지 않고 목소리를 AI 서비스로 보낸다고 알린다", () => {
+  const ask = readFileSync(new URL("../app/MicrophoneAsk.tsx", import.meta.url), "utf8");
+  const desc = ask.match(/<p className="mic-ask-desc">([^<]*)<\/p>/)?.[1] ?? "";
+  assert.match(desc, /음성 대화를 시작/);
+  assert.match(desc, /AI 서비스로 보내요/);
+  assert.doesNotMatch(desc, /녹음|전송하지 않/);
+  // 허용 뒤 시트가 돌려주려는 마이크 버튼은 연결 중에 눌리지 않으므로, 시트를 닫고 음성을 시작한 다음 포커스를 따로 옮긴다.
+  const allow = ask.slice(ask.indexOf("async function allow"), ask.indexOf("const element"));
+  assert.match(allow, /flushSync\(\(\) => \{ setSheet\(null\); start\(\); \}\)[\s\S]*focusVoice\?\.\(\)/);
+  const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /getElementById\("home-voice-end"\)/);
+  const home = readFileSync(new URL("../app/HomeScreen.tsx", import.meta.url), "utf8");
+  assert.match(home, /id="home-voice-end"/);
 });
 
 test("마이크 버튼을 누르면: 안내를 거쳐 허용했거나 미지원이면 바로 연결, 아니면 권한을 조회해 허용·차단·안내로 나눈다", () => {

@@ -2,7 +2,7 @@
 .here-menu-overlay {
   --here-menu-paper: #faf9f3;
   --here-menu-ink: #393a3c;
-  --here-menu-muted: #868a8f;
+  --here-menu-muted: #6e7277; /* 종이 바탕(#faf9f3) 위 4.5:1 이상(작은 글자 기준) */
   --here-menu-line: #edede7;
   opacity: 0;
   pointer-events: none;
