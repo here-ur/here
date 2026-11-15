@@ -73,7 +73,7 @@ export function CalendarIcon({ size = 20 }: { size?: number }) {
 
 const stroke = { fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 
-function MenuIcon({ name }: { name: "garden" | "library" | "friends" | "help" | "character" | "settings" }) {
+function MenuIcon({ name }: { name: "library" | "friends" | "help" | "character" | "settings" }) {
   return <Image src={`/menu/${name}.svg`} alt="" width={24} height={24} />;
 }
 
@@ -81,7 +81,6 @@ export default function Drawer({
   open,
   profile,
   onClose,
-  onInsight,
   onLibrary,
   onCustomize,
   onHelp,
@@ -94,7 +93,6 @@ export default function Drawer({
   open: boolean;
   profile: Profile;
   onClose: () => void;
-  onInsight: () => void;
   onLibrary: () => void;
   onCustomize: () => void;
   onHelp: () => void;
@@ -183,7 +181,6 @@ export default function Drawer({
           <div className="here-menu-primary">
             <List className="here-design-menu-list">
               <ul>
-                <MenuItem onClick={onInsight} title="구름 정원" icon={<MenuIcon name="garden" />} chevron={false} />
                 <MenuItem onClick={onLibrary} title="라이브러리" icon={<MenuIcon name="library" />} chevron={false} />
                 <MenuItem onClick={onFriends} title="친구" icon={<MenuIcon name="friends" />} chevron={false} />
                 <MenuItem onClick={onHelp} title="도움받기" icon={<MenuIcon name="help" />} chevron={false} />
