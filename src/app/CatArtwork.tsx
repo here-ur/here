@@ -23,8 +23,9 @@ export default function CatArtwork({ state = "idle", progress, accessory, output
   useEffect(() => {
     const surface = canvas.current;
     if (!surface) return;
-    let disposed = false, frame = 0, started = 0;
-    let previous: BuddyState = "idle";
+    // 시계는 그림을 불러오기 전, 붙는 순간부터 잰다. 하품 중에 새로 붙는 홈 고양이(PoseCat)도 부르는 쪽의 2.4초 타이머와 맞아 끝이 잘리지 않는다.
+    let disposed = false, frame = 0, started = performance.now();
+    let previous: BuddyState = current.current.state;
     let lastDrawn = RESTING_CAT_POSE;
     let renderer: ReturnType<typeof createCatArtworkRenderer> = null;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)");

@@ -1,16 +1,9 @@
+/* 로그인 전 환영 화면(영상)과 확인 중 화면. 로그인·가입 입력은 환영 화면 위로 올라오는 시트(Sheet)이고, 입력칸 모양은 first-run.css를 같이 쓴다. */
 .here-auth-screen {
   --auth-white: #fffdfe;
   --auth-ink: #393a3c;
   --auth-brown: #775035;
   --f7-font-family: "Pretendard Variable", -apple-system, BlinkMacSystemFont, sans-serif;
-  --f7-theme-color: var(--auth-brown);
-  --f7-theme-color-rgb: 119, 80, 53;
-  --f7-button-large-height: 48px;
-  --f7-button-border-radius: 99px;
-  --f7-button-large-border-radius: 99px;
-  --f7-button-fill-bg-color: var(--auth-white);
-  --f7-button-fill-pressed-bg-color: #eee6df;
-  --f7-button-fill-text-color: var(--auth-ink);
   --here-ui-error: #a92720;
   min-height: 0;
   overflow-y: auto;
@@ -56,7 +49,7 @@
   gap: 8px;
   margin: 0;
   color: #fff;
-  font-size: clamp(26px, 8.1425vw, 32px);
+  font-size: clamp(24px, 7.4vw, 28px);
   font-weight: 700;
   line-height: 1.1875;
   letter-spacing: -.02em;
@@ -64,22 +57,12 @@
 }
 .here-auth-welcomeBottom { margin-top: auto; padding-top: 40px; }
 .here-auth-actions { display: grid; gap: 12px; }
-.here-auth-action {
-  padding-inline: 16px;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -.02em;
-}
-.here-auth-signup {
-  --f7-button-fill-bg-color: #000;
-  --f7-button-fill-pressed-bg-color: #242424;
-  --f7-button-fill-text-color: #fff;
-}
 .here-auth-footnote {
   margin-top: 16px;
   padding-block: 10px;
   color: var(--auth-white);
-  opacity: .6;
+  /* 영상 위 흰 글씨가 4.5:1 이상으로 읽히게 너무 흐리게 하지 않는다. */
+  opacity: .8;
   text-align: center;
   font-size: 12px;
   line-height: 16px;
@@ -87,54 +70,75 @@
 }
 .here-auth-policyText { text-decoration: underline; text-underline-position: from-font; text-decoration-skip-ink: none; }
 .here-auth-unavailable { padding: 20px; border-radius: 24px; background: rgb(57 58 60 / 75%); text-align: center; }
+/* 로그인 상태 확인 실패: 환영 화면과 같은 자리에 안내와 검정 알약 버튼 */
+.here-auth-retry { display: grid; gap: 12px; }
 
-.here-auth-formPage {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-height: 100dvh;
-  padding-top: max(24px, env(safe-area-inset-top));
+/* 로그인·가입 시트: 공통 Sheet 안에 설명 → 입력칸, 맨 아래 검정 버튼. 시트는 화면 아래에서 끝까지 밀려 올라오고,
+ * 올라오고 내려가는 움직임은 Sheet의 slide가 맡고, 단계가 바뀌면 새 내용이 옆에서 들어온다. */
+/* 시트 높이는 화면의 85%로 고정하고, 버튼은 시트 맨 아래에 둔다(내용은 위에서부터). 공통 Sheet의 마지막 칸이 본문 영역이다.
+ * 휴대폰 키보드가 올라오면(Sheet keyboardAware) 시트 윗변은 그대로 두고 아랫변만 키보드 위로 올린다.
+ * 그래서 입력칸은 제자리에 있고, 버튼만 키보드 바로 위로 따라 올라온다. 높이가 모자라면 본문이 스크롤된다. */
+.here-sheet.auth-sheet {
+  /* 환영 화면(영상 위 흰 글씨)의 글자색을 물려받지 않게 시트 안은 진한 글씨로 둔다(인증번호 여섯 칸 숫자가 흰색이라 안 보이던 문제). */
+  color: var(--color-cat-ink);
+  height: max(280px, calc(min(100%, var(--sheet-vvh, 100%)) - 15%));
+  max-height: none;
+  margin-bottom: var(--sheet-kb, 0px);
+  background: #fff;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  transition: height 200ms ease, margin-bottom 200ms ease, translate 260ms cubic-bezier(.4, 0, .9, .4);
 }
-.here-auth-smallBrand { align-self: center; font-size: 28px; font-weight: 700; line-height: 1.2; letter-spacing: -.02em; }
-.here-auth-panel {
-  --f7-button-fill-bg-color: var(--auth-ink);
-  --f7-button-fill-pressed-bg-color: #242526;
-  --f7-button-fill-text-color: var(--auth-white);
-  --f7-button-large-border-radius: 24px;
-  --here-ios-group: #f5f1ed;
-  --f7-list-item-border-color: #e5ddd6;
-  position: relative;
-  margin-top: auto;
-  padding: 20px 28px max(28px, env(safe-area-inset-bottom));
-  border-radius: 28px 28px 0 0;
-  background: var(--auth-white);
-  color: var(--auth-ink);
-  box-shadow: 0 -4px 32px rgb(57 38 24 / 10%);
+/* 시트 자체에 포커스가 머물 때(동의 화면처럼 입력칸이 없을 때) 검은 테두리를 그리지 않는다. 안쪽 버튼·체크는 각자 포커스를 그린다. */
+.here-sheet.auth-sheet:focus-visible { outline: none; }
+.here-sheet.auth-sheet > :last-child { flex: 1; display: flex; flex-direction: column; scroll-padding-bottom: 96px; }
+/* 키보드가 올라온 동안에는 홈 바 여백(safe-area)이 키보드 뒤라 필요 없다. */
+[data-keyboard] > .here-sheet.auth-sheet .auth-sheet-step { padding-bottom: 0; }
+/* 뒤에서 영상이 재생 중이라 흐림 효과는 매 프레임 다시 그려져 움직임이 끊긴다. 로그인 시트에서는 어둡게만 한다. */
+div:has(> .here-sheet.auth-sheet) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.auth-sheet-step { flex: 1 0 auto; display: flex; flex-direction: column; gap: 20px; padding-top: 10px; padding-bottom: env(safe-area-inset-bottom); }
+.auth-sheet-meta { display: grid; justify-items: start; gap: 10px; margin-top: -2px; }
+.auth-sheet-meta .fr-steps { margin: 2px 0 0; }
+.auth-sheet-desc { font-size: 14px; line-height: 1.5; color: var(--fr-muted); }
+.auth-sheet-form { flex: 1 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.auth-sheet-fields { display: grid; gap: 16px; }
+/* 이름표는 입력칸 위에 따로, 입력칸 글자는 왼쪽부터(이름표와 같은 줄). 16px 아래로 내리면 iOS가 확대해서 16px을 지킨다. */
+.auth-sheet .here-field { gap: 8px; }
+.auth-sheet .here-field__label, .auth-label { font-size: 13px; font-weight: 600; line-height: 1.3; color: var(--fr-muted); }
+.auth-label { margin-bottom: -8px; }
+.auth-sheet .auth-sheet-forgot, .auth-sheet .auth-sheet-resend { justify-self: end; width: auto; min-height: 36px; margin: -8px -8px 0 0; font-size: 13px; }
+/* 인증번호를 다시 받을 때까지 남은 시간. 잠긴 버튼처럼 흐리지 않게 글자로 보여 준다. */
+.auth-sheet p.auth-sheet-resend { display: flex; align-items: center; padding-inline: 8px; font-weight: 600; color: var(--fr-muted); font-variant-numeric: tabular-nums; }
+.auth-sheet .auth-sheet-note { margin-top: 8px; font-size: 13px; line-height: 1.45; color: var(--fr-muted); }
+/* 시트 안의 이름표·입력칸·안내가 모두 왼쪽 정렬이라 오류 줄도 왼쪽부터 쓴다(캐릭터 만나기·마이크 안내는 가운데 그대로). */
+.here-sheet.auth-sheet .fr-error, .here-sheet.auth-sheet .here-field__message { text-align: left; }
+.here-sheet.auth-sheet .fr-input { padding-inline: 16px; text-align: left; font-size: 16px; font-weight: 600; letter-spacing: 0; }
+/* 버튼 묶음은 본문이 넘쳐 스크롤될 때(키보드가 올라와 시트가 낮아졌을 때)도 시트 아래에 붙어 보인다. */
+.auth-sheet-actions { position: sticky; bottom: 0; z-index: 1; display: grid; gap: 4px; margin-top: auto; padding-top: 16px; background: linear-gradient(to bottom, rgb(255 255 255 / 0), #fff 16px); }
+@keyframes auth-step-from-right { from { opacity: 0; translate: 28px 0; } }
+@keyframes auth-step-from-left { from { opacity: 0; translate: -28px 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  .auth-sheet-step[data-direction="forward"] { animation: auth-step-from-right 300ms cubic-bezier(.2, .8, .2, 1) backwards; }
+  .auth-sheet-step[data-direction="back"] { animation: auth-step-from-left 300ms cubic-bezier(.2, .8, .2, 1) backwards; }
 }
-.here-auth-formPage .here-auth-panel { margin-top: max(72px, 13dvh); }
-.here-auth-formPage::after { content: ""; flex: 1; background: var(--auth-white); }
-.here-auth-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 44px;
-  margin: -4px 0 16px -8px;
-  padding-inline: 8px;
-  color: var(--auth-brown);
-  font-size: 14px;
-}
-.here-auth-heading { margin-bottom: 24px; }
-.here-auth-title { font-size: 24px; font-weight: 700; line-height: 1.35; letter-spacing: -.02em; }
-.here-auth-description { margin-top: 8px; color: #73685f; font-size: 14px; line-height: 1.6; }
-.here-auth-progress { display: flex; gap: 8px; margin-bottom: 16px; }
-.here-auth-progressBar { flex: 1; height: 4px; border-radius: 99px; background: #e5ddd6; }
-.here-auth-progressBar[data-complete] { background: var(--auth-brown); }
-.here-auth-stepLabel { margin-bottom: 8px; color: var(--auth-brown); font-size: 12px; font-weight: 600; }
-.here-auth-form { display: flex; flex-direction: column; gap: 16px; }
-.here-auth-submit { margin-top: 8px; }
-.here-auth-secondary { margin-top: 12px; min-height: 44px; color: #73685f; font-size: 14px; }
-.here-auth-error { color: var(--here-ui-error); font-size: 14px; line-height: 1.5; }
 
-@media (max-height: 680px) {
-  .here-auth-formPage .here-auth-panel { margin-top: 24px; }
+/* 시트가 열려 있으면 환영 문구는 흐려 감춘다(시트 윗변에 반쯤 걸쳐 보이지 않게). */
+.here-auth-brand { transition: opacity 300ms ease; }
+.here-auth-screen:has(.auth-sheet) .here-auth-brand { opacity: 0; }
+
+/* 기억 동의 시트: 설명 → 모두 동의 + 필수 두 줄 → 짧은 안내, 맨 아래 버튼과 로그아웃 */
+.consent-sheet .fr-checks.consent-checks { margin: 0; }
+.consent-sheet .consent-all { --f7-list-item-title-font-size: 15.5px; --f7-list-item-title-font-weight: 800; }
+.consent-sheet .consent-all .item-inner { padding-right: 18px; }
+.consent-sheet .fr-checks li:not(.consent-all) { --f7-list-item-title-font-weight: 600; --f7-list-item-title-font-size: 14px; }
+.consent-sheet .fr-fineprint { margin: -6px 2px 0; justify-items: start; text-align: left; }
+.consent-sheet .fr-fineprint p { justify-content: flex-start; }
+.consent-sheet .auth-sheet-actions .fr-link { margin-bottom: -6px; }
+.consent-wait { flex: 1; display: grid; place-items: center; }
+.consent-wait span[aria-hidden] { width: 26px; height: 26px; border-radius: 50%; border: 2.5px solid #E9E1D5; border-top-color: var(--fr-ink); animation: consent-spin 800ms linear infinite; }
+@keyframes consent-spin { to { rotate: 360deg; } }
+@keyframes auth-step-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  .auth-sheet-step[data-direction="fade"] { animation: auth-step-fade 240ms ease backwards; }
 }
+

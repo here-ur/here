@@ -1,0 +1,29 @@
+/* 고양이 한 칸(PoseCat). 칸은 정사각형이고, 고양이 키는 칸의 70.3%, 바닥선은 위에서 85.4%다(Buddy 그림과 같은 자리). */
+.pose-cat { position: relative; width: 100%; aspect-ratio: 1; }
+.pose-cat__body, .pose-cat__base, .pose-cat__breath { position: absolute; inset: 0; }
+.pose-cat__body { transform-origin: 50% 85.4%; }
+.pose-cat__base { transition: opacity 140ms ease; }
+.pose-cat .pose-cat__base > svg.buddy { display: block; width: 100%; height: 100%; }
+.pose-cat__img { position: absolute; left: calc(50% + var(--pose-x, 0%)); translate: -50% 0; max-width: none; pointer-events: none; transition: opacity 140ms ease; }
+/* 영상·그림에는 그림자가 없어서 바닥 그림자를 따로 깐다. 기본 자세는 Buddy의 그림자를 쓴다. */
+.pose-cat__shadow { position: absolute; left: calc(50% + var(--pose-x, 0%)); bottom: calc(14.6% - 1.4%); height: 2.8%; translate: -50% 0; border-radius: 50%; background: rgb(45 38 26 / 13%); filter: blur(2px); opacity: 0; transition: opacity 140ms ease, width 200ms ease; }
+.pose-cat:not([data-kind="base"]) .pose-cat__shadow { opacity: 1; }
+/* 하품(음성 시작 직전 2.4초): 기본 자세(Buddy)를 감추고 같은 그림을 움직이는 CatArtwork를 정확히 같은 자리에 겹친다.
+   CatFace는 원본(3396×1852)의 (1020, 315)부터 1435×1320 영역을 Buddy 240칸의 (20, 32)에 200×184로 그린다.
+   그래서 원본 전체는 칸 기준 왼쪽 -50.900%, 위 -4.959%, 너비 197.213%, 높이 107.549%에 놓인다. 그림에 그림자가 없어서 바닥 그림자를 켠다.
+   바꿔 끼울 때는 한쪽만 흐리게 해서 둘 다 반쯤 비치는 순간이 없게 한다. 그 전에 하던 동작 그림(잠·발 핥기 등)도 하품 밑에서 사라진다.
+   그림자 폭은 동작이 남긴 인라인 폭보다 우선한다(Buddy 그림자 rx 53/240). */
+.pose-cat__yawn { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 140ms ease; }
+.pose-cat__yawn-art { position: absolute; left: -50.9%; top: -4.959%; width: 197.213%; height: 107.549%; }
+.pose-cat[data-yawning] .pose-cat__yawn { opacity: 1; transition: none; }
+.pose-cat[data-yawning] .pose-cat__base { opacity: 0 !important; }
+.pose-cat[data-yawning] .pose-cat__breath { opacity: 0; transition: opacity 140ms ease; }
+.pose-cat[data-yawn-linger] .pose-cat__base { transition: none; }
+.pose-cat[data-yawning] .pose-cat__shadow { opacity: 1; width: 44% !important; }
+@keyframes pose-cat-breathe { 0%, 100% { scale: 1 1; } 50% { scale: 1.006 1.016; } }
+@media (prefers-reduced-motion: no-preference) {
+  .pose-cat[data-kind="still"] .pose-cat__breath { transform-origin: 50% 85.4%; animation: pose-cat-breathe 3.6s ease-in-out infinite; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pose-cat__base, .pose-cat__img, .pose-cat__shadow, .pose-cat__yawn { transition: none; }
+}

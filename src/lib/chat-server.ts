@@ -1,8 +1,8 @@
 // 서버 전용. 환경값은 /api/chat만 전달하며, 음성용 OpenAI 키로 대체하지 않는다.
 // 요청 읽기·주소·오류 변환은 리포트 하늘 고르기(report-sky-server.ts)도 함께 쓴다.
 import { hasCrisisSignal } from "./crisis.ts";
-import { cleanName } from "./onboarding.ts";
-import { companionConversationPrompt } from "./companion-prompt.ts";
+import { cleanName, cleanNickname, isStyleId } from "./onboarding.ts";
+import { companionConversationPrompt, type CompanionUser } from "./companion-prompt.ts";
 import { operationMetric, usageMetric } from "./ai-operations.ts";
 import { parseSearchQuery, searchCitations, SEARCH_UNAVAILABLE, WEB_SEARCH_TOOL, WEB_SEARCH_INSTRUCTIONS, type WebSearchResult, type SearchSource } from "./web-search-protocol.ts";
 
@@ -64,8 +64,8 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function instructions(name: string) {
-  return `${companionConversationPrompt(name, "chat")}
+function instructions(name: string, user: CompanionUser) {
+  return `${companionConversationPrompt(name, "chat", user)}
 ## 안전과 도구
 - 뜻이 애매하면 짐작하지 말고 부드럽게 되물어. 사용자나 대화 상대의 감정을 확정하거나 분석 결과처럼 말하지 마.
 - 너는 AI야. 물어보면 솔직하게 AI라고 말해. 진단하지 마. 병명, 약, 치료법, 처방을 제시하거나 특정 병원·의사를 추천하지 마.
@@ -116,11 +116,15 @@ export async function readJson(source: Request | Response, limit: number, signal
   }
 }
 
-function validateInput(body: unknown): { messages: Message[]; name: string } {
+function validateInput(body: unknown): { messages: Message[]; name: string; user: CompanionUser } {
   if (!isRecord(body) || !Array.isArray(body.messages) || body.messages.length < 1 || body.messages.length > MAX_MESSAGES) {
     throw new ChatFailure(400, INVALID_REQUEST);
   }
-  if (body.name !== undefined && (typeof body.name !== "string" || body.name.length > 100)) throw new ChatFailure(400, INVALID_REQUEST);
+  // 캐릭터 이름·사용자가 불러 달라고 한 이름은 짧은 문자열만 받고, 지시문에 넣기 전에 다시 거른다.
+  // 대화 방식은 정해진 값일 때만 쓰고, 모르는 값은 대화를 막지 않고 무시한다.
+  for (const value of [body.name, body.nickname]) {
+    if (value !== undefined && (typeof value !== "string" || value.length > 100)) throw new ChatFailure(400, INVALID_REQUEST);
+  }
   let chars = 0;
   const messages = body.messages.map((message): Message => {
     if (!isRecord(message) || (message.role !== "user" && message.role !== "assistant") || typeof message.content !== "string") {
@@ -134,7 +138,7 @@ function validateInput(body: unknown): { messages: Message[]; name: string } {
   });
   if (chars > MAX_TOTAL_CHARS) throw new ChatFailure(413, "대화 내용이 너무 길어요. 내용을 줄여서 다시 보내 주세요.");
   if (messages.at(-1)?.role !== "user") throw new ChatFailure(400, INVALID_REQUEST);
-  return { messages, name: cleanName(typeof body.name === "string" ? body.name : "") };
+  return { messages, name: cleanName(typeof body.name === "string" ? body.name : ""), user: { nickname: cleanNickname(body.nickname), style: isStyleId(body.style) ? body.style : undefined } };
 }
 
 export function endpoint(baseUrl: string) {
@@ -212,7 +216,7 @@ export async function chatResponse(request: Request, config: ChatServerConfig): 
   try {
     controller.signal.throwIfAborted();
     if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type") ?? "")) throw new ChatFailure(415, "JSON 형식의 메시지를 보내 주세요.");
-    const { messages, name } = validateInput(await readJson(request, MAX_REQUEST_BYTES, controller.signal));
+    const { messages, name, user } = validateInput(await readJson(request, MAX_REQUEST_BYTES, controller.signal));
     flags.crisis = messages.some((message) => message.role === "user" && hasCrisisSignal(message.content));
     const key = config.apiKey?.trim();
     if (!key) throw new ChatFailure(503, "채팅 연결이 아직 설정되지 않았어요.");
@@ -229,7 +233,7 @@ export async function chatResponse(request: Request, config: ChatServerConfig): 
         // Responses에서 추론과 function tools를 함께 쓴다. 답변·추론을 합쳐 4,096토큰으로 제한한다.
         body: JSON.stringify({
           model,
-          instructions: instructions(name) + remembered + (config.search ? WEB_SEARCH_INSTRUCTIONS : ""),
+          instructions: instructions(name, user) + remembered + (config.search ? WEB_SEARCH_INSTRUCTIONS : ""),
           input: history,
           stream: false,
           store: false,

@@ -1,0 +1,14 @@
+/* 화면 넘김(page-move.ts). 넘기는 동안에만 앱 프레임에 이름을 붙여, 프레임 안쪽만 움직이고 바깥 배경은 그대로 둔다. */
+html[data-page-move] main.app-frame { view-transition-name: here-page; }
+html[data-page-move]::view-transition-old(root),
+html[data-page-move]::view-transition-new(root) { animation: none; }
+html[data-page-move]::view-transition-group(here-page),
+html[data-page-move]::view-transition-image-pair(here-page) { overflow: clip; }
+html[data-page-move]::view-transition-group(here-page) { animation-duration: 420ms; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+
+@keyframes page-shrink-out { to { opacity: 0; scale: .94; } }
+@keyframes page-grow-in { from { opacity: 0; scale: 1.03; } }
+
+/* 로그인 완료 → 다음 화면: 지금 화면이 살짝 작아지며 사라지고 다음 화면이 차분히 나타난다 */
+html[data-page-move="enter"]::view-transition-old(here-page) { animation: page-shrink-out 420ms cubic-bezier(.2, .8, .2, 1) both; }
+html[data-page-move="enter"]::view-transition-new(here-page) { animation: page-grow-in 420ms 80ms cubic-bezier(.2, .8, .2, 1) both; }

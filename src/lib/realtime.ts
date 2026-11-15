@@ -2,6 +2,7 @@ import { microphoneErrorMessage } from "./microphone-permission.ts";
 import type { MouthShape } from "./mouth-shape.ts";
 import { createOutputAudioMeter } from "./output-audio-meter.ts";
 import { homeEntryGreetingPrompt } from "./companion-prompt.ts";
+import type { StyleId } from "./onboarding.ts";
 import { safeHomeOpener } from "./home-opener.ts";
 import { requestVoiceMemory, VoiceMemoryAccessError } from "./voice-memory-client.ts";
 import { voiceTiming } from "./voice-timing.ts";
@@ -37,7 +38,7 @@ const GREETING_ERROR = "첫 인사를 들려주지 못했어요. 음성 버튼�
 
 export async function connectRealtime(
   h: Handlers,
-  persona: { name?: string; voice?: string } = {},
+  persona: { name?: string; voice?: string; nickname?: string; style?: StyleId } = {},
   signal?: AbortSignal,
   accessToken?: string,
   options: { greeting?: boolean; microphone?: boolean; opener?: string; onGreetingEnd?: () => void } = {},

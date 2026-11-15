@@ -1,0 +1,210 @@
+/* 첫 실행 공통 모양: 캐릭터 만나기(온보딩) 장면, 로그인·기억 동의 시트가 같이 쓰는 색·입력칸(fr-scope), 홈의 마이크 안내 시트.
+ * 배치는 Tailwind 대신 여기서 정한다. 장면 안 위치는 --u(390pt 너비 시안의 1/100)로 쓰고,
+ * 화면이 낮으면 높이에 맞춰 함께 줄어든다. */
+/* 색 이름과 입력칸 모양은 로그인·가입 시트(fr-scope)도 같이 쓴다.
+ * 작은 글씨(12–14px)는 흰 시트와 가장 진한 크림(#FFEBD6·#FEE9D8) 위에서도 4.5:1을 넘겨야 해서 muted를 #6F675C로 둔다.
+ * faint(위 작은 머리글)는 이보다 옅게 하면 크림 위에서 4.5:1이 안 돼 같은 색을 쓰고, 굵기·크기로만 구분한다. */
+.first-run, .fr-scope {
+  --fr-ink: var(--color-cat-ink);
+  --fr-muted: #6F675C;
+  --fr-faint: #6F675C;
+  --fr-line: #E9E1D5;
+}
+.first-run {
+  --u: min(1cqw, calc(max(100dvh, 640px) * .00462));
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  color: var(--fr-ink);
+}
+.first-run--cream { background: radial-gradient(140% 75% at 50% 0%, #FFEBD6 0%, #FFF6EC 48%, #FFFCF8 100%); }
+.first-run--room { background: linear-gradient(180deg, #FFF8F0 0%, #FFF2E4 100%); }
+.first-run.app-frame-scrollable { overflow-y: auto; }
+/* 내용이 길어도 아바타·입력칸·카드가 세로로 눌리지 않게 한다(스크롤로 넘긴다). */
+.first-run > * { flex-shrink: 0; }
+
+/* 위 줄: 뒤로 가기와 단계·소리 버튼 */
+.fr-topbar { position: relative; z-index: 10; display: flex; align-items: center; justify-content: space-between; min-height: 60px; padding: max(16px, env(safe-area-inset-top)) 20px 0; }
+/* 뒤로·소리 버튼: 배경 없는 아이콘 버튼(시트의 here-sheet-icon과 같은 결). 누르는 동안만 옅은 원이 보인다. */
+.first-run .fr-round { width: 44px; height: 44px; border-radius: 50%; background: transparent; color: var(--fr-ink); display: grid; place-items: center; transition: background-color 120ms ease; }
+.first-run .fr-round:active { background: rgb(41 41 39 / 7%); }
+.first-run .fr-round:focus-visible { outline: 2px solid var(--fr-ink); outline-offset: 2px; }
+
+/* 제목 묶음: 큰 글씨는 제목(캐릭터 장면에서는 캐릭터의 말), 작은 글씨는 설명 */
+.fr-heading { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0 28px; text-align: center; }
+.fr-eyebrow { font-size: 12.5px; font-weight: 600; color: var(--fr-faint); }
+.fr-title { font-size: 21px; line-height: 1.35; font-weight: 800; letter-spacing: -.025em; text-wrap: balance; }
+.fr-title--cat { font-size: 25px; }
+/* 장면이 바뀔 때 화면 낭독기용으로 제목에 포커스를 옮긴다(누를 수 있는 것이 아니라 테두리는 그리지 않는다). */
+.fr-title:focus { outline: none; }
+.fr-desc { font-size: 14px; line-height: 1.5; color: var(--fr-muted); text-wrap: balance; }
+.fr-note { font-size: 12.5px; font-weight: 600; color: var(--fr-faint); text-align: center; }
+
+
+/* 아래 버튼 묶음 */
+.fr-footer { position: relative; z-index: 10; margin-top: auto; display: flex; flex-direction: column; gap: 12px; padding: 12px 24px max(24px, env(safe-area-inset-bottom)); }
+/* 첫 실행의 긴 화면은 휴대폰처럼 스크롤바를 숨긴다. 데스크톱 브라우저의 스크롤바가 프레임 폭을 15px 줄여
+ * 내용이 한쪽으로 밀리던 문제. 바닥 여백은 각 화면의 바닥 버튼(safe-area 포함)이 맡는다. */
+.app-frame.first-run.app-frame-scrollable { padding-bottom: 0; scrollbar-width: none; }
+.app-frame.first-run.app-frame-scrollable::-webkit-scrollbar { display: none; }
+/* 첫 실행 전체(환영 → 로그인·가입·기억 동의 시트 → 캐릭터 만나기)의 버튼은 하나로 맞춘다: 높이 52px 알약, 15px 굵게.
+ * 주요 동작은 검정(tone="ink"), 보조 동작은 흰 버튼(variant="tonal" tone="ink" + fr-ghost), 덜 중요한 것은 글자 버튼(fr-link). */
+:is(.first-run, .here-auth-screen) .here-button.button-large { min-height: 52px; border-radius: 999px; font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+:is(.first-run, .here-auth-screen) .here-button.fr-ghost { box-shadow: inset 0 0 0 1.5px var(--fr-line); }
+:is(.first-run, .fr-scope) .fr-link { align-self: center; min-height: 40px; padding-inline: 8px; font-size: 13.5px; font-weight: 600; color: var(--fr-muted); }
+
+/* 입력칸 */
+/* 이름표가 위에 따로 있는 입력칸(내 이름·고양이 이름): 칸 안은 왼쪽부터 적는다(로그인 시트 입력칸과 같은 결). */
+.fr-labeled { position: relative; display: grid; }
+.fr-labeled .here-field { gap: 8px; }
+.fr-labeled .here-field__label { font-size: 13px; font-weight: 600; line-height: 1.3; color: var(--fr-muted); }
+/* 이름표를 위에 따로 둔 칸은 아래 안내도 왼쪽에 맞춘다(로그인 시트와 같은 결). */
+:is(.first-run, .fr-scope) .fr-labeled .here-field__message { margin-top: 0; text-align: left; }
+.first-run .fr-input.fr-input--left { padding: 0 16px; text-align: left; font-size: 16px; font-weight: 600; letter-spacing: 0; box-shadow: inset 0 0 0 1.5px #E1D7C8; }
+.first-run .fr-input.fr-input--left:focus { box-shadow: inset 0 0 0 2px var(--fr-ink); }
+
+.fr-field { position: relative; z-index: 10; padding: 0 24px; }
+:is(.first-run, .fr-scope) .fr-input { width: 100%; height: 56px; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--fr-line); text-align: center; font-size: 17px; font-weight: 700; letter-spacing: .02em; color: var(--fr-ink); outline: none; transition: box-shadow 120ms ease; }
+:is(.first-run, .fr-scope) .fr-input::placeholder { color: #BDB4A6; font-weight: 600; letter-spacing: 0; }
+:is(.first-run, .fr-scope) .fr-input:focus { box-shadow: inset 0 0 0 2px var(--fr-ink); }
+:is(.first-run, .fr-scope) .fr-input[aria-invalid="true"] { box-shadow: inset 0 0 0 2px #C8352B; }
+:is(.first-run, .fr-scope) .here-field__message { margin-top: 8px; text-align: center; font-size: 13px; line-height: 1.45; color: #B4322A; }
+.fr-error { margin-top: 8px; text-align: center; font-size: 13px; line-height: 1.45; color: #B4322A; }
+.fr-footer > .fr-error { margin: 0; }
+
+/* 인증번호 여섯 칸: 실제 입력은 칸 위에 투명하게 겹친 입력칸(TextField) 하나가 받는다(문자 자동 채우기 유지) */
+.fr-otp { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.fr-otp > .here-field { display: contents; }
+.fr-otp > span { height: 54px; border-radius: 14px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--fr-line); display: grid; place-items: center; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.fr-otp:focus-within span[data-current] { box-shadow: inset 0 0 0 2px var(--fr-ink); }
+.fr-otp[data-invalid] span { box-shadow: inset 0 0 0 1.5px #E7A49D; }
+:is(.first-run, .fr-scope) .fr-otp .fr-otp-input { position: absolute; inset: 0 0 auto; width: 100%; height: 54px; opacity: 0; font-size: 16px; caret-color: transparent; }
+:is(.first-run, .fr-scope) .fr-otp .here-field__message { grid-column: 1 / -1; margin-top: 0; }
+/* 로그인·가입 진행: 위 줄 오른쪽의 짧은 막대들 */
+.fr-steps { display: flex; gap: 5px; margin-right: 4px; }
+.fr-steps i { width: 20px; height: 4px; border-radius: 99px; background: var(--fr-line); }
+.fr-steps i[data-done] { background: var(--fr-ink); }
+
+
+/* 흰 카드 목록: Framework7 iOS 목록(List strong inset)을 첫 실행 톤으로.
+ * 좌우 여백은 Tailwind 기본 스타일이 목록 margin을 지우므로 화면에서 mx-5로 준다. */
+.fr-list {
+  --f7-list-margin-vertical: 0px;
+  --f7-list-inset-border-radius: 24px;
+  --f7-list-strong-bg-color: #fff;
+  --f7-list-item-border-color: #F2ECE3;
+  --f7-list-item-padding-horizontal: 18px;
+  --f7-list-item-padding-vertical: 14px;
+  --f7-list-item-media-margin: 14px;
+  --f7-list-item-title-font-size: 14.5px;
+  --f7-list-item-title-font-weight: 700;
+  --f7-list-item-title-text-color: var(--fr-ink);
+  --f7-list-item-title-white-space: normal;
+  --f7-list-item-footer-font-size: 12px;
+  --f7-list-item-footer-line-height: 1.45;
+  --f7-list-item-footer-text-color: var(--fr-muted);
+  position: relative; z-index: 10;
+}
+.fr-list ul { box-shadow: 0 0 0 1px rgb(41 41 39 / 4%), 0 12px 30px -20px rgb(60 40 10 / 35%); }
+.fr-list .item-footer { margin-top: 2px; white-space: normal; }
+.fr-icon { flex: none; width: 42px; height: 42px; border-radius: 50%; background: #F1ECE4; color: var(--fr-ink); display: grid; place-items: center; }
+
+/* 기억 동의: 연한 카드 안의 체크 줄 두 개. '보기'는 줄 오른쪽에 겹치고, 펼친 본문은 그 줄 아래 흰 상자로 열린다. */
+.fr-checks {
+  --f7-list-strong-bg-color: #F7F4EF;
+  --f7-list-item-min-height: 54px;
+  --f7-list-item-padding-vertical: 8px;
+  --f7-list-item-title-font-size: 14.5px;
+  --f7-checkbox-active-color: var(--fr-ink);
+  --f7-checkbox-border-radius: 7px;
+  --f7-checkbox-inactive-color: #8F8676; /* 빈 체크 상자 테두리도 카드(#F7F4EF) 위에서 3:1을 넘게 */
+}
+.fr-checks ul { box-shadow: none; }
+.fr-checks li + li { border-top: 1px solid #ECE5DA; }
+.fr-checks .item-inner { padding-right: 84px; }
+.fr-req { margin-right: 6px; font-size: 12.5px; font-weight: 700; color: var(--fr-muted); }
+:is(.first-run, .fr-scope) .fr-more { position: absolute; top: 0; right: 0; height: var(--f7-list-item-min-height); display: flex; align-items: center; gap: 3px; padding: 0 18px 0 12px; list-style: none; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--fr-muted); }
+.fr-more::-webkit-details-marker { display: none; }
+.fr-more .f7-icons { transition: rotate 200ms ease; }
+details[open] > .fr-more .f7-icons { rotate: 180deg; }
+:is(.first-run, .fr-scope) .fr-more:focus-visible { outline: 2px solid var(--fr-ink); outline-offset: -8px; border-radius: 14px; }
+.fr-detail { margin: 0 10px 10px; padding: 12px 14px; border-radius: 14px; background: #fff; font-size: 12px; line-height: 1.6; color: var(--fr-muted); }
+.fr-detail dt { font-weight: 700; color: var(--fr-ink); }
+.fr-detail dd { margin: 0 0 10px; }
+.fr-detail dd:last-child { margin-bottom: 0; }
+.fr-fineprint { position: relative; z-index: 10; display: grid; gap: 4px; margin: 16px 24px 0; font-size: 12px; line-height: 1.5; color: var(--fr-muted); text-align: center; }
+.fr-fineprint p { display: flex; align-items: center; justify-content: center; gap: 4px; }
+.fr-fineprint .f7-icons { flex: none; }
+.fr-fineprint [data-tone="dev"] { color: #5F584E; font-weight: 600; }
+:is(.first-run, .fr-scope) .fr-ready { transition: background-color 220ms ease, color 220ms ease; }
+
+/* 기억 동의 인터랙션: 체크 상자 톡, 본문 부드럽게 펼치기, 버튼 켜질 때 살짝 커지기 */
+@keyframes fr-pop { 0% { scale: .7; } 60% { scale: 1.14; } 100% { scale: 1; } }
+@keyframes fr-ready { 0%, 100% { scale: 1; } 40% { scale: 1.03; } }
+@media (prefers-reduced-motion: no-preference) {
+  .fr-checks label.item-checkbox input:checked ~ .icon-checkbox { animation: fr-pop 280ms cubic-bezier(.3, 1.5, .5, 1); }
+  .fr-checks details { interpolate-size: allow-keywords; }
+  .fr-checks details::details-content { block-size: 0; overflow: clip; opacity: 0; transition: block-size 260ms cubic-bezier(.2, .8, .2, 1), opacity 200ms ease, content-visibility 260ms allow-discrete; }
+  .fr-checks details[open]::details-content { block-size: auto; opacity: 1; }
+  :is(.first-run, .fr-scope) .fr-ready:not(:disabled) { animation: fr-ready 380ms ease; }
+}
+.fr-sos { position: relative; z-index: 10; margin: 12px 20px 0; padding: 18px; border-radius: 22px; background: #FCEAE8; display: flex; align-items: center; gap: 14px; color: #8E2A22; text-decoration: none; }
+.fr-sos b { display: block; font-size: 14.5px; }
+.fr-sos small { display: block; margin-top: 2px; font-size: 12px; color: #A3564D; }
+.fr-sos .fr-call { flex: none; margin-left: auto; height: 40px; padding: 0 16px; border-radius: 20px; background: #C8352B; color: #fff; font-size: 13.5px; font-weight: 700; display: grid; place-items: center; }
+.fr-sos:focus-visible { outline: 2px solid #8E2A22; outline-offset: 2px; }
+
+/* 고르기: 질문의 답. 왼쪽 정렬 선택 카드(입력칸과 같은 16px 둥글기). 고르면 진한 테두리와 오른쪽 체크가 보인다. */
+.fr-options { position: relative; z-index: 10; display: flex; flex-direction: column; gap: 10px; padding: 0 24px; }
+.first-run .fr-option { position: relative; width: 100%; height: 56px; display: flex; align-items: center; justify-content: flex-start; padding: 0 48px 0 18px; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 1.5px #EAE2D6; font-size: 15px; font-weight: 600; text-align: left; color: var(--fr-ink); transition: box-shadow 150ms ease; }
+.first-run .fr-option[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--fr-ink); }
+.first-run .fr-option[aria-pressed="true"]::after { content: ""; position: absolute; right: 16px; top: 50%; width: 22px; height: 22px; translate: 0 -50%; border-radius: 50%; background: var(--fr-ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center / 14px no-repeat; }
+.first-run .fr-option:focus-visible { outline: 2px solid var(--fr-ink); outline-offset: 3px; }
+
+/* 장면: 풍경, 나무, 바닥, 꾹 누르기. 모두 화면 아래를 기준으로 놓는다. 고양이는 누를 수 없는 장식이다. */
+.fr-land { position: absolute; left: 0; bottom: 0; width: 100%; height: auto; pointer-events: none; }
+.fr-cat, .fr-tree, .fr-hold { position: absolute; }
+.fr-cat { left: 50%; translate: -50% 0; pointer-events: none; }
+.fr-cat > svg { display: block; width: 100%; height: auto; }
+.fr-name-cat { position: relative; z-index: 10; width: calc(var(--u) * 50); margin: -4px auto -10px; }
+.fr-cat--far { width: calc(var(--u) * 34); left: calc(50% + var(--u) * 16); bottom: calc(var(--u) * 40); }
+.fr-tree--front { width: calc(var(--u) * 15.4); left: calc(50% + var(--u) * 1.3); translate: -50% 0; bottom: calc(var(--u) * 47); }
+.fr-cat--near { width: calc(var(--u) * 52); bottom: calc(var(--u) * 18); }
+.fr-cat--adopt { width: calc(var(--u) * 86); bottom: calc(var(--u) * 46); transform-origin: 50% 85%; transition: scale 300ms ease-out; }
+.fr-cat--adopt[data-holding] { scale: 1.08; transition-duration: 1400ms; }
+/* 이름 짓기: 바닥 띠 없이 가운데에 러그 하나와 식빵 고양이. 러그는 고양이 칸의 바닥선(85.4%)에 가운데를 맞춘다. */
+.fr-name-scene { position: relative; z-index: 1; flex: 1 1 auto; display: grid; place-items: center; min-height: calc(var(--u) * 60); }
+.fr-name-scene-cat { position: relative; width: calc(var(--u) * 62); }
+.fr-rug { position: absolute; left: 50%; top: 85.4%; width: 128%; height: 26%; translate: -50% -50%; border-radius: 50%; background: radial-gradient(closest-side, #F3E7D8 0%, #EEDFCD 70%, #EBDAC6 100%); box-shadow: inset 0 0 0 calc(var(--u) * 1.6) rgb(255 255 255 / 45%); }
+.fr-hold { left: 50%; translate: -50% 0; bottom: calc(var(--u) * 14 + env(safe-area-inset-bottom)); z-index: 10; display: grid; justify-items: center; gap: 8px; }
+.fr-hold-hint { font-size: 13px; font-weight: 600; color: var(--fr-muted); white-space: nowrap; }
+/* 많이 힘들다고 했을 때 첫 대면 제목 아래에 바로 보이는 109 */
+.fr-sos--meet { margin-top: 16px; }
+.first-run .fr-hold-button { position: relative; display: grid; place-items: center; width: 96px; height: 96px; border-radius: 50%; color: var(--fr-ink); touch-action: none; user-select: none; -webkit-user-select: none; }
+.first-run .fr-hold-button > svg { position: absolute; inset: 0; }
+.first-run .fr-hold-button > .f7-icons { position: relative; }
+.first-run .fr-hold-button:focus-visible { outline: 2px solid var(--fr-ink); outline-offset: 4px; }
+.fr-hold-ring { transition: stroke-dashoffset 250ms linear; }
+.fr-hold-ring[data-holding] { transition-duration: var(--fr-hold-ms, 1400ms); }
+
+@keyframes fr-option-check { from { scale: .4; opacity: 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  .first-run .fr-option[aria-pressed="true"]::after { animation: fr-option-check 220ms cubic-bezier(.3, 1.4, .5, 1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* 다가오는 고양이는 꾸밈이라 커지지 않는다. */
+  .fr-cat--adopt, .fr-cat--adopt[data-holding] { transition: none; scale: none; }
+  /* 고리는 꾸밈이 아니라 얼마나 더 누르면 되는지 알려 주는 표시라, 동작 줄이기에서도 누르는 시간만큼 차오른다.
+   * globals.css의 .app-frame * { transition-duration: 0.01ms !important }보다 구체적인 선택자로 덮는다(놓으면 바로 비워진다). */
+  .app-frame .fr-hold-ring[data-holding] { transition-duration: var(--fr-hold-ms, 1400ms) !important; }
+}
+
+/* 마이크 안내 시트(홈에서 처음 마이크를 누를 때): 내용 높이만큼, 가운데 정렬 */
+.here-sheet.mic-ask-sheet { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.here-sheet.mic-ask-sheet:focus-visible { outline: none; }
+.mic-ask { display: grid; justify-items: center; gap: 10px; padding: 8px 0 max(4px, env(safe-area-inset-bottom)); text-align: center; }
+.mic-ask-badge { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: #F1ECE4; color: var(--fr-ink); }
+.mic-ask-title { margin-top: 4px; font-size: 19px; line-height: 1.4; font-weight: 800; letter-spacing: -.02em; color: var(--fr-ink); }
+.mic-ask-desc { margin-bottom: 8px; font-size: 14px; line-height: 1.5; color: var(--fr-muted); }
+.mic-ask .fr-error, .mic-ask .fr-note { margin: 0 0 4px; }
+.mic-ask .here-button.button-large { min-height: 52px; border-radius: 999px; font-size: 15px; font-weight: 700; }

@@ -20,7 +20,7 @@ test("같은 출처의 채팅 경로에 메시지와 이름만 JSON으로 보낸
     return Response.json({ reply: "  어떤 일이 가장 힘들었어?  ", crisis: false, suggest: true });
   });
 
-  assert.deepEqual(await requestChat(messages, "찬준", controller.signal), {
+  assert.deepEqual(await requestChat(messages, { name: "찬준" }, controller.signal), {
     reply: "어떤 일이 가장 힘들었어?",
     crisis: false,
     suggest: true,
@@ -33,7 +33,7 @@ test("메시지 시각 같은 기기 전용 정보는 빼고 role·content만 �
     assert.deepEqual(JSON.parse(init?.body as string), { messages, name: "몽글이" });
     return Response.json({ reply: "응", crisis: false, suggest: false });
   });
-  await requestChat(messages.map((m, i) => ({ ...m, at: i + 1 })), "몽글이");
+  await requestChat(messages.map((m, i) => ({ ...m, at: i + 1 })), { name: "몽글이" });
 });
 
 test("로그인 토큰을 채팅 요청에 실어 보낸다", async (t) => {
@@ -41,7 +41,7 @@ test("로그인 토큰을 채팅 요청에 실어 보낸다", async (t) => {
     assert.deepEqual(init?.headers, { "Content-Type": "application/json", Authorization: "Bearer member-token" });
     return Response.json({ reply: "응", crisis: false, suggest: false });
   });
-  await requestChat(messages, "몽글이", undefined, "member-token");
+  await requestChat(messages, { name: "몽글이" }, undefined, "member-token");
 });
 
 test("취소 신호 없이도 요청하고 위기 응답을 보존한다", async (t) => {
@@ -50,7 +50,7 @@ test("취소 신호 없이도 요청하고 위기 응답을 보존한다", async
     return Response.json({ reply: "혼자 견디지 않아도 돼.", crisis: true, suggest: false });
   });
 
-  assert.deepEqual(await requestChat(messages, "찬준"), {
+  assert.deepEqual(await requestChat(messages, { name: "찬준" }), {
     reply: "혼자 견디지 않아도 돼.",
     crisis: true,
     suggest: false,
@@ -64,7 +64,7 @@ test("HTTP 오류의 안전한 안내와 위기·도움받기 상태를 보존�
     suggest: true,
   }, { status: 503 }));
 
-  await assert.rejects(requestChat(messages, "찬준"), (error: unknown) => {
+  await assert.rejects(requestChat(messages, { name: "찬준" }), (error: unknown) => {
     assert.ok(error instanceof ChatRequestError);
     assert.equal(error.name, "ChatRequestError");
     assert.equal(error.message, "잠시 후 다시 시도해 주세요.");
@@ -81,7 +81,7 @@ test("HTTP 오류 안내는 최대 300자이며 boolean true만 상태로 받는
     suggest: 1,
   }, { status: 500 }));
 
-  await assert.rejects(requestChat(messages, "찬준"), (error: unknown) => {
+  await assert.rejects(requestChat(messages, { name: "찬준" }), (error: unknown) => {
     assert.ok(error instanceof ChatRequestError);
     assert.equal(error.message, "가".repeat(300));
     assert.equal(error.crisis, false);
@@ -94,7 +94,7 @@ test("HTTP 오류 안내가 없거나 잘못되어도 기본 안내를 제공한
   for (const payload of [null, [], {}, { error: "  " }, { error: { message: "내부 오류" } }]) {
     await t.test(JSON.stringify(payload), async (st) => {
       st.mock.method(globalThis, "fetch", async () => Response.json(payload, { status: 500 }));
-      await assert.rejects(requestChat(messages, "찬준"), (error: unknown) => {
+      await assert.rejects(requestChat(messages, { name: "찬준" }), (error: unknown) => {
         assert.ok(error instanceof ChatRequestError);
         assert.equal(error.message, "대화를 이어가지 못했어요. 잠시 후 다시 시도해 주세요.");
         assert.equal(error.crisis, false);
@@ -112,7 +112,7 @@ test("안내가 비어 있어도 HTTP 오류의 안전 상태를 잃지 않는�
     suggest: true,
   }, { status: 502 }));
 
-  await assert.rejects(requestChat(messages, "찬준"), (error: unknown) => {
+  await assert.rejects(requestChat(messages, { name: "찬준" }), (error: unknown) => {
     assert.ok(error instanceof ChatRequestError);
     assert.ok(error.message.length > 0);
     assert.equal(error.crisis, true);
@@ -137,7 +137,7 @@ test("비어 있거나 잘못된 성공 응답은 답변으로 사용하지 않�
   for (const payload of malformed) {
     await t.test(JSON.stringify(payload), async (st) => {
       st.mock.method(globalThis, "fetch", async () => Response.json(payload));
-      await assert.rejects(requestChat(messages, "찬준"), (error: unknown) => {
+      await assert.rejects(requestChat(messages, { name: "찬준" }), (error: unknown) => {
         assert.ok(error instanceof ChatRequestError);
         assert.equal(error.message, "답변을 확인하지 못했어요. 다시 시도해 주세요.");
         return true;
@@ -150,7 +150,7 @@ test("JSON이 아닌 성공·실패 응답도 내부 내용을 노출하지 않�
   for (const status of [200, 500]) {
     await t.test(String(status), async (st) => {
       st.mock.method(globalThis, "fetch", async () => new Response("<html>internal detail</html>", { status }));
-      await assert.rejects(requestChat(messages, "찬준"), (error: unknown) => {
+      await assert.rejects(requestChat(messages, { name: "찬준" }), (error: unknown) => {
         assert.ok(error instanceof ChatRequestError);
         assert.ok(!error.message.includes("internal"));
         assert.equal(error.crisis, false);
@@ -166,7 +166,7 @@ test("네트워크 오류는 내부 오류 대신 기본 안내와 false 상태�
     throw new TypeError("internal network detail");
   });
 
-  await assert.rejects(requestChat(messages, "찬준"), (error: unknown) => {
+  await assert.rejects(requestChat(messages, { name: "찬준" }), (error: unknown) => {
     assert.ok(error instanceof ChatRequestError);
     assert.equal(error.message, "대화를 이어가지 못했어요. 잠시 후 다시 시도해 주세요.");
     assert.equal(error.crisis, false);
@@ -183,7 +183,7 @@ test("진행 중인 요청의 취소 신호와 AbortError를 그대로 전달한
     init?.signal?.addEventListener("abort", () => reject(abortError), { once: true });
   }));
 
-  const pending = requestChat(messages, "찬준", controller.signal);
+  const pending = requestChat(messages, { name: "찬준" }, controller.signal);
   controller.abort();
   await assert.rejects(pending, (error: unknown) => error === abortError);
 });
@@ -194,5 +194,19 @@ test("응답 본문을 읽는 중의 취소도 일반 오류로 바꾸지 않는
   t.mock.method(response, "json", async () => { throw abortError; });
   t.mock.method(globalThis, "fetch", async () => response);
 
-  await assert.rejects(requestChat(messages, "찬준"), (error: unknown) => error === abortError);
+  await assert.rejects(requestChat(messages, { name: "찬준" }), (error: unknown) => error === abortError);
+});
+
+test("사용자가 불러 달라고 한 이름·대화 방식은 있을 때만 함께 보낸다", async (t) => {
+  const bodies: unknown[] = [];
+  t.mock.method(globalThis, "fetch", async (_input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    bodies.push(JSON.parse(init?.body as string));
+    return Response.json({ reply: "응", crisis: false, suggest: false });
+  });
+  await requestChat(messages, { name: "보리", nickname: " 민주 ", style: "chat" });
+  await requestChat(messages, { name: "보리", nickname: "   " });
+  assert.deepEqual(bodies, [
+    { messages, name: "보리", nickname: "민주", style: "chat" },
+    { messages, name: "보리" },
+  ]);
 });

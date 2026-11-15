@@ -11,7 +11,9 @@ import { type Profile, josa } from "@/lib/onboarding";
 import { type QuotaStatus, quotaSummary } from "@/lib/quota-status";
 import { Icon } from "./art";
 import PasswordSetup from "./PasswordSetup";
+import { MIN_PASSWORD_LENGTH } from "@/lib/password-policy";
 import { getSfxEnabled, setSfxEnabled, subscribeSfx } from "@/lib/sfx";
+import { SWIPE_IGNORE_SELECTOR, SWIPE_SETTLE_MS, swipeCloses, swipeOffset, swipeStart } from "@/lib/drawer-swipe";
 
 
 // Figma 455:209의 메뉴. 동작은 기존 콜백을 유지하고 설정은 같은 패널에서 연다.
@@ -116,6 +118,71 @@ export default function Drawer({
   }
   const onCloseRef = useRef(onClose);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  // 왼쪽으로 밀어 닫기: 옆으로 10px 넘게 밀면 패널이 손가락을 따라오고, 30% 넘게 밀거나 빠르게 튕기면 닫힌다.
+  // 세로로 움직이면 목록 스크롤로 두고, 밀고 난 뒤의 클릭은 메뉴 항목에 전달하지 않는다. 판단 기준은 src/lib/drawer-swipe.ts에 있다.
+  const drag = useRef<{ id: number; x: number; y: number; dx: number; at: number; active: boolean } | null>(null);
+  const swiped = useRef(false);
+  // 밀어 닫은 뒤 패널을 원래 스타일로 되돌리는 타이머. 그 사이에 다시 열면 지운다.
+  const settle = useRef<number | undefined>(undefined);
+  const swipe = {
+    onPointerDown: (event: React.PointerEvent<HTMLElement>) => {
+      if (!open || event.button !== 0) return;
+      // 입력칸(설정의 비밀번호 등)에서 글자를 고르느라 옆으로 끄는 건 밀어 닫기로 보지 않는다.
+      if (event.target instanceof Element && event.target.closest(SWIPE_IGNORE_SELECTOR)) return;
+      drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, dx: 0, at: performance.now(), active: false };
+      swiped.current = false;
+    },
+    onPointerMove: (event: React.PointerEvent<HTMLElement>) => {
+      const d = drag.current;
+      const panel = panelRef.current;
+      if (!d || d.id !== event.pointerId || !panel) return;
+      const dx = event.clientX - d.x;
+      const dy = event.clientY - d.y;
+      if (!d.active) {
+        const start = swipeStart(dx, dy);
+        if (start === "scroll") { drag.current = null; return; }
+        if (start === "wait") return;
+        d.active = true;
+        swiped.current = true;
+        try { panel.setPointerCapture(event.pointerId); } catch { /* 이미 끝난 포인터면 붙잡지 않고 계속 따라간다 */ }
+        panel.style.transition = "none";
+      }
+      d.dx = swipeOffset(dx);
+      panel.style.translate = `${d.dx}px 0`;
+    },
+    onPointerUp: (event: React.PointerEvent<HTMLElement>) => {
+      const d = drag.current;
+      const panel = panelRef.current;
+      drag.current = null;
+      if (!d?.active || !panel) return;
+      // 밀기 바로 뒤의 클릭 한 번만 막고, 그 뒤 키보드·보조기기 동작은 그대로 통과시킨다.
+      window.setTimeout(() => { swiped.current = false; }, 0);
+      const close = swipeCloses(d.dx, performance.now() - d.at, panel.offsetWidth, event.type !== "pointerup");
+      panel.style.transition = "";
+      // 닫을 때는 지금 자리에서 끝까지 미끄러져 나가고, 아니면 제자리로 돌아온다.
+      panel.style.translate = close ? "-100% 0" : "";
+      window.clearTimeout(settle.current);
+      if (close) {
+        onClose();
+        settle.current = window.setTimeout(() => { panel.style.translate = ""; }, SWIPE_SETTLE_MS);
+      }
+    },
+    onClickCapture: (event: React.MouseEvent<HTMLElement>) => {
+      if (!swiped.current) return;
+      swiped.current = false;
+      event.preventDefault();
+      event.stopPropagation();
+    },
+  };
+  // 밀어 닫은 직후 다시 열면 남아 있는 '-100%' 위치가 열림 스타일(translate-x-0)을 덮어 패널이 화면 밖에 남는다.
+  // 열릴 때 타이머를 지우고 위치를 바로 되돌려, 보통 열 때처럼 미끄러져 들어오게 한다.
+  useEffect(() => {
+    if (!open) return;
+    window.clearTimeout(settle.current);
+    if (panelRef.current) panelRef.current.style.translate = "";
+  }, [open]);
+  useEffect(() => () => window.clearTimeout(settle.current), []);
   const loadQuotaRef = useRef(loadQuota);
   useEffect(() => { loadQuotaRef.current = loadQuota; }, [loadQuota]);
   useEffect(() => {
@@ -173,6 +240,8 @@ export default function Drawer({
         aria-modal="true"
         inert={!open}
         data-view={view}
+        {...swipe}
+        onPointerCancel={swipe.onPointerUp}
         className={`here-panel here-drawer here-list-compact absolute inset-y-0 left-0 flex w-[82%] max-w-[340px] flex-col overflow-y-auto rounded-r-r6 px-gutter pt-6 pb-5 transition-transform duration-300 ease-enter ${
           open ? "translate-x-0 shadow-[10px_0_40px_rgba(35,32,27,.12)]" : "-translate-x-full"
         }`}
@@ -227,19 +296,20 @@ export default function Drawer({
 
           <List strong inset dividersIos className="mt-3">
             <ul>
-              {allowPasswordSetup && <MenuItem onClick={() => setPasswordView("form")} title="비밀번호 설정" />}
+              {allowPasswordSetup && <MenuItem onClick={() => setPasswordView("form")} title="비밀번호 변경" />}
               <MenuItem onClick={onSignOut} title="로그아웃" chevron={false} />
               <MenuItem onClick={onReset} title={`${name} 처음부터 다시 만들기`} danger chevron={false} />
             </ul>
           </List>
           {passwordView === "form" && <div className="mt-3 px-2">
-            <p className="mb-3 text-t3 text-cat-muted">8자 이상으로 설정하면 다음 로그인부터 문자 없이 들어올 수 있어요.</p>
+            <p className="mb-3 text-t3 text-cat-muted">{MIN_PASSWORD_LENGTH}자 이상으로 바꾸면 다음 로그인부터 새 비밀번호를 써요.</p>
             <PasswordSetup onSaved={() => setPasswordView("saved")} />
           </div>}
           {passwordView === "saved" && <p role="status" className="mt-3 px-2 text-t3">비밀번호를 저장했어요.</p>}
 
           <p className="mt-auto px-2 pt-6 text-t2 text-cat-muted">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
         </>}
+        {/* 화면에는 닫기 버튼을 두지 않는다(바깥 누르기·왼쪽으로 밀기·Escape로 닫는다). 키보드로 포커스하면 나타난다. */}
         <Button variant="plain" onClick={onClose} aria-label="메뉴 닫기" className="here-drawer-close"><Icon name="close" size={18} /></Button>
       </nav>
     </div>

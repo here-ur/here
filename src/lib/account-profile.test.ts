@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { readAccountProfile, writeAccountProfile } from "./account-profile.ts";
+import { loadPendingProfile, readAccountProfile, savePendingProfile, withProfileTimeout, writeAccountProfile } from "./account-profile.ts";
+import { setLocalOwner } from "./local-scope.ts";
 
 const profile = { nickname: "테스트", companion: "후추", shape: "round", color: "sky", voice: "cedar", style: "listen" } as const;
 function fake(initial: unknown, id = "a", readError = false, writeError = false) {
@@ -44,4 +45,50 @@ test("초기화는 서버에도 저장하고 다른 기기의 이전 캐시를 �
 });
 test("저장 실패를 성공으로 처리하지 않음", async () => {
   await assert.rejects(writeAccountProfile(fake(undefined, "a", false, true).client, "a", profile));
+});
+test("저장 중 끊긴 캐릭터 만나기 결과는 계정에 캐릭터가 없을 때만 마저 저장", async () => {
+  const pending = { ...profile, companion: "새고양이" };
+  const fresh = fake(undefined);
+  assert.deepEqual(await readAccountProfile(fresh.client, "a", null, pending), pending);
+  assert.equal(fresh.writes(), 1);
+  // 처음 가입한 계정에서는 예전 기기 캐시보다 방금 고른 설정이 우선이다.
+  const migrating = fake(undefined);
+  assert.deepEqual(await readAccountProfile(migrating.client, "a", profile, pending), pending);
+  // 초기화한 뒤 이 기기에서 다시 만든 캐릭터는 저장하지만, 예전 캐시는 되살리지 않는다.
+  const reset = fake({ version: 1, profile: null });
+  assert.equal(await readAccountProfile(reset.client, "a", profile, null), null);
+  assert.equal(reset.writes(), 0);
+  assert.deepEqual(await readAccountProfile(reset.client, "a", profile, pending), pending);
+  assert.equal(reset.writes(), 1);
+  // 계정에 이미 캐릭터가 있으면 계정 쪽이 우선이고 덮어쓰지 않는다.
+  const existing = fake({ version: 1, profile });
+  assert.deepEqual(await readAccountProfile(existing.client, "a", null, pending), profile);
+  assert.equal(existing.writes(), 0);
+});
+test("계정 설정 읽기·저장이 멈추면 정해진 시간 뒤 실패로 바꾼다", async () => {
+  await assert.rejects(withProfileTimeout(new Promise(() => {}), 10), /profile_timeout/);
+  assert.equal(await withProfileTimeout(Promise.resolve("ok"), 1000), "ok");
+  await assert.rejects(withProfileTimeout(Promise.reject(Error("profile_save_failed")), 1000), /profile_save_failed/);
+});
+test("저장 중인 캐릭터 만나기 결과는 계정별로 이 기기에 두고 지울 수 있다", () => {
+  const store = new Map<string, string>();
+  const previous = globalThis.localStorage;
+  globalThis.localStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+  } as Storage;
+  try {
+    setLocalOwner("a");
+    savePendingProfile(profile);
+    assert.deepEqual(loadPendingProfile(), profile);
+    setLocalOwner("b");
+    assert.equal(loadPendingProfile(), null);
+    setLocalOwner("a");
+    savePendingProfile(null);
+    assert.equal(loadPendingProfile(), null);
+  } finally {
+    setLocalOwner(null);
+    globalThis.localStorage = previous;
+  }
 });
