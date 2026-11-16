@@ -1,0 +1,67 @@
+.email-auth-screen {
+  --auth-white: #fffdfe;
+  --auth-brown: #775035;
+  --fr-ink: var(--color-cat-ink);
+  --fr-muted: #6f675c;
+  --fr-line: #e9e1d5;
+  --here-ui-error: #a92720;
+  display: flex;
+  flex-direction: column;
+  height: var(--email-auth-height, 100dvh);
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--auth-white);
+  color: var(--fr-ink);
+  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+  scrollbar-width: none;
+  font-family: "Pretendard Variable", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.email-auth-screen[data-keyboard] { padding-bottom: 16px; }
+.email-auth-topbar { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; margin: 0 -12px; }
+.email-auth-back { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; color: inherit; }
+.email-auth-back:active { background: #f3efe8; }
+.email-auth-progress { margin-right: 12px; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--fr-ink); }
+.email-auth-progress span { color: var(--fr-muted); }
+.email-auth-heading { padding-top: clamp(24px, 5vh, 52px); padding-bottom: 36px; flex-shrink: 0; }
+.email-auth-heading h1 { font-size: clamp(28px, 7.6vw, 34px); line-height: 1.25; letter-spacing: -.035em; font-weight: 700; text-wrap: balance; }
+.email-auth-heading p { margin-top: 14px; color: var(--fr-muted); font-size: 15px; line-height: 1.6; overflow-wrap: anywhere; }
+.email-auth-form { display: flex; flex-direction: column; flex: 1 0 auto; gap: 28px; }
+.email-auth-fields { display: grid; gap: 24px; }
+.email-auth-screen .here-field { gap: 10px; }
+.email-auth-screen .here-field__label { color: var(--fr-muted); font-size: 13px; }
+.email-auth-screen .here-field__input {
+  width: 100%; min-height: 52px; padding: 4px 0; border: 0; border-radius: 0;
+  background: transparent; color: var(--fr-ink); font-size: 25px; line-height: 1.4;
+  caret-color: var(--fr-ink); box-shadow: none; outline: none; letter-spacing: -.02em;
+}
+.email-auth-screen .here-field__input::placeholder { color: #817b73; opacity: 1; }
+.email-auth-screen .here-field__input:focus-visible { box-shadow: 0 1px 0 var(--fr-line); }
+.email-auth-screen .here-field__input[aria-invalid="true"] { box-shadow: 0 1px 0 var(--here-ui-error); }
+.email-auth-screen .here-field__message, .email-auth-error { color: var(--here-ui-error); font-size: 14px; line-height: 1.6; }
+.email-auth-note { color: var(--fr-muted); font-size: 14px; line-height: 1.6; }
+.email-auth-screen .email-auth-link { display: inline-flex; align-items: center; justify-self: start; min-height: 44px; color: var(--auth-brown); font-size: 14px; text-align: left; }
+.email-auth-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: auto; padding-top: 32px; padding-bottom: 8px; }
+.email-auth-screen .email-auth-next {
+  width: 58px; height: 58px; min-height: 58px; padding: 0; flex-shrink: 0; margin-left: auto;
+  border-radius: 50%; color: #fff; background: var(--fr-ink); --f7-button-pressed-bg-color: #45453f;
+}
+.email-auth-next .here-button__label { display: grid; place-items: center; }
+.email-auth-screen .email-auth-next:disabled { background: #ded8ce; color: #6f675c; opacity: 1; }
+.email-auth-screen .email-auth-back:focus-visible, .email-auth-screen .email-auth-link:focus-visible, .email-auth-screen .email-auth-next:focus-visible { outline: 2px solid var(--auth-brown); outline-offset: 4px; }
+.email-code { position: relative; }
+.email-code-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 12px repeat(3, minmax(0, 1fr)); gap: 8px; align-items: center; }
+.email-code-slot { display: grid; place-items: center; height: 60px; border-radius: 15px; background: #f3efe8; font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.email-code-dot { width: 6px; height: 6px; border-radius: 50%; background: #a59a8c; }
+.email-code-divider { text-align: center; color: var(--fr-muted); }
+.email-code:focus-within .email-code-slot[data-current] { box-shadow: 0 0 0 2px var(--auth-brown); background: #eee7dd; }
+.email-code[data-invalid] .email-code-slot { box-shadow: 0 0 0 1px var(--here-ui-error); }
+.email-code-input { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; outline: none; background: transparent; color: transparent; caret-color: transparent; font-size: 16px; }
+.email-code-input::selection { background: transparent; }
+/* PasswordSetup is also shared by settings: only restyle its form inside this screen. */
+.email-auth-screen .auth-sheet-form { gap: 24px; }
+.email-auth-screen .auth-sheet-fields { gap: 28px; }
+.email-auth-screen .auth-sheet-actions { position: static; display: flex; flex-direction: row-reverse; align-items: center; justify-content: space-between; background: none; gap: 16px; padding-top: 32px; padding-bottom: 8px; }
+.email-auth-screen .auth-sheet-actions .here-button { background: var(--fr-ink); color: #fff; min-height: 52px; border-radius: 999px; width: auto; padding-inline: 24px; }
+.email-auth-screen .auth-sheet-actions .fr-link { min-height: 44px; font-size: 14px; color: var(--fr-muted); }
+@media (max-width: 350px) { .email-code-slots { gap: 6px; grid-template-columns: repeat(3, minmax(0, 1fr)) 8px repeat(3, minmax(0, 1fr)); } .email-code-slot { height: 54px; border-radius: 12px; } }
+@media (prefers-reduced-motion: no-preference) { .email-auth-next { transition: scale 160ms ease, background-color 160ms ease; } .email-auth-next:active:not(:disabled) { scale: .97; } .email-auth-form { animation: auth-step-from-right 220ms cubic-bezier(.2,.8,.2,1); } }

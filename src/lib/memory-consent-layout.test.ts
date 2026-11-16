@@ -31,7 +31,7 @@ test("로그인 시트에서 이어 가기: 이미 동의한 기기면 바로 �
   const gate = readFileSync(new URL("../app/AuthGate.tsx", import.meta.url), "utf8");
   const consent = readFileSync(new URL("../app/MemoryConsentGate.tsx", import.meta.url), "utf8");
   // 이 기기에 동의 기록이 있으면 시트를 이어 가지 않고 전환으로 바로 넘어간다.
-  const finish = gate.slice(gate.indexOf("function finishInSheet"), gate.indexOf("function openForm"));
+  const finish = gate.slice(gate.indexOf("function finishInSheet"), gate.indexOf("function finishPasswordSetup"));
   assert.match(finish, /hasConsentDisplayHint[\s\S]*movePage\("enter"[\s\S]*setContinueSheet\(true\)/);
   // 회원이 아닌 결과(로그아웃·재시도·가입 계속)면 이어 가기를 지운다.
   assert.match(gate, /if \(result\.kind !== "member"\) setContinueSheet\(false\)/);

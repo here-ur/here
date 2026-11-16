@@ -49,3 +49,37 @@ test("인증된 번호에 회원 행이 없으면 비밀번호 설정부터 가�
   assert.deepEqual(await checkEntry(mock(undefined, async () => ({ data: null, error: null }))), { kind: "signup", phone: user.phone });
   assert.deepEqual(await checkEntry(mock(undefined, async () => ({ data: { user_id: "other" }, error: null }))), { kind: "retry" });
 });
+
+test("이메일·SNS 신규 계정은 서버의 회원 등록 확인 뒤에만 입장한다", async () => {
+  const emailUser = { id: user.id, email: "test@example.com" };
+  const client = mock(undefined, async () => ({ data: null, error: null }));
+  let calls = 0;
+  Object.assign(client, { rpc: (name: string) => {
+    assert.equal(name, "register_verified_member"); calls++;
+    return { abortSignal: async () => ({ data: true, error: null }) };
+  } });
+  assert.deepEqual(await checkEntry(client, emailUser), { kind: "member", id: user.id });
+  assert.deepEqual(await checkEntry(client, { id: user.id, app_metadata: { providers: ["kakao"] } }), { kind: "member", id: user.id });
+  assert.equal(calls, 2);
+});
+test("회원 등록 거부나 DB 설정 누락이면 앱에 입장시키지 않는다", async () => {
+  for (const result of [{ data: false, error: null }, { data: null, error: { code: "PGRST202" } }]) {
+    const client = mock(undefined, async () => ({ data: null, error: null }));
+    Object.assign(client, { rpc: () => ({ abortSignal: async () => result }) });
+    assert.deepEqual(await checkEntry(client, { id: user.id, email: "test@example.com" }), { kind: "retry" });
+  }
+});
+test("기존 회원의 재접속은 회원 등록을 반복하지 않는다", async () => {
+  const client = mock();
+  Object.assign(client, { rpc: () => { throw Error("unexpected registration"); } });
+  assert.deepEqual(await checkEntry(client, { id: user.id, email: "test@example.com" }), { kind: "member", id: user.id });
+});
+
+
+test("이메일 OTP만 완료한 신규 계정은 새로고침해도 비밀번호 생성으로 돌아간다", async () => {
+  const user = { id: "member-a", email: "new@example.com", email_confirmed_at: "2026-11-16T00:00:00Z" };
+  const client = mock(async () => ({ data: { user }, error: null }), async () => ({ data: null, error: null }));
+  Object.assign(client, { rpc: () => ({ abortSignal: async () => ({ data: false, error: null }) }) });
+  assert.deepEqual(await checkEntry(client, user), { kind: "email-signup", id: user.id, email: user.email });
+  assert.deepEqual(await checkEntry(client), { kind: "email-signup", id: user.id, email: user.email });
+});

@@ -57,6 +57,38 @@
 }
 .here-auth-welcomeBottom { margin-top: auto; padding-top: 40px; }
 .here-auth-actions { display: grid; gap: 12px; }
+.here-auth-actions .auth-provider-button {
+  padding-inline: 20px;
+  transition: scale 160ms ease, background-color 160ms ease;
+}
+.auth-provider-button .here-button__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.auth-provider-icon { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; }
+.here-auth-actions .auth-provider-kakao {
+  background-color: #fee500;
+  color: rgb(0 0 0 / 85%);
+  --f7-button-pressed-bg-color: #ecd400;
+}
+.here-auth-actions .auth-provider-google {
+  background-color: #fff;
+  color: #1f1f1f;
+  --f7-button-pressed-bg-color: #f2f2f2;
+  box-shadow: inset 0 0 0 1px #747775;
+}
+.here-auth-actions .auth-provider-button:active:not(:disabled) { background-color: var(--f7-button-pressed-bg-color); }
+.auth-provider-error { margin-bottom: 12px; font-size: 14px; line-height: 1.5; }
+.auth-email-switch { min-height: 44px; font-size: 14px; }
+.auth-sheet .auth-email-code { font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: no-preference) {
+  .auth-provider-button:active:not(:disabled) { scale: .98; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .here-auth-actions .auth-provider-button { transition: none; }
+}
 .here-auth-footnote {
   margin-top: 16px;
   padding-block: 10px;

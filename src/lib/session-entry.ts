@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-type Identity = { id: string; phone?: string };
+type Identity = { id: string; phone?: string; email?: string; email_confirmed_at?: string; app_metadata?: { providers?: string[] } };
 export type Entry = { kind: "login" } | { kind: "retry" } |
-  { kind: "member"; id: string } | { kind: "signup"; phone: string };
+  { kind: "member"; id: string } | { kind: "signup"; phone: string } | { kind: "email-signup"; id: string; email: string };
 
 // getUser restores/refreshes the SDK session and verifies its identity.
 // A timeout or failed lookup cannot establish that a session or membership is missing.
@@ -38,6 +38,14 @@ export async function checkEntry(client: SupabaseClient, verified?: Identity, ti
       .abortSignal(controller.signal).maybeSingle();
     if (error) return { kind: "retry" };
     if (data?.user_id === user.id) return { kind: "member", id: user.id };
+    if (data === null && (user.email || user.app_metadata?.providers?.some(p => p === "google" || p === "kakao"))) {
+      // DB가 auth.uid()와 검증된 Auth identity를 재확인한다. 사용자 metadata로 권한을 만들지 않는다.
+      const registered = await client.rpc("register_verified_member").abortSignal(controller.signal);
+      if (registered.error) return { kind: "retry" };
+      if (registered.data === true) return { kind: "member", id: user.id };
+      if (registered.data === false && user.email && user.email_confirmed_at) return { kind: "email-signup", id: user.id, email: user.email };
+      return { kind: "retry" };
+    }
     if (data === null && user.phone) return { kind: "signup", phone: user.phone };
     return { kind: "retry" };
   }

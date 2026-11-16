@@ -10,8 +10,9 @@ import { TextField } from "./ui/TextField";
  * 가입·재설정 모두 건너뛸 수 없다('나중에' 버튼을 두지 않는다). 그만두려면 onCancel(로그아웃)만 있다.
  * sheet에서는 시트가 다 올라온 뒤 부모(AuthGate)가 inputRef로 첫 칸에 포커스를 옮긴다(올라오는 중에 포커스하면 화면이 튄다).
  * describedBy: 첫 칸과 함께 읽을 설명(시트 위쪽 안내 문구)의 id. */
-export default function PasswordSetup({ onSaved, onCancel, signup = false, sheet = false, inputRef, describedBy }: {
-  onSaved: () => void;
+export default function PasswordSetup({ onSaved, onCancel, signup = false, sheet = false, inputRef, describedBy, onBusyChange }: {
+  onSaved: () => void | Promise<void>;
+  onBusyChange?: (busy: boolean) => void;
   onCancel?: () => Promise<void>;
   signup?: boolean;
   sheet?: boolean;
@@ -53,13 +54,14 @@ export default function PasswordSetup({ onSaved, onCancel, signup = false, sheet
     }
 
     setBusy(true);
+    onBusyChange?.(true);
     setError("");
     try {
       const { error: saveError } = await client.auth.updateUser({ password });
       if (!saveError) {
         setPassword("");
         setConfirmation("");
-        onSaved();
+        await onSaved();
       } else if (saveError.code === "weak_password" || saveError.code === "same_password") {
         fail("이전 비밀번호와 다른, 추측하기 어려운 비밀번호를 입력해 주세요.", "password");
       } else if (saveError.code === "reauthentication_needed") {
@@ -71,6 +73,7 @@ export default function PasswordSetup({ onSaved, onCancel, signup = false, sheet
       fail("비밀번호를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.", "form");
     } finally {
       setBusy(false);
+      onBusyChange?.(false);
     }
   }
 
