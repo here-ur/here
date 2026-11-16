@@ -15,7 +15,8 @@ export async function connectLive(
   persona: { name?: string; voice?: string; nickname?: string; style?: StyleId } = {},
   signal?: AbortSignal,
   accessToken?: string,
-  options: { greeting?: boolean; microphone?: boolean; opener?: string; onGreetingEnd?: () => void } = {},
+  options: { greeting?: boolean; microphone?: boolean; opener?: string; onGreetingEnd?: () => void;
+    inputStream?: MediaStream; onDiagnostic?: (event: string) => void } = {},
 ): Promise<Realtime> {
   const controller = new AbortController();
   const timing = voiceTiming();
@@ -63,7 +64,10 @@ export async function connectLive(
     remember: (text, sourceId) => {
       if (!memory || !accessToken || options.microphone === false) return;
       // Keepalive, no call-abort signal: closing voice must not cancel the last save.
-      void requestVoiceMemory({ action: "remember", text, sourceId }, accessToken).catch(error => {
+      void requestVoiceMemory({ action: "remember", text, sourceId }, accessToken).then(() => {
+        options.onDiagnostic?.("memory.accepted");
+      }).catch(error => {
+        options.onDiagnostic?.("memory.failed");
         if (closed || closing) return;
         if (error instanceof VoiceMemoryAccessError) fail("회원·이용 동의를 다시 확인하려면 새로고침해 주세요.");
         else h.onMemoryWarning?.("이번 발언의 기억 저장을 요청하지 못했어요. 음성 대화는 계속할 수 있어요.");
@@ -80,6 +84,7 @@ export async function connectLive(
       if (!response.ok) throw new Error("delegation_failed");
       const reply = await response.json() as LiveDelegateReply;
       if (typeof reply.reply !== "string" || !reply.reply.trim() || reply.reply.length > 12_000) throw new Error("invalid_delegation");
+      options.onDiagnostic?.(`delegation.completed:sources=${reply.sources?.length ?? 0}`);
       return reply;
     },
     result: reply => {
@@ -165,6 +170,7 @@ export async function connectLive(
     let event: Record<string, unknown>;
     try { event = JSON.parse(message.data); } catch { return; }
     if (!event || typeof event !== "object") return;
+    if (event.type === "session.delegation.created" || event.type === "session.started" || event.type === "session.closed") options.onDiagnostic?.(event.type);
     if (event.type === "session.started" && !started) {
       started = true; clearTimeout(startTimer); timing("channel_ready");
       applyMic(); startGreeting(); updateStatus(mic && requestedMic ? "listening" : "idle");
@@ -208,7 +214,7 @@ export async function connectLive(
     h.onStatus("connecting");
     if (options.microphone !== false) {
       try {
-        mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+        mic = options.inputStream ?? await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
         if (closed || closing) { mic.getTracks().forEach(t => t.stop()); throw new DOMException("Aborted", "AbortError"); }
         mic.getTracks().forEach(track => { track.enabled = false; peer.addTrack(track, mic!); });
       } catch (error) {

@@ -79,6 +79,14 @@ test("failed session exchange stops the acquired microphone", async t => {
   await assert.rejects(connectLive(m.handlers, {}, undefined, "test-token", { greeting: false }));
   assert.equal(m.peerClosed(), true); assert.equal(m.track.stops, 1);
 });
+test("synthetic audio uses the same Live transport without opening the device microphone", async t => {
+  const m = setup(t, false, async () => { throw new Error("Device microphone must not open"); });
+  const rt = await connectLive(m.handlers, {}, undefined, "test-token", { greeting: false, inputStream: m.stream as unknown as MediaStream });
+  assert.equal(rt.hasMic, true);
+  assert.equal(m.requests[0].url, "/api/live");
+  rt.close(); m.emit({type:"session.closed"});
+  assert.equal(m.track.stops, 1);
+});
 test("late microphone permission after cancel never starts a paid session", async t => {
   let resolve!: (value: unknown) => void;
   const m = setup(t, false, () => new Promise(r => { resolve = r; }));
