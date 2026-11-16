@@ -21,7 +21,6 @@ import "./first-run.css";
 type Step = "login" | "signup" | "signup-code" | "recovery" | "recovery-code" | "new-password";
 type Field = "email" | "password" | "confirmation" | "code";
 const RESEND_SECONDS = 60;
-const EMAIL_AUTH_ENABLED = process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_EMAIL_AUTH_ENABLED === "true";
 
 export default function AuthGate({ children }: { children: (userId: string, signOut: () => Promise<void>) => React.ReactNode }) {
   const client = browserSupabase();
@@ -287,10 +286,6 @@ export default function AuthGate({ children }: { children: (userId: string, sign
         {client ? <div className="here-auth-actions">
           <Button className="auth-provider-button auth-provider-kakao" tone="ink" fullWidth loading={busy && provider === "kakao"} disabled={busy} onClick={() => { void startSocial("kakao"); }}><AuthProviderIcon provider="kakao" />카카오로 시작하기</Button>
           <Button className="auth-provider-button auth-provider-google" tone="ink" fullWidth loading={busy && provider === "google"} disabled={busy} onClick={() => { void startSocial("google"); }}><AuthProviderIcon provider="google" />구글로 시작하기</Button>
-          <Button className="auth-provider-button" tone="ink" fullWidth disabled={busy} onClick={() => {
-            if (EMAIL_AUTH_ENABLED) openForm("signup");
-            else setError("이메일 로그인을 준비 중이에요. 카카오나 구글로 시작해 주세요.");
-          }}><AuthProviderIcon provider="email" />이메일로 시작하기</Button>
         </div> : <p role="status" className="here-auth-unavailable">로그인을 준비하고 있어요.<br />잠시 후 다시 방문해 주세요.</p>}
         <p className="here-auth-footnote">처음이라면 가입 후 이용 동의를 진행해요.</p>
       </div>
