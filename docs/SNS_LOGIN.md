@@ -50,7 +50,7 @@
 
 운영 Supabase와 운영 배포 변경 없음. 카카오 실제 인증·회원 등록 검증 완료. Google 실제 인증·회원 등록 검증 완료. 이메일 SMTP 설정은 남음.
 
-현재 개발 DB: Email/Confirm email/Kakao/Google 활성, Custom SMTP 미연결(2026-11-16 확인).
+현재 개발 DB: Email/Confirm email/Kakao/Google 활성, Phone 비활성, Custom SMTP 미연결(2026-11-16 확인).
 기본 메일의 링크를 그대로 쓰면 앱의 인증번호 단계와 맞지 않으므로 SMTP·템플릿 설정을 완료한 뒤 가입 시험.
 
 ### Confirm sign up / Magic link or OTP
@@ -113,3 +113,11 @@
 - 배포 대상: `feature/sns-login` → `dev` / `https://here-dev.vercel.app`
 - 이메일 발송 대기: Here 소유 도메인 없음. 배포에서는 이메일 버튼에 준비 중 안내 표시
 - SMTP·인증번호 템플릿 설정 후 `NEXT_PUBLIC_EMAIL_AUTH_ENABLED=true`로 재배포하여 이메일 가입 활성화. 로컬 개발에서는 화면 확인 가능
+
+## 개발 배포
+
+- 2026-11-16: `0d044a1` 개발 배포 Ready, `here-dev.vercel.app` 연결 확인
+- 기존 휴대폰 로그인: 개발 Supabase Phone provider 비활성화 완료
+- 이메일 준비 중 안내: 개발 배포 화면에서 확인
+- 배포 Google 시험: Here 공용 계정 인증 → Here 이용 동의 화면 복귀 확인
+- 배포 Kakao 시험: Here Dev 동의 화면 진입 확인. 추가 개인정보 제공 동의는 진행하지 않음
