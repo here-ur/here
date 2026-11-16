@@ -11,7 +11,8 @@ import { waitForCatYawn } from "@/lib/cat-yawn";
 import { type Msg, type Session, loadStoredSessions, pruneLog, saveSession } from "@/lib/log";
 import { DEFAULT_COMPANION, type Profile, josa } from "@/lib/onboarding";
 import { useAccountProfile } from "./use-account-profile";
-import { type Realtime, connectRealtime } from "@/lib/realtime";
+import { type Realtime } from "@/lib/realtime";
+import { connectLive } from "@/lib/live";
 import { muteSfx } from "@/lib/sfx";
 import { displayNameForServer } from "@/lib/friends";
 import { requestQuotaStatus } from "@/lib/quota-status";
@@ -279,7 +280,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
       setYawning(false);
       const token = await accessToken();
       if (!current()) return;
-      const conn = await connectRealtime({
+      const conn = await connectLive({
         onOutputLevel: (level, shape) => { if (current()) { outputLevel.current = level; outputShape.current = shape; } },
         onStatus: (next) => { if (current()) setStatus(next); },
         onUserPartial: (text) => {

@@ -2,6 +2,16 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { chatResponse, type ChatServerConfig } from "./chat-server.ts";
+import { CAT_VOICE_DELIVERY } from "./companion-prompt.ts";
+
+test("Live delegation uses voice persona while normal chat retains its prompt", async () => {
+  for (const mode of [undefined, "voice"] as const) {
+    const { config, calls } = provider();
+    const response = await chatResponse(request(), { ...config, mode });
+    assert.equal(response.status, 200);
+    assert.equal(String(calls[0].body.instructions).includes(CAT_VOICE_DELIVERY), mode === "voice");
+  }
+});
 
 const TEST_KEY = "test-runyour-credential-not-a-real-key";
 test("웹검색 도구 실행 후 답변 생성·출처 표시, 검색 내용은 개인 기억에 저장하지 않는다", async () => {

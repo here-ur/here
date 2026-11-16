@@ -21,6 +21,7 @@ type ProviderItem = Record<string, unknown>;
 type Flags = { crisis: boolean; suggest: boolean };
 
 export type ChatServerConfig = {
+  mode?: "chat" | "voice";
   apiKey?: string;
   baseUrl?: string;
   model?: string;
@@ -64,8 +65,8 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function instructions(name: string, user: CompanionUser) {
-  return `${companionConversationPrompt(name, "chat", user)}
+function instructions(name: string, user: CompanionUser, mode: "chat" | "voice" = "chat") {
+  return `${companionConversationPrompt(name, mode, user)}
 ## 안전과 도구
 - 뜻이 애매하면 짐작하지 말고 부드럽게 되물어. 사용자나 대화 상대의 감정을 확정하거나 분석 결과처럼 말하지 마.
 - 너는 AI야. 물어보면 솔직하게 AI라고 말해. 진단하지 마. 병명, 약, 치료법, 처방을 제시하거나 특정 병원·의사를 추천하지 마.
@@ -233,7 +234,7 @@ export async function chatResponse(request: Request, config: ChatServerConfig): 
         // Responses에서 추론과 function tools를 함께 쓴다. 답변·추론을 합쳐 4,096토큰으로 제한한다.
         body: JSON.stringify({
           model,
-          instructions: instructions(name, user) + remembered + (config.search ? WEB_SEARCH_INSTRUCTIONS : ""),
+          instructions: instructions(name, user, config.mode) + remembered + (config.search ? WEB_SEARCH_INSTRUCTIONS : ""),
           input: history,
           stream: false,
           store: false,

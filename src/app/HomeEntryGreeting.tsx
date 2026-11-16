@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { connectRealtime } from "@/lib/realtime";
+import { connectLive } from "@/lib/live";
 import { browserSupabase } from "@/lib/supabase";
 
 /** Home-entry audio only. Never requests microphone access or stores a conversation. */
@@ -25,7 +25,7 @@ export default function HomeEntryGreeting({ name, voice, opener, onSpeaking, onD
           const { data } = await browserSupabase()!.auth.getSession();
           if (controller.signal.aborted) return;
           if (!data.session) { finish(); return; }
-          await connectRealtime({
+          await connectLive({
             onOutputLevel,
             onStatus: status => { if (!controller.signal.aborted) onSpeaking(status === "speaking"); },
             onUserText: () => {}, onUserPartial: () => {},

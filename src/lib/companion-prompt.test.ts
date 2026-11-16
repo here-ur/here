@@ -53,7 +53,7 @@ test("각 요청 경로가 같은 이름·말투 빌더를 사용하며 안전 �
   const chat = readFileSync(new URL("./chat-server.ts", import.meta.url), "utf8");
   const voice = readFileSync(new URL("../app/api/realtime/route.ts", import.meta.url), "utf8");
   const client = readFileSync(new URL("./realtime.ts", import.meta.url), "utf8");
-  assert.match(chat, /companionConversationPrompt\(name, "chat", user\)/);
+  assert.match(chat, /companionConversationPrompt\(name, mode, user\)/);
   assert.match(voice, /companionConversationPrompt\(name, "voice", user\)/);
   assert.match(client, /homeEntryGreetingPrompt\(persona.name, options.opener\)/);
   assert.doesNotMatch(voice, /너는 "몽글이"|"몽글이" 대신/);
