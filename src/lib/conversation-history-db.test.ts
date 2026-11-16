@@ -14,7 +14,7 @@ test('대화 DB: 계정 격리·동의·멱등 저장·커서·30일 원문 삭�
  const accept=()=>val("select public.accept_memory_consent('2026-11-16-dev-v2',true,true) v");
  try {
   await db.exec(`create role anon;create role authenticated;create schema auth;create schema extensions;create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public,extensions to authenticated,anon;create table public.members(user_id uuid primary key);insert into public.members values('${a}'),('${b}');`);
-  for(const f of ['0003_conversation_memory.sql','0005_consent_events.sql','0012_conversation_history.sql','0014_conversation_message_replay.sql']) await db.exec(readFileSync(new URL('../../supabase/migrations/'+f,import.meta.url),'utf8'));
+  for(const f of ['0003_conversation_memory.sql','0005_consent_events.sql','0012_conversation_history.sql','0014_conversation_message_replay.sql','0015_conversation_summary_version.sql']) await db.exec(readFileSync(new URL('../../supabase/migrations/'+f,import.meta.url),'utf8'));
   await user(a);
   assert.equal(await val('select public.conversation_is_enabled() v'),false);
   await assert.rejects(val('select public.save_conversation_batch($1,$2::jsonb) v',[uuid(1),JSON.stringify([{id:uuid(1),role:'user',content:'차 좋아해',at}])]));
@@ -29,7 +29,7 @@ test('대화 DB: 계정 격리·동의·멱등 저장·커서·30일 원문 삭�
   assert.equal(ids.length,65);assert.equal(new Set(ids).size,65);
   const job=await val('select public.claim_conversation_batch($1) v',[uuid(1)]) as {id:string;lease:string}|null;assert.ok(job);
   const v=JSON.stringify(Array.from({length:1536},(_,i)=>i?0:1));
-  assert.equal(await val("select public.finish_memory($1,$2,'가상 대화를 나눴다.',$3::extensions.vector,'luna','memory-v1') v",[job.id,job.lease,v]),true);
+  assert.equal(await val("select public.finish_memory($1,$2,'가상 대화를 나눴다.',$3::extensions.vector,'luna','conversation-v1') v",[job.id,job.lease,v]),true);
   await user(b);await accept();
   assert.equal((await db.query('select * from public.conversation_messages')).rows.length,0);
   assert.equal(await val('select public.claim_conversation_batch($1) v',[uuid(1)]),null);

@@ -33,7 +33,7 @@ export async function processConversationMemories(client: SupabaseClient, config
       const retry={...config,fetch:memoryRetryFetch(config.fetch)};
       const summary=await summarizeConversation(job.messages,retry,signal,job.context);
       const vector=await embed(summary,retry,signal);
-      const {data:ok,error:saveError}=await client.rpc('finish_memory',{p_id:job.id,p_lease:job.lease,p_summary:summary,p_embedding:JSON.stringify(vector),p_summary_model:config.summaryModel||DEFAULT_SUMMARY_MODEL,p_prompt_version:'memory-v1'}).abortSignal(signal);
+      const {data:ok,error:saveError}=await client.rpc('finish_memory',{p_id:job.id,p_lease:job.lease,p_summary:summary,p_embedding:JSON.stringify(vector),p_summary_model:config.summaryModel||DEFAULT_SUMMARY_MODEL,p_prompt_version:'conversation-v1'}).abortSignal(signal);
       if(saveError || !ok) throw new Error('summary_save_failed');
     } catch {
       await client.rpc('fail_memory',{p_id:job.id,p_lease:job.lease}).abortSignal(AbortSignal.timeout(3000));
