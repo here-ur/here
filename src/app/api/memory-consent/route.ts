@@ -22,6 +22,7 @@ export async function POST(request: Request) {
   if (!memoryEnabled(process.env)) return json({ error: "기억 기능이 아직 열리지 않았어요." }, 503);
   try {
     const body = await readSmallJson(request);
+    if (body && typeof body === "object" && "version" in body && body.version !== MEMORY_CONSENT_VERSION) return json({ error: "동의 내용이 바뀌었어요. 새로고침한 뒤 새 내용을 확인해 주세요.", code: "consent_version_changed", version: MEMORY_CONSENT_VERSION }, 409);
     if (!validMemoryConsent(body)) return json({ error: "필수 동의 항목을 각각 확인해 주세요." }, 400);
     const { data, error } = await access.supabase.rpc("accept_memory_consent", {
       p_version: MEMORY_CONSENT_VERSION, p_privacy: true, p_sensitive: true,

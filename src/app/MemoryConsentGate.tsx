@@ -13,6 +13,8 @@ import { MEMORY_CONSENT_VERSION } from "@/lib/memory-consent";
 import { consentDisplayKey, consentDisplayStorage, hasConsentDisplayHint, setConsentDisplayHint } from "@/lib/consent-display-cache";
 import "./first-run.css";
 
+class ConsentVersionError extends Error {}
+
 async function consentRequest(method: "GET" | "POST") {
   // Bound session refresh as well as the HTTP request, not just fetch.
   const controller = new AbortController();
@@ -31,6 +33,18 @@ async function consentRequest(method: "GET" | "POST") {
       cache: "no-store", signal: controller.signal,
     });
     const body = await response.json();
+    if (typeof body.version === "string" && body.version !== MEMORY_CONSENT_VERSION) {
+      // An already-open tab may still contain the prior notice. Never submit it as consent to a newer policy.
+      if (method === "GET") {
+        try {
+          if (sessionStorage.getItem("here:consent-reload") !== body.version) {
+            sessionStorage.setItem("here:consent-reload", body.version);
+            window.location.reload();
+          }
+        } catch { /* A manual refresh still works when storage is unavailable. */ }
+      }
+      throw new ConsentVersionError("동의 내용이 바뀌었어요. 새로고침한 뒤 새 내용을 확인해 주세요.");
+    }
     if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "동의 상태를 확인하지 못했어요.");
     return body;
   })()]); } finally { clearTimeout(timer!); }
@@ -101,7 +115,7 @@ export default function MemoryConsentGate({ children, signOut, userId = "", prev
       if (body.ok !== true) throw new Error("동의를 저장하지 못했어요.");
       setConsentDisplayHint(consentDisplayStorage(), userId, true);
       await movePage("enter", () => setStatus("ready"));
-    } catch { setError("동의를 저장하지 못했어요. 다시 시도해 주세요."); }
+    } catch (error) { setError(error instanceof ConsentVersionError ? error.message : "동의를 저장하지 못했어요. 다시 시도해 주세요."); }
     finally { accepting.current = false; setBusy(false); }
   }
 
