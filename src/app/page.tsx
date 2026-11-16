@@ -1,5 +1,6 @@
 "use client";
 
+import { useConversationHistory } from "./use-conversation-history";
 import { Button } from "./ui/Button";
 import { safeHomeOpener, withHomeOpener } from "@/lib/home-opener";
 
@@ -102,6 +103,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   const dismissHint = useCallback(() => { markHomeHintSeen(); setShowHint(false); }, []);
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
+  const history = useConversationHistory(userId, messages);
   const [live, setLive] = useState(""); // 몽글이가 말하는 중인 문장
   const [status, setStatus] = useState<Status>("idle");
   const [crisis, setCrisis] = useState(false);
@@ -188,8 +190,10 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
 
 
   function add(msg: Msg) {
+    const saved = { ...msg, id: crypto.randomUUID(), at: msg.at ?? Date.now() };
+    history.append([saved]);
     setMessages((prev) => {
-      const next = [...withHomeOpener(prev, openingLine), msg];
+      const next = [...withHomeOpener(prev, openingLine), saved];
       if (session.current) saveSession({ ...session.current, messages: next });
       return next;
     });
@@ -218,16 +222,19 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
     const controller = new AbortController();
     chatRequest.current = controller;
     headlineLocked.current = true;
-    const next: Msg[] = [...withHomeOpener(messages, openingLine), { role: "user", content: text, at: Date.now() }];
+    const next: Msg[] = [...withHomeOpener(messages, openingLine), { id: crypto.randomUUID(), role: "user", content: text, at: Date.now() }];
     setPendingText(text);
     setDraft("");
     setError("");
     setStatus("thinking");
     try {
       const token = await accessToken();
-      const result = await requestChat(next.slice(-60), { name: profile?.companion ?? DEFAULT_COMPANION, nickname: profile?.nickname, style: profile?.style }, controller.signal, token);
+      const assistantId=crypto.randomUUID();
+      const assistantAt=Math.max(Date.now(), next.at(-1)!.at!+1);
+      const result = await requestChat(next.slice(-60), { name: profile?.companion ?? DEFAULT_COMPANION, nickname: profile?.nickname, style: profile?.style }, controller.signal, token, {batchId:crypto.randomUUID(),userMessageId:next.at(-1)!.id!,assistantMessageId:assistantId,userAt:next.at(-1)!.at!,assistantAt});
       if (chatRequest.current !== controller) return;
-      const completed: Msg[] = [...next, { role: "assistant", content: result.reply, at: Date.now() }];
+      const completed: Msg[] = [...next, { id: assistantId, role: "assistant", content: result.reply, at: assistantAt }];
+      history.append(completed.slice(-2) as import("@/lib/conversation-history").HistoryMessage[]);
       setMessages(completed);
       if (session.current) saveSession({ ...session.current, messages: completed });
       if (result.crisis) setCrisis(true);
@@ -289,14 +296,12 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
           if (hasCrisisSignal(text)) setCrisis(true);
         },
         onUserText: (text) => {
-          if (!current()) return;
           setHearing(false);
           if (hasCrisisSignal(text)) setCrisis(true);
           add({ role: "user", content: text, at: Date.now() });
         },
         onAssistantPartial: (text) => { if (current()) setLive(text); },
         onAssistantText: (text) => {
-          if (!current()) return;
           setLive("");
           add({ role: "assistant", content: text, at: Date.now() });
         },
@@ -308,7 +313,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
         onError: (message) => { if (current()) setError(message); },
         onMemoryWarning: (message) => { if (current()) setMemoryWarning(message); },
         onSearchSources: (sources) => { if (current()) setSearchSources(sources); },
-      }, { name: profile?.companion, voice: profile?.voice, nickname: profile?.nickname || undefined, style: profile?.style }, controller.signal, token, { greeting: false, opener: messages.length ? undefined : openingLine });
+      }, { name: profile?.companion, voice: profile?.voice, nickname: profile?.nickname || undefined, style: profile?.style }, controller.signal, token, { historyManaged: true, greeting: false, opener: messages.length ? undefined : openingLine });
       if (!current()) { conn.close(); return; }
       rt.current = conn;
       conn.setSound(true);
@@ -485,10 +490,11 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
         outputShape={outputShape}
         chat={{
           open: typing,
-          messages: pendingText ? [...messages, { role: "user", content: pendingText }] : messages,
+          messages: pendingText ? [...history.messages, { role: "user", content: pendingText }] : history.messages,
+          history: { loaded: history.loaded, loading: history.loading, hasMore: history.hasMore, error: history.error, onOlder: history.loadOlder },
           draft,
           sending: Boolean(pendingText),
-          error: voiceMode ? "" : error,
+          error: voiceMode ? "" : error || history.saveError,
           state: companionState({ error: Boolean(error), speaking: !homeGreetingDone && homeSpeaking, thinking: Boolean(pendingText), composing: typing && Boolean(draft.trim()) }),
           onDraft: setDraft,
           onSend: () => { void sendChat(); },
@@ -504,7 +510,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
           error,
           caption: captions ? lastAssistant : undefined,
           sources: searchSources,
-          warning: memoryWarning,
+          warning: memoryWarning || history.saveError,
           hearing,
           onEnd: stopVoice,
           onMic: () => {

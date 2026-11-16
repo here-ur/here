@@ -388,3 +388,12 @@ test("모르는 대화 방식·빈 이름은 대화를 막지 않고 지시문�
     assert.doesNotMatch(String(calls[0].body.instructions), /## 사용자가 처음 만날 때 정한 것/);
   }
 });
+
+test('서버는 생성된 답변까지 원문 저장에 전달하고 저장 장애에도 답변은 보존한다',async()=>{
+ let exchange:unknown;
+ const {config}=provider();
+ const response=await chatResponse(request(),{...config,onExchange:async(messages,reply)=>{exchange={messages,reply};}});
+ assert.equal(response.status,200);assert.deepEqual(exchange,{messages:basic.messages,reply:'오늘 어떤 일이 있었어?'});
+ const failed=await chatResponse(request(),{...provider().config,onExchange:async()=>{throw new Error('storage failed');}});
+ assert.equal(failed.status,200);
+});

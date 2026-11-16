@@ -2,7 +2,7 @@
 
 import { TextArea } from "./ui/Controls";
 import { Button } from "./ui/Button";
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import Image from "next/image";
 import type { Msg } from "@/lib/log";
@@ -43,6 +43,7 @@ export type HomeVoiceControls = {
 export type HomeChatControls = {
   open: boolean;
   messages: Msg[];
+  history?: { loaded: boolean; loading: boolean; hasMore: boolean; error: string; onOlder: () => Promise<void> };
   draft: string;
   sending: boolean;
   error: string;
@@ -133,7 +134,7 @@ export default function HomeScreen({
   const wasVoiceActive = useRef(Boolean(voice));
   const name = profile.companion;
   const expression = catExpression(chat.messages.findLast((message) => message.role === "user")?.content ?? "", Boolean(notice));
-  const hasMessages = chat.open && !voice && (chat.messages.length > 0 || chat.sending);
+  const hasMessages = chat.open && !voice && (chat.messages.length > 0 || chat.sending || Boolean(chat.history));
   const chatting = chat.open && !voice; // 글 대화 중: 몽글이를 입력창 바로 위로 작게 옮긴다
   const yawning = voice?.state === "yawning"; // 음성을 열기 직전 하품(dev #39). 끝나면 연결 상태로 넘어간다
   // 처음 들어갈 때는 하품을 마친 뒤 커진다. 이미 커진 뒤(오류 뒤 다시 시도)의 하품은 그 크기 그대로 한다.
@@ -224,11 +225,31 @@ export default function HomeScreen({
     return () => observer.disconnect();
   }, [chat.draft, chat.open]);
 
-  useEffect(() => {
+  const beforePrepend = useRef<{ height: number; top: number } | null>(null);
+  const lastVisibleMessage = useRef<string | undefined>(undefined);
+  const followBottom = useRef(true);
+  const wheelAt = useRef(0);
+  const touchStart = useRef<number | null>(null);
+  const lastMessage = chat.messages.at(-1);
+  const lastKey = lastMessage?.id ?? (lastMessage ? `${lastMessage.role}:${lastMessage.content}` : undefined);
+  useLayoutEffect(() => {
     const list = messageListRef.current;
-    if (!list) return;
-    list.scrollTo({ top: list.scrollHeight, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-  }, [chat.messages.length, chat.sending]);
+    if (!list) { lastVisibleMessage.current = undefined; return; }
+    if (beforePrepend.current && !chat.history?.loading) {
+      list.scrollTop = beforePrepend.current.top + list.scrollHeight - beforePrepend.current.height;
+      beforePrepend.current = null;
+    } else if (lastKey !== lastVisibleMessage.current && (followBottom.current || !lastVisibleMessage.current)) {
+      list.scrollTop = list.scrollHeight;
+    }
+    lastVisibleMessage.current = lastKey;
+  }, [lastKey, chat.messages.length, chat.history?.loading, chat.open]);
+  async function older() {
+    const list = messageListRef.current;
+    if (!list || !chat.history || chat.history.loading || beforePrepend.current) return;
+    if (chat.history.loaded && !chat.history.hasMore && !chat.history.error) return;
+    beforePrepend.current = { height: list.scrollHeight, top: list.scrollTop };
+    await chat.history.onOlder();
+  }
 
   function expandText() {
     // 사용자 클릭 안에서 포커스를 옮겨 모바일에서도 키보드가 바로 열린다.
@@ -269,11 +290,24 @@ export default function HomeScreen({
       {notice && <div className="home-safety absolute inset-x-gutter top-[18%] z-10">{notice}</div>}
       {spotlight && resting && !notice && <div className="absolute inset-x-gutter top-[calc(env(safe-area-inset-top)+76px)] z-10">{spotlight}</div>}
 
-      {hasMessages && <div ref={messageListRef} className="home-messages" role="log" aria-label="대화 내용" aria-live="polite" aria-relevant="additions text">
-        {chat.messages.map((message, index) => <div key={index} className="home-message" data-role={message.role}>
+      {hasMessages && <div ref={messageListRef} className="home-messages" role="log" aria-label="대화 내용" aria-live="off" tabIndex={0}
+        onScroll={e => { const el=e.currentTarget; followBottom.current=el.scrollHeight-el.scrollTop-el.clientHeight<80; }}
+        onWheel={e => { const now=Date.now(); const fresh=now-wheelAt.current>180; wheelAt.current=now; if(e.deltaY<0 && e.currentTarget.scrollTop<=4 && fresh) void older(); }}
+        onTouchStart={e => { touchStart.current=e.currentTarget.scrollTop<=4?e.touches[0].clientY:null; }}
+        onTouchEnd={e => { if(touchStart.current!==null && e.changedTouches[0].clientY-touchStart.current>45) void older(); touchStart.current=null; }}>
+        {chat.history && <div className="home-history-status">
+          {chat.history.loading ? <span role="status">이전 대화 불러오는 중…</span> : chat.history.error ?
+            <Button variant="plain" onClick={()=>void older()}>{chat.history.error}</Button> : chat.history.hasMore ?
+            <Button variant="plain" onClick={()=>void older()}>위로 한 번 더 올려 이전 대화 보기</Button> :
+            <span>{chat.messages.length ? "최근 30일 대화의 시작이에요" : "이야기를 시작하면 여기에 대화가 남아요"}</span>}
+        </div>}
+        {chat.messages.map((message, index) => <Fragment key={message.id ?? index}>
+          {message.at && (index===0 || new Date(message.at).toDateString()!==new Date(chat.messages[index-1].at??0).toDateString()) &&
+            <time className="home-history-date" dateTime={new Date(message.at).toISOString()}>{new Date(message.at).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'})}</time>}
+          <div className="home-message" data-role={message.role}>
           <span className="sr-only">{message.role === "user" ? "나" : name}: </span>
           {message.role === "assistant" ? <div className="home-message-bubble"><ChatMarkdown content={message.content} /></div> : <p>{message.content}</p>}
-        </div>)}
+        </div></Fragment>)}
         {chat.sending && <div className="home-message" data-role="assistant">
           <span className="sr-only">{name}가 생각하는 중</span>
           <p className="flex items-center gap-1 py-4" aria-hidden="true">{[0, 1, 2].map((dot) => <i key={dot} className="size-1.5 rounded-full bg-cat-muted motion-safe:animate-dot" style={{ animationDelay: `${dot * 150}ms` }} />)}</p>

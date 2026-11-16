@@ -38,17 +38,19 @@ export async function requestChat(
   persona: ChatPersona,
   signal?: AbortSignal,
   accessToken?: string,
+  history?: { batchId: string; userMessageId: string; assistantMessageId: string; userAt: number; assistantAt: number },
 ): Promise<ChatReply> {
   let response: Response;
   try {
     response = await fetch("/api/chat", {
       method: "POST",
       credentials: "same-origin",
-      headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+      headers: { "Content-Type": "application/json", "X-Here-History": "v1", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
       // 메시지 시각 같은 기기 전용 정보는 빼고 role·content만 보낸다. 이름·대화 방식은 지시문에만 쓰인다.
       body: JSON.stringify({
         messages: messages.map(({ role, content }) => ({ role, content })),
         name: persona.name,
+        ...(history ? { history } : {}),
         ...(persona.nickname?.trim() ? { nickname: persona.nickname.trim() } : {}),
         ...(persona.style ? { style: persona.style } : {}),
       }),

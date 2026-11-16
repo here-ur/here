@@ -3,7 +3,7 @@
 import { accountKey } from "./local-scope.ts";
 
 // at은 메시지를 남긴 시각이다(기기에만 두고 AI 요청에는 보내지 않는다). 예전 기록에는 없어서 세션 시작 시각으로 대신한다.
-export type Msg = { role: "user" | "assistant"; content: string; at?: number };
+export type Msg = { id?: string; role: "user" | "assistant"; content: string; at?: number };
 export type Session = { id: string; startedAt: number; messages: Msg[] };
 
 const KEY = "here.log.v1";

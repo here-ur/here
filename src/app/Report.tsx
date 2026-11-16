@@ -12,7 +12,6 @@ import {
   type SkyId,
   SKIES,
   applySkyResults,
-  dayMessages,
   effectiveSky,
   loadReport,
   loadSkyChoice,
@@ -31,8 +30,7 @@ import {
 } from "@/lib/report";
 import { Icon } from "./art";
 import Buddy from "./Buddy";
-import { Bubbles, Crisis109, Shell, type Who } from "./Conversation";
-import Log from "./Log";
+import { Crisis109, Shell, type Who } from "./Conversation";
 import Garden from "./Garden";
 import SkyBackdrop from "./SkyBackdrop";
 import Sheet from "./Sheet";
@@ -105,13 +103,13 @@ export type ReportViewProps = {
   onBack: () => void;
   onPickSky: (date: string, sky: SkyId | undefined) => void;
   onChoice: (choice: "on" | "off") => void;
-  onArchive: () => void;
+  onArchive?: () => void;
   onSeed?: (opener: string) => void;
   onDecorate?: () => void;
 };
 
 /** 인사이트·라이브러리 화면(달·하루·하늘 바꾸기). 저장·요청은 하지 않아서 개발 미리보기에서도 그대로 쓴다. */
-export function ReportView({ mode, who, days, sessions, now, choice, skyState, onBack, onPickSky, onChoice, onArchive, onSeed, onDecorate }: ReportViewProps) {
+export function ReportView({ mode, who, days, sessions, now, choice, skyState, onBack, onPickSky, onChoice, onSeed, onDecorate }: ReportViewProps) {
   const months = reportMonths(days, now);
   const [monthIndex, setMonthIndex] = useState(months.length - 1);
   const [tab, setTab] = useState<Tab>("sky");
@@ -428,17 +426,14 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
             <p className="mt-6 text-center text-t3 text-ios-secondary">{current.month}월엔 이야기한 날이 없어요.</p>
           )}
 
-          <Button variant="plain" onClick={onArchive} className="ui-press mt-4 flex min-h-14 w-full items-center justify-between rounded-r5 bg-white px-5 text-left shadow-[0_4px_16px_rgba(28,38,80,.05)]">
-            <span className="text-t5 font-bold text-[#1F2A55]">대화 기록 모두 보기 <span className="ml-1 text-t3 font-medium text-ios-secondary">최근 30일</span></span>
-            <span className="rotate-180 text-ios-secondary"><Icon name="back" size={18} /></span>
-          </Button>
+
         </>}
         </div>
         </>}
 
         <p className="mt-6 flex items-start justify-center gap-text text-t2 text-pretty text-ios-secondary">
           <Icon name="lock" size={14} />
-          대화 원문은 이 기기에 30일, 날짜별 숫자(하늘·자주 한 말 포함)는 최대 1년 남아요. 서버에는 저장하지 않아요.
+          최근 30일 대화는 홈의 글 대화에서 볼 수 있어요. 날짜별 숫자와 하늘 기록은 이 기기에 최대 1년 남아요.
         </p>
       </div>
     </Shell>
@@ -453,7 +448,6 @@ function DayView({
 }) {
   const { m, d, weekday } = dateParts(date);
   const sky = day && effectiveSky(day);
-  const messages = dayMessages(sessions, date);
   const saidTimes = sessions.flatMap((s) => s.messages.filter((msg) => msg.role === "user").map((msg) => msgTime(msg, s))).filter((t) => localDate(t) === date);
   const started = saidTimes.length ? new Date(Math.min(...saidTimes)) : null;
   return (
@@ -504,24 +498,7 @@ function DayView({
           </div>
         </dl>
 
-        <section className={`${card} mt-4`} aria-labelledby="report-day-talk">
-          <h2 id="report-day-talk" className="text-t5 font-bold text-[#1F2A55]">그날 대화</h2>
-          {messages.length ? (
-            <details className="group mt-3">
-              <summary className="ui-press flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-r2 text-t4 font-bold text-[#1F2A55] [&::-webkit-details-marker]:hidden">
-                대화 보기 · {day?.said ?? 0}번 말함
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="ui-transition group-open:rotate-180">
-                  <path d="M6 9.5l6 6 6-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </summary>
-              <div className="mt-3 rounded-r4 bg-[#F5F7FB] p-3 motion-safe:animate-fade">
-                <Bubbles who={who} messages={messages} follow={false} />
-              </div>
-            </details>
-          ) : (
-            <p className="mt-3 rounded-r3 bg-ios-group p-3 text-t3 text-pretty text-[#3D4559]">30일이 지나 대화 원문은 사라지고 숫자만 남아 있어요.</p>
-          )}
-        </section>
+
         <p className="mt-6 text-center text-t1 text-ios-secondary">{josa(who.name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
       </div>
       {sheet && day && !day.crisis && (
@@ -573,11 +550,10 @@ function SkySheet({ date, day, deep, onClose, onPick }: { date: string; day: Day
 /** 인사이트·라이브러리: 열 때 원문을 날짜별 숫자로 옮기고, 허락했으면 지난 날 하늘을 한 번에 골라 둔다. */
 export default function Report({ mode, who, onBack, accessToken, onSeed, onDecorate }: { mode: ReportMode; who: Who; onBack: () => void; accessToken: () => Promise<string>; onSeed?: (opener: string) => void; onDecorate?: () => void }) {
   const [now] = useState(() => Date.now());
-  const [sessions, setSessions] = useState<Session[]>(() => loadLog());
+  const [sessions] = useState<Session[]>(() => loadLog());
   const [days, setDays] = useState<DayStat[]>(() => syncReport(loadStoredSessions(), Date.now(), [who.name]));
   const [choice, setChoice] = useState(() => loadSkyChoice());
   const [skyState, setSkyState] = useState<"idle" | "picking" | "failed">("idle");
-  const [archive, setArchive] = useState(false);
   const tokenRef = useRef(accessToken);
   useEffect(() => { tokenRef.current = accessToken; }, [accessToken]);
 
@@ -608,9 +584,6 @@ export default function Report({ mode, who, onBack, accessToken, onSeed, onDecor
     return () => { window.clearTimeout(timer); controller.abort(); };
   }, [choice, sessions, now]);
 
-  if (archive) {
-    return <Log who={who} title="대화 기록" back="라이브러리로" onBack={() => setArchive(false)} onCleared={() => { setSessions([]); setDays([]); }} />;
-  }
 
   return (
     <ReportView
@@ -624,7 +597,6 @@ export default function Report({ mode, who, onBack, accessToken, onSeed, onDecor
       choice={choice}
       skyState={skyState}
       onBack={onBack}
-      onArchive={() => setArchive(true)}
       onChoice={(next) => { saveSkyChoice(next); setChoice(next); }}
       onPickSky={(date, sky) => {
         const next = setMySky(loadReport(), date, sky);

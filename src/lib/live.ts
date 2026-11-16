@@ -16,7 +16,7 @@ export async function connectLive(
   signal?: AbortSignal,
   accessToken?: string,
   options: { greeting?: boolean; microphone?: boolean; opener?: string; onGreetingEnd?: () => void;
-    inputStream?: MediaStream; onDiagnostic?: (event: string) => void } = {},
+    historyManaged?: boolean; inputStream?: MediaStream; onDiagnostic?: (event: string) => void } = {},
 ): Promise<Realtime> {
   const controller = new AbortController();
   const timing = voiceTiming();
@@ -62,7 +62,7 @@ export async function connectLive(
       if (role === "user") h.onUserText(text); else h.onAssistantText(text);
     },
     remember: (text, sourceId) => {
-      if (!memory || !accessToken || options.microphone === false) return;
+      if (options.historyManaged || !memory || !accessToken || options.microphone === false) return;
       // Keepalive, no call-abort signal: closing voice must not cancel the last save.
       void requestVoiceMemory({ action: "remember", text, sourceId }, accessToken).then(() => {
         options.onDiagnostic?.("memory.accepted");

@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   if (access.response) return access.response;
   if (!memoryEnabled(process.env)) return json({ required: false });
   try {
-    const { data, error } = await access.supabase.rpc("memory_is_enabled").abortSignal(AbortSignal.timeout(5000));
+    const { data, error } = await access.supabase.rpc("conversation_is_enabled").abortSignal(AbortSignal.timeout(5000));
     if (error) throw new Error("consent_unavailable");
     return json({ required: data !== true, version: MEMORY_CONSENT_VERSION });
   } catch { return json({ error: "동의 상태를 확인하지 못했어요." }, 503); }
