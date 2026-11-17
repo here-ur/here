@@ -365,7 +365,7 @@ export default function HomeScreen({
             <div className="home-compose-content" inert={!chat.open} aria-hidden={!chat.open}>
               <Button variant="plain" type="button" onClick={collapseText} tabIndex={chat.open ? 0 : -1} aria-label="입력창 닫기" className="home-compose-close ui-press grid shrink-0 place-items-center rounded-full"><Icon name="close" size={18} /></Button>
               <label htmlFor="home-text-draft" className="sr-only">{name}에게 하고 싶은 말</label>
-              <TextArea ref={composerRef} id="home-text-draft" rows={1} maxLength={800} value={chat.draft} readOnly={chat.sending} tabIndex={chat.open ? 0 : -1} aria-busy={chat.sending} placeholder={`${name}에게 이야기해요…`} autoComplete="off" enterKeyHint="send"
+              <TextArea ref={composerRef} id="home-text-draft" rows={1} maxLength={800} value={chat.draft} tabIndex={chat.open ? 0 : -1} placeholder={`${name}에게 이야기해요…`} autoComplete="off" enterKeyHint="send"
                 onChange={(event) => chat.onDraft(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") { event.preventDefault(); collapseText(); return; }
