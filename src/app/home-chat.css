@@ -189,3 +189,7 @@
   100% { translate: 0 0; opacity: 1; }
 }
 @keyframes home-bubble-send { from { opacity: 0; translate: 0 26px; scale: .9; } 70% { scale: 1.02; } to { opacity: 1; translate: 0 0; scale: 1; } }
+
+/* 이전 대화를 불러오지 못했을 때: 한 줄 안내와 누를 수 있는 작은 알약 버튼 */
+.home-history-error { display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--color-cat-muted, #6b6b65); font-size: 12.5px; }
+.home-history-status .home-history-retry { min-height: 36px; padding-inline: 14px; gap: 6px; font-size: 13px; font-weight: 700; }

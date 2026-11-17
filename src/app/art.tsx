@@ -121,6 +121,7 @@ const ICONS = {
   check: "checkmark",
   chat: "chat_bubble",
   paw: "paw",
+  refresh: "arrow_clockwise",
 } as const;
 
 export function Icon({ name, size = 24 }: { name: keyof typeof ICONS; size?: number }) {

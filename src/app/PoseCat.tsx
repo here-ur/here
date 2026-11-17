@@ -9,8 +9,6 @@ import "./pose-cat.css";
 
 type BuddyProps = Omit<ComponentProps<typeof Buddy>, "size">;
 
-const SQUASH = [{ transform: "scale(1, 1)" }, { transform: "scale(1.06, .9)" }];
-const POP = [{ transform: "scale(1.06, .9)" }, { transform: "scale(.96, 1.05)", offset: .45 }, { transform: "scale(1.01, .99)", offset: .75 }, { transform: "scale(1, 1)" }];
 const HOP = [{ transform: "scale(1, 1)" }, { transform: "translateY(-7%) scale(.96, 1.05)", offset: .4 }, { transform: "scale(1.03, .97)", offset: .75 }, { transform: "scale(1, 1)" }];
 const TILT = [{ transform: "none" }, { transform: "translateY(-2%) rotate(-4deg)", offset: .22 }, { transform: "rotate(-4deg)", offset: .82 }, { transform: "none" }];
 const SHAKE = [{ transform: "translateX(0)" }, { transform: "translateX(-2%)" }, { transform: "translateX(2%)" }, { transform: "translateX(-1.2%)" }, { transform: "translateX(0)" }];
@@ -25,7 +23,7 @@ const subscribeReduce = (onChange: () => void) => {
 };
 
 /** 고양이 한 칸(정사각형). 기본 자세는 Buddy(눈 깜박임·입 모양), 동작은 영상·그림을 바꿔 끼운다.
- * 바꿀 때는 살짝 눌렸다가 그 순간 바꾸고(140ms 겹치기) 통 튀어 오른다. 기본↔동그란 눈은 눈만 바뀌게 겹치기만 한다.
+ * 바꿀 때는 눌림·튀기 없이 새 그림을 바로 보여 주고 앞 그림만 90ms 흐려진다(둘 다 반쯤 비쳐 배경이 빛나 보이지 않게). 기본↔동그란 눈은 눈만 바뀌게 겹치기만 한다.
  * fx는 바꾼 뒤 한 번 더 하는 몸짓(hop 깜짝, tilt 갸웃, shake 하악)이고, cue가 바뀌면 같은 자세에서도 다시 한다.
  * 처음 그릴 때와 동작 줄이기에서는 움직임 없이 바로 바꾼다. 동작 줄이기에서는 계속 반복되는 영상 자세(잠·째려보기·하악·발 핥기)도
  * 기본 자세(Buddy, 반복 모션은 CSS가 끈다)로 대신하고, 멈춘 그림(동그란 눈·울기·골골)만 바꿔 끼운다. 설정을 바꾸면 바로 따라간다. */
@@ -90,10 +88,12 @@ export default function PoseCat({ pose, fx, cue = 0, buddy, size = 240, preload,
       const prev = s.shown;
       if (next === prev && !effect) return;
       if (next !== prev) {
-        if (!still) await el.animate(SQUASH, { duration: 110, easing: "ease-in", fill: "forwards" }).finished;
         const imgs = [a, b], front = imgs[s.front], back = imgs[1 - s.front];
+        // 새 그림은 흐려지지 않고 바로 다 보이게 하고, 앞 그림만 흐려지며 사라진다.
+        // 둘 다 반쯤 비치면 검은 고양이 사이로 밝은 배경이 비쳐 잠깐 빛나 보이기 때문이다.
+        const showNow = (node: HTMLElement) => { node.style.transition = "none"; node.style.opacity = "1"; void node.offsetWidth; node.style.transition = ""; };
         if (next === "base") {
-          layer.style.opacity = "1"; front.style.opacity = "0"; back.style.opacity = "0";
+          showNow(layer); front.style.opacity = "0"; back.style.opacity = "0";
         } else {
           // 기본 고양이가 걷다가 옆으로 비켜 있으면, 그림도 그만큼 옮겨 같은 자리에서 바뀌게 한다(Buddy는 240 단위 좌표).
           if (prev === "base") {
@@ -102,18 +102,21 @@ export default function PoseCat({ pose, fx, cue = 0, buddy, size = 240, preload,
           }
           const place = poseBox(next);
           back.src = CAT_POSE_ART[next].src;
+          const tone = CAT_POSE_ART[next].tone;
+          back.style.filter = tone === 1 ? "" : `brightness(${tone})`;
           back.style.height = `${place.height}%`; back.style.width = `${place.width}%`; back.style.bottom = `${place.bottom}%`;
           ground.style.width = `${place.shadow}%`;
           await back.decode().catch(() => {});
-          back.style.opacity = "1"; front.style.opacity = "0"; layer.style.opacity = "0";
+          showNow(back); front.style.opacity = "0"; layer.style.opacity = "0";
           s.front = 1 - s.front;
         }
         box.dataset.kind = next === "base" ? "base" : CAT_POSE_ART[next].clip ? "clip" : "still";
         s.shown = next;
       }
       if (still) { el.getAnimations().forEach((anim) => anim.cancel()); return; }
-      const moves = effect === "tilt" ? TILT : effect === "hop" ? HOP : next !== prev ? POP : null;
-      if (moves) await el.animate(moves, { duration: effect === "tilt" ? 1400 : effect === "hop" ? 480 : 380, easing: "cubic-bezier(.3,.7,.4,1)", fill: "forwards" }).finished;
+      // 자세를 바꾸는 순간에는 눌림·튀기 없이 그림만 바꾼다(2026-11-17: 전환이 어색해 보여서 뺐다). 몸짓(fx)만 따로 한다.
+      const moves = effect === "tilt" ? TILT : effect === "hop" ? HOP : null;
+      if (moves) await el.animate(moves, { duration: effect === "tilt" ? 1400 : effect === "hop" ? 360 : 220, easing: "cubic-bezier(.3,.7,.4,1)", fill: "forwards" }).finished;
       if (effect === "shake") await el.animate(SHAKE, { duration: 320, easing: "linear" }).finished;
     }
     s.queue = s.queue.then(() => swap(pose, replay ? fx : undefined)).catch(() => {});

@@ -3,7 +3,7 @@ import { after } from 'next/server';
 import { requireMember } from '@/lib/member-auth';
 import { memoryEnabled } from '@/lib/memory';
 import { readSmallJson, JsonRequestError } from '@/lib/request-json';
-import { HISTORY_PAGE_SIZE, isUuid, parseHistoryBatch } from '@/lib/conversation-history';
+import { HISTORY_DISABLED_CODE, HISTORY_PAGE_SIZE, isUuid, parseHistoryBatch } from '@/lib/conversation-history';
 import { processConversationMemories } from '@/lib/conversation-memory';
 import { requireApiQuota } from '@/lib/api-quota';
 export const maxDuration=120;
@@ -11,7 +11,7 @@ const json=(body:object,status=200)=>Response.json(body,{status,headers:{'Cache-
 async function accessFor(request:Request) {
   const access=await requireMember(request);
   if(access.response) return access;
-  if(!memoryEnabled(process.env)) return {response:json({error:'대화 기록을 아직 사용할 수 없어요.'},404)};
+  if(!memoryEnabled(process.env)) return {response:json({error:'대화 기록을 아직 사용할 수 없어요.',code:HISTORY_DISABLED_CODE},404)};
   const {data,error}=await access.supabase.rpc('conversation_is_enabled').abortSignal(AbortSignal.timeout(5000));
   if(error) return {response:json({error:'기록 설정을 확인하지 못했어요.'},503)};
   if(!data) return {response:json({error:'변경된 개인정보 이용 동의를 확인해 주세요.',code:'consent_required'},403)};

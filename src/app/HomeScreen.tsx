@@ -161,7 +161,7 @@ export default function HomeScreen({
     return () => cancelAnimationFrame(frame);
   }, [hasMessages]);
 
-  // 쉬는 홈에서만 고양이가 혼자 논다: 심심하면 발을 핥고, 오래 두면 웅크려 잔다.
+  // 쉬는 홈에서만 고양이가 혼자 논다: 심심하면 발을 핥고, 오래 두면 웅크려 잔다(동그란 눈으로 갸웃하기는 2026-11-17에 뺐다).
   // 누르기 반응(깜짝·울기·하악·째려보며 깨기)은 2026-11-17에 뺐다: 고양이를 눌러도 표정이 바뀌지 않는다. 대화 중에는 기존 Buddy 상태를 그대로 쓴다.
   const [napping, setNapping] = useState(false);
   const homeCat = useCatReactions(resting && napping ? "sleep" : "base");
@@ -312,7 +312,7 @@ export default function HomeScreen({
         onTouchEnd={e => { if(touchStart.current!==null && e.changedTouches[0].clientY-touchStart.current>45) void older(); touchStart.current=null; }}>
         {chat.history && <div className="home-history-status">
           {chat.history.loading ? <PawLoader size={10} gap={5} label="이전 대화를 불러오고 있어요" className="text-[#85591B]" /> : chat.history.error ?
-            <Button variant="plain" onClick={()=>void older()}>{chat.history.error}</Button> : chat.history.hasMore ?
+            <span role="alert" className="home-history-error">{chat.history.error}<Button variant="tonal" tone="ink" size="medium" className="home-history-retry" onClick={()=>void older()}><Icon name="refresh" size={15} />다시 불러오기</Button></span> : chat.history.hasMore ?
             <Button variant="plain" onClick={()=>void older()}>위로 한 번 더 올려 이전 대화 보기</Button> :
             <span>{chat.messages.length ? "최근 30일 대화의 시작이에요" : "이야기를 시작하면 여기에 대화가 남아요"}</span>}
         </div>}

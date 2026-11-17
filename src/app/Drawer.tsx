@@ -102,13 +102,16 @@ export default function Drawer({
   loadQuota?: (signal: AbortSignal) => Promise<QuotaStatus | null>;
 }) {
   const panelRef = useRef<HTMLElement>(null);
-  const [view, setView] = useState<"menu" | "settings">("menu");
+  const [view, setViewState] = useState<"menu" | "settings">("menu");
+  // 메뉴 ↔ 설정 전환 방향: 설정은 오른쪽에서 들어오고, 돌아가면 메뉴가 왼쪽에서 들어온다.
+  const [viewDir, setViewDir] = useState<"forward" | "back" | null>(null);
+  const setView = (next: "menu" | "settings") => { setViewDir(next === "settings" ? "forward" : "back"); setViewState(next); };
   const [wasOpen, setWasOpen] = useState(false);
   const [quota, setQuota] = useState<QuotaStatus | null>(null);
   if (open !== wasOpen) {
     setWasOpen(open);
     if (!open) {
-      setView("menu"); // 닫았다 다시 열면 항상 메뉴부터 보여 준다
+      setViewState("menu"); setViewDir(null); // 닫았다 다시 열면 항상 메뉴부터(움직임 없이) 보여 준다
     }
   }
   const onCloseRef = useRef(onClose);
@@ -241,6 +244,7 @@ export default function Drawer({
           open ? "translate-x-0 shadow-[10px_0_40px_rgba(35,32,27,.12)]" : "-translate-x-full"
         }`}
       >
+        <div key={view} className="here-drawer-view" data-view={view} data-dir={viewDir ?? undefined}>
         {view === "menu" ? <>
           <div className="here-menu-primary">
             <List className="here-design-menu-list">
@@ -267,8 +271,8 @@ export default function Drawer({
             {quota ? <QuotaLine status={quota} /> : <div className="here-menu-quota" aria-hidden="true" />}
           </div>
         </> : <>
-          <div className="flex items-center gap-2">
-            <Button variant="plain" onClick={() => setView("menu")} aria-label="메뉴로 돌아가기" className="ui-press -ml-1.5 grid size-10 shrink-0 place-items-center rounded-full text-cat-ink hover:bg-cat-soft">
+          <div className="here-settings-header flex items-center gap-2">
+            <Button variant="plain" onClick={() => setView("menu")} aria-label="메뉴로 돌아가기" className="ui-press grid size-10 shrink-0 place-items-center rounded-full text-cat-ink hover:bg-cat-soft">
               <Icon name="back" size={20} />
             </Button>
             <h2 className="text-t5 font-bold text-cat-ink">설정</h2>
@@ -296,8 +300,9 @@ export default function Drawer({
             </ul>
           </List>
 
-          <p className="mt-auto px-2 pt-6 text-t2 text-cat-muted">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
+          <p className="here-settings-note mt-auto pt-6 text-t2 text-cat-muted">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
         </>}
+        </div>
         {/* 화면에는 닫기 버튼을 두지 않는다(바깥 누르기·왼쪽으로 밀기·Escape로 닫는다). 키보드로 포커스하면 나타난다. */}
         <Button variant="plain" onClick={onClose} aria-label="메뉴 닫기" className="here-drawer-close"><Icon name="close" size={18} /></Button>
       </nav>
