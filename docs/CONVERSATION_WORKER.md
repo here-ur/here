@@ -1,5 +1,8 @@
 # 대화 요약 자동 재시도 — 개발
 
+- 현재 상태: 코드 개발 배포 완료. `0018`·`0019` DB 적용과 실제 모델 종단 검증은 권한 변경 확인 대기. 자동 실행 아직 비활성.
+- 로컬 검증: 전체 자동 테스트 391개, lint·프로덕션 빌드 통과. 개발 endpoint의 인증 없는 요청 401 확인.
+
 - 대상: `here-dev.vercel.app`, 개발 DB `mwjwfumpxdlllikcdvkh`
 - 운영: 코드의 환경·DB 제한으로 차단. 운영 DB·cron 변경 없음
 - 실행: Supabase Cron → `pg_net` → 개발 웹의 `POST /api/internal/conversation-worker`
