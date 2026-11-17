@@ -32,11 +32,15 @@ test("로그인 시트에서 이어 가기: 이미 동의한 기기면 바로 �
   const consent = readFileSync(new URL("../app/MemoryConsentGate.tsx", import.meta.url), "utf8");
   // 이 기기에 동의 기록이 있으면 시트를 이어 가지 않고 전환으로 바로 넘어간다.
   const finish = gate.slice(gate.indexOf("function finishInSheet"), gate.indexOf("function finishPasswordSetup"));
-  assert.match(finish, /hasConsentDisplayHint[\s\S]*movePage\("enter"[\s\S]*setContinueSheet\(true\)/);
+  // 성별·생년월일 확인까지 이 기기에서 끝났어야 바로 넘어간다(새 회원은 그 시트가 이어진다).
+  assert.match(finish, /hasConsentDisplayHint[\s\S]*hasBasicsDisplayHint[\s\S]*movePage\("enter"[\s\S]*setContinueSheet\(true\)/);
   // 회원이 아닌 결과(로그아웃·재시도·가입 계속)면 이어 가기를 지운다.
   assert.match(gate, /if \(result\.kind !== "member"\) setContinueSheet\(false\)/);
   // 창에 다시 들어올 때마다 확인하지만, 이미 준비된 상태면 전환하지 않는다.
-  assert.match(consent, /continueSheet && statusRef\.current !== "ready"\) void movePage\("enter"/);
+  assert.match(consent, /continueSheet && statusRef\.current !== "ready"\) void enterNext\(\)/);
+  // 다음 시트 단계가 없으면 동의 시트가 직접 넘기고, 있으면(handoff) 시트가 보이던 채로 끝났다고만 알린다.
+  assert.match(consent, /if \(!handoff\) return movePage\("enter", \(\) => setStatus\("ready"\)\);\s*setFromSheet\(true\); setStatus\("ready"\);/);
+  assert.match(gate, /<MemoryConsentGate [^>]*handoff>\s*<MemberBasicsGate /);
   // 시트가 한 번 보였으면 다시 확인하는 동안 사진 화면으로 바꾸지 않는다.
   assert.match(consent, /status === "checking" && !sheetShown\) return <AuthScreen loading \/>/);
   // 확인 중 표시는 화면 낭독기에도 글자로 읽힌다.

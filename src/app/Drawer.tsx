@@ -11,8 +11,6 @@ import "./drawer-menu.css";
 import { type Profile, josa } from "@/lib/onboarding";
 import { type QuotaStatus, quotaSummary } from "@/lib/quota-status";
 import { Icon } from "./art";
-import PasswordSetup from "./PasswordSetup";
-import { MIN_PASSWORD_LENGTH } from "@/lib/password-policy";
 import { getSfxEnabled, setSfxEnabled, subscribeSfx } from "@/lib/sfx";
 import { SWIPE_IGNORE_SELECTOR, SWIPE_SETTLE_MS, swipeCloses, swipeOffset, swipeStart } from "@/lib/drawer-swipe";
 
@@ -91,7 +89,6 @@ export default function Drawer({
   onSignOut,
   onReset,
   loadQuota,
-  allowPasswordSetup,
 }: {
   open: boolean;
   profile: Profile;
@@ -103,18 +100,15 @@ export default function Drawer({
   onSignOut: () => void;
   onReset: () => void;
   loadQuota?: (signal: AbortSignal) => Promise<QuotaStatus | null>;
-  allowPasswordSetup?: boolean;
 }) {
   const panelRef = useRef<HTMLElement>(null);
   const [view, setView] = useState<"menu" | "settings">("menu");
   const [wasOpen, setWasOpen] = useState(false);
   const [quota, setQuota] = useState<QuotaStatus | null>(null);
-  const [passwordView, setPasswordView] = useState<"closed" | "form" | "saved">("closed");
   if (open !== wasOpen) {
     setWasOpen(open);
     if (!open) {
       setView("menu"); // 닫았다 다시 열면 항상 메뉴부터 보여 준다
-      setPasswordView("closed");
     }
   }
   const onCloseRef = useRef(onClose);
@@ -129,7 +123,7 @@ export default function Drawer({
   const swipe = {
     onPointerDown: (event: React.PointerEvent<HTMLElement>) => {
       if (!open || event.button !== 0) return;
-      // 입력칸(설정의 비밀번호 등)에서 글자를 고르느라 옆으로 끄는 건 밀어 닫기로 보지 않는다.
+      // 입력칸에서 글자를 고르느라 옆으로 끄는 건 밀어 닫기로 보지 않는다.
       if (event.target instanceof Element && event.target.closest(SWIPE_IGNORE_SELECTOR)) return;
       drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, dx: 0, at: performance.now(), active: false };
       swiped.current = false;
@@ -274,7 +268,7 @@ export default function Drawer({
           </div>
         </> : <>
           <div className="flex items-center gap-2">
-            <Button variant="plain" onClick={() => { setPasswordView("closed"); setView("menu"); }} aria-label="메뉴로 돌아가기" className="ui-press -ml-1.5 grid size-10 shrink-0 place-items-center rounded-full text-cat-ink hover:bg-cat-soft">
+            <Button variant="plain" onClick={() => setView("menu")} aria-label="메뉴로 돌아가기" className="ui-press -ml-1.5 grid size-10 shrink-0 place-items-center rounded-full text-cat-ink hover:bg-cat-soft">
               <Icon name="back" size={20} />
             </Button>
             <h2 className="text-t5 font-bold text-cat-ink">설정</h2>
@@ -297,16 +291,10 @@ export default function Drawer({
 
           <List strong inset dividersIos className="mt-3">
             <ul>
-              {allowPasswordSetup && <MenuItem onClick={() => setPasswordView("form")} title="비밀번호 변경" />}
               <MenuItem onClick={onSignOut} title="로그아웃" chevron={false} />
               <MenuItem onClick={onReset} title={`${name} 처음부터 다시 만들기`} danger chevron={false} />
             </ul>
           </List>
-          {passwordView === "form" && <div className="mt-3 px-2">
-            <p className="mb-3 text-t3 text-cat-muted">{MIN_PASSWORD_LENGTH}자 이상으로 바꾸면 다음 로그인부터 새 비밀번호를 써요.</p>
-            <PasswordSetup onSaved={() => setPasswordView("saved")} />
-          </div>}
-          {passwordView === "saved" && <p role="status" className="mt-3 px-2 text-t3">비밀번호를 저장했어요.</p>}
 
           <p className="mt-auto px-2 pt-6 text-t2 text-cat-muted">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
         </>}

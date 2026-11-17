@@ -7,7 +7,8 @@ import { Button } from "./ui/Button";
 import AuthScreen from "./AuthScreen";
 import Sheet from "./Sheet";
 import { movePage } from "./page-move";
-import { useEffect, useRef, useState } from "react";
+import { SheetHandoff } from "./sheet-handoff";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { browserSupabase } from "@/lib/supabase";
 import { MEMORY_CONSENT_VERSION } from "@/lib/memory-consent";
 import { consentDisplayKey, consentDisplayStorage, hasConsentDisplayHint, setConsentDisplayHint } from "@/lib/consent-display-cache";
@@ -51,11 +52,20 @@ async function consentRequest(method: "GET" | "POST") {
 }
 
 /** 기억 동의. 영상 위 바텀시트로 보여 준다. continueSheet면 방금 로그인한 시트에서 내용만 이어지도록 시트가 움직이지 않고 그 자리에 있다.
- * 동의를 마치면(또는 로그인 시트에서 이어 왔는데 이미 동의한 회원이면) 화면이 살짝 작아지며 다음 화면(캐릭터 만나기·홈)으로 넘어간다. */
-export default function MemoryConsentGate({ children, signOut, userId = "", preview = false, onPreviewAccept, continueSheet = false }: {
-  children: React.ReactNode; signOut: () => Promise<void>; userId?: string; preview?: boolean; onPreviewAccept?: () => void; continueSheet?: boolean;
+ * 동의를 마치면(또는 로그인 시트에서 이어 왔는데 이미 동의한 회원이면) 화면이 살짝 작아지며 다음 화면(캐릭터 만나기·홈)으로 넘어간다.
+ * handoff면 그 전환을 다음 시트 단계(성별·생년월일, MemberBasicsGate)에 넘긴다: 시트가 보이던 채로 끝났는지만 SheetHandoff로 알려 주고,
+ * 다음 단계가 같은 자리에서 내용을 이어 가거나 물을 것이 없으면 직접 다음 화면으로 넘어간다. */
+export default function MemoryConsentGate({ children, signOut, userId = "", preview = false, onPreviewAccept, continueSheet = false, handoff = false }: {
+  children: React.ReactNode; signOut: () => Promise<void>; userId?: string; preview?: boolean; onPreviewAccept?: () => void; continueSheet?: boolean; handoff?: boolean;
 }) {
   const [status, setStatus] = useState<"checking" | "required" | "ready" | "error">(() => preview ? "required" : hasConsentDisplayHint(consentDisplayStorage(), userId) ? "ready" : "checking");
+  // 다음 단계에 넘길 '시트가 보이던 채로 끝났는지'. 로그인 시트에서 이어 왔으면 처음부터 그렇다.
+  const [fromSheet, setFromSheet] = useState(continueSheet);
+  const enterNext = useCallback(() => {
+    if (!handoff) return movePage("enter", () => setStatus("ready"));
+    setFromSheet(true); setStatus("ready");
+    return Promise.resolve();
+  }, [handoff]);
   const [privacy, setPrivacy] = useState(false);
   const [sensitive, setSensitive] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -81,7 +91,7 @@ export default function MemoryConsentGate({ children, signOut, userId = "", prev
         // 확인에 성공하면 전에 남은 오류(저장 실패 등)를 지워, 동의 화면이 예전 오류와 함께 열리지 않게 한다.
         setError("");
         if (body.required) setSheetShown(true);
-        if (!body.required && continueSheet && statusRef.current !== "ready") void movePage("enter", () => setStatus("ready"));
+        if (!body.required && continueSheet && statusRef.current !== "ready") void enterNext();
         else setStatus(body.required ? "required" : "ready");
       }).catch(() => {
         if (!active || request !== generation.current) return;
@@ -101,7 +111,7 @@ export default function MemoryConsentGate({ children, signOut, userId = "", prev
     window.addEventListener("focus", check);
     window.addEventListener("storage", onStorage);
     return () => { active = false; window.removeEventListener("focus", check); window.removeEventListener("storage", onStorage); };
-  }, [retry, preview, userId, continueSheet]);
+  }, [retry, preview, userId, continueSheet, enterNext]);
 
   async function accept(event: React.FormEvent) {
     event.preventDefault();
@@ -114,12 +124,12 @@ export default function MemoryConsentGate({ children, signOut, userId = "", prev
       const body = await consentRequest("POST");
       if (body.ok !== true) throw new Error("동의를 저장하지 못했어요.");
       setConsentDisplayHint(consentDisplayStorage(), userId, true);
-      await movePage("enter", () => setStatus("ready"));
+      await enterNext();
     } catch (error) { setError(error instanceof ConsentVersionError ? error.message : "동의를 저장하지 못했어요. 다시 시도해 주세요."); }
     finally { accepting.current = false; setBusy(false); }
   }
 
-  if (status === "ready") return children;
+  if (status === "ready") return handoff ? <SheetHandoff.Provider value={fromSheet}>{children}</SheetHandoff.Provider> : children;
   // 확인 중: 로그인 시트에서 이어 왔거나 시트가 이미 보였으면 같은 시트에 잠깐 기다림 표시, 아니면(앱을 다시 연 경우) 사진만 보여 준다.
   if (status === "checking" && !sheetShown) return <AuthScreen loading />;
   const tick = (set: (value: boolean) => void) => (e: React.ChangeEvent<HTMLInputElement>) => set(e.target.checked);

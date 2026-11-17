@@ -40,7 +40,7 @@ import HomeEntryGreeting from "./HomeEntryGreeting";
 import GetHelp from "./GetHelp";
 import Report, { type ReportMode } from "./Report";
 import Onboarding from "./Onboarding";
-import { FirstRunFooter, FirstRunScreen } from "./FirstRun";
+import CatLoading from "./CatLoading";
 
 type Status = "connecting" | "idle" | "listening" | "thinking" | "speaking";
 
@@ -62,44 +62,27 @@ const DEV_PROFILE: Profile | null =
 
 export default function Page() {
   useEffect(() => { pendingFriendInvite(); }, []);
-  return <AuthGate>{(userId, signOut) => <Home key={userId} userId={userId} signOut={signOut} />}</AuthGate>;
+  return <AuthGate>{(userId, signOut) => <Account key={userId} userId={userId} signOut={signOut} />}</AuthGate>;
+}
+
+/** 로그인한 계정의 화면. 캐릭터를 처음부터 다시 만들면(이 기기에서든 다른 기기에서든) 페이지를 새로 고치지 않고 홈만 새로 열어
+ * 캐릭터 만나기부터 시작한다. 새로 고치면 앱을 처음 여는 것처럼 로그인 확인 화면(환영 그림)이 잠깐 보였다가 넘어갔다.
+ * 새로 연 홈은 계정에 캐릭터가 없다는 걸 이미 알고 시작해서 '설정을 불러오는 중' 화면도 거치지 않는다(계정 확인은 뒤에서 그대로 한다). */
+function Account({ userId, signOut }: { userId: string; signOut: () => Promise<void> }) {
+  const [run, setRun] = useState(0);
+  const restart = useCallback(() => setRun((n) => n + 1), []);
+  return <Home key={run} userId={userId} signOut={signOut} startEmpty={run > 0} onRestart={restart} />;
 }
 
 /** 이 기기에 남은 설정이 없어 계정의 캐릭터 설정을 처음 불러오는 동안(새로 가입했거나 이 기기에서 처음 로그인).
- * 로그인·기억 동의에서 넘어오는 화면 전환이 빈 화면에 내려앉지 않게 캐릭터 만나기와 같은 크림 바탕에 작은 원만 돌린다.
- * 오래 걸리면 로그아웃을, 불러오지 못하면 다시 확인·로그아웃을 보여 준다(이때는 메뉴가 없어 나갈 곳이 여기뿐이다). */
+ * 로그인·기억 동의에서 넘어오는 화면 전환 뒤라 그루밍하는 고양이(로딩 화면 시안 B)로 기다린다. 로그인 확인에서 곧바로 이어지면 같은 낮잠 고양이를 이어 쓴다.
+ * 8초가 넘으면 다시 시도·로그아웃을, 불러오지 못하면 한 줄과 다시 확인·로그아웃을 보여 준다(이때는 메뉴가 없어 나갈 곳이 여기뿐이다). */
 function ProfileLoading({ error, onRetry, onSignOut }: { error: string; onRetry: () => void; onSignOut: () => void }) {
-  const [slow, setSlow] = useState(false);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setSlow(true), 4000);
-    return () => window.clearTimeout(timer);
-  }, []);
-  if (error) return <FirstRunScreen tone="cream">
-    <div className="grid flex-1 place-items-center">
-      <div role="alert" className="fr-heading">
-        <p className="fr-title">{error}</p>
-        <p className="fr-desc">연결을 확인하고 다시 시도해 주세요.</p>
-      </div>
-    </div>
-    <FirstRunFooter>
-      <Button tone="ink" fullWidth onClick={onRetry}>다시 확인</Button>
-      <Button variant="plain" className="fr-link" onClick={onSignOut}>로그아웃</Button>
-    </FirstRunFooter>
-  </FirstRunScreen>;
-  // 로그아웃 자리는 처음부터 잡아 두고 늦어질 때만 보이게 해서, 나타날 때 원이 움직이지 않게 한다.
-  return <FirstRunScreen tone="cream">
-    <div className="grid flex-1 place-items-center" aria-hidden="true">
-      <span className="size-7 rounded-full border-[2.5px] border-cat-ink/60 border-e-transparent motion-safe:animate-spin" />
-    </div>
-    <p role="status" className="sr-only">캐릭터 설정을 불러오고 있어요</p>
-    <FirstRunFooter>
-      <Button variant="plain" className={`fr-link ${slow ? "" : "invisible"}`} onClick={onSignOut}>로그아웃</Button>
-    </FirstRunFooter>
-  </FirstRunScreen>;
+  return <CatLoading scene="groom" label="캐릭터 설정을 불러오고 있어요" error={error || undefined} onRetry={onRetry} onSignOut={onSignOut} />;
 }
 
-function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void> }) {
-  const account = useAccountProfile(userId);
+function Home({ userId, signOut, startEmpty, onRestart }: { userId: string; signOut: () => Promise<void>; startEmpty: boolean; onRestart: () => void }) {
+  const account = useAccountProfile(userId, { startEmpty, onRemoteReset: onRestart });
   const activity = useAccountActivity(userId);
   const profile = account.profile === null ? DEV_PROFILE : account.profile;
   const [pendingProfile, setPendingProfile] = useState<Profile | null>(null);
@@ -564,7 +547,6 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
             openFriends();
           }}
           onSignOut={() => { void signOut(); }}
-          allowPasswordSetup
           loadQuota={async (signal) => requestQuotaStatus(await accessToken(), signal)}
           onReset={() => setConfirmReset(true)}
         />
@@ -580,7 +562,8 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
               setShowMenu(false);
               setResetNote({ text: "설정을 초기화하고 있어요…" });
               void account.save(null).then(ok => {
-                if (ok) { setPendingProfile(null); location.reload(); return; }
+                // 홈을 새로 열어 음성·글 대화와 화면 상태를 모두 닫고 캐릭터 만나기부터 시작한다(새로 고침 없이).
+                if (ok) { setPendingProfile(null); onRestart(); return; }
                 account.clearSaveError();
                 setResetNote({ text: "설정을 초기화하지 못했어요. 연결을 확인하고 다시 시도해 주세요.", error: true });
               });

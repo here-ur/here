@@ -5,16 +5,19 @@ import { setLocalOwner } from "@/lib/local-scope";
 import { browserSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { checkEntry, clearPasswordReset, isPasswordResetPending, markPasswordReset, resetStorage, shouldRecheckAuth, type Entry } from "@/lib/session-entry";
 import { consentDisplayStorage, hasConsentDisplayHint } from "@/lib/consent-display-cache";
+import { hasBasicsDisplayHint } from "@/lib/member-basics";
 import { emailAuthError, normalizeEmail, socialSignInUrl, type SocialProvider } from "@/lib/social-auth";
 import { Button } from "./ui/Button";
 import { TextField } from "./ui/TextField";
 import AuthScreen from "./AuthScreen";
+import CatLoading from "./CatLoading";
 import AuthProviderIcon from "./AuthProviderIcon";
 import EmailAuthScreen from "./EmailAuthScreen";
 import { EmailCodeField } from "./ui/EmailCodeField";
 import { Icon } from "./art";
 import { movePage } from "./page-move";
 import MemoryConsentGate from "./MemoryConsentGate";
+import MemberBasicsGate from "./MemberBasicsGate";
 import PasswordSetup from "./PasswordSetup";
 import "./first-run.css";
 
@@ -139,7 +142,10 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   }
   async function finishInSheet(entry: Entry) {
     if (entry.kind === "member" && !isPasswordResetPending(resetStorage(), entry.id)) {
-      if (hasConsentDisplayHint(consentDisplayStorage(), entry.id)) { await movePage("enter", () => enter(entry)); return; }
+      // 이 기기에서 동의와 성별·생년월일 확인을 모두 마친 회원만 시트 없이 바로 넘어간다.
+      if (hasConsentDisplayHint(consentDisplayStorage(), entry.id) && hasBasicsDisplayHint(consentDisplayStorage(), entry.id)) {
+        await movePage("enter", () => enter(entry)); return;
+      }
       setContinueSheet(true);
     }
     enter(entry);
@@ -223,15 +229,15 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   }
 
   const brand = <h1 className="here-auth-brand"><span>나와 가장 가까운 친구</span><span>here</span></h1>;
-  if (loading) return <AuthScreen loading />;
-  if (checkFailed) return <AuthScreen>
-    <div className="here-auth-welcome">{brand}<div className="here-auth-welcomeBottom here-auth-retry">
-      <p role="alert" className="here-auth-unavailable">계정 정보를 확인하지 못했어요.<br />잠시 후 다시 시도해 주세요.</p>
-      <Button tone="ink" fullWidth onClick={() => { setLoading(true); setAttempt(n => n + 1); }}>다시 확인</Button>
-      <Button variant="tonal" tone="ink" fullWidth onClick={signOut}>로그인 화면으로</Button>
-    </div></div>
-  </AuthScreen>;
-  if (userId) return <MemoryConsentGate key={userId} userId={userId} signOut={signOut} continueSheet={continueSheet}>{children(userId, signOut)}</MemoryConsentGate>;
+  // 앱을 열 때 로그인 확인: 낮잠 자는 고양이(로딩 화면 시안 A). 8초가 넘으면 다시 시도·로그아웃, 확인하지 못하면 G.
+  if (loading) return <CatLoading key={attempt} scene="nap" label="로그인 상태를 확인하고 있어요"
+    onRetry={() => { checkGeneration.current++; setAttempt(n => n + 1); }} onSignOut={() => { void signOut(); }} />;
+  if (checkFailed) return <CatLoading scene="nap" label="로그인 상태를 확인하지 못했어요" error
+    onRetry={() => { setLoading(true); setAttempt(n => n + 1); }} onSignOut={() => { void signOut(); }} />;
+  // 로그인 뒤 시트 단계: 기억 동의 → 성별·생년월일(새 회원만) → 캐릭터 만나기·홈. 화면 넘김은 마지막 시트 단계가 맡는다.
+  if (userId) return <MemoryConsentGate key={userId} userId={userId} signOut={signOut} continueSheet={continueSheet} handoff>
+    <MemberBasicsGate userId={userId} signOut={signOut}>{children(userId, signOut)}</MemberBasicsGate>
+  </MemoryConsentGate>;
 
   const codeStep = step === "signup-code" || step === "recovery-code";
   const copy = {
