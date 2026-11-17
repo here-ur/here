@@ -3,3 +3,19 @@
 .home-scene-artwork { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .home-scene-background { position: absolute; inset: 0; }
 .home-scene-background img { object-fit: cover; object-position: center bottom; }
+
+/* Every cat pose shares a ground line at 85.4% of its square canvas.
+   Anchor that line on the rug, leaving room for captions and bottom controls. */
+.home-scene .home-character-wrap {
+  --home-cat-size: min(320px, 82vw, 45svh);
+  --home-cat-clearance: 140px;
+  top: auto;
+  bottom: calc(max(18%, var(--home-cat-clearance), var(--home-bottom-space, 96px) + 24px) - var(--home-cat-size) * .146);
+}
+.home-character-wrap:has(.home-voice-caption .line-clamp-2) { --home-cat-clearance: 180px; }
+.home-scene .home-buddy { transform-origin: 50% 85.4%; }
+.home-voice-caption {
+  position: absolute;
+  top: calc(85.4% + 12px);
+  inset-inline: 0;
+}

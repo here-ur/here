@@ -21,7 +21,7 @@ import "./home-scene.css";
 // 글 버튼은 홈을 유지한 채 입력창만 펼친다. 음성 버튼은 같은 자리에서 확장한다.
 // 첨부(+)와 오른쪽 위 라이브러리 버튼은 11/11 회의에서 홈에서 빼기로 했다. 라이브러리는 메뉴로 들어간다.
 // 홈은 메뉴 버튼·몽글이·하단 버튼만 남긴다. 몽글이가 AI라는 안내는 온보딩·메뉴·대화 기록에서 보여 준다.
-// 배경은 피그마 455:164의 햇빛 그림(home-scene.css)만 쓰고, 고양이·버튼 배치는 기존 홈 그대로다.
+// 거실 배경과 러그 위 고양이의 배치는 home-scene.css에서 관리한다.
 // 하단 버튼 줄은 기본·글·음성 어느 상태에서도 같은 높이에 둔다(시선이 오르내리지 않게).
 
 export type HomeVoiceControls = {
@@ -313,7 +313,7 @@ export default function HomeScreen({
         </div>}
       </div>}
 
-      <div className="home-character-wrap absolute inset-x-gutter top-[32%] flex flex-col items-center" data-hidden={chatting} aria-hidden={chatting}>
+      <div className="home-character-wrap absolute inset-x-gutter flex flex-col items-center" data-hidden={chatting} aria-hidden={chatting}>
         {/* 하품(음성 열기 전 2.4초) 동안은 키우지 않고 제자리에서 하품만 한다. 연결을 시작하면 그때 커진다. */}
         <div className={`home-buddy ${expanded ? "home-buddy-expanded" : ""}`}>
           <button type="button" className="home-cat-tap" onClick={pokeCat} disabled={!resting} aria-label={`${name} 건드려 보기`}>
@@ -339,7 +339,7 @@ export default function HomeScreen({
             />
           </button>
         </div>
-        {voice && <div className="mt-5 max-w-full px-4 text-center">
+        {voice && <div className="home-voice-caption max-w-full px-4 text-center">
           <p role="status" className="text-t4 font-medium text-cat-ink">{voice.error ? "연결하지 못했어요" : voice.statusText}</p>
           {voice.caption && !voice.error && <div className="mt-2 line-clamp-2 text-t3 text-cat-muted"><ChatMarkdown content={voice.caption.split("\n\n출처:")[0]} /></div>}
         </div>}
