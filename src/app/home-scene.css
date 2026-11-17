@@ -1,8 +1,5 @@
-/* 홈 배경: Figma 455:164의 햇빛 벽 그림과 위·아래 그라데이션(찬준 작업). 고양이·버튼 배치는 기존 홈(home-chat.css·home-voice.css)을 쓴다. */
-.home-screen.home-scene { background: #e6a15c; }
+/* User-provided living room artwork. Keep its colors and cover the home frame. */
+.home-screen.home-scene { background: #d89b65; }
 .home-scene-artwork { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-.home-scene-background { position: absolute; left: -24.173028%; top: -2.816901%; width: 148.346056%; height: 121.596244%; }
-.home-scene-background img { object-fit: cover; }
-.home-scene-topShade, .home-scene-bottomShade { position: absolute; inset-inline: 0; }
-.home-scene-topShade { top: 0; height: 44.600939%; background: linear-gradient(#ffe4a9, rgb(255 223 169 / 50%) 50%, rgb(254 191 103 / 0%)); }
-.home-scene-bottomShade { bottom: 0; height: 34.859155%; background: linear-gradient(rgb(119 80 53 / 0%), #775035); }
+.home-scene-background { position: absolute; inset: 0; }
+.home-scene-background img { object-fit: cover; object-position: center bottom; }

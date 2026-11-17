@@ -269,10 +269,8 @@ export default function HomeScreen({
     <main ref={frameRef} className="app-frame home-screen home-scene text-cat-ink motion-safe:animate-fade" data-text-open={chat.open} data-has-messages={hasMessages}>
       <div className="home-scene-artwork" aria-hidden="true">
         <div className="home-scene-background">
-          <Image src="/home/sunlit-background.png" alt="" fill sizes="(max-width: 430px) 149vw, 638px" preload unoptimized />
+          <Image src="/home/sunlit-living-room.png" alt="" fill sizes="(max-width: 430px) 100vw, 430px" preload />
         </div>
-        <div className="home-scene-topShade" />
-        <div className="home-scene-bottomShade" />
       </div>
       {/* 온보딩의 빛이 하얗게 걷히며 홈이 나타난다 */}
       {greet && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-30 bg-white motion-safe:animate-unveil motion-reduce:hidden" />}
