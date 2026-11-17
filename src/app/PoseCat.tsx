@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ComponentProps } from "react";
 import Buddy from "./Buddy";
+import { CHARACTER } from "@/lib/character";
 import CatArtwork from "./CatArtwork";
 import { CAT_POSE_ART, isSoftSwap, poseBox, type CatFx, type CatPose } from "@/lib/cat-poses";
 import "./pose-cat.css";
@@ -17,7 +18,7 @@ const SHAKE = [{ transform: "translateX(0)" }, { transform: "translateX(-2%)" },
 
 const REDUCE = "(prefers-reduced-motion: reduce)";
 // CatArtwork가 그리는 하품 그림. Buddy(CatFace)의 black-cat-final.png와 같은 고양이·같은 좌표(3396×1852 기준)다.
-const YAWN_ART = "/home/main-cat.png";
+const YAWN_ART = CHARACTER.transparentFront;
 const subscribeReduce = (onChange: () => void) => {
   const query = matchMedia(REDUCE);
   query.addEventListener("change", onChange);

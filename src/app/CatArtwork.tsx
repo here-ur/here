@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { CHARACTER } from "@/lib/character";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { CAT_YAWN_DURATION_MS, catYawnPose } from "@/lib/cat-yawn";
 import { createCatArtworkRenderer, RESTING_CAT_POSE } from "@/lib/cat-artwork-renderer";
@@ -62,7 +63,7 @@ export default function CatArtwork({ state = "idle", progress, accessory, output
     resize.observe(surface);
     document.addEventListener("visibilitychange", resume);
     surface.addEventListener("webglcontextlost", contextLost);
-    art.src = "/home/main-cat.png";
+    art.src = CHARACTER.transparentFront;
     return () => {
       disposed = true; cancelAnimationFrame(frame); resize.disconnect(); renderer?.dispose();
       document.removeEventListener("visibilitychange", resume);
@@ -70,7 +71,7 @@ export default function CatArtwork({ state = "idle", progress, accessory, output
     };
   }, []);
   return <div className="cat-artwork" data-ready={ready} data-state={state} aria-hidden="true">
-    <Image className="cat-artwork-original" src="/home/main-cat.png" alt="" fill sizes="(max-width: 430px) 196vw, 843px" preload unoptimized />
+    <Image className="cat-artwork-original" src={CHARACTER.transparentFront} alt="" fill sizes="(max-width: 430px) 196vw, 843px" preload unoptimized />
     <canvas ref={canvas} className="cat-artwork-canvas" />
     {accessory && ["sprout", "hat", "scarf", "flowers", "crown", "rainbow"].includes(accessory) && <svg className="cat-artwork-accessory" viewBox="0 0 3396 1852">
       <g transform="translate(876.5 85.4) scale(7.175)"><Accessory id={accessory as Parameters<typeof Accessory>[0]["id"]} shape="round" /></g>

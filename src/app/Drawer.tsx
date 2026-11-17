@@ -1,4 +1,5 @@
 "use client";
+import { CHARACTER } from "@/lib/character";
 
 import { Switch } from "./ui/Controls";
 import { Button } from "./ui/Button";
@@ -230,7 +231,7 @@ export default function Drawer({
       <div className="here-menu-artwork" aria-hidden="true">
         <div className="here-menu-background"><Image src="/menu/sunlit-background.png" alt="" fill sizes="(max-width: 430px) 142vw, 611px" unoptimized /></div>
         <div className="here-menu-topShade" />
-        <div className="here-menu-cat"><Image src="/home/main-cat.png" alt="" fill sizes="(max-width: 430px) 196vw, 843px" unoptimized /></div>
+        <div className="here-menu-cat"><Image src={CHARACTER.transparentFront} alt="" fill sizes="(max-width: 430px) 196vw, 843px" unoptimized /></div>
       </div>
       <div onClick={onClose} className="here-menu-dismiss absolute inset-0" aria-hidden="true" />
       <nav
