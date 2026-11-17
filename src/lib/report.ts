@@ -1,6 +1,7 @@
-// 리포트: 대화 원문(log.ts, 30일)에서 날짜별 숫자만 모아 이 기기에 최대 1년 둔다. 서버에는 저장하지 않는다.
-// 자주 한 말은 기기에서만 세고, AI에는 하늘을 고를 때 그날 내가 한 말만 보낸다.
+// 리포트: 날짜별 숫자·하늘을 계정 DB에 최대 1년 보관하고 이 기기에 캐시한다.
+// 서버 통계는 계정의 최근 원문 전체에서 집계한다. AI에는 별도 선택한 하늘 고르기 요청만 보낸다.
 import { hasAssistantCrisis, hasCrisisSignal } from "./crisis.ts";
+import { queueActivityChoice, queueActivityDay } from "./activity-outbox.ts";
 import { accountKey } from "./local-scope.ts";
 import type { Msg, Session } from "./log.ts";
 import { isClinical } from "./clinical.ts";
@@ -143,12 +144,12 @@ export function countWords(texts: string[], exclude: string[] = []): Record<stri
 }
 
 // ── 날짜별 숫자 ──
-export function summarizeDays(sessions: Session[], exclude: string[] = []): DayStat[] {
+export function summarizeDays(sessions: Session[], exclude: string[] = [], timeZone?: string): DayStat[] {
   const days = new Map<string, { stat: DayStat; texts: string[] }>();
   for (const session of [...sessions].sort((a, b) => a.startedAt - b.startedAt)) {
     for (const message of session.messages) {
       const time = msgTime(message, session);
-      const date = localDate(time);
+      const date = timeZone ? new Intl.DateTimeFormat("en-CA", {timeZone, year:"numeric", month:"2-digit", day:"2-digit"}).format(time) : localDate(time);
       let entry = days.get(date);
       if (!entry) {
         entry = { stat: { date, said: 0, replies: 0, hours: Array(24).fill(0), words: {}, crisis: false }, texts: [] };
@@ -157,7 +158,8 @@ export function summarizeDays(sessions: Session[], exclude: string[] = []): DayS
       const { stat } = entry;
       if (message.role === "user") {
         stat.said++;
-        stat.hours[new Date(time).getHours()]++;
+        const hour = timeZone ? Number(new Intl.DateTimeFormat("en-GB", {timeZone, hour:"2-digit", hourCycle:"h23"}).format(time)) : new Date(time).getHours();
+        stat.hours[hour]++;
         entry.texts.push(message.content);
         if (hasCrisisSignal(message.content)) stat.crisis = true;
       } else {
@@ -195,7 +197,7 @@ export function mergeDays(stored: DayStat[], fresh: DayStat[], now = Date.now())
 const KEY = "here.report.v1";
 const SKY_CHOICE_KEY = "here.report-sky.v1";
 
-function isDayStat(value: unknown): value is DayStat {
+export function isDayStat(value: unknown): value is DayStat {
   if (typeof value !== "object" || value === null) return false;
   const d = value as Record<string, unknown>;
   return typeof d.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d.date)
@@ -220,6 +222,14 @@ export function loadReport(): DayStat[] {
 }
 
 export function saveReport(days: DayStat[]) {
+  const previous = new Map(loadReport().map(day => [day.date, day]));
+  for (const day of days) {
+    const old = previous.get(day.date);
+    if (day.crisis && !old?.crisis) queueActivityDay(day);
+    for (const kind of ["mine", "ai", "tried"] as const) {
+      if (old?.[kind] !== day[kind]) queueActivityChoice(kind, day.date, day[kind] ?? null);
+    }
+  }
   const key = accountKey(KEY);
   if (!key) return;
   try {
@@ -242,7 +252,7 @@ export function syncReport(sessions: Session[], now = Date.now(), exclude: strin
   return days;
 }
 
-/** 하늘을 AI로 고를지. 처음 리포트를 열 때 한 번 묻고 이 기기에 남긴다. */
+/** 하늘을 AI로 고를지. 처음 리포트를 열 때 한 번 묻고 계정에 저장한다. */
 export function loadSkyChoice(): "on" | "off" | null {
   const key = accountKey(SKY_CHOICE_KEY);
   if (!key) return null;
@@ -255,6 +265,7 @@ export function loadSkyChoice(): "on" | "off" | null {
 }
 
 export function saveSkyChoice(choice: "on" | "off") {
+  queueActivityChoice("sky", "1970-01-01", choice);
   const key = accountKey(SKY_CHOICE_KEY);
   if (!key) return;
   try {

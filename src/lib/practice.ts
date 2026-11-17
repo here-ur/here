@@ -1,9 +1,10 @@
 import { type DayStat, localDate } from "./report.ts";
+import { queueActivityPractice } from "./activity-outbox.ts";
 import { accountKey } from "./local-scope.ts";
 
 // 대화 뒤 "해 볼 만한 작은 것" 시안. 팀이 아직 정하지 않은 기능이라 목록·문구·시점은 모두 임시값이다.
 // 제안은 대화 내용으로 고르지 않는다. 정해진 목록을 날짜 순서로 돌려 보여 주고, 사용자가 고른다.
-// 기록은 계정별로 이 기기에만 둔다. 서버·AI에 보내지 않는다. 안 한 날은 그냥 빈칸이고 잃는 것이 없다.
+// 기록은 계정별 DB와 기기 캐시에 둔다. AI에는 보내지 않는다. 안 한 날은 그냥 빈칸이고 잃는 것이 없다.
 
 export type PracticeKind = "breath" | "write" | "body" | "rest" | "people";
 export type Practice = { id: string; title: string; minutes: number; kind: PracticeKind; steps: string[] };
@@ -36,7 +37,7 @@ export function dailyPractices(date: string, count = DAILY_COUNT): Practice[] {
   return Array.from({ length: Math.min(count, PRACTICES.length) }, (_, i) => PRACTICES[(start + i) % PRACTICES.length]);
 }
 
-// ── 이 기기의 기록: 한 날에 한 것·나중에 미룬 것·닫은 것 ──
+// ── 계정별 기록: 한 날에 한 것·나중에 미룬 것·닫은 것 ──
 export type PracticeLog = { done: Record<string, string[]>; later: Record<string, string[]>; closed: Record<string, string[]> };
 const EMPTY: PracticeLog = { done: {}, later: {}, closed: {} };
 const KEY = "here.practice.v1";
@@ -75,6 +76,7 @@ function add(log: PracticeLog, bucket: keyof PracticeLog, id: string, now: numbe
   const date = localDate(now);
   const list = log[bucket][date] ?? [];
   if (list.includes(id)) return log;
+  queueActivityPractice({day:date,id,action:bucket});
   return { ...log, [bucket]: { ...log[bucket], [date]: [...list, id] } };
 }
 

@@ -1,6 +1,7 @@
 // 구름 정원: 이야기한 날의 주제가 식물로 자라고, 어제 하늘이 오늘 정원 날씨가 된다.
-// 모두 이 기기에서만 센다. 리포트 숫자(날짜별 자주 한 말 상위 20개)만 쓰고, 원문이나 AI는 쓰지 않는다.
+// 계정별 날짜 통계를 사용한다. 리포트 숫자(날짜별 자주 한 말 상위 20개)만 쓰고, 원문이나 AI는 쓰지 않는다.
 // 쉬어도 시들지 않는다: 식물이 줄거나 레벨이 내려가는 일은 없다(연속 기록·벌칙 없음).
+import { queueActivityChoice } from "./activity-outbox.ts";
 import { accountKey } from "./local-scope.ts";
 import { type DayStat, type SkyId, SKIES, effectiveSky, localDate } from "./report.ts";
 
@@ -126,7 +127,7 @@ export function dailySeeds(date: string, count = 3) {
   return picked;
 }
 
-// ── 고른 씨앗 저장: 계정별로 이 기기에만, 1년까지 ──
+// ── 고른 씨앗 저장: 계정별 DB와 기기 캐시, 1년까지 ──
 const KEY = "here.garden.v1";
 const KEEP_DAYS = 365;
 
@@ -148,6 +149,7 @@ export function pickSeed(seedId: string, now = Date.now()) {
   const oldest = localDate(now - KEEP_DAYS * DAY_MS);
   const next = Object.fromEntries(Object.entries(loadSeeds()).filter(([date]) => date >= oldest));
   next[localDate(now)] = seedId;
+  queueActivityChoice("seed", localDate(now), seedId);
   try { localStorage.setItem(key, JSON.stringify(next)); } catch {}
 }
 

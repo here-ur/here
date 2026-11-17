@@ -1,3 +1,4 @@
+import { refreshActivityDays } from '@/lib/account-activity-server';
 import { after } from 'next/server';
 import { requireMember } from '@/lib/member-auth';
 import { memoryEnabled } from '@/lib/memory';
@@ -17,7 +18,7 @@ async function accessFor(request:Request) {
   return access;
 }
 function schedule(client: import('@supabase/supabase-js').SupabaseClient) {
-  after(()=>processConversationMemories(client,{openaiKey:process.env.OPENAI_API_KEY||'',summaryKey:process.env.RUNYOUR_API_KEY||'',summaryBaseUrl:process.env.RUNYOUR_BASE_URL,summaryModel:process.env.MEMORY_SUMMARY_MODEL}));
+  after(async()=>{ await Promise.allSettled([refreshActivityDays(client),processConversationMemories(client,{openaiKey:process.env.OPENAI_API_KEY||'',summaryKey:process.env.RUNYOUR_API_KEY||'',summaryBaseUrl:process.env.RUNYOUR_BASE_URL,summaryModel:process.env.MEMORY_SUMMARY_MODEL})]); });
 }
 export async function GET(request:Request) {
   try {

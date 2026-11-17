@@ -1,3 +1,4 @@
+import { refreshActivityDays } from '@/lib/account-activity-server';
 import { isUuid } from "@/lib/conversation-history";
 import { processConversationMemories } from "@/lib/conversation-memory";
 import { readSmallJson } from "@/lib/request-json";
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
         {id:h.userMessageId,role:'user',content:messages.at(-1)!.content,at:new Date(h.userAt).toISOString()},
         {id:h.assistantMessageId,role:'assistant',content:reply,at:new Date(assistantAt).toISOString()},
       ]}).abortSignal(AbortSignal.timeout(8000));
-      if (!error) after(()=>processConversationMemories(access.supabase,memoryConfig));
+      if (!error) after(async()=>{await Promise.allSettled([refreshActivityDays(access.supabase),processConversationMemories(access.supabase,memoryConfig)]);});
       } catch { /* The durable outbox retries without changing the reply timestamp. */ }
       // Return the exact timestamp even if the durable client outbox must retry this save.
       return { assistantAt };
