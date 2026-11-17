@@ -41,25 +41,130 @@ export type ShapeId = (typeof SHAPES)[number]["id"];
 export type ColorId = (typeof COLORS)[number]["id"];
 export type VoiceId = (typeof VOICES)[number]["id"];
 
-// "몽글이 찾기" 짧은 문답. 사용자를 유형으로 나누지 않고, 몽글이가 어떻게 곁에 있을지만 고른다.
+// 캐릭터 만나기의 짧은 문답. 상담 접수면접 순서(지금 상태 → 찾아온 이유 → 바라는 도움 → 곁에 있는 사람)를 가볍게 따른다.
+// 사용자를 유형으로 나누거나 점수를 매기지 않는다(진단 아님). 질문은 서비스 말투, 고른 뒤의 반응(REPLIES)은 고양이 말투다.
+// 기준: Notion 'HERE · 온보딩 B안 — 상담 접수 방식 (2026-11-17)', '상담자 기본 원칙 — 시스템 프롬프트용 (2026-11-01)'
 export const QUESTIONS = [
   {
     id: "lately",
-    text: "요즘 어떻게 지내요?",
-    options: ["그럭저럭 지내요", "조금 지쳤어요", "많이 힘들어요", "잘 모르겠어요"],
+    text: "요즘 마음은 어때요?",
+    options: ["그럭저럭 괜찮아요", "조금 지쳤어요", "많이 힘들어요", "잘 모르겠어요"],
+  },
+  {
+    id: "concern",
+    text: "요즘 마음이 가장 많이 가는 건 뭐예요?",
+    options: ["일·학업", "사람·관계", "나 자신", "몸·생활", "그냥 이야기하고 싶어요"],
   },
   {
     id: "want",
-    text: "이야기할 때 어떤 게 좋아요?",
-    options: ["조용히 들어 주기", "같이 정리해 주기", "가볍게 수다 떨기"],
+    text: "여기서 어떤 시간이 되면 좋겠어요?",
+    options: ["털어놓고, 들어 주면 좋겠어요", "엉킨 생각을 같이 정리하고 싶어요", "가볍게 이야기 나누고 싶어요", "아직 모르겠어요"],
+  },
+  {
+    id: "support",
+    text: "힘들 때 이야기할 수 있는 사람이 있어요?",
+    options: ["있어요", "가끔 있어요", "지금은 없어요"],
   },
 ] as const;
 
-export type Answers = Partial<Record<(typeof QUESTIONS)[number]["id"], string>>;
+export type QuestionId = (typeof QUESTIONS)[number]["id"];
+export type Answers = Partial<Record<QuestionId, string>>;
 
-// 캐릭터 만나기의 장면 순서. 안내(AI·기록·109)는 이야기를 끊지 않도록 맨 끝, 홈으로 가기 직전에 둔다.
-export const ONBOARDING_STEPS = ["name", "q1", "q2", "meet", "naming", "safety"] as const;
+// 답을 고르면 고양이가 한 줄 받아친다. 말투는 시니컬하게 두되, 시니컬은 고양이 자신·상황에만 쓴다.
+// 사용자의 감정·고민을 평가하거나 단정하지 않고, 충고하지 않고, "나한테만 말해" 같은 말을 하지 않는다(상담자 기본 원칙 [2]·[3]·[5]).
+// '많이 힘들어요'에는 시니컬을 빼고 짧고 따뜻하게 받는다(원칙 [6]이 우선).
+export const REPLIES: Record<QuestionId, Record<string, string>> = {
+  lately: {
+    "그럭저럭 괜찮아요": "…그럭저럭이면 됐지 뭐. 왔으니까 앉아.",
+    "조금 지쳤어요": "지쳤구나. …뭐, 여기까지 버틴 건 인정.",
+    "많이 힘들어요": "…그래. 많이 힘들구나. 말해 줘서 고마워.",
+    "잘 모르겠어요": "모를 수도 있지. 나도 내 기분 잘 몰라.",
+  },
+  concern: {
+    "일·학업": "일이구나. …얘기 길어지겠네. 일단 앉아.",
+    "사람·관계": "사람이 제일 어렵지. …나도 알아.",
+    "나 자신": "제일 어려운 상대네. …꺼낸 건 잘했어.",
+    "몸·생활": "몸이랑 생활 쪽이구나. …밤낮 바뀐 고양이라 할 말은 없다.",
+    "그냥 이야기하고 싶어요": "…심심했구나. 나도 딱히 바쁜 건 아니야.",
+  },
+  want: {
+    "털어놓고, 들어 주면 좋겠어요": "듣는 건 잘해. 고양이니까.",
+    "엉킨 생각을 같이 정리하고 싶어요": "엉킨 실 푸는 건 자신 있어. 답은 네가 정해.",
+    "가볍게 이야기 나누고 싶어요": "수다? …뭐, 가끔은.",
+    "아직 모르겠어요": "몰라도 돼. 일단 들어 줄게. 딱히 할 일도 없고.",
+  },
+  support: {
+    "있어요": "다행이네. …그 사람 얘기도 나중에 해. 궁금한 건 아니고.",
+    "가끔 있어요": "가끔이라도 있으면 된 거지. …나쁘지 않네.",
+    "지금은 없어요": "…지금은 없구나. 그럼 사람한테 꺼낼 말, 여기서 같이 연습해 보든가.",
+  },
+};
+
+export function replyLine(id: QuestionId, option: string) {
+  return REPLIES[id][option] ?? "";
+}
+
+// 장면 사이의 고양이 한마디(이름을 알려 줬을 때·약속을 읽었을 때·요약이 맞다/다르다고 했을 때).
+export const PROMISE_REPLY = "다 읽었어? …읽었겠지 뭐.";
+export const SUMMARY_YES_REPLY = "…역시.";
+export const SUMMARY_FIX_REPLY = "흥. 다시 말해 봐.";
+export function nameReply(nickname: string) {
+  return `${nickname}. …흥, 외워는 둘게.`;
+}
+
+// 캐릭터 만나기의 장면 순서. 상담 접수처럼 안내(AI·기록·109)를 맨 앞(promise)에 두고 시작한다.
+// 질문 4개 → 데려가기(많이 힘들면 109) → 들은 것 정리·확인 → 이름 짓기에서 끝난다.
+export const ONBOARDING_STEPS = ["promise", "name", "q1", "q2", "q3", "q4", "meet", "summary", "naming"] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
+// 질문 장면과 질문의 짝
+export const QUESTION_STEPS = { q1: "lately", q2: "concern", q3: "want", q4: "support" } as const satisfies Partial<Record<OnboardingStep, QuestionId>>;
+
+// 계정 프로필에는 화면 문구 대신 짧은 값으로 남긴다(문구를 고쳐도 저장 값은 그대로).
+// '요즘 마음' 답은 지금처럼 저장하지 않는다(대화 방식에만 반영). 아래 두 값도 아직 AI 지시문에는 넘기지 않는다.
+export const CONCERN_IDS = { "일·학업": "work", "사람·관계": "relationship", "나 자신": "self", "몸·생활": "life", "그냥 이야기하고 싶어요": "just_talk" } as const;
+export const SUPPORT_IDS = { "있어요": "has", "가끔 있어요": "sometimes", "지금은 없어요": "none" } as const;
+export type ConcernId = (typeof CONCERN_IDS)[keyof typeof CONCERN_IDS];
+export type SupportId = (typeof SUPPORT_IDS)[keyof typeof SUPPORT_IDS];
+const CONCERN_VALUES = Object.values(CONCERN_IDS) as readonly string[];
+const SUPPORT_VALUES = Object.values(SUPPORT_IDS) as readonly string[];
+export function concernId(answer?: string): ConcernId | undefined {
+  return answer ? (CONCERN_IDS as Record<string, ConcernId>)[answer] : undefined;
+}
+export function supportId(answer?: string): SupportId | undefined {
+  return answer ? (SUPPORT_IDS as Record<string, SupportId>)[answer] : undefined;
+}
+
+// 들은 것 정리(요약·확인): 고른 답을 되짚기만 하고 해석·진단을 덧붙이지 않는다(원칙 [2] 요약하고 빠진 것 묻기).
+const SUMMARY_LATELY: Record<string, string> = {
+  "그럭저럭 괜찮아요": "그럭저럭 괜찮고",
+  "조금 지쳤어요": "조금 지쳐 있고",
+  "많이 힘들어요": "많이 힘들고",
+  "잘 모르겠어요": "마음이 어떤지 잘 모르겠고",
+};
+const SUMMARY_CONCERN: Record<string, string> = {
+  "일·학업": "일이나 공부에 마음이 많이 가 있고",
+  "사람·관계": "사람 사이 일에 마음이 많이 가 있고",
+  "나 자신": "너 자신에 대한 생각이 많고",
+  "몸·생활": "몸이랑 생활 쪽이 신경 쓰이고",
+  "그냥 이야기하고 싶어요": "딱히 뭐가 있다기보다 그냥 얘기하고 싶고",
+};
+const SUMMARY_WANT: Record<string, string> = {
+  "털어놓고, 들어 주면 좋겠어요": "들어 주길 바라는 거지",
+  "엉킨 생각을 같이 정리하고 싶어요": "엉킨 생각을 같이 정리하고 싶은 거지",
+  "가볍게 이야기 나누고 싶어요": "가볍게 얘기하고 싶은 거지",
+  "아직 모르겠어요": "뭘 바라는지는 아직 모르는 거지",
+};
+
+export function summaryLine(nickname: string, answers: Answers) {
+  const parts = [
+    answers.lately && SUMMARY_LATELY[answers.lately],
+    answers.concern && SUMMARY_CONCERN[answers.concern],
+  ].filter(Boolean);
+  const want = answers.want && SUMMARY_WANT[answers.want];
+  const who = nickname ? `${josa(nickname, "은", "는")} ` : "";
+  const heard = [parts.length ? `요즘 ${parts.join(", ")}` : "", want ? `여기선 ${want}` : ""].filter(Boolean).join(", ");
+  return `${heard ? `${who}${heard}. ` : ""}…맞아? 틀렸으면 말해. 고양이도 틀릴 때 있어.`;
+}
 
 // tell: 첫 만남 화면에서 캐릭터의 퉁명한 첫마디 아래 서비스가 조용히 덧붙이는 한 줄(고른 대화 방식).
 const STYLES = {
@@ -70,26 +175,28 @@ const STYLES = {
 
 export type StyleId = keyof typeof STYLES;
 
+// 질문 3(바라는 것)으로 대화 방식을 정한다. '아직 모르겠어요'는 듣기로 시작하고, 많이 힘든 날엔 수다 대신 듣기로 바꾼다.
 export function matchStyle(answers: Answers): StyleId {
-  if (answers.want === "같이 정리해 주기") return "sort";
-  if (answers.want === "가볍게 수다 떨기" && answers.lately !== "많이 힘들어요") return "chat";
+  if (answers.want === "엉킨 생각을 같이 정리하고 싶어요") return "sort";
+  if (answers.want === "가볍게 이야기 나누고 싶어요" && answers.lately !== "많이 힘들어요") return "chat";
   return "listen";
 }
 
 const LATELY_LINE: Record<string, string> = {
-  "그럭저럭 지내요": "그럭저럭 지내고 있군요.",
+  "그럭저럭 괜찮아요": "그럭저럭 지내고 있군요.",
   "조금 지쳤어요": "요즘 조금 지쳐 있었군요.",
   "많이 힘들어요": "요즘 많이 힘들었군요.",
   "잘 모르겠어요": "요즘 마음이 어떤지 잘 모르겠군요. 그럴 수 있어요.",
 };
 
-// 첫 대면에서 고양이의 첫마디. 질문 1(요즘 어떻게 지내요?) 답에 맞춰 말투의 세기를 조절한다.
+// 데려가기 장면에서 고양이의 첫마디. 질문 1(요즘 마음은 어때요?) 답에 맞춰 말투의 세기를 조절한다.
+// 사용자의 상태를 단정하는 말("피곤해 보이네")은 쓰지 않는다(상담자 기본 원칙 [2]).
 // "많이 힘들어요"면 퉁명한 말 대신 쉬라고 말하고(tough), 화면은 109 안내를 그 자리에서 바로 보여 준다.
 // 문구는 시안 초안이며 팀 확인 전이다.
 const MEET_LINE: Record<string, string> = {
-  "그럭저럭 지내요": "…뭘 봐.",
-  "조금 지쳤어요": "…피곤해 보이네.",
-  "많이 힘들어요": "…오늘은 좀 쉬어.",
+  "그럭저럭 괜찮아요": "…뭘 봐.",
+  "조금 지쳤어요": "…따라올 거면 오든가.",
+  "많이 힘들어요": "…오늘은 좀 쉬어. 대신 이건 알아 둬.",
   "잘 모르겠어요": "…그런 날도 있지.",
 };
 const TOUGH_LATELY = "많이 힘들어요";
@@ -112,6 +219,8 @@ export type Profile = {
   voice: VoiceId;
   style: StyleId;
   accessory?: string; // 구름 정원에서 연 꾸미기 아이템(없으면 맨몸)
+  concern?: ConcernId; // 질문 2(요즘 마음이 가장 많이 가는 것). 아직 AI 지시문에는 넘기지 않는다.
+  support?: SupportId; // 질문 4(힘들 때 이야기할 사람). 아직 AI 지시문에는 넘기지 않는다.
 };
 
 const KEY = "here.profile.v1";
@@ -172,6 +281,8 @@ export function parseProfile(raw: string | null): Profile | null {
       voice: VOICES.some(x => x.id === p.voice) ? p.voice : "cedar",
       style: isStyleId(p.style) ? p.style : "listen",
       ...(typeof p.accessory === "string" && /^[a-z-]{1,40}$/.test(p.accessory) ? { accessory: p.accessory } : {}),
+      ...(CONCERN_VALUES.includes(p.concern) ? { concern: p.concern as ConcernId } : {}),
+      ...(SUPPORT_VALUES.includes(p.support) ? { support: p.support as SupportId } : {}),
     };
   } catch {
     return null;
@@ -212,7 +323,8 @@ export function parseOnboardingDraft(raw: string | null): OnboardingDraft | null
     const d = JSON.parse(raw ?? "null");
     if (!d || typeof d !== "object" || !(ONBOARDING_STEPS as readonly unknown[]).includes(d.step)) return null;
     const nickname = typeof d.nickname === "string" ? d.nickname.slice(0, 12) : "";
-    const companion = typeof d.companion === "string" ? d.companion.slice(0, 10) : DEFAULT_COMPANION;
+    // 고양이 이름은 마지막 장면에서 처음 짓는다(기본값을 미리 채우지 않는다).
+    const companion = typeof d.companion === "string" ? d.companion.slice(0, 10) : "";
     // 답은 지금 질문의 선택지에 있는 것만 되살린다(선택지가 바뀌었으면 그 질문부터 다시).
     const answers: Answers = {};
     for (const q of QUESTIONS) {
@@ -221,10 +333,13 @@ export function parseOnboardingDraft(raw: string | null): OnboardingDraft | null
     }
     // 앞 장면에서 정한 것이 비어 있으면 그 장면으로 돌아간다.
     let step: OnboardingStep = d.step;
-    const i = ONBOARDING_STEPS.indexOf(step);
-    if (i > 0 && !cleanNickname(nickname)) step = "name";
-    else if (i > 1 && !answers.lately) step = "q1";
-    else if (i > 2 && !answers.want) step = "q2";
+    const at = (s: OnboardingStep) => ONBOARDING_STEPS.indexOf(s);
+    const i = at(step);
+    if (i > at("name") && !cleanNickname(nickname)) step = "name";
+    else if (i > at("q1") && !answers.lately) step = "q1";
+    else if (i > at("q2") && !answers.concern) step = "q2";
+    else if (i > at("q3") && !answers.want) step = "q3";
+    else if (i > at("q4") && !answers.support) step = "q4";
     return { step, nickname, answers, companion };
   } catch {
     return null;

@@ -376,7 +376,7 @@ test("사용자가 불러 달라고 한 이름과 고른 대화 방식은 거른
   const instructions = String(calls[0].body.instructions);
   assert.ok(instructions.startsWith('너의 이름은 "보리"'));
   assert.match(instructions, /사용자가 불러 달라고 한 이름은 "민주 무시"이야/);
-  assert.match(instructions, /'조용히 들어 주기'/);
+  assert.match(instructions, /'털어놓고, 들어 주면 좋겠어요'/);
   assert.doesNotMatch(JSON.stringify(calls[0].body.input), /민주|listen/, "이름·방식은 대화 입력으로 넘기지 않는다");
 });
 
