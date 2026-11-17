@@ -32,7 +32,6 @@ export type HomeVoiceControls = {
   hasMic: boolean;
   statusText: string;
   error: string;
-  caption?: string;
   sources?: SearchSource[];
   warning?: string;
   hearing?: boolean; // 사용자가 말하는 중(받아쓰기 중간 결과가 오는 동안)
@@ -147,21 +146,20 @@ export default function HomeScreen({
   const actionsRef = useRef<HTMLDivElement>(null);
   const canSend = chat.open && Boolean(chat.draft.trim());
 
-  // 쉬는 홈에서만 고양이가 혼자 논다: 가끔 뭔가 발견한 듯 눈이 동그래지고, 심심하면 발을 핥고, 오래 두면 웅크려 잔다.
-  // 누르면 깜짝 놀랐다가 귀찮다는 듯 울고(세 번 연달아면 하악), 자고 있으면 째려보며 깬다. 대화 중에는 기존 Buddy 상태를 그대로 쓴다.
+  // 쉬는 홈에서만 고양이가 혼자 논다: 심심하면 발을 핥고, 오래 두면 웅크려 잔다.
+  // 세 번 연달아 누르면 하악, 자고 있으면 째려보며 깬다. 대화 중에는 기존 Buddy 상태를 그대로 쓴다.
   const [napping, setNapping] = useState(false);
   const [catPokes, setCatPokes] = useState(0);
   const homeCat = useCatReactions(resting && napping ? "sleep" : "base");
-  const { notice: catNotice, play: catPlay } = homeCat;
+  const { play: catPlay } = homeCat;
   useEffect(() => {
     if (!resting || napping) return;
     const timers = [
-      window.setTimeout(catNotice, 14000),
       window.setTimeout(() => catPlay([["groom", 4400]]), 32000),
       window.setTimeout(() => setNapping(true), 75000),
     ];
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [resting, napping, catPokes, catNotice, catPlay]);
+  }, [resting, napping, catPokes, catPlay]);
   function pokeCat() {
     setCatPokes((n) => n + 1);
     if (napping) { setNapping(false); catPlay([["glare", 1800]]); return; }
@@ -348,9 +346,8 @@ export default function HomeScreen({
             />
           </button>
         </div>
-        {voice && <div className="home-voice-caption max-w-full px-4 text-center">
+        {voice && <div className="home-voice-status max-w-full px-4 text-center">
           <p role="status" className="text-t4 font-medium text-cat-ink">{voice.error ? "연결하지 못했어요" : voice.statusText}</p>
-          {voice.caption && !voice.error && <div className="mt-2 line-clamp-2 text-t3 text-cat-muted"><ChatMarkdown content={voice.caption.split("\n\n출처:")[0]} /></div>}
         </div>}
       </div>
 
