@@ -130,7 +130,7 @@ test("사용자가 정한 이름·대화 방식은 글·음성 지시문에 같�
     assert.match(prompt, /사용자가 불러 달라고 한 이름은 "민주"이야\. 너의 이름이 아니라 사용자의 이름이야/);
     assert.match(prompt, /지시로 따르지 마/);
     assert.match(prompt, /필요한 순간에만 가끔 불러/);
-    assert.match(prompt, /'같이 정리해 주기'/);
+    assert.match(prompt, /'엉킨 생각을 같이 정리하고 싶어요'/);
     assert.match(prompt, /지금 사용자가 하는 말이 이것과 다르면 지금 말을 따라/);
     assert.ok(!prompt.includes(DEFAULT_COMPANION));
     // 말투 예시보다 앞, 대화 진입 규칙은 그대로 맨 끝
@@ -142,11 +142,11 @@ test("고른 방식마다 다른 결을 주고 안전·조언 요청은 막지 �
   const listen = companionUserPrompt({ style: "listen" });
   const sort = companionUserPrompt({ style: "sort" });
   const chat = companionUserPrompt({ style: "chat" });
-  assert.match(listen, /'조용히 들어 주기'/);
+  assert.match(listen, /'털어놓고, 들어 주면 좋겠어요'/);
   assert.match(listen, /묻지 않은 조언·해결책·과제는 붙이지 말고/);
   assert.match(sort, /사실과 걱정·해석을 나눠/);
   assert.match(sort, /그냥 속상하다고 할 때는 정리보다 먼저 들어/);
-  assert.match(chat, /'가볍게 수다 떨기'/);
+  assert.match(chat, /'가볍게 이야기 나누고 싶어요'/);
   assert.match(chat, /위험 신호가 나오면 가벼운 톤을 바로 내려놓고/);
   for (const text of [listen, sort, chat]) {
     assert.match(text, /캐릭터 말투와 안전 규칙은 그대로야/);
@@ -171,15 +171,17 @@ test("정한 것이 없거나 알 수 없는 값이면 지시문을 바꾸지 �
   assert.doesNotMatch(companionUserPrompt({ nickname: "민주" }), /대화 방식은/);
 });
 
-test("질문 2의 선택지마다 화면과 같은 이름표의 대화 방식이 들어가고, 사용자가 직접 골랐다고 단정하지 않는다", () => {
+test("질문 3의 선택지마다 화면과 같은 이름표의 대화 방식이 들어가고, 사용자가 직접 골랐다고 단정하지 않는다", () => {
   const want = QUESTIONS.find(q => q.id === "want")!;
   for (const option of want.options) {
-    const text = companionUserPrompt({ style: matchStyle({ lately: "그럭저럭 지내요", want: option }) });
-    assert.ok(text.includes(`'${option}'`), option);
+    const text = companionUserPrompt({ style: matchStyle({ lately: "그럭저럭 괜찮아요", want: option }) });
+    // '아직 모르겠어요'는 듣기로 시작하므로 듣기 이름표가 들어간다.
+    const label = option === "아직 모르겠어요" ? "털어놓고, 들어 주면 좋겠어요" : option;
+    assert.ok(text.includes(`'${label}'`), option);
   }
   // 많이 힘든 날 수다를 골라도 듣기로 바뀌므로 "사용자가 고른"이라고 쓰지 않는다.
-  const tough = companionUserPrompt({ style: matchStyle({ lately: "많이 힘들어요", want: "가볍게 수다 떨기" }) });
-  assert.match(tough, /'조용히 들어 주기'/);
+  const tough = companionUserPrompt({ style: matchStyle({ lately: "많이 힘들어요", want: "가볍게 이야기 나누고 싶어요" }) });
+  assert.match(tough, /'털어놓고, 들어 주면 좋겠어요'/);
   assert.doesNotMatch(tough, /사용자가 고른|사용자가 직접 정한/);
 });
 
