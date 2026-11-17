@@ -89,17 +89,6 @@
 @media (prefers-reduced-motion: reduce) {
   .here-auth-actions .auth-provider-button { transition: none; }
 }
-.here-auth-footnote {
-  margin-top: 16px;
-  padding-block: 10px;
-  color: var(--auth-white);
-  /* 영상 위 흰 글씨가 4.5:1 이상으로 읽히게 너무 흐리게 하지 않는다. */
-  opacity: .8;
-  text-align: center;
-  font-size: 12px;
-  line-height: 16px;
-  letter-spacing: -.02em;
-}
 .here-auth-policyText { text-decoration: underline; text-underline-position: from-font; text-decoration-skip-ink: none; }
 .here-auth-unavailable { padding: 20px; border-radius: 24px; background: rgb(57 58 60 / 75%); text-align: center; }
 /* 로그인 상태 확인 실패: 환영 화면과 같은 자리에 안내와 검정 알약 버튼 */
@@ -194,3 +183,9 @@ div:has(> .here-sheet.auth-sheet) { -webkit-backdrop-filter: none; backdrop-filt
   .auth-sheet-step[data-direction="fade"] { animation: auth-step-fade 240ms ease backwards; }
 }
 
+
+/* 로그인 확인 중: 로그인 버튼 자리에 흰 발자국. 0.4초 안에 끝나면 보이지 않는다(로딩 화면 시안 규칙). */
+.here-auth-loading .here-auth-welcomeBottom { min-height: 116px; align-content: center; }
+.here-auth-paws { justify-self: center; color: #fff; opacity: 0; animation: here-auth-paws-in .24s ease .4s forwards; }
+@keyframes here-auth-paws-in { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .here-auth-paws { animation-timing-function: step-end; } }

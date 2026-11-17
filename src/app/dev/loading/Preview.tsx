@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import AuthScreen from "../../AuthScreen";
 import CatLoading from "../../CatLoading";
 import LoadingPeek from "../../LoadingPeek";
 import { Button } from "../../ui/Button";
 import { PawLoader } from "../../ui/PawLoader";
 
 const SCENES = [
-  ["A", "낮잠 · 앱 열 때"],
+  ["A", "로그인 확인"],
+  ["A2", "낮잠"],
   ["B", "그루밍 · 설정 불러올 때"],
   ["C", "하품 · 지난 이야기"],
   ["E", "동작 줄이기"],
@@ -33,7 +35,8 @@ export default function Preview() {
           </button>
         ))}
       </nav>
-      {key === "A" && <CatLoading scene="nap" label="로그인 상태를 확인하고 있어요" preview={{ phase: "waiting", reduced: false }} />}
+      {key === "A" && <AuthScreen key={run} loading onRetry={() => setRun((n) => n + 1)} onSignOut={noop} />}
+      {key === "A2" && <CatLoading scene="nap" label="불러오고 있어요" preview={{ phase: "waiting", reduced: false }} />}
       {key === "B" && <CatLoading scene="groom" label="캐릭터 설정을 불러오고 있어요" preview={{ phase: "waiting", reduced: false }} />}
       {key === "C" && <CatLoading scene="yawn" label="지난 이야기를 불러오고 있어요" preview={{ phase: "waiting", reduced: false }} />}
       {key === "E" && <CatLoading scene="nap" label="불러오고 있어요" preview={{ phase: "waiting", reduced: true }} />}
@@ -46,7 +49,7 @@ export default function Preview() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/home/main-cat.png" alt="" className="absolute left-[-50.9%] top-[-4.959%] h-[107.549%] w-[197.213%] max-w-none" />
           </div>
-          <LoadingPeek label="라이브러리를 열고 있어요" />
+          <LoadingPeek label="리포트를 열고 있어요" />
         </main>
       )}
       {key === "I" && (

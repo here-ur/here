@@ -10,7 +10,6 @@ import { emailAuthError, normalizeEmail, socialSignInUrl, type SocialProvider } 
 import { Button } from "./ui/Button";
 import { TextField } from "./ui/TextField";
 import AuthScreen from "./AuthScreen";
-import CatLoading from "./CatLoading";
 import AuthProviderIcon from "./AuthProviderIcon";
 import EmailAuthScreen from "./EmailAuthScreen";
 import { EmailCodeField } from "./ui/EmailCodeField";
@@ -79,7 +78,11 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     if (!client) return;
     let active = true;
     const generation = ++checkGeneration.current;
-    void checkEntry(client).then(result => { if (active && generation === checkGeneration.current) enter(result); });
+    void checkEntry(client).then(result => {
+      if (!active || generation !== checkGeneration.current) return;
+      // 확인을 마치고 홈(또는 시트)으로 들어갈 때는 시트 단계를 마칠 때와 같은 화면 넘김으로 바꾼다.
+      if (result.kind === "member") void movePage("enter", () => enter(result)); else enter(result);
+    });
     return () => { active = false; };
   }, [client, attempt, enter]);
 
@@ -87,7 +90,9 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     if (!client) return;
     const { data } = client.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
-        clearPasswordReset(resetStorage()); checkGeneration.current++; enter({ kind: "login" }); return;
+        clearPasswordReset(resetStorage()); checkGeneration.current++;
+        // 로그아웃해서 환영 화면으로 돌아갈 때도 시트를 마칠 때와 같은 화면 넘김을 쓴다.
+        void movePage("enter", () => enter({ kind: "login" })); return;
       }
       if (!shouldRecheckAuth(event, session?.user.id, { userId, pendingUserId: pendingUser,
         idle: showWelcome || step === "login", busy: busyRef.current })) return;
@@ -123,7 +128,8 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   const signOut = useCallback(async () => {
     const result = await client?.auth.signOut({ scope: "local" });
     if (!result?.error) clearPasswordReset(resetStorage());
-    enter({ kind: result?.error ? "retry" : "login" });
+    // 성공하면 SIGNED_OUT 이벤트가 화면 넘김과 함께 환영 화면으로 바꾼다(여기서 또 바꾸면 넘김이 끊긴다). 실패하면 다시 확인 화면.
+    if (!client || result?.error) enter({ kind: result?.error ? "retry" : "login" });
   }, [client, enter]);
 
   function fail(message: string, field: Field | null = null) {
@@ -229,11 +235,16 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   }
 
   const brand = <h1 className="here-auth-brand"><span>나와 가장 가까운 친구</span><span>here</span></h1>;
-  // 앱을 열 때 로그인 확인: 낮잠 자는 고양이(로딩 화면 시안 A). 8초가 넘으면 다시 시도·로그아웃, 확인하지 못하면 G.
-  if (loading) return <CatLoading key={attempt} scene="nap" label="로그인 상태를 확인하고 있어요"
+  // 앱을 열 때·로그인에서 돌아올 때의 확인: 환영 화면과 같은 침실 그림에 발자국만(로딩 화면 시안 A를 이 그림으로 대신). 배경이 바뀌지 않고 홈으로 넘어간다.
+  if (loading) return <AuthScreen key={attempt} loading
     onRetry={() => { checkGeneration.current++; setAttempt(n => n + 1); }} onSignOut={() => { void signOut(); }} />;
-  if (checkFailed) return <CatLoading scene="nap" label="로그인 상태를 확인하지 못했어요" error
-    onRetry={() => { setLoading(true); setAttempt(n => n + 1); }} onSignOut={() => { void signOut(); }} />;
+  if (checkFailed) return <AuthScreen>
+    <div className="here-auth-welcome">{brand}<div className="here-auth-welcomeBottom here-auth-retry">
+      <p role="alert" className="here-auth-unavailable">연결하지 못했어요</p>
+      <Button tone="ink" fullWidth onClick={() => { setLoading(true); setAttempt(n => n + 1); }}>다시 확인</Button>
+      <Button variant="tonal" tone="ink" fullWidth onClick={signOut}>로그아웃</Button>
+    </div></div>
+  </AuthScreen>;
   // 로그인 뒤 시트 단계: 기억 동의 → 성별·생년월일(새 회원만) → 캐릭터 만나기·홈. 화면 넘김은 마지막 시트 단계가 맡는다.
   if (userId) return <MemoryConsentGate key={userId} userId={userId} signOut={signOut} continueSheet={continueSheet} handoff>
     <MemberBasicsGate userId={userId} signOut={signOut}>{children(userId, signOut)}</MemberBasicsGate>
@@ -293,7 +304,6 @@ export default function AuthGate({ children }: { children: (userId: string, sign
           <Button className="auth-provider-button auth-provider-kakao" tone="ink" fullWidth loading={busy && provider === "kakao"} disabled={busy} onClick={() => { void startSocial("kakao"); }}><AuthProviderIcon provider="kakao" />카카오로 시작하기</Button>
           <Button className="auth-provider-button auth-provider-google" tone="ink" fullWidth loading={busy && provider === "google"} disabled={busy} onClick={() => { void startSocial("google"); }}><AuthProviderIcon provider="google" />구글로 시작하기</Button>
         </div> : <p role="status" className="here-auth-unavailable">로그인을 준비하고 있어요.<br />잠시 후 다시 방문해 주세요.</p>}
-        <p className="here-auth-footnote">처음이라면 가입 후 이용 동의를 진행해요.</p>
       </div>
     </div>
   </AuthScreen>;
