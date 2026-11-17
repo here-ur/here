@@ -7,7 +7,7 @@
   object-position: center bottom;
   transition: filter 240ms ease;
 }
-.home-screen[data-text-open="true"] .home-scene-background img { filter: blur(8px); }
+.home-screen[data-text-open="true"] .home-scene-background img { filter: blur(10px); }
 @media (prefers-reduced-motion: reduce) {
   .home-scene-background img { transition: none; }
 }
