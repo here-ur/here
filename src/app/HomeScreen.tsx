@@ -50,6 +50,7 @@ export type HomeChatControls = {
   state: BuddyState;
   onDraft: (value: string) => void;
   onSend: () => void;
+  onRetry?: () => void;
   onClose: () => void;
 };
 
@@ -353,6 +354,7 @@ export default function HomeScreen({
         {voice?.warning && !voice.error && <p role="status" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-cat-muted">{voice.warning}</p>}
         {voice?.error && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{voice.error}</p>}
         {chat.error && !voice && <p role="alert" className="rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty text-[#C42A23]">{chat.error}</p>}
+        {chat.onRetry && !voice && <Button variant="tonal" type="button" onClick={chat.onRetry}>답변 다시 받기</Button>}
         {banner && <p key={banner.error ? "alert" : "status"} role={banner.error ? "alert" : "status"} className={`rounded-r3 bg-white/90 px-4 py-3 text-t3 text-pretty ${banner.error ? "text-[#C42A23]" : "text-cat-muted"}`}>{banner.text}</p>}
         {nudge && resting && <div>{nudge}</div>}
         {chatting && (
@@ -361,7 +363,7 @@ export default function HomeScreen({
           </div>
         )}
         <div role="group" aria-label={voice ? "음성 대화" : chat.open ? "메시지 작성" : "대화 시작"} className="home-actions">
-          <form className="home-compose" data-open={chat.open} onSubmit={(event) => { event.preventDefault(); if (canSend && !chat.sending) chat.onSend(); }}>
+          <form className="home-compose" data-open={chat.open} onSubmit={(event) => { event.preventDefault(); if (canSend) chat.onSend(); }}>
             <div className="home-compose-content" inert={!chat.open} aria-hidden={!chat.open}>
               <Button variant="plain" type="button" onClick={collapseText} tabIndex={chat.open ? 0 : -1} aria-label="입력창 닫기" className="home-compose-close ui-press grid shrink-0 place-items-center rounded-full"><Icon name="close" size={18} /></Button>
               <label htmlFor="home-text-draft" className="sr-only">{name}에게 하고 싶은 말</label>
@@ -371,7 +373,7 @@ export default function HomeScreen({
                   if (event.key === "Escape") { event.preventDefault(); collapseText(); return; }
                   if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing || event.keyCode === 229) return;
                   event.preventDefault();
-                  if (canSend && !chat.sending) chat.onSend();
+                  if (canSend) chat.onSend();
                 }}
               />
             </div>
@@ -391,7 +393,7 @@ export default function HomeScreen({
             </Button>
           </form>
           <div className="home-right-action" data-send={canSend}>
-            <Button variant="plain" type="button" onClick={chat.onSend} disabled={chat.sending || !canSend} tabIndex={canSend ? 0 : -1} aria-hidden={!canSend} aria-label="메시지 보내기" className="home-send ui-press grid size-14 place-items-center rounded-full bg-cat-ink text-white disabled:opacity-40"><Icon name="send" size={23} /></Button>
+            <Button variant="plain" type="button" onClick={chat.onSend} disabled={!canSend} tabIndex={canSend ? 0 : -1} aria-hidden={!canSend} aria-label="메시지 보내기" className="home-send ui-press grid size-14 place-items-center rounded-full bg-cat-ink text-white disabled:opacity-40"><Icon name="send" size={23} /></Button>
             <div inert={canSend} aria-hidden={canSend} className="home-mic-action">
             <div className="home-voice-pill" data-expanded={Boolean(voice)}>
               <div className="home-voice-end" inert={!voice} aria-hidden={!voice}>

@@ -397,3 +397,8 @@ test('서버는 생성된 답변까지 원문 저장에 전달하고 저장 장�
  const failed=await chatResponse(request(),{...provider().config,onExchange:async()=>{throw new Error('storage failed');}});
  assert.equal(failed.status,200);
 });
+
+test('저장한 답변 시각을 응답에 포함해 대기 중 보낸 메시지와 순서를 보존한다',async()=>{
+ const response=await chatResponse(request(),{...provider().config,onExchange:async()=>({assistantAt:1794870000000})});
+ assert.equal((await response.json()).assistantAt,1794870000000);
+});

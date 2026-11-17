@@ -5,6 +5,7 @@ import type { StyleId } from "./onboarding.ts";
 export type ChatPersona = { name: string; nickname?: string; style?: StyleId };
 
 export type ChatReply = {
+  assistantAt?: number;
   reply: string;
   crisis: boolean;
   suggest: boolean;
@@ -45,7 +46,7 @@ export async function requestChat(
     response = await fetch("/api/chat", {
       method: "POST",
       credentials: "same-origin",
-      headers: { "Content-Type": "application/json", "X-Here-History": "v1", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+      headers: { "Content-Type": "application/json", "X-Here-History": "v2", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
       // 메시지 시각 같은 기기 전용 정보는 빼고 role·content만 보낸다. 이름·대화 방식은 지시문에만 쓰인다.
       body: JSON.stringify({
         messages: messages.map(({ role, content }) => ({ role, content })),
@@ -85,5 +86,6 @@ export async function requestChat(
     throw new ChatRequestError(RESPONSE_ERROR);
   }
 
-  return { reply: payload.reply.trim(), crisis: payload.crisis, suggest: payload.suggest };
+  return { reply: payload.reply.trim(), crisis: payload.crisis, suggest: payload.suggest,
+    ...(typeof payload.assistantAt === "number" && Number.isFinite(payload.assistantAt) ? { assistantAt: payload.assistantAt } : {}) };
 }

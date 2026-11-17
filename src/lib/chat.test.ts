@@ -14,7 +14,7 @@ test("같은 출처의 채팅 경로에 메시지와 이름만 JSON으로 보낸
     assert.equal(input, "/api/chat");
     assert.equal(init?.method, "POST");
     assert.equal(init?.credentials, "same-origin");
-    assert.deepEqual(init?.headers, { "Content-Type": "application/json", "X-Here-History": "v1" });
+    assert.deepEqual(init?.headers, { "Content-Type": "application/json", "X-Here-History": "v2" });
     assert.deepEqual(JSON.parse(init?.body as string), { messages, name: "찬준" });
     assert.equal(init?.signal, controller.signal);
     return Response.json({ reply: "  어떤 일이 가장 힘들었어?  ", crisis: false, suggest: true });
@@ -38,7 +38,7 @@ test("메시지 시각 같은 기기 전용 정보는 빼고 role·content만 �
 
 test("로그인 토큰을 채팅 요청에 실어 보낸다", async (t) => {
   t.mock.method(globalThis, "fetch", async (_input: Parameters<typeof fetch>[0], init?: RequestInit) => {
-    assert.deepEqual(init?.headers, { "Content-Type": "application/json", "X-Here-History": "v1", Authorization: "Bearer member-token" });
+    assert.deepEqual(init?.headers, { "Content-Type": "application/json", "X-Here-History": "v2", Authorization: "Bearer member-token" });
     return Response.json({ reply: "응", crisis: false, suggest: false });
   });
   await requestChat(messages, { name: "몽글이" }, undefined, "member-token");
@@ -209,4 +209,9 @@ test("사용자가 불러 달라고 한 이름·대화 방식은 있을 때만 �
     { messages, name: "보리", nickname: "민주", style: "chat" },
     { messages, name: "보리" },
   ]);
+});
+
+test('서버에서 저장한 답변 시각을 클라이언트 기록에도 그대로 사용한다', async(t)=>{
+  t.mock.method(globalThis,'fetch',async()=>Response.json({reply:'답변',crisis:false,suggest:false,assistantAt:1794870000000}));
+  assert.equal((await requestChat(messages,{name:'호야'})).assistantAt,1794870000000);
 });

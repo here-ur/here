@@ -33,7 +33,8 @@ export async function POST(request: Request) {
     return searchWeb(query, { apiKey: process.env.RUNYOUR_API_KEY }, signal);
   } : undefined;
   let history: {batchId:string;userMessageId:string;assistantMessageId:string;userAt:number;assistantAt:number}|undefined;
-  if(memory && request.headers.get("x-here-history")==="v1") {
+  const historyVersion = request.headers.get("x-here-history");
+  if(memory && (historyVersion === "v1" || historyVersion === "v2")) {
     try {
       const body=await readSmallJson(request.clone(),5000,256000) as {history?: typeof history};
       const h=body.history;
@@ -44,17 +45,21 @@ export async function POST(request: Request) {
   return chatResponse(request, {
     onExchange: history ? async (messages, reply) => {
       const h=history!;
+      const assistantAt = historyVersion === "v2" ? Math.max(Date.now(), h.userAt + 1) : h.assistantAt;
+      try {
       const {error}=await access.supabase.rpc('save_conversation_batch',{p_id:h.batchId,p_messages:[
         {id:h.userMessageId,role:'user',content:messages.at(-1)!.content,at:new Date(h.userAt).toISOString()},
-        {id:h.assistantMessageId,role:'assistant',content:reply,at:new Date(h.assistantAt).toISOString()},
+        {id:h.assistantMessageId,role:'assistant',content:reply,at:new Date(assistantAt).toISOString()},
       ]}).abortSignal(AbortSignal.timeout(8000));
-      if(error) throw new Error('history_save_failed');
-      after(()=>processConversationMemories(access.supabase,memoryConfig));
+      if (!error) after(()=>processConversationMemories(access.supabase,memoryConfig));
+      } catch { /* The durable outbox retries without changing the reply timestamp. */ }
+      // Return the exact timestamp even if the durable client outbox must retry this save.
+      return { assistantAt };
     } : undefined,
     search,
     apiKey: process.env.RUNYOUR_API_KEY,
     baseUrl: process.env.RUNYOUR_BASE_URL,
     model: process.env.CHAT_MODEL,
-    memory: memory ? { recall: memory.recall, schedule: messages => { if (request.headers.get("x-here-history") !== "v1") after(() => memory.remember(messages)); } } : undefined,
+    memory: memory ? { recall: memory.recall, schedule: messages => { if (historyVersion !== "v1" && historyVersion !== "v2") after(() => memory.remember(messages)); } } : undefined,
   });
 }

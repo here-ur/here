@@ -7,6 +7,8 @@ import { safeHomeOpener, withHomeOpener } from "@/lib/home-opener";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
 import { companionState } from "@/lib/companion-state";
+import { ChatQueue, queuedChatContext } from "@/lib/chat-queue";
+import type { HistoryMessage } from "@/lib/conversation-history";
 import { ChatRequestError, requestChat } from "@/lib/chat";
 import { waitForCatYawn } from "@/lib/cat-yawn";
 import { type Msg, type Session, loadStoredSessions, pruneLog, saveSession } from "@/lib/log";
@@ -118,7 +120,11 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   const [voiceMode, setVoiceMode] = useState(false);
   const [yawning, setYawning] = useState(false);
   const [draft, setDraft] = useState("");
-  const [pendingText, setPendingText] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const [chatFailed, setChatFailed] = useState(false);
+  const chatQueue = useRef<ChatQueue<HistoryMessage> | null>(null);
+  const messagesRef = useRef<Msg[]>([]);
+  const draftRef = useRef("");
   const [error, setError] = useState("");
   const [memoryWarning, setMemoryWarning] = useState("");
   const [reportMode, setReportMode] = useState<ReportMode | null>(null);
@@ -184,26 +190,30 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   const voiceRequest = useRef<AbortController | null>(null);
   const chatRequest = useRef<AbortController | null>(null);
 
-  useEffect(() => () => { connectionAttempt.current += 1; voiceRequest.current?.abort(); rt.current?.close(); chatRequest.current?.abort(); }, []);
+  useEffect(() => () => { connectionAttempt.current += 1; voiceRequest.current?.abort(); rt.current?.close(); chatRequest.current?.abort(); chatQueue.current?.cancel(); }, []);
 
   const connecting = status === "connecting";
 
 
+  function commitMessages(next: Msg[]) {
+    messagesRef.current = next;
+    setMessages(next);
+    if (session.current) saveSession({ ...session.current, messages: next });
+  }
+
   function add(msg: Msg) {
     const saved = { ...msg, id: crypto.randomUUID(), at: msg.at ?? Date.now() };
     history.append([saved]);
-    setMessages((prev) => {
-      const next = [...withHomeOpener(prev, openingLine), saved];
-      if (session.current) saveSession({ ...session.current, messages: next });
-      return next;
-    });
+    commitMessages([...withHomeOpener(messagesRef.current, openingLine), saved]);
   }
 
   function cancelChat() {
-    if (chatRequest.current) setDraft((current) => current || pendingText);
+    chatQueue.current?.cancel();
+    chatQueue.current = null;
     chatRequest.current?.abort();
     chatRequest.current = null;
-    setPendingText("");
+    setChatSending(false);
+    setChatFailed(false);
     setStatus("idle");
   }
 
@@ -213,48 +223,55 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
     return data.session.access_token;
   }
 
-  /** 글 대화는 마이크 연결 없이 서버의 Runyour AI 경로로만 보낸다. */
-  async function sendChat() {
-    const text = draft.trim();
-    if (!text || chatRequest.current) return;
+  /** Sent messages are immediately recorded; one reply consumes each queued group. */
+  function sendChat() {
+    const text = draftRef.current.trim();
+    if (!text) return;
     if (hasCrisisSignal(text)) setCrisis(true);
     session.current ??= { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, startedAt: Date.now(), messages: [] };
-    const controller = new AbortController();
-    chatRequest.current = controller;
     headlineLocked.current = true;
-    const next: Msg[] = [...withHomeOpener(messages, openingLine), { id: crypto.randomUUID(), role: "user", content: text, at: Date.now() }];
-    setPendingText(text);
+    const message: HistoryMessage = { id: crypto.randomUUID(), role: "user", content: text,
+      at: Math.max(Date.now(), (messagesRef.current.at(-1)?.at ?? 0) + 1) };
+    history.append([message]);
+    commitMessages([...withHomeOpener(messagesRef.current, openingLine), message]);
+    draftRef.current = "";
     setDraft("");
     setError("");
-    setStatus("thinking");
-    try {
-      const token = await accessToken();
-      const assistantId=crypto.randomUUID();
-      const assistantAt=Math.max(Date.now(), next.at(-1)!.at!+1);
-      const result = await requestChat(next.slice(-60), { name: profile?.companion ?? DEFAULT_COMPANION, nickname: profile?.nickname, style: profile?.style }, controller.signal, token, {batchId:crypto.randomUUID(),userMessageId:next.at(-1)!.id!,assistantMessageId:assistantId,userAt:next.at(-1)!.at!,assistantAt});
-      if (chatRequest.current !== controller) return;
-      const completed: Msg[] = [...next, { id: assistantId, role: "assistant", content: result.reply, at: assistantAt }];
-      history.append(completed.slice(-2) as import("@/lib/conversation-history").HistoryMessage[]);
-      setMessages(completed);
-      if (session.current) saveSession({ ...session.current, messages: completed });
-      if (result.crisis) setCrisis(true);
-      if (result.suggest) setSuggest(true);
-    } catch (e) {
-      if (chatRequest.current !== controller || controller.signal.aborted) return;
-      setDraft((current) => current || draft);
-      if (e instanceof ChatRequestError) {
-        if (e.crisis) setCrisis(true);
-        if (e.suggest) setSuggest(true);
-        setError(e.message);
-      } else setError("답변을 받지 못했어요. 다시 시도해 주세요.");
-      // 실패한 글은 입력창에 복원하고, 재시도 때 중복 대화로 보내지 않는다.
-    } finally {
-      if (chatRequest.current === controller) {
-        chatRequest.current = null;
-        setPendingText("");
-        setStatus("idle");
-      }
-    }
+    chatQueue.current ??= new ChatQueue<HistoryMessage>({
+      state: (busy, failed) => { setChatSending(busy); setChatFailed(failed); setStatus(busy ? "thinking" : "idle"); },
+      error: (e) => {
+        if (e instanceof ChatRequestError) {
+          if (e.crisis) setCrisis(true);
+          if (e.suggest) setSuggest(true);
+          setError(e.message);
+        } else setError("답변을 받지 못했어요. 보낸 메시지는 남아 있어요. 다시 시도해 주세요.");
+      },
+      run: async (batch, signal) => {
+        const controller = new AbortController();
+        chatRequest.current = controller;
+        const abort = () => controller.abort();
+        signal.addEventListener("abort", abort, { once: true });
+        try {
+          const context = queuedChatContext(messagesRef.current, batch);
+          const last = batch.at(-1)!;
+          const token = await accessToken();
+          if (signal.aborted) return;
+          const assistantId = crypto.randomUUID();
+          const result = await requestChat(context, { name: profile?.companion ?? DEFAULT_COMPANION, nickname: profile?.nickname, style: profile?.style }, controller.signal, token,
+            { batchId: crypto.randomUUID(), userMessageId: last.id, assistantMessageId: assistantId, userAt: last.at, assistantAt: Math.max(Date.now(), last.at + 1) });
+          if (signal.aborted) return;
+          const reply: HistoryMessage = { id: assistantId, role: "assistant", content: result.reply, at: result.assistantAt ?? Date.now() };
+          history.append([reply]);
+          commitMessages([...messagesRef.current, reply]);
+          if (result.crisis) setCrisis(true);
+          if (result.suggest) setSuggest(true);
+        } finally {
+          signal.removeEventListener("abort", abort);
+          if (chatRequest.current === controller) chatRequest.current = null;
+        }
+      },
+    });
+    chatQueue.current.enqueue(message);
   }
 
   /** 음성 대화만 기존 OpenAI Realtime 연결을 사용한다. */
@@ -381,7 +398,6 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   }
 
   function closeText() {
-    cancelChat();
     setTyping(false);
     setError("");
   }
@@ -490,13 +506,14 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
         outputShape={outputShape}
         chat={{
           open: typing,
-          messages: pendingText ? [...history.messages, { role: "user", content: pendingText }] : history.messages,
+          messages: history.messages,
           history: { loaded: history.loaded, loading: history.loading, hasMore: history.hasMore, error: history.error, onOlder: history.loadOlder },
           draft,
-          sending: Boolean(pendingText),
+          sending: chatSending,
           error: voiceMode ? "" : error || history.saveError,
-          state: companionState({ error: Boolean(error), speaking: !homeGreetingDone && homeSpeaking, thinking: Boolean(pendingText), composing: typing && Boolean(draft.trim()) }),
-          onDraft: setDraft,
+          state: companionState({ error: Boolean(error), speaking: !homeGreetingDone && homeSpeaking, thinking: chatSending, composing: typing && Boolean(draft.trim()) }),
+          onDraft: (value) => { draftRef.current = value; setDraft(value); },
+          onRetry: chatFailed ? () => { setError(""); chatQueue.current?.retry(); } : undefined,
           onSend: () => { void sendChat(); },
           onClose: closeText,
         }}
