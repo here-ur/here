@@ -103,12 +103,12 @@ export default function Friends({who,onBack,preview=false,userId}:{who:Who;onBac
    {error&&!showInvite&&<p role="alert" className="mb-3 text-t3 text-ios-secondary">{error}</p>}
    {notice&&!showInvite&&<p role="status" className="mb-3 text-t3 text-ios-secondary">{notice}</p>}
    <section className={card} aria-labelledby="friends-list">
-    <div className="flex items-baseline justify-between"><h2 id="friends-list" className="text-t5 font-bold">친구 목록</h2><Button variant="plain" className="min-h-11 px-2 text-t2 text-ios-secondary" disabled={busy||preview} onClick={()=>void load()}>새로고침{friends&&friends.length>0?` · ${friends.length}명`:''}</Button></div>
+    <div className="flex items-baseline justify-between"><h2 id="friends-list" className="shrink-0 whitespace-nowrap text-t5 font-bold">친구 목록</h2><Button variant="plain" style={{width:"auto",flexShrink:0}} className="min-h-11 px-2 text-t2 text-ios-secondary" disabled={busy||preview} onClick={()=>void load()}>새로고침{friends&&friends.length>0?` · ${friends.length}명`:''}</Button></div>
     {friends===null?<p role="status" className="mt-3 text-t3 text-ios-secondary">친구를 불러오는 중…</p>:friends.length?<ul className="mt-2 flex flex-col">
      {friends.map(friend=><li key={friend.id} className="flex items-center gap-3 border-t border-[#F0F2F6] py-3 first:border-t-0">
       <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-full text-t4 font-bold" style={{background:tint,color:deep}}>{friend.name?[...friend.name][0]:'?'}</span>
       <span className="min-w-0 flex-1"><span className="block truncate text-t4 font-medium">{friend.name??'이름을 정하지 않은 친구'}</span><span className="text-t2 text-ios-secondary">{new Date(friend.connectedAt).toLocaleDateString('ko-KR')} 연결</span></span>
-      <Button variant="plain" disabled={busy} onClick={()=>setRemoving(friend)} aria-label={`${friend.name??'이 친구'} 연결 끊기`} className="min-h-11 px-2 text-t2 text-ios-secondary">연결 끊기</Button>
+      <Button variant="plain" style={{width:"auto",flexShrink:0}} disabled={busy} onClick={()=>setRemoving(friend)} aria-label={`${friend.name??'이 친구'} 연결 끊기`} className="min-h-11 px-2 text-t2 text-ios-secondary">연결 끊기</Button>
      </li>)}
     </ul>:<p className="mt-3 text-t3 text-ios-secondary">{loadError||'아직 연결된 친구가 없어요.'}</p>}
     {loadError&&<Button variant="plain" onClick={()=>void load()} className="mt-2 min-h-11 text-t3 underline">다시 불러오기</Button>}
