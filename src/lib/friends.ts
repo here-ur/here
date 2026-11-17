@@ -25,7 +25,7 @@ export function displayNameForServer(nickname: string | undefined): string | nul
 
 /** 카톡·문자로 보내는 앱 초대. 폐지된 코드 가입 경로를 안내하지 않는다. */
 export function inviteMessage(origin: string) {
-  return `Here!에서 같이 이야기해요.\n${origin}\n휴대폰 번호로 가입하고 나만의 AI 친구를 만나 보세요.`;
+  return `Here!에서 같이 이야기해요.\n${origin}\n카카오·구글로 로그인한 뒤 친구 초대를 확인해 주세요.`;
 }
 
 /** 문자 앱 주소. iOS는 번호 뒤 본문 구분자로 &를 쓴다. */
