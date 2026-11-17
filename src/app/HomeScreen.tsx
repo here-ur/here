@@ -366,7 +366,7 @@ export default function HomeScreen({
         {nudge && resting && <div>{nudge}</div>}
         {chatting && (
           <div aria-hidden="true" className="home-chat-buddy">
-            <Buddy shape={profile.shape} color={profile.color} accessory={profile.accessory} size={112} outputLevel={outputLevel} outputShape={outputShape} expression={expression} state={chat.state} tap={chat.draft.length} />
+            <Buddy shape={profile.shape} color={profile.color} accessory={profile.accessory} size={134.4} outputLevel={outputLevel} outputShape={outputShape} expression={expression} state={chat.state} tap={chat.draft.length} />
           </div>
         )}
         <div ref={actionsRef} role="group" aria-label={voice ? "음성 대화" : chat.open ? "메시지 작성" : "대화 시작"} className="home-actions">
