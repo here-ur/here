@@ -33,6 +33,7 @@ import ComingSoon from "./ComingSoon";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import Customize from "./Customize";
 import Drawer from "./Drawer";
+import { pendingFriendInvite } from "@/lib/friend-connections";
 import Friends from "./Friends";
 import HomeScreen from "./HomeScreen";
 import HomeEntryGreeting from "./HomeEntryGreeting";
@@ -60,6 +61,7 @@ const DEV_PROFILE: Profile | null =
     : null;
 
 export default function Page() {
+  useEffect(() => { pendingFriendInvite(); }, []);
   return <AuthGate>{(userId, signOut) => <Home key={userId} userId={userId} signOut={signOut} />}</AuthGate>;
 }
 
@@ -136,7 +138,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetNote, setResetNote] = useState<{ text: string; error?: boolean } | null>(null); // 처음부터 다시 만들기의 진행·실패
   const [customizing, setCustomizing] = useState(false);
-  const [showFriends, setShowFriends] = useState(false);
+  const [showFriends, setShowFriends] = useState(() => Boolean(pendingFriendInvite()));
   const [captions, setCaptions] = useState(false); // 자막: 소리가 안 들릴 때를 위해
   const [headline, setHeadline] = useState<string | null>(null);
   const [headlineReady, setHeadlineReady] = useState(false);
@@ -486,7 +488,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   const who = { name: profile.companion, shape: profile.shape ?? "cloud", color: profile.color ?? "lavender", accessory: profile.accessory };
   if (showHelp) return <GetHelp color={who.color} crisis={crisis} onBack={() => setShowHelp(false)} />;
 
-  if (showFriends) return <Friends who={who} onBack={() => setShowFriends(false)} />;
+  if (showFriends) return <Friends userId={userId} who={who} onBack={() => setShowFriends(false)} />;
 
   if (reportMode) return <Report syncError={activity.error} key={reportMode} mode={reportMode} who={who} accessToken={accessToken} onBack={() => setReportMode(null)} onSeed={startSeed} onDecorate={() => { setReportMode(null); account.clearSaveError(); setCustomizing(true); }} />;
 
