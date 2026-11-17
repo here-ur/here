@@ -1,0 +1,70 @@
+/* 화면 전체를 덮는 고양이 로딩(로딩 화면 시안 A·B·C·E·F·G). 크기·색은 시안 보드(390×844) 기준이다. */
+.cat-loading {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0 32px calc(40px + env(safe-area-inset-bottom));
+  background: radial-gradient(140% 75% at 50% 0%, #FFEBD6 0%, #FFF6EC 48%, #FFFCF8 100%);
+  color: var(--color-cat-ink);
+  text-align: center;
+}
+.cat-loading[data-look="yawn"] { background: linear-gradient(180deg, #FFF8F0 0%, #FFF2E4 100%); }
+
+.cat-loading__body { display: flex; flex-direction: column; align-items: center; gap: 18px; transition: opacity .24s ease; }
+/* 0.4초 전에는 배경만: 금방 끝나는 로딩에서 고양이가 번쩍 나타났다 사라지지 않게 한다. */
+.cat-loading[data-phase="hidden"] .cat-loading__body { opacity: 0; transition: none; }
+/* 느릴 때·실패했을 때는 아래 버튼 자리만큼 고양이를 조금 올린다. */
+.cat-loading:is([data-phase="slow"], [data-phase="error"]) .cat-loading__body { margin-bottom: 72px; }
+
+.cat-loading__art { position: relative; width: 300px; height: 250px; max-width: 100%; }
+.cat-loading__cat { position: absolute; left: 0; bottom: 18px; width: 300px; height: 232px; max-width: none; object-fit: contain; user-select: none; }
+.cat-loading__shadow { position: absolute; left: 50%; bottom: 24px; width: 180px; height: 18px; translate: -50% 0; border-radius: 50%; background: rgba(133, 89, 27, .14); }
+.cat-loading__cushion { position: absolute; left: 50%; bottom: 16px; width: 236px; height: 46px; translate: -50% 0; border-radius: 50%; background: #F3E4CF; }
+
+.cat-loading[data-look="groom"] .cat-loading__shadow { width: 170px; }
+.cat-loading[data-look="yawn"] .cat-loading__art { width: 320px; height: 260px; }
+.cat-loading[data-look="yawn"] .cat-loading__cat { width: 320px; height: 247px; bottom: 20px; }
+.cat-loading[data-look="yawn"] .cat-loading__shadow { bottom: 26px; }
+/* E: 동작 줄이기 — 쿠션 위 멈춘 식빵 고양이 */
+.cat-loading[data-look="loaf"] .cat-loading__art { width: 240px; height: 190px; }
+.cat-loading[data-look="loaf"] .cat-loading__cushion { bottom: 6px; width: 220px; height: 40px; }
+.cat-loading[data-look="loaf"] .cat-loading__shadow { display: none; }
+.cat-loading[data-look="loaf"] .cat-loading__cat { left: 30px; width: 180px; height: 118px; }
+/* G: 실패 — 동그란 눈으로 갸웃, 옆에 물음표 */
+.cat-loading[data-look="error"] .cat-loading__art { height: 262px; }
+.cat-loading[data-look="error"] .cat-loading__shadow { bottom: 8px; width: 150px; height: 16px; }
+.cat-loading[data-look="error"] .cat-loading__cat { left: 50%; bottom: 14px; width: 186px; height: 250px; translate: -50% 0; }
+
+.cat-loading__z { position: absolute; left: 196px; top: 64px; font-size: 18px; font-weight: 800; color: #85591B; opacity: 0; animation: cat-loading-z 3.6s ease-out infinite; }
+.cat-loading__z[data-n="2"] { left: 206px; top: 52px; font-size: 22px; animation-delay: 1.2s; }
+.cat-loading__z[data-n="3"] { left: 188px; top: 70px; font-size: 15px; animation-delay: 2.4s; }
+@keyframes cat-loading-z { 0% { opacity: 0; transform: translate(0, 0) scale(.6); } 20% { opacity: .9; } 100% { opacity: 0; transform: translate(18px, -64px) scale(1.15); } }
+
+.cat-loading__tuft { position: absolute; left: 120px; top: 92px; width: 8px; height: 3px; border-radius: 3px; background: #4A4846; opacity: 0; animation: cat-loading-tuft 2.8s ease-out infinite; }
+.cat-loading__tuft[data-n="2"] { left: 128px; top: 100px; width: 6px; animation-delay: 1.4s; }
+@keyframes cat-loading-tuft { 0% { opacity: 0; transform: translate(0, 0) rotate(0); } 15% { opacity: .7; } 100% { opacity: 0; transform: translate(-26px, 40px) rotate(-70deg); } }
+
+.cat-loading__ask {
+  position: absolute; left: 216px; top: 18px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+  background: #fff; box-shadow: 0 6px 16px rgba(133, 89, 27, .14); font-size: 22px; font-weight: 800; color: #85591B;
+  animation: cat-loading-bob 2.4s ease-in-out infinite;
+}
+@keyframes cat-loading-bob { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-5px) rotate(4deg); } }
+
+.cat-loading__paws { color: #85591B; }
+.cat-loading__line { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.5; color: #6F6C65; }
+.cat-loading__line[data-strong] { font-size: 17px; font-weight: 700; line-height: 1.45; color: var(--color-cat-ink); }
+
+.cat-loading__actions {
+  position: absolute; left: 24px; right: 24px; bottom: calc(40px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+}
+.cat-loading__link { align-self: center; min-height: 44px; padding-inline: 12px; font-size: 13.5px; font-weight: 600; color: #6F6C65; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cat-loading__z, .cat-loading__tuft { animation: none; opacity: 0; }
+  .cat-loading__ask { animation: none; }
+  .cat-loading__body { transition: none; }
+}

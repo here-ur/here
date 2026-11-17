@@ -14,6 +14,7 @@ import Buddy, { type BuddyState } from "./Buddy";
 import PoseCat from "./PoseCat";
 import { useCatReactions } from "./use-cat-reactions";
 import { Icon } from "./art";
+import { PawLoader } from "./ui/PawLoader";
 import "./home-voice.css";
 import "./home-chat.css";
 import "./home-scene.css";
@@ -302,7 +303,7 @@ export default function HomeScreen({
         onTouchStart={e => { touchStart.current=e.currentTarget.scrollTop<=4?e.touches[0].clientY:null; }}
         onTouchEnd={e => { if(touchStart.current!==null && e.changedTouches[0].clientY-touchStart.current>45) void older(); touchStart.current=null; }}>
         {chat.history && <div className="home-history-status">
-          {chat.history.loading ? <span role="status">이전 대화 불러오는 중…</span> : chat.history.error ?
+          {chat.history.loading ? <PawLoader size={10} gap={5} label="이전 대화를 불러오고 있어요" className="text-[#85591B]" /> : chat.history.error ?
             <Button variant="plain" onClick={()=>void older()}>{chat.history.error}</Button> : chat.history.hasMore ?
             <Button variant="plain" onClick={()=>void older()}>위로 한 번 더 올려 이전 대화 보기</Button> :
             <span>{chat.messages.length ? "최근 30일 대화의 시작이에요" : "이야기를 시작하면 여기에 대화가 남아요"}</span>}
