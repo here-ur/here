@@ -13,6 +13,7 @@ import { ChatRequestError, requestChat } from "@/lib/chat";
 import { waitForCatYawn } from "@/lib/cat-yawn";
 import { type Msg, type Session, loadStoredSessions, pruneLog, saveSession } from "@/lib/log";
 import { DEFAULT_COMPANION, type Profile, josa } from "@/lib/onboarding";
+import { useAccountActivity } from "./use-account-activity";
 import { useAccountProfile } from "./use-account-profile";
 import { type Realtime } from "@/lib/realtime";
 import { connectLive } from "@/lib/live";
@@ -96,6 +97,7 @@ function ProfileLoading({ error, onRetry, onSignOut }: { error: string; onRetry:
 
 function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void> }) {
   const account = useAccountProfile(userId);
+  const activity = useAccountActivity(userId);
   const profile = account.profile === null ? DEV_PROFILE : account.profile;
   const [pendingProfile, setPendingProfile] = useState<Profile | null>(null);
 
@@ -483,7 +485,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
 
   if (showFriends) return <Friends who={who} onBack={() => setShowFriends(false)} />;
 
-  if (reportMode) return <Report key={reportMode} mode={reportMode} who={who} accessToken={accessToken} onBack={() => setReportMode(null)} onSeed={startSeed} onDecorate={() => { setReportMode(null); account.clearSaveError(); setCustomizing(true); }} />;
+  if (reportMode) return <Report syncError={activity.error} key={reportMode} mode={reportMode} who={who} accessToken={accessToken} onBack={() => setReportMode(null)} onSeed={startSeed} onDecorate={() => { setReportMode(null); account.clearSaveError(); setCustomizing(true); }} />;
 
   const listening = !error && hasMic && micOn && (status === "listening" || status === "idle");
   const lastAssistant = live || messages.findLast((m) => m.role === "assistant")?.content;
@@ -510,7 +512,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
           history: { loaded: history.loaded, loading: history.loading, hasMore: history.hasMore, error: history.error, onOlder: history.loadOlder },
           draft,
           sending: chatSending,
-          error: voiceMode ? "" : error || history.saveError,
+          error: voiceMode ? "" : error || history.saveError || activity.error,
           state: companionState({ error: Boolean(error), speaking: !homeGreetingDone && homeSpeaking, thinking: chatSending, composing: typing && Boolean(draft.trim()) }),
           onDraft: (value) => { draftRef.current = value; setDraft(value); },
           onRetry: chatFailed ? () => { setError(""); chatQueue.current?.retry(); } : undefined,
@@ -527,7 +529,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
           error,
           caption: captions ? lastAssistant : undefined,
           sources: searchSources,
-          warning: memoryWarning || history.saveError,
+          warning: memoryWarning || history.saveError || activity.error,
           hearing,
           onEnd: stopVoice,
           onMic: () => {

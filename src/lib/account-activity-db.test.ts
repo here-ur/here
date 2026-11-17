@@ -1,0 +1,42 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {PGlite} from '@electric-sql/pglite';
+import {vector} from '@electric-sql/pglite-pgvector';
+test('activity DB: own-user RLS, idempotent legacy import, stale device, union, retention, withdrawal',async()=>{
+ const db=new PGlite({extensions:{vector}});
+ const a='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',b='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ const day=new Date().toISOString().slice(0,10);
+ const stats={date:day,said:3,replies:2,hours:[3,...Array(23).fill(0)],words:{산책:3},crisis:false};
+ const val=async(sql:string,args:unknown[]=[])=> (await db.query<{v:unknown}>(sql,args)).rows[0]?.v;
+ const user=async(id:string)=>{await db.exec('reset role;set role authenticated');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);};
+ const sync=async(days:unknown[]=[],choices:unknown[]=[],practices:unknown[]=[])=>await val('select public.sync_account_activity($1,$2,$3) v',[JSON.stringify(days),JSON.stringify(choices),JSON.stringify(practices)]) as {days:typeof stats[];choices:{value:unknown}[];practices:unknown[]};
+ try {
+  await db.exec(`create role anon;create role authenticated;create schema auth;create schema extensions;create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public,extensions to authenticated,anon;create table public.members(user_id uuid primary key);insert into public.members values('${a}'),('${b}');`);
+  for(const f of ['0003_conversation_memory.sql','0005_consent_events.sql','0012_conversation_history.sql','0016_account_activity.sql']) await db.exec(readFileSync(new URL('../../supabase/migrations/'+f,import.meta.url),'utf8'));
+  await user(a);await assert.rejects(sync());
+  await val("select public.accept_memory_consent('2026-11-16-dev-v2',true,true) v");
+  const seed=(value:string,at:number)=>({kind:'seed',day,value,at});
+  const practice=(id:string)=>({day,id,action:'done'});
+  await sync([stats],[seed('song',0)],[practice('water')]);
+  let state=await sync([stats],[seed('song',0)],[practice('water')]);
+  assert.equal(state.days[0].said,3);assert.equal(state.practices.length,1);
+  await sync([],[seed('walk',200)]);
+  state=await sync([{...stats,said:1,replies:0}],[seed('song',0),seed('laugh',100)],[practice('walk')]);
+  assert.equal(state.days[0].said,3);assert.equal(state.choices[0].value,'walk');assert.equal(state.practices.length,2);
+  state=await sync([{...stats,said:5,replies:4}]);assert.equal(state.days[0].said,5);
+  await sync([],[{kind:'mine',day,value:'sunny',at:100}]);
+  state=await sync([],[{kind:'mine',day,value:null,at:200}]);assert.equal(state.choices.find(c=>c.value===null)?.value,null);
+  state=await sync([{...stats,said:1,replies:0,crisis:true}]);assert.equal(state.days[0].crisis,true);assert.deepEqual(state.days[0].words,{});
+  await assert.rejects(sync([],[{kind:'seed',day,value:'bad-id',at:0}]));
+  await assert.rejects(db.exec(`insert into public.activity_days values('${b}','${day}','{}',now())`));
+  await user(b);await val("select public.accept_memory_consent('2026-11-16-dev-v2',true,true) v");
+  assert.deepEqual(await sync(),{days:[],choices:[],practices:[]});
+  for(const table of ['activity_days','activity_choices','practice_events']) assert.equal((await db.query('select * from public.'+table)).rows.length,0);
+  await user(a);await val('select public.withdraw_memory_consent() v');
+  await db.exec('reset role');
+  for(const table of ['activity_days','activity_choices','practice_events']) assert.equal(await val(`select count(*)::int v from public.${table}`),0);
+  await db.query("insert into public.activity_days values($1,current_date-367,$2,now())",[a,JSON.stringify(stats)]);
+  await db.exec('select public.purge_expired_activity()');assert.equal(await val('select count(*)::int v from public.activity_days'),0);
+ } finally {await db.close();}
+});

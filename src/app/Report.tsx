@@ -28,6 +28,7 @@ import {
   syncReport,
   weekdaySkies,
 } from "@/lib/report";
+import { ACTIVITY_CHANGED } from "@/lib/activity-outbox";
 import { Icon } from "./art";
 import Buddy from "./Buddy";
 import { Crisis109, Shell, type Who } from "./Conversation";
@@ -73,7 +74,7 @@ const card = "here-card p-5";
 // 화면이 열리거나 탭을 바꿀 때 카드가 위에서부터 차례로 올라온다(동작 줄이기에서는 움직이지 않는다).
 const STAGGER = "motion-safe:[&>*]:animate-screen-in [&>*:nth-child(2)]:[animation-delay:50ms] [&>*:nth-child(3)]:[animation-delay:100ms] [&>*:nth-child(4)]:[animation-delay:150ms] [&>*:nth-child(n+5)]:[animation-delay:200ms]";
 
-// 기기에 둔 대화 숫자를 두 화면으로 나눠 보여 준다.
+// 계정에 저장한 대화 숫자를 두 화면으로 나눠 보여 준다.
 // 구름 정원(예전 인사이트): 쌓이는 이야기·씨앗·도감·앨범. 탭 없이 한 화면.
 // 라이브러리: 보관함(하늘 달력, 하루하루와 대화 기록, 이번 달 숫자). 마음 점검·상담 같은 탭은 팀 결정 전이라 넣지 않는다.
 export type ReportMode = "insight" | "library";
@@ -93,6 +94,7 @@ function busiestHour(hours: number[]) {
 const AI_NOTE = "AI가 고른 하늘 · 진단이 아니에요 · 눌러서 바꿀 수 있어요";
 
 export type ReportViewProps = {
+  syncError?: string;
   mode: ReportMode;
   who: Who;
   days: DayStat[];
@@ -109,7 +111,7 @@ export type ReportViewProps = {
 };
 
 /** 인사이트·라이브러리 화면(달·하루·하늘 바꾸기). 저장·요청은 하지 않아서 개발 미리보기에서도 그대로 쓴다. */
-export function ReportView({ mode, who, days, sessions, now, choice, skyState, onBack, onPickSky, onChoice, onSeed, onDecorate }: ReportViewProps) {
+export function ReportView({ syncError, mode, who, days, sessions, now, choice, skyState, onBack, onPickSky, onChoice, onSeed, onDecorate }: ReportViewProps) {
   const months = reportMonths(days, now);
   const [monthIndex, setMonthIndex] = useState(months.length - 1);
   const [tab, setTab] = useState<Tab>("sky");
@@ -206,6 +208,7 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
         ))}
       </Segmented>}
       <div ref={scrollRef} className={`absolute inset-x-0 ${mode === "library" ? "top-[calc(env(safe-area-inset-top)+140px)]" : "top-[calc(env(safe-area-inset-top)+80px)]"} bottom-0 overflow-y-auto px-gutter pb-10`}>
+        {syncError && <p role="status" className="mb-3 text-t2 text-ios-secondary">{syncError}</p>}
         {/* 인사이트는 쌓이는 정원을 먼저 보여 주고, 달마다 보는 숫자는 그 아래에 둔다. */}
         {mode === "insight" && <div className={STAGGER}><Garden who={who} days={days} now={now} onSeed={onSeed} onDecorate={onDecorate} /></div>}
         {mode === "library" && <>
@@ -332,7 +335,7 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
         <section className={`${card} mt-4`} aria-labelledby="report-words">
           <div className="flex items-baseline justify-between">
             <h3 id="report-words" className="text-t5 font-bold text-[#1F2A55]">자주 한 말</h3>
-            <span className="text-t2 text-ios-secondary">이 기기에서만 세요</span>
+            <span className="text-t2 text-ios-secondary">계정의 대화에서 세요</span>
           </div>
           {enough && view.words.length > 0 ? (
             <ul className="mt-3 flex flex-wrap gap-2">
@@ -433,7 +436,7 @@ export function ReportView({ mode, who, days, sessions, now, choice, skyState, o
 
         <p className="mt-6 flex items-start justify-center gap-text text-t2 text-pretty text-ios-secondary">
           <Icon name="lock" size={14} />
-          최근 30일 대화는 홈의 글 대화에서 볼 수 있어요. 날짜별 숫자와 하늘 기록은 이 기기에 최대 1년 남아요.
+          최근 30일 대화는 홈의 글 대화에서 볼 수 있어요. 날짜별 숫자와 하늘 기록은 계정에 최대 1년 남아요.
         </p>
       </div>
     </Shell>
@@ -542,19 +545,24 @@ function SkySheet({ date, day, deep, onClose, onPick }: { date: string; day: Day
           ))}
         </div>
       </fieldset>
-      <p className="mt-3 text-t2 text-ios-secondary">바꾼 하늘은 이 기기에만 남아요.</p>
+      <p className="mt-3 text-t2 text-ios-secondary">바꾼 하늘은 계정에 저장돼 다른 기기에서도 이어져요.</p>
     </Sheet>
   );
 }
 
 /** 인사이트·라이브러리: 열 때 원문을 날짜별 숫자로 옮기고, 허락했으면 지난 날 하늘을 한 번에 골라 둔다. */
-export default function Report({ mode, who, onBack, accessToken, onSeed, onDecorate }: { mode: ReportMode; who: Who; onBack: () => void; accessToken: () => Promise<string>; onSeed?: (opener: string) => void; onDecorate?: () => void }) {
+export default function Report({ syncError, mode, who, onBack, accessToken, onSeed, onDecorate }: { syncError?: string; mode: ReportMode; who: Who; onBack: () => void; accessToken: () => Promise<string>; onSeed?: (opener: string) => void; onDecorate?: () => void }) {
   const [now] = useState(() => Date.now());
   const [sessions] = useState<Session[]>(() => loadLog());
   const [days, setDays] = useState<DayStat[]>(() => syncReport(loadStoredSessions(), Date.now(), [who.name]));
   const [choice, setChoice] = useState(() => loadSkyChoice());
   const [skyState, setSkyState] = useState<"idle" | "picking" | "failed">("idle");
   const tokenRef = useRef(accessToken);
+  useEffect(() => {
+    const update = () => { setDays(loadReport()); setChoice(loadSkyChoice()); };
+    window.addEventListener(ACTIVITY_CHANGED, update);
+    return () => window.removeEventListener(ACTIVITY_CHANGED, update);
+  }, []);
   useEffect(() => { tokenRef.current = accessToken; }, [accessToken]);
 
   useEffect(() => {
@@ -587,6 +595,7 @@ export default function Report({ mode, who, onBack, accessToken, onSeed, onDecor
 
   return (
     <ReportView
+      syncError={syncError}
       mode={mode}
       onSeed={onSeed}
       onDecorate={onDecorate}

@@ -12,7 +12,7 @@ import Sheet from "./Sheet";
 import "./practice.css";
 
 // 대화 뒤 "해 볼 만한 작은 것" 시안. 제안은 날짜로 돌려 보여 줄 뿐 대화 내용으로 고르지 않고,
-// 안 해도 아무 불이익이 없다. 체크는 이 기기에만 남는다. 목록·문구·시점은 팀이 정하기 전 임시값이다.
+// 안 해도 아무 불이익이 없다. 체크는 로그인한 계정에 저장한다. 목록·문구·시점은 팀이 정하기 전 임시값이다.
 
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -114,7 +114,7 @@ export function PracticeSheet({ practice, color, done, onDone, onClose }: { prac
         ))}
       </ol>
       {done && <p role="status" className="practice-done-pop mt-5 rounded-r3 bg-ios-group px-4 py-3 text-center text-t4 font-medium text-[#1F2A55]">오늘 한 번 했어요 ✓</p>}
-      <p className="mt-5 text-t1 text-pretty text-ios-secondary">체크는 이 기기에만 남고, 여기서 떠올린 내용은 어디에도 저장하지 않아요.</p>
+      <p className="mt-5 text-t1 text-pretty text-ios-secondary">실천 체크만 저장하고, 여기서 떠올린 내용은 저장하지 않아요.</p>
     </Sheet>
   );
 }

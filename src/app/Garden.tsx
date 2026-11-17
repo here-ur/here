@@ -1,7 +1,8 @@
 "use client";
 
+import { ACTIVITY_CHANGED } from "@/lib/activity-outbox";
 import { Button } from "./ui/Button";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { COLLECTION_SIZE, type Garden as GardenState, type Plant, SEASON_LABEL, SEEDS, type SeasonId, TOPICS, WEATHER, buildGarden, dailySeeds, gardenAlbum, loadSeeds, pickSeed, seasonOf, speciesKey, speciesName, splineVariables } from "@/lib/garden";
 import { type DayStat, type SkyId, SKIES, localDate } from "@/lib/report";
 import Buddy from "./Buddy";
@@ -12,7 +13,7 @@ import SplineGarden, { GARDEN_SPLINE_URL } from "./SplineGarden";
 import "./garden.css";
 
 // 구름 정원 화면 맨 위의 정원. 이야기한 주제가 식물로 자라고, 어제 하늘이 오늘 정원 날씨가 된다.
-// 기기의 리포트 숫자와 고른 씨앗만 쓰고, 서버나 AI에는 보내지 않는다.
+// 계정의 리포트 숫자와 고른 씨앗으로 그린다. 정원 생성에는 AI를 호출하지 않는다.
 
 const SKY_BG: Record<SkyId | "none", string> = {
   none: "#E8EFFF", sunny: "#FFF4D6", cozy: "#FFE9DE", cloudy: "#E9EDF4", rain: "#DCE7FB", thunder: "#E7E0FB", wind: "#DDF2EC",
@@ -125,6 +126,11 @@ function Scene({ who, garden, season, small = false }: { who: Who; garden: Garde
 // onDecorate는 보상 안내를 캐릭터 화면으로 옮겨서 지금은 쓰지 않는다(호출부 호환용).
 export default function Garden({ who, days, now, onSeed, splineUrl = GARDEN_SPLINE_URL }: { who: Who; days: DayStat[]; now: number; onSeed?: (opener: string) => void; onDecorate?: () => void; splineUrl?: string }) {
   const [seeds, setSeeds] = useState(() => loadSeeds());
+  useEffect(() => {
+    const update = () => setSeeds(loadSeeds());
+    window.addEventListener(ACTIVITY_CHANGED, update);
+    return () => window.removeEventListener(ACTIVITY_CHANGED, update);
+  }, []);
   const garden = buildGarden(days, seeds, now);
   const today = localDate(now);
   const todaySeed = SEEDS.find((s) => s.id === seeds[today]);

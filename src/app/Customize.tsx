@@ -9,6 +9,7 @@ import { COMPANION_BACKGROUNDS, companionBackground } from "@/lib/companion-them
 import { loadReport } from "@/lib/report";
 import * as sfx from "@/lib/sound";
 import type { CatExpression } from "@/lib/cat-expression";
+import { ACTIVITY_CHANGED } from "@/lib/activity-outbox";
 import { Button } from "./ui/Button";
 import { TextField } from "./ui/TextField";
 import { Dialog } from "./ui/Dialog";
@@ -50,7 +51,12 @@ export default function Customize({ profile, onSave, onClose, onChat, onGarden, 
   const [draft, setDraft] = useState(profile);
   const set = (patch: Partial<Profile>) => setDraft((d) => ({ ...d, ...patch }));
   // 구름 정원이 자라며 연 꾸미기 아이템. 이 기기의 정원 기록으로만 판단한다.
-  const [garden] = useState(() => buildGarden(loadReport(), loadSeeds()));
+  const [garden, setGarden] = useState(() => buildGarden(loadReport(), loadSeeds()));
+  useEffect(() => {
+    const update = () => setGarden(buildGarden(loadReport(), loadSeeds()));
+    window.addEventListener(ACTIVITY_CHANGED, update);
+    return () => window.removeEventListener(ACTIVITY_CHANGED, update);
+  }, []);
   const unlocked = useMemo(() => unlockedAccessories(garden), [garden]);
   const [tab, setTab] = useState<Tab>("accessory");
   const [part, setPart] = useState(PARTS[0].id);
