@@ -144,6 +144,7 @@ export default function HomeScreen({
   if (expanded !== grown) setGrown(expanded);
   const resting = !chat.open && !voice; // 기본 홈: 글 없이 몽글이와 배경 움직임으로 대화를 권한다
   const bottomRef = useRef<HTMLDivElement>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
   const canSend = chat.open && Boolean(chat.draft.trim());
 
   // 쉬는 홈에서만 고양이가 혼자 논다: 가끔 뭔가 발견한 듯 눈이 동그래지고, 심심하면 발을 핥고, 오래 두면 웅크려 잔다.
@@ -192,15 +193,23 @@ export default function HomeScreen({
   }, []);
 
   useEffect(() => {
-    // 입력창이 늘거나 오류 줄이 생겨도 대화 목록이 하단 영역 바로 위에서 끝나게 한다.
+    // 스크롤은 입력창까지 이어지고, 마지막 메시지는 고양이 위까지 올려 읽을 수 있다.
     const frame = frameRef.current;
     const bottom = bottomRef.current;
-    if (!frame || !bottom) return;
-    const sync = () => frame.style.setProperty("--home-bottom-space", `${frame.clientHeight - bottom.offsetTop}px`);
+    const actions = actionsRef.current;
+    if (!frame || !bottom || !actions) return;
+    const sync = () => {
+      const bottomSpace = frame.clientHeight - bottom.offsetTop;
+      const composerSpace = bottomSpace - actions.offsetTop;
+      frame.style.setProperty("--home-bottom-space", `${bottomSpace}px`);
+      frame.style.setProperty("--home-composer-space", `${composerSpace}px`);
+      frame.style.setProperty("--home-message-clearance", `${actions.offsetTop + 16}px`);
+    };
     sync();
     const observer = new ResizeObserver(sync);
     observer.observe(frame);
     observer.observe(bottom);
+    observer.observe(actions);
     return () => observer.disconnect();
   }, []);
 
@@ -360,7 +369,7 @@ export default function HomeScreen({
             <Buddy shape={profile.shape} color={profile.color} accessory={profile.accessory} size={112} outputLevel={outputLevel} outputShape={outputShape} expression={expression} state={chat.state} tap={chat.draft.length} />
           </div>
         )}
-        <div role="group" aria-label={voice ? "음성 대화" : chat.open ? "메시지 작성" : "대화 시작"} className="home-actions">
+        <div ref={actionsRef} role="group" aria-label={voice ? "음성 대화" : chat.open ? "메시지 작성" : "대화 시작"} className="home-actions">
           <form className="home-compose" data-open={chat.open} onSubmit={(event) => { event.preventDefault(); if (canSend) chat.onSend(); }}>
             <div className="home-compose-content" inert={!chat.open} aria-hidden={!chat.open}>
               <Button variant="plain" type="button" onClick={collapseText} tabIndex={chat.open ? 0 : -1} aria-label="입력창 닫기" className="home-compose-close ui-press grid shrink-0 place-items-center rounded-full"><Icon name="close" size={18} /></Button>

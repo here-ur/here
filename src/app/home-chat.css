@@ -16,6 +16,9 @@
   min-height: 0;
 }
 .home-actions { position: relative; z-index: 2; display: flex; align-items: flex-end; gap: 8px; }
+/* The cat sits above the scrolling messages, but swipes pass through to the log. */
+.home-bottom { z-index: 2; pointer-events: none; }
+.home-bottom > :not(.home-chat-buddy) { pointer-events: auto; }
 .home-compose {
   position: relative;
   display: flex;
@@ -88,12 +91,13 @@
 .home-messages {
   --message-fade-top: 56px;
   position: absolute;
-  inset: calc(env(safe-area-inset-top) + 80px) 20px calc(var(--home-bottom-space, 200px) + 4px);
+  inset: calc(env(safe-area-inset-top) + 80px) 20px calc(var(--home-composer-space, 96px) + 4px);
+  z-index: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
   /* 첫 메시지는 온전히 보이고, 위로 스크롤한 메시지만 긴 페이드 영역을 지나간다. */
-  padding: var(--message-fade-top) 4px 16px;
+  padding: var(--message-fade-top) 4px var(--home-message-clearance, 104px);
   mask-image: linear-gradient(to bottom, transparent, black var(--message-fade-top), black calc(100% - 8px), transparent);
 }
 .home-messages::-webkit-scrollbar { display: none; }
