@@ -111,7 +111,6 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const history = useConversationHistory(userId, messages);
-  const [live, setLive] = useState(""); // 몽글이가 말하는 중인 문장
   const [status, setStatus] = useState<Status>("idle");
   const [crisis, setCrisis] = useState(false);
   const [suggest, setSuggest] = useState(false);
@@ -139,7 +138,6 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   const [resetNote, setResetNote] = useState<{ text: string; error?: boolean } | null>(null); // 처음부터 다시 만들기의 진행·실패
   const [customizing, setCustomizing] = useState(false);
   const [showFriends, setShowFriends] = useState(() => Boolean(pendingFriendInvite()));
-  const [captions, setCaptions] = useState(false); // 자막: 소리가 안 들릴 때를 위해
   const [headline, setHeadline] = useState<string | null>(null);
   const [headlineReady, setHeadlineReady] = useState(false);
   const headlineLocked = useRef(false);
@@ -299,7 +297,6 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
     setVoiceMode(true);
     setTyping(false);
     setHearing(false);
-    setLive("");
     setStatus("connecting");
     setError("");
     setMemoryWarning("");
@@ -324,9 +321,8 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
           if (hasCrisisSignal(text)) setCrisis(true);
           add({ role: "user", content: text, at: Date.now() });
         },
-        onAssistantPartial: (text) => { if (current()) setLive(text); },
+        onAssistantPartial: () => {}, // 음성 답변 자막은 표시하지 않는다. 완료된 발언은 아래에서 기록한다.
         onAssistantText: (text) => {
-          setLive("");
           add({ role: "assistant", content: text, at: Date.now() });
         },
         onTool: (name) => {
@@ -372,12 +368,10 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
     setMicOn(false);
     setHasMic(false);
     setVoiceMode(false);
-    setLive("");
     setStatus("idle");
     setJustMet(false);
     setStarted(true);
     setTyping(true);
-    setCaptions(true);
     setError("");
   }
 
@@ -421,7 +415,6 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
     setVoiceMode(false);
     setMicOn(false);
     setHasMic(false);
-    setLive("");
     setStatus("idle");
     setError("");
   }
@@ -493,7 +486,6 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   if (reportMode) return <Report syncError={activity.error} key={reportMode} mode={reportMode} who={who} accessToken={accessToken} onBack={() => setReportMode(null)} onSeed={startSeed} onDecorate={() => { setReportMode(null); account.clearSaveError(); setCustomizing(true); }} />;
 
   const listening = !error && hasMic && micOn && (status === "listening" || status === "idle");
-  const lastAssistant = live || messages.findLast((m) => m.role === "assistant")?.content;
   const statusText = !micOn && status === "idle" ? "마이크가 꺼져 있어요" : hint(status, who.name);
 
   {
@@ -532,7 +524,6 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
           hasMic,
           statusText,
           error,
-          caption: captions ? lastAssistant : undefined,
           sources: searchSources,
           warning: memoryWarning || history.saveError || activity.error,
           hearing,

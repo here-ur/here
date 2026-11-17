@@ -4,14 +4,13 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ComponentProps 
 import Buddy from "./Buddy";
 import { CHARACTER } from "@/lib/character";
 import CatArtwork from "./CatArtwork";
-import { CAT_POSE_ART, isSoftSwap, poseBox, type CatFx, type CatPose } from "@/lib/cat-poses";
+import { CAT_POSE_ART, poseBox, type CatFx, type CatPose } from "@/lib/cat-poses";
 import "./pose-cat.css";
 
 type BuddyProps = Omit<ComponentProps<typeof Buddy>, "size">;
 
 const SQUASH = [{ transform: "scale(1, 1)" }, { transform: "scale(1.06, .9)" }];
 const POP = [{ transform: "scale(1.06, .9)" }, { transform: "scale(.96, 1.05)", offset: .45 }, { transform: "scale(1.01, .99)", offset: .75 }, { transform: "scale(1, 1)" }];
-const SOFT = [{ transform: "scale(1, 1)" }, { transform: "translateY(-2%) scale(1.02, 1.01)", offset: .4 }, { transform: "scale(1, 1)" }];
 const HOP = [{ transform: "scale(1, 1)" }, { transform: "translateY(-7%) scale(.96, 1.05)", offset: .4 }, { transform: "scale(1.03, .97)", offset: .75 }, { transform: "scale(1, 1)" }];
 const TILT = [{ transform: "none" }, { transform: "translateY(-2%) rotate(-4deg)", offset: .22 }, { transform: "rotate(-4deg)", offset: .82 }, { transform: "none" }];
 const SHAKE = [{ transform: "translateX(0)" }, { transform: "translateX(-2%)" }, { transform: "translateX(2%)" }, { transform: "translateX(-1.2%)" }, { transform: "translateX(0)" }];
@@ -90,9 +89,8 @@ export default function PoseCat({ pose, fx, cue = 0, buddy, size = 240, preload,
       s.first = false;
       const prev = s.shown;
       if (next === prev && !effect) return;
-      const soft = isSoftSwap(prev, next);
       if (next !== prev) {
-        if (!still && !soft) await el.animate(SQUASH, { duration: 110, easing: "ease-in", fill: "forwards" }).finished;
+        if (!still) await el.animate(SQUASH, { duration: 110, easing: "ease-in", fill: "forwards" }).finished;
         const imgs = [a, b], front = imgs[s.front], back = imgs[1 - s.front];
         if (next === "base") {
           layer.style.opacity = "1"; front.style.opacity = "0"; back.style.opacity = "0";
@@ -114,7 +112,7 @@ export default function PoseCat({ pose, fx, cue = 0, buddy, size = 240, preload,
         s.shown = next;
       }
       if (still) { el.getAnimations().forEach((anim) => anim.cancel()); return; }
-      const moves = effect === "tilt" ? TILT : effect === "hop" ? HOP : soft ? SOFT : next !== prev ? POP : null;
+      const moves = effect === "tilt" ? TILT : effect === "hop" ? HOP : next !== prev ? POP : null;
       if (moves) await el.animate(moves, { duration: effect === "tilt" ? 1400 : effect === "hop" ? 480 : 380, easing: "cubic-bezier(.3,.7,.4,1)", fill: "forwards" }).finished;
       if (effect === "shake") await el.animate(SHAKE, { duration: 320, easing: "linear" }).finished;
     }

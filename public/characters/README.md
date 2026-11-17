@@ -19,6 +19,7 @@ Waveform reference: [MDN AnalyserNode.getFloatTimeDomainData](https://developer.
 ## Motion clips (draft)
 
 - `motion/*.webp`: looping animated WebP clips without background, cut from Magnific image-to-video renders (one cat, 960×960, locked camera). Every clip uses the same crop window, so the cat keeps the same size and ground line; the last 8 frames are blended into the first for a seamless loop.
-- `round`, `grumble`, `purr` are still poses cut from the pose sheets. `round` has the same body as the main art, so swapping to it reads as the eyes widening.
+- `purr` is a still pose cut from the pose sheets. `round` and `grumble` remain archived but are not loaded or played. Ordinary taps keep the current appearance; three rapid taps and waking from sleep retain their existing reactions.
+- Voice answers play as audio without captions beneath the cat. Completed transcripts still enter conversation history; connection/listening status remains visible.
 - Placement numbers live in `src/lib/cat-poses.ts`.
 
