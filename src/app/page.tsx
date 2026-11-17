@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
 import { companionState } from "@/lib/companion-state";
 import { ChatQueue, queuedChatContext } from "@/lib/chat-queue";
+import { loadRecentChatHistory, mergeChatHistory } from "@/lib/chat-context";
 import type { HistoryMessage } from "@/lib/conversation-history";
 import { ChatRequestError, requestChat } from "@/lib/chat";
 import { waitForCatYawn } from "@/lib/cat-yawn";
@@ -254,10 +255,12 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
         const abort = () => controller.abort();
         signal.addEventListener("abort", abort, { once: true });
         try {
-          const context = queuedChatContext(messagesRef.current, batch);
           const last = batch.at(-1)!;
           const token = await accessToken();
+          const saved = await loadRecentChatHistory(token, controller.signal);
           if (signal.aborted) return;
+          // Read the ref after loading: new queued messages/replies may arrive in the meantime.
+          const context = queuedChatContext(mergeChatHistory(saved, messagesRef.current), batch);
           const assistantId = crypto.randomUUID();
           const result = await requestChat(context, { name: profile?.companion ?? DEFAULT_COMPANION, nickname: profile?.nickname, style: profile?.style }, controller.signal, token,
             { batchId: crypto.randomUUID(), userMessageId: last.id, assistantMessageId: assistantId, userAt: last.at, assistantAt: Math.max(Date.now(), last.at + 1) });
