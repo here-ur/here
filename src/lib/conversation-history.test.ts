@@ -27,3 +27,13 @@ test('기존 로컬 기록 이관은 재실행해도 같은 ID이며 만료 기�
  const one=await legacyHistoryBatches(log,now);const two=await legacyHistoryBatches(log,now);
  assert.deepEqual(one,two);assert.equal(one[0].messages.length,2);assert.equal(parseHistoryBatch(one[0]).messages.length,2);
 });
+
+// The DB permits twelve 8k messages plus two preceding context messages.
+test('최대 크기 대화 배치도 요약하고 문맥 개수 초과는 거절한다',async()=>{
+ const messages=Array.from({length:12},()=>({role:'user' as const,content:'가'.repeat(8000)}));
+ const context=messages.slice(0,2);let called=0;
+ const config={openaiKey:'test',summaryKey:'test',fetch:async()=>{called++;return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'{"summary":"가상 요약"}'}]}]});}};
+ assert.equal(await summarizeConversation(messages,config,AbortSignal.timeout(1000),context),'가상 요약');
+ await assert.rejects(summarizeConversation(messages,config,AbortSignal.timeout(1000),messages.slice(0,3)),/invalid_conversation/);
+ assert.equal(called,1);
+});

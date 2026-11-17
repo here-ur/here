@@ -4,7 +4,7 @@ import { memoryRetryFetch } from './ai-operations.ts';
 
 export async function summarizeConversation(messages: MemoryMessage[], config: MemoryConfig, signal: AbortSignal, context: MemoryMessage[] = []): Promise<string> {
   const input = JSON.stringify({context, messages});
-  if (!messages.length || messages.length>12 || input.length>50000) throw new Error('invalid_conversation');
+  if (!messages.length || messages.length>12 || context.length>2 || input.length>120000) throw new Error('invalid_conversation');
   const base=new URL(config.summaryBaseUrl || 'https://api.runyour.ai/v1');
   if(base.protocol!=='https:' || base.username || base.password || base.search || base.hash) throw new Error('invalid_summary_url');
   base.pathname=base.pathname.replace(/\/+$/,'')+'/responses';

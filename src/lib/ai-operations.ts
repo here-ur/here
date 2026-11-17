@@ -26,7 +26,7 @@ export function usageMetric(operation: "chat" | "report_sky" | "summary" | "embe
 }
 
 // Retry only explicit transient HTTP failures. Network failures may have already incurred cost.
-// No raw input persistence: process interruption still cannot resume the summarization job.
+// This only retries within a request. Persisted conversation batches are retried by the DB worker.
 export function memoryRetryFetch(base: typeof fetch = fetch, wait = (ms: number, signal?: AbortSignal) => delay(ms, undefined, { signal })) : typeof fetch {
   return async (input, init) => {
     for (let attempt = 1; ; attempt++) {
