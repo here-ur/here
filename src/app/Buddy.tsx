@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import { CHARACTER } from "@/lib/character";
 import { useCatStroll } from "./use-cat-stroll";
 import CatFace from "./CatFace";
 import type { CatExpression } from "@/lib/cat-expression";
@@ -65,7 +66,7 @@ export default function Buddy({
   const root = useCatStroll(stroll && state === "idle");
   return (
     <svg ref={root} width={size} height={size} viewBox="0 0 240 240" overflow="visible" aria-hidden="true"
-      data-state={state} data-character="black-cat" data-expression={expression}
+      data-state={state} data-character={CHARACTER.id} data-expression={expression}
       data-look-override={look !== undefined ? "true" : undefined} data-hearing={hearing || undefined}
       className={`buddy ${className}`}>
       <g className="cat-travel">

@@ -1,5 +1,8 @@
 # Black cat animation assets
 
+- `black-cat-turnaround.png`: 2026-11-17 사용자가 지정한 고정 캐릭터 기준 원본(정면·측면·후면). 이후 3D·표정·동작 제작은 이 외형을 기준으로 한다. 별도 캐릭터를 임의로 생성하거나 교체하지 않는다.
+- 공통 설정: `src/lib/character.ts`의 `CHARACTER`. 홈·채팅·메뉴·하품 렌더러가 이 설정의 에셋 경로를 사용한다. 기존 프로필의 `shape`·`color`는 캐릭터 외형 선택에 사용하지 않는다. 이름·대화 스타일·액세서리는 별도 설정이다.
+- 이번 고정 작업은 기준 시트 등록과 공통 에셋 설정 통합이다. 현재 정면 이미지와 애니메이션은 유지하며, 새 기준 시트를 잘라 기존 얼굴 좌표에 끼워 넣거나 정지 이미지로 바꾸지 않는다.
 - `black-cat-final.png`: approved front view, kept as supplied. This is the only active mascot artwork. The angled view is a reference.
 - `CatFace.tsx` clips the studio background with an SVG outline and places the eye, paw and mouth layers in the image coordinate system. Neutral idle uses the artwork eyes; other poses can use animated eyes and pupils.
 - The remote playback waveform drives the mouth. The idle gait (`use-cat-stroll.ts`) runs only when `Buddy` gets `stroll`, which only `/dev/buddy-preview` passes now; the home stroll was removed on 2026-11-15. Silence, mute, interruption and call teardown close the mouth.

@@ -89,7 +89,8 @@
 .home-right-action[data-send="true"] .home-send { opacity: 1; scale: 1; filter: blur(0); pointer-events: auto; }
 .home-right-action[data-send="true"] .home-mic-action { opacity: 0; scale: .25; filter: blur(4px); pointer-events: none; }
 .home-messages {
-  --message-fade-top: 56px;
+  --message-fade-top: min(96px, 20cqh);
+  --message-fade-bottom: min(80px, 18cqh);
   position: absolute;
   inset: calc(env(safe-area-inset-top) + 80px) 20px calc(var(--home-composer-space, 96px) + 4px);
   z-index: 1;
@@ -97,8 +98,18 @@
   overscroll-behavior: contain;
   scrollbar-width: none;
   /* 첫 메시지는 온전히 보이고, 위로 스크롤한 메시지만 긴 페이드 영역을 지나간다. */
-  padding: var(--message-fade-top) 4px var(--home-message-clearance, 104px);
-  mask-image: linear-gradient(to bottom, transparent, black var(--message-fade-top), black calc(100% - 8px), transparent);
+  padding: var(--message-fade-top) 4px max(var(--home-message-clearance, 104px), calc(var(--message-fade-bottom) + 16px));
+  mask-image: linear-gradient(to bottom,
+    transparent 0,
+    rgb(0 0 0 / .12) calc(var(--message-fade-top) * .25),
+    rgb(0 0 0 / .5) calc(var(--message-fade-top) * .5),
+    rgb(0 0 0 / .88) calc(var(--message-fade-top) * .75),
+    black var(--message-fade-top),
+    black calc(100% - var(--message-fade-bottom)),
+    rgb(0 0 0 / .88) calc(100% - var(--message-fade-bottom) * .75),
+    rgb(0 0 0 / .5) calc(100% - var(--message-fade-bottom) * .5),
+    rgb(0 0 0 / .12) calc(100% - var(--message-fade-bottom) * .25),
+    transparent 100%);
 }
 .home-messages::-webkit-scrollbar { display: none; }
 .home-message { display: flex; margin-top: 10px; }

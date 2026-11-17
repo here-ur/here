@@ -1,10 +1,11 @@
 import { useAudioMouth } from "./use-audio-mouth";
+import { CHARACTER } from "@/lib/character";
 import { useId, type RefObject } from "react";
 import type { BuddyState, Look, Mouth } from "./Buddy";
 import type { CatExpression } from "@/lib/cat-expression";
 import type { MouthShape } from "@/lib/mouth-shape";
 
-const ART = "/characters/black-cat-final.png";
+const ART = CHARACTER.front;
 export const CAT_UNITS_PER_BUDDY_UNIT = 1435 / 200;
 // Follow the silhouette in the approved frontal artwork, leaving the original
 // studio background outside the clip so the same art works on every surface.
