@@ -130,6 +130,7 @@ export default function HomeScreen({
   const micButtonRef = useRef<HTMLButtonElement>(null);
   const chatButtonRef = useRef<HTMLButtonElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
+  const sendButtonRef = useRef<HTMLButtonElement>(null);
   const frameRef = useRef<HTMLElement>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
   const wasVoiceActive = useRef(Boolean(voice));
@@ -146,11 +147,23 @@ export default function HomeScreen({
   const bottomRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
   const canSend = chat.open && Boolean(chat.draft.trim());
+  // 보낼 때: 보내기 버튼이 꾹 눌리며 화살표가 위로 쏙 올라가고, 내 말은 입력창에서 위로 떠오른다(data-pending).
+  function send() {
+    if (!canSend) return; // 답을 기다리는 중에도 이어서 보낼 수 있다(차례대로 보낸다)
+    const button = sendButtonRef.current;
+    if (button) { button.removeAttribute("data-fly"); void button.offsetWidth; button.setAttribute("data-fly", ""); }
+    chat.onSend();
+  }
+  // 대화 목록이 처음 그려진 뒤부터만 새 말풍선이 들어오는 움직임을 켠다(열 때 이미 있던 대화가 한꺼번에 움직이지 않게).
+  useEffect(() => {
+    if (!hasMessages) return;
+    const frame = requestAnimationFrame(() => requestAnimationFrame(() => messageListRef.current?.setAttribute("data-ready", "")));
+    return () => cancelAnimationFrame(frame);
+  }, [hasMessages]);
 
   // 쉬는 홈에서만 고양이가 혼자 논다: 심심하면 발을 핥고, 오래 두면 웅크려 잔다.
-  // 세 번 연달아 누르면 하악, 자고 있으면 째려보며 깬다. 대화 중에는 기존 Buddy 상태를 그대로 쓴다.
+  // 누르기 반응(깜짝·울기·하악·째려보며 깨기)은 2026-11-17에 뺐다: 고양이를 눌러도 표정이 바뀌지 않는다. 대화 중에는 기존 Buddy 상태를 그대로 쓴다.
   const [napping, setNapping] = useState(false);
-  const [catPokes, setCatPokes] = useState(0);
   const homeCat = useCatReactions(resting && napping ? "sleep" : "base");
   const { play: catPlay } = homeCat;
   useEffect(() => {
@@ -160,12 +173,7 @@ export default function HomeScreen({
       window.setTimeout(() => setNapping(true), 75000),
     ];
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [resting, napping, catPokes, catPlay]);
-  function pokeCat() {
-    setCatPokes((n) => n + 1);
-    if (napping) { setNapping(false); catPlay([["glare", 1800]]); return; }
-    homeCat.tap();
-  }
+  }, [resting, napping, catPlay]);
   function wakeForTalk() { setNapping(false); homeCat.reset(); }
 
   useEffect(() => {
@@ -311,7 +319,7 @@ export default function HomeScreen({
         {chat.messages.map((message, index) => <Fragment key={message.id ?? index}>
           {message.at && (index===0 || new Date(message.at).toDateString()!==new Date(chat.messages[index-1].at??0).toDateString()) &&
             <time className="home-history-date" dateTime={new Date(message.at).toISOString()}>{new Date(message.at).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'})}</time>}
-          <div className="home-message" data-role={message.role}>
+          <div className="home-message" data-role={message.role} data-pending={(chat.sending && index === chat.messages.length - 1 && message.role === "user") || undefined}>
           <span className="sr-only">{message.role === "user" ? "나" : name}: </span>
           {message.role === "assistant" ? <div className="home-message-bubble"><ChatMarkdown content={message.content} /></div> : <p>{message.content}</p>}
         </div></Fragment>)}
@@ -324,7 +332,7 @@ export default function HomeScreen({
       <div className="home-character-wrap absolute inset-x-gutter flex flex-col items-center" data-hidden={chatting} aria-hidden={chatting}>
         {/* 하품(음성 열기 전 2.4초) 동안은 키우지 않고 제자리에서 하품만 한다. 연결을 시작하면 그때 커진다. */}
         <div className={`home-buddy ${expanded ? "home-buddy-expanded" : ""}`}>
-          <button type="button" className="home-cat-tap" onClick={pokeCat} disabled={!resting} aria-label={`${name} 건드려 보기`}>
+          <div className="home-cat-tap">
             <PoseCat
               pose={resting ? homeCat.pose : "base"}
               fx={resting ? homeCat.fx : undefined}
@@ -345,7 +353,7 @@ export default function HomeScreen({
                 voice: Boolean(voice),
               }}
             />
-          </button>
+          </div>
         </div>
         {voice && <div className="home-voice-status max-w-full px-4 text-center">
           <p role="status" className="text-t4 font-medium text-cat-ink">{voice.error ? "연결하지 못했어요" : voice.statusText}</p>
@@ -368,7 +376,7 @@ export default function HomeScreen({
           </div>
         )}
         <div ref={actionsRef} role="group" aria-label={voice ? "음성 대화" : chat.open ? "메시지 작성" : "대화 시작"} className="home-actions">
-          <form className="home-compose" data-open={chat.open} onSubmit={(event) => { event.preventDefault(); if (canSend) chat.onSend(); }}>
+          <form className="home-compose" data-open={chat.open} onSubmit={(event) => { event.preventDefault(); send(); }}>
             <div className="home-compose-content" inert={!chat.open} aria-hidden={!chat.open}>
               <Button variant="plain" type="button" onClick={collapseText} tabIndex={chat.open ? 0 : -1} aria-label="입력창 닫기" className="home-compose-close ui-press grid shrink-0 place-items-center rounded-full"><Icon name="close" size={18} /></Button>
               <label htmlFor="home-text-draft" className="sr-only">{name}에게 하고 싶은 말</label>
@@ -378,7 +386,7 @@ export default function HomeScreen({
                   if (event.key === "Escape") { event.preventDefault(); collapseText(); return; }
                   if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing || event.keyCode === 229) return;
                   event.preventDefault();
-                  if (canSend) chat.onSend();
+                  send();
                 }}
               />
             </div>
@@ -398,7 +406,7 @@ export default function HomeScreen({
             </Button>
           </form>
           <div className="home-right-action" data-send={canSend}>
-            <Button variant="plain" type="button" onClick={chat.onSend} disabled={!canSend} tabIndex={canSend ? 0 : -1} aria-hidden={!canSend} aria-label="메시지 보내기" className="home-send ui-press grid size-14 place-items-center rounded-full bg-cat-ink text-white disabled:opacity-40"><Icon name="send" size={23} /></Button>
+            <Button ref={sendButtonRef} variant="plain" type="button" onClick={send} disabled={!canSend} tabIndex={canSend ? 0 : -1} aria-hidden={!canSend} aria-label="메시지 보내기" className="home-send ui-press grid size-14 place-items-center rounded-full bg-cat-ink text-white disabled:opacity-40"><Icon name="send" size={23} /></Button>
             <div inert={canSend} aria-hidden={canSend} className="home-mic-action">
             <div className="home-voice-pill" data-expanded={Boolean(voice)}>
               <div className="home-voice-end" inert={!voice} aria-hidden={!voice}>

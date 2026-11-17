@@ -1,0 +1,35 @@
+/* '준비 중' 안내: 홈 아래 버튼 줄 바로 위, 가운데에 검정 알약으로 잠깐 뜬다. 캐릭터 페이지(z 50) 위에서도 보인다. */
+.here-soon-region {
+  position: fixed;
+  left: 50%;
+  bottom: calc(max(32px, env(safe-area-inset-bottom)) + 76px);
+  z-index: 70;
+  width: min(calc(100vw - 32px), 360px);
+  translate: -50% 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.here-soon {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 100%;
+  padding: 12px 18px 12px 14px;
+  border-radius: 20px;
+  background: rgb(41 41 39 / 94%);
+  color: #fff;
+  box-shadow: 0 10px 30px rgb(41 41 39 / 22%);
+  pointer-events: auto;
+  animation: here-soon-in 260ms cubic-bezier(.2, .8, .2, 1) both;
+}
+.here-soon__icon { display: grid; place-items: center; flex: none; width: 26px; height: 26px; margin-top: -2px; border-radius: 50%; background: rgb(251 180 0 / 18%); color: #FBB400; }
+.here-soon__text { display: grid; gap: 3px; min-width: 0; }
+.here-soon__title { margin: 0; font-size: 14px; font-weight: 700; line-height: 22px; }
+.here-soon__detail { margin: 0; font-size: 12.5px; line-height: 18px; color: rgb(255 255 255 / 78%); text-wrap: pretty; }
+.here-soon__detail a { color: #FBB400; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+@keyframes here-soon-in { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+@media (prefers-reduced-motion: reduce) {
+  .here-soon { animation-name: here-soon-fade; }
+  @keyframes here-soon-fade { from { opacity: 0; } }
+}

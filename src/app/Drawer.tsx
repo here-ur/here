@@ -62,7 +62,7 @@ function QuotaLine({ status }: { status: QuotaStatus }) {
   );
 }
 
-/** 라이브러리 아이콘. 라이브러리가 하늘 달력을 담아서 홈 헤더와 메뉴에서 같은 달력 모양을 쓴다. */
+/** 리포트(라이브러리) 아이콘. 리포트가 하늘 달력을 담아서 홈 헤더와 메뉴에서 같은 달력 모양을 쓴다. */
 export function CalendarIcon({ size = 20 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
@@ -245,7 +245,7 @@ export default function Drawer({
           <div className="here-menu-primary">
             <List className="here-design-menu-list">
               <ul>
-                <MenuItem onClick={onLibrary} title="라이브러리" icon={<MenuIcon name="library" />} chevron={false} />
+                <MenuItem onClick={onLibrary} title="리포트" icon={<MenuIcon name="library" />} chevron={false} />
                 <MenuItem onClick={onFriends} title="친구" icon={<MenuIcon name="friends" />} chevron={false} />
                 <MenuItem onClick={onHelp} title="도움받기" icon={<MenuIcon name="help" />} chevron={false} />
               </ul>
@@ -253,7 +253,7 @@ export default function Drawer({
             <div className="here-menu-divider" aria-hidden="true"><span /></div>
             <List className="here-design-menu-list">
               <ul>
-                <MenuItem onClick={onCustomize} title="캐릭터" icon={<MenuIcon name="character" />} chevron={false} />
+                <MenuItem onClick={onCustomize} title="캐릭터 꾸미기" icon={<MenuIcon name="character" />} chevron={false} />
               </ul>
             </List>
           </div>

@@ -29,7 +29,7 @@ import { useMicrophoneAsk } from "./MicrophoneAsk";
 import HomeHint from "./HomeHint";
 import { homeHintSeen, markHomeHintSeen } from "@/lib/home-hint";
 import { Crisis109 } from "./Conversation";
-import ComingSoon from "./ComingSoon";
+import ComingSoon, { type SoonFeature } from "./ComingSoon";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import Customize from "./Customize";
 import Drawer from "./Drawer";
@@ -99,7 +99,10 @@ function Home({ userId, signOut, startEmpty, onRestart }: { userId: string; sign
   const [suggest, setSuggest] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const [helpSoon, setHelpSoon] = useState(false); // 도움받기는 준비 중: 화면은 두고 안내 창만 띄운다
+  // 도움받기·친구·구름 정원은 보류(준비 중): 메뉴·버튼은 그대로 두고 누르면 '준비 중' 안내만 잠깐 띄운다.
+  const [soon, setSoon] = useState<{ feature: SoonFeature; n: number } | null>(null);
+  const showSoon = useCallback((feature: SoonFeature) => setSoon((prev) => ({ feature, n: (prev?.n ?? 0) + 1 })), []);
+  const hideSoon = useCallback(() => setSoon(null), []);
   const [micOn, setMicOn] = useState(true);
   const [hearing, setHearing] = useState(false); // 음성에서 사용자가 말하는 중(몽글이 반응용)
   const [hasMic, setHasMic] = useState(false);
@@ -409,6 +412,7 @@ function Home({ userId, signOut, startEmpty, onRestart }: { userId: string; sign
     setReportMode(mode);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 친구 기능을 다시 열 때 쓴다(지금은 보류)
   function openFriends() {
     setHomeGreetingDone(true);
     cancelChat();
@@ -427,7 +431,7 @@ function Home({ userId, signOut, startEmpty, onRestart }: { userId: string; sign
   // 도움받기 화면(GetHelp)은 남겨 두고, 출시 전까지는 들어가는 대신 '준비 중' 안내만 보여 준다.
   function openHelpSoon() {
     setHomeGreetingDone(true);
-    setHelpSoon(true);
+    showSoon("help");
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 도움받기를 다시 열 때 쓴다
@@ -544,7 +548,7 @@ function Home({ userId, signOut, startEmpty, onRestart }: { userId: string; sign
           }}
           onFriends={() => {
             setShowMenu(false);
-            openFriends();
+            showSoon("friends");
           }}
           onSignOut={() => { void signOut(); }}
           loadQuota={async (signal) => requestQuotaStatus(await accessToken(), signal)}
@@ -570,18 +574,6 @@ function Home({ userId, signOut, startEmpty, onRestart }: { userId: string; sign
             }}
           />
         )}
-        {helpSoon && (
-          <ComingSoon
-            title="도움받기를 준비하고 있어요"
-            body="실제 상담사와 이야기할 수 있는 방법을 준비 중이에요. 열리면 이곳에서 알려 드릴게요."
-            onClose={() => {
-              setHelpSoon(false);
-              requestAnimationFrame(() => {
-                if (document.activeElement === document.body) menuButtonRef.current?.focus({ preventScroll: true });
-              });
-            }}
-          />
-        )}
         {customizing && (
           <Customize
             profile={me}
@@ -590,9 +582,10 @@ function Home({ userId, signOut, startEmpty, onRestart }: { userId: string; sign
             onSave={(p) => account.save(p)}
             onClose={() => setCustomizing(false)}
             onChat={() => { setCustomizing(false); openText(); }}
-            onGarden={() => { setCustomizing(false); openReport("insight"); }}
+            onGarden={() => showSoon("garden")}
           />
         )}
+        <ComingSoon soon={soon} onDone={hideSoon} />
       </HomeScreen>
     );
   }
