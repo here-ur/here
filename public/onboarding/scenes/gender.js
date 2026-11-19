@@ -1,7 +1,7 @@
 /* ═════════════════════════ 장면: gender (주황) ═════════════════════════
- * 성별. 고르지 않아도 되는 질문이라 가볍고 빠르게: 동전 하나를 누르면 끝난다.
- * 세 가지 답은 똑같은 흰 동전이다(색으로 성별을 나누지 않고, "고르지 않을래요"도 같은 크기의 동전이다).
- * 고양이는 라일락 동그라미 앞에서 그 동전들 위에 길게 누워 있다(동전 셋은 이따금 차례로 톡톡 뛰고, 그 위의 고양이도 같이 들썩인다).
+ * 성별. 가볍고 빠르게: 동전 하나를 누르면 끝난다.
+ * 두 가지 답은 똑같은 흰 동전이다(색으로 성별을 나누지 않는다).
+ * 고양이는 라일락 동그라미 앞에서 그 동전들 위에 길게 누워 있다(동전 둘은 이따금 차례로 톡톡 뛰고, 그 위의 고양이도 같이 들썩인다).
  * 동전을 누르면 고양이가 벌떡 일어나 앉고, 눌린 동전은 톡 튀어 올라 뒤집히며 검정 + 체크가 되고,
  * 그 말이 포물선을 그리며 제목 줄의 검정 알약으로 날아가 담긴다(다른 동전을 누르면 다시 고른다).
  * 고양이의 반응은 어느 답이든 같다(평가하지 않는다): 고른 동전 쪽으로 몸이 살짝 기울 뿐이다.
@@ -86,7 +86,7 @@
       // 제목: "성별도 [알약]" / "알려 줄래요?" + 그 아래 본문 한 줄. 알약은 고르기 전에는 빈 동그라미 셋, 고르면 그 말 + 체크
       const [l1, l2] = ui.lines(A.gender, [1, 2]);
       const slot = el("span", "hp-gd-slot"); slot.setAttribute("aria-hidden", "true");      // 고른 답은 동전(라디오)의 상태로 읽힌다
-      slot.append(el("span", "hp-pill hp-gd-wait", el("i"), el("i"), el("i")));
+      slot.append(el("span", "hp-pill hp-gd-wait", el("i"), el("i")));
       const title = ui.headline([[l1 + " ", slot], l2]);
       const why = el("p", "hp-body hp-rise hp-gd-why"); why.id = "hp-gd-why"; why.style.setProperty("--i", 2);
       A.genderWhy.split(" · ").forEach((part, n) => { if (n) why.append(el("i", "", "·")); why.append(part); });      // 가운뎃점 양옆을 조금 띄운다(문구는 그대로)
@@ -103,7 +103,7 @@
       const marks = MARKS.map(([kind, o, at], n) => { const m = ui.mark(kind, { ...o, x: at[0], y: at[1], pop: !ctx.instant, d: ctx.instant ? o.d : 820 + n * 110 }); m.classList.add("hp-gd-mark"); root.append(m); return m; });
       const marksUp = () => marks.forEach((m, n) => { const p = MARKS[n][3]; m.style.setProperty("--x", p[0]); m.style.setProperty("--y", p[1]); });
 
-      // 동전 셋(라디오 묶음: Tab으로 들어와 화살표로 옮기며 고른다. Enter · Space도 된다)
+      // 동전 둘(라디오 묶음: Tab으로 들어와 화살표로 옮기며 고른다. Enter · Space도 된다)
       const group = el("div", "hp-gd-coins"); group.setAttribute("role", "radiogroup"); group.setAttribute("aria-label", A.gender); group.setAttribute("aria-describedby", why.id);
       const coins = A.genders.map((label, i) => {
         const words = label.split(" ");
@@ -197,7 +197,7 @@
         return ghost.animate(frames, { duration, easing: "cubic-bezier(.3,.5,.3,1)", fill: "forwards" }).finished.then(done, done);
       }
       // 동전마다의 길: 왼쪽 동전은 고양이의 왼쪽으로, 가운데·오른쪽 동전은 오른쪽으로 돌아 올라간다
-      const VIA = [{ x: -34, y: 340 }, { x: 452, y: 404 }, { x: 396, y: 344 }];
+      const VIA = [{ x: -34, y: 340 }, { x: 430, y: 380 }];
 
       /** 제목 줄의 알약에 고른 말을 담는다. 움직일 때는 동전에서 날아오고, 그동안 앞의 알약은 제자리에 있다가 새 알약이 닿기 직전에 물러난다. */
       function land(i, instant) {
@@ -246,7 +246,7 @@
         const first = choice < 0, my = ++seq, lively = !instant && !ui.reduced();
         // 모양만 바꾸는 것부터(스타일이 한 번이라도 계산되기 전에 끝 상태를 적어 두면, 바로 보여 주는 상태에서는 움직임 없이 그 모습으로 그려진다)
         root.dataset.state = "chosen";
-        lay.style.setProperty("--lean", [-5, 0, 5][i] + "deg");      // 고른 동전 쪽으로 기운다(가운데면 똑바로)
+        lay.style.setProperty("--lean", [-5, 5][i] + "deg");      // 고른 동전 쪽으로 기운다
         marksUp();
         if (!first) flip(coins[choice], false, lively);
         choice = i; rove();

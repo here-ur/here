@@ -155,26 +155,7 @@ div:has(> .here-sheet.auth-sheet) { -webkit-backdrop-filter: none; backdrop-filt
 .consent-sheet .fr-fineprint { margin: -6px 2px 0; justify-items: start; text-align: left; }
 .consent-sheet .fr-fineprint p { justify-content: flex-start; }
 .consent-sheet .auth-sheet-actions .fr-link { margin-bottom: -6px; }
-/* 성별·생년월일 시트(새 회원만): 설명 → 성별 두 칸 + 생년월일 → 짧은 안내, 맨 아래 버튼과 로그아웃.
- * 성별은 캐릭터 만나기의 선택 카드와 같은 결(56px, 16px 둥글기, 고르면 진한 테두리와 오른쪽 체크)을 두 칸으로 나란히 둔다. */
-.basics-genders { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; min-width: 0; margin: 0; padding: 0; border: 0; }
-.basics-genders > legend { grid-column: 1 / -1; float: left; width: 100%; margin-bottom: 8px; padding: 0; }
-.basics-option { position: relative; height: 56px; display: flex; align-items: center; padding: 0 44px 0 18px; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--fr-line); font-size: 15px; font-weight: 600; color: var(--fr-ink); cursor: pointer; transition: box-shadow 150ms ease; -webkit-tap-highlight-color: transparent; }
-.basics-option:has(input:checked) { box-shadow: inset 0 0 0 2px var(--fr-ink); }
-.basics-option:has(input:checked)::after { content: ""; position: absolute; right: 14px; top: 50%; width: 22px; height: 22px; translate: 0 -50%; border-radius: 50%; background: var(--fr-ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center / 14px no-repeat; }
-.basics-option:has(input:focus-visible) { outline: 2px solid var(--fr-ink); outline-offset: 3px; }
-.basics-genders:disabled .basics-option { cursor: default; }
-@media (prefers-reduced-motion: no-preference) {
-  .basics-option:has(input:checked)::after { animation: fr-option-check 220ms cubic-bezier(.3, 1.4, .5, 1); }
-}
-.basics-sheet .basics-birth { font-variant-numeric: tabular-nums; }
-/* 생년월일을 다 적으면 아래에 '1999년 1월 1일'로 다시 보여 준다. 오류(role=alert)만 빨간 글씨다. */
-.basics-sheet .here-field__message:not([role="alert"]) { color: var(--fr-muted); }
-.basics-sheet .fr-fineprint { margin: -6px 2px 0; justify-items: start; text-align: left; }
-.basics-sheet .fr-fineprint p { justify-content: flex-start; }
 .basics-sheet .auth-sheet-actions .fr-link { margin-bottom: -6px; }
-.basics-sheet .fr-sos { margin: 0; }
-.basics-blocked { outline: none; }
 .consent-wait { flex: 1; display: grid; place-items: center; }
 .consent-wait span[aria-hidden] { width: 26px; height: 26px; border-radius: 50%; border: 2.5px solid #E9E1D5; border-top-color: var(--fr-ink); animation: consent-spin 800ms linear infinite; }
 @keyframes consent-spin { to { rotate: 360deg; } }

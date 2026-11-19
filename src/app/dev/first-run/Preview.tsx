@@ -2,19 +2,16 @@
 
 import { useState } from "react";
 import { MemoryConsentPreview } from "../../MemoryConsentGate";
-import { MemberBasicsPreview } from "../../MemberBasicsGate";
-import { SheetHandoff } from "../../sheet-handoff";
 import Onboarding from "../../Onboarding";
 import { Icon } from "../../art";
 import { Button } from "../../ui/Button";
 
-// 로그인 뒤 첫 실행(기억 동의 → 성별·생년월일 → 캐릭터 만나기)을 로그인 없이 넘겨 보는 개발 화면. 마이크 안내는 홈에서 처음 마이크를 누를 때 나온다(/dev/microphone-permission).
+// 로그인 뒤 첫 실행(기억 동의 → 캐릭터 만나기, 그 안에 생일·성별)을 로그인 없이 넘겨 보는 개발 화면. 마이크 안내는 홈에서 처음 마이크를 누를 때 나온다(/dev/microphone-permission).
 // 로그인·가입 화면은 실제 AuthGate에 있어서, 로그아웃한 상태로 첫 화면(/)을 열어 확인한다.
-type Stage = "consent" | "basics" | "onboarding" | "done";
+type Stage = "consent" | "onboarding" | "done";
 const STAGES: { id: Stage; label: string }[] = [
   { id: "consent", label: "1 기억 동의" },
-  { id: "basics", label: "2 성별·생년월일" },
-  { id: "onboarding", label: "3 캐릭터 만나기" },
+  { id: "onboarding", label: "2 캐릭터 만나기" },
   { id: "done", label: "끝" },
 ];
 
@@ -23,28 +20,20 @@ export default function Preview() {
   const [run, setRun] = useState(0);
   const [result, setResult] = useState("");
   const [controls, setControls] = useState(true);
-  const [fromConsent, setFromConsent] = useState(false); // 동의 시트에서 이어 왔으면 시트를 새로 올리지 않고 내용만 옆으로 바꾼다
 
-  function open(next: Stage, continued = false) {
+  function open(next: Stage) {
     setRun((n) => n + 1);
     setStage(next);
-    setFromConsent(continued);
     setResult("");
   }
 
   let screen;
   switch (stage) {
     case "consent":
-      screen = <MemoryConsentPreview key={run} onAccept={() => open("basics", true)} onSignOut={() => open("consent")} />;
-      break;
-    case "basics":
-      // 만 14세 미만 날짜를 적으면 저장하지 않고 안내·로그아웃만 남는다. 로그아웃은 처음(동의)으로 돌아간다.
-      screen = <SheetHandoff.Provider value={fromConsent}>
-        <MemberBasicsPreview key={run} onDone={(gender, birth) => { open("onboarding"); setResult(`성별 ${gender} · 생년월일 ${birth}`); }} onSignOut={() => open("consent")} />
-      </SheetHandoff.Provider>;
+      screen = <MemoryConsentPreview key={run} onAccept={() => open("onboarding")} onSignOut={() => open("consent")} />;
       break;
     case "onboarding":
-      screen = <Onboarding key={run} onDone={(p) => { setResult((r) => `${r ? `${r} · ` : ""}이름 ${p.companion} · 목소리 ${p.voice} · 자리 ${p.color} · 대화 방식 ${p.style}`); setStage("done"); }} />;
+      screen = <Onboarding key={run} basics={{ needed: true, save: async (gender, birth) => { setResult(`성별 ${gender} · 생년월일 ${birth}`); return "ok"; } }} onSignOut={() => open("consent")} onDone={(p) => { setResult((r) => `${r ? `${r} · ` : ""}이름 ${p.companion} · 목소리 ${p.voice} · 자리 ${p.color} · 대화 방식 ${p.style}`); setStage("done"); }} />;
       break;
     case "done":
       screen = <main className="app-frame flex flex-col items-center justify-center gap-4 bg-[#F5F2EB] px-gutter text-center">

@@ -801,7 +801,8 @@
     return HerePhone;
   }
   const orderOf = (id) => { const i = FLOW.indexOf(id); return i < 0 ? FLOW.length + [...registry.keys()].indexOf(id) : i; };
-  const sceneIds = () => [...registry.keys()].sort((a, b) => orderOf(a) - orderOf(b));
+  let allowed = null;                                                   // 앱: 이번 흐름에서 쓰는 장면(mount의 scenes). 없으면 등록된 장면 전부
+  const sceneIds = () => [...registry.keys()].filter((id) => !allowed || allowed.includes(id)).sort((a, b) => orderOf(a) - orderOf(b));
 
   /** 화면의 그 자리(clientX, clientY)가 고양이 위인지(그림의 자리로 가늠한다). 반복 영상은 그림이 고양이보다 넓어서 안쪽만 본다. */
   function catAt(actor, x, y) {
@@ -817,7 +818,8 @@
   const hitCat = (actor, e) => catAt(actor, e.clientX, e.clientY);
 
   /* ───────────────────────── mount ───────────────────────── */
-  function mount(host, { assets = "assets/", scene, state, onChange, initial, onFinish } = {}) {
+  function mount(host, { assets = "assets/", scene, state, onChange, initial, onFinish, scenes, beforeNext, actions } = {}) {
+    allowed = scenes || null;
     const C = window.HereCopy;
     const root = el("div", "hp");
     root.style.setProperty("--hp-spring", EASE.spring);
@@ -858,7 +860,7 @@
     function makeCtx(def, sceneEl, { state: st, instant, fromId }) {
       const cleanups = [], cats = [], kbFns = [];
       const ctx = {
-        id: def.id, el: sceneEl, root, state: st, instant: Boolean(instant) || reduced(), fromId, data, copy: C, ui, assets, cats,
+        id: def.id, el: sceneEl, root, actions: actions || {}, state: st, instant: Boolean(instant) || reduced(), fromId, data, copy: C, ui, assets, cats,
         /** 화면 키보드가 가린 높이(무대 px). 0이면 키보드가 없다. */
         get kb() { return kb; },
         /** 키보드가 올라오거나 내려갈 때 불린다: ctx.onKeyboard((px) => …) */
@@ -894,7 +896,14 @@
         on(target, type, fn, opts) { target.addEventListener(type, fn, opts); cleanups.push(() => target.removeEventListener(type, fn, opts)); },
         onDestroy(fn) { cleanups.push(fn); },
         /** 다음·이전 장면으로. from(눌린 버튼)에서 색이 동그랗게 퍼진다. 마지막 장면의 다음은 끝(finish)이다. */
-        next(from) { const ids = sceneIds(), i = ids.indexOf(def.id); if (i === ids.length - 1) ctx.finish(from); else navigate(ids[i + 1], { from }); },
+        next(from) {
+          const go = () => { const ids = sceneIds(), i = ids.indexOf(def.id); if (i === ids.length - 1) ctx.finish(from); else navigate(ids[i + 1], { from }); };
+          // 앱: 이 장면을 떠나기 전에 저장할 것이 있으면 끝날 때까지 머문다(false면 그대로 남는다)
+          const wait = beforeNext ? beforeNext(snapshot(), finishing(from, sceneEl)) : true;
+          if (wait === false) return;
+          if (wait && wait.then) { wait.then((ok) => { if (ok && current && current.ctx === ctx) go(); }); return; }
+          go();
+        },
         back(from) { const ids = sceneIds(), i = ids.indexOf(def.id); if (i > 0) navigate(ids[i - 1], { from, back: true }); },
         go(id, st2, from) { navigate(id, { state: st2, from }); },
         /** 온보딩 끝: onChange({ scene: "done", … })로 모은 값을 한 번 넘기고, 값을 비운 뒤 처음으로 돌아간다. */

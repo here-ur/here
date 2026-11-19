@@ -16,7 +16,7 @@
 | `phone.js`, `phone.css` | 무대의 뼈대(`HerePhone`)와 장면 다섯 개: 만남, 내 이름, 질문 1, 질문 3, 이름 짓기 |
 | `scenes/promise.*` | 시작 전 약속. 앱에서는 알림만 모드(AI·기록·109 안내와 '알겠어요')로 떠요. |
 | `scenes/q2.*`, `scenes/q4.*`, `scenes/meet.*` | 질문 2(돌림판), 질문 4(밀어서 고르기), 데려가기(꾹 누르기 + 들은 것 정리) |
-| `scenes/birthday.*`, `scenes/gender.*` | 생일, 성별. **아직 불러오지 않아요.** 동의·성별·생년월일을 이 흐름으로 옮길 때 쓸 장면이에요. |
+| `scenes/birthday.*`, `scenes/gender.*` | 생일(숫자 굴리기), 성별(여성·남성). 물어야 하는 회원에게만 열려요. |
 
 ## 고칠 때
 
@@ -24,4 +24,4 @@
 - 장면을 더하거나 빼면 같은 파일의 `SCRIPTS`·`STYLES` 목록과 `src/lib/onboarding.ts`의 `STAGE_SCENES`를 같이 고쳐요.
 - 무대는 390×844 기준으로 그려요. 스타일의 선택자는 모두 `.hp`로 시작하고, `position: fixed`와 뷰포트 단위는 쓰지 않아요(테스트가 확인해요).
 - 장면을 만드는 법(`HerePhone.addScene`, `ctx`, `HerePhone.ui`)은 시안 폴더의 `attempts/pop/NOTES.md`에 적혀 있어요. 시안 폴더에는 화면을 눌러 보며 찍는 도구도 있어요.
-- 확인: `/dev/first-run`(3 캐릭터 만나기), `/dev/onboarding-overview`(장면 펼쳐 보기).
+- 확인: `/dev/first-run`(2 캐릭터 만나기), `/dev/onboarding-overview`(장면 펼쳐 보기).

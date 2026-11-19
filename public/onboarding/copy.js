@@ -48,9 +48,9 @@
     consent: { title: "대화를 시작하려면 두 가지 동의가 필요해요", all: "모두 동의해요", required: "필수", cta: "동의하고 시작하기", leave: "동의하지 않고 나가기", note: "동의하지 않으면 대화를 시작할 수 없어요 · 만 14세 이상부터 쓸 수 있어요" },
     sos: { title: "위급할 때는 109", sub: "24시간 사람과 이야기할 수 있어요", tough: "지금 이야기하고 싶다면 109", note: "위험한 말이 나오면 답보다 109 안내를 먼저 보여 줘요" },
     name: { title: "뭐라고 부르면 될까요?", desc: "고양이가 이 이름으로 불러요. 별명이어도 괜찮아요.", label: "이름이나 별명", placeholder: "이름", reply: (n) => `${n}. …흥, 외워는 둘게.` },
-    about: { birth: (n) => `${n ? josa(n, "이", "") + "의" : "내"} 생일은 언제예요?`, why: "만 14세 확인에만 써요 · AI 대화에는 보내지 않아요", gender: "성별도 알려 줄래요?", genders: ["여성", "남성", "고르지 않을래요"], genderWhy: "이용자 통계에 써요 · 고르지 않아도 돼요",
+    about: { birth: (n) => `${n ? josa(n, "이", "") + "의" : "내"} 생일은 언제예요?`, why: "만 14세 이상부터 쓸 수 있어요 · AI 대화에는 보내지 않아요", gender: "성별도 알려 줄래요?", genders: ["여성", "남성"], genderWhy: "내 계정에만 저장하고, AI 대화에는 보내지 않아요",
       birthLabel: "생년월일", units: { y: "년", m: "월", d: "일" }, format: (y, m, d) => `${y}년 ${m}월 ${d}일`, next: "다음",
-      under14: { title: "만 14세 이상부터 쓸 수 있어요", desc: "적어 준 생년월일은 저장하지 않았어요." },
+      under14: { title: "만 14세 이상부터 쓸 수 있어요", desc: "적어 준 생년월일은 저장하지 않았어요.", leave: "로그아웃" },
       /** 만 나이(오늘 기준). 2월 29일생은 평년에 2월 28일로 본다. */
       age(y, m, d, now = new Date()) { let a = now.getFullYear() - y; const mm = now.getMonth() + 1, dd = now.getDate(); const bd = (m === 2 && d === 29 && !(now.getFullYear() % 4 === 0 && (now.getFullYear() % 100 !== 0 || now.getFullYear() % 400 === 0))) ? 28 : d; if (mm < m || (mm === m && dd < bd)) a--; return a; },
     },

@@ -429,6 +429,7 @@
         call.href = "tel:109"; call.setAttribute("aria-label", `${C.sos.title}, ${C.sos.sub}, 전화하기`);
         const rule = el("i", "hp-bd-rule"); rule.setAttribute("aria-hidden", "true");
         card = el("div", "hp-bd-card" + (instant ? "" : " hp-rise"), el("strong", "hp-bd-card-title", A.under14.title), el("span", "hp-bd-card-desc", A.under14.desc), rule, call);
+        if (ctx.actions.signOut) { const out = el("button", "hp-bd-leave", A.under14.leave); out.type = "button"; out.addEventListener("click", () => ctx.actions.signOut()); card.append(out); }      // 앱: 쓸 수 없는 나이면 나갈 길을 둔다
         card.setAttribute("role", "note");
         root.insertBefore(card, cta);
         say(`${A.under14.title} ${A.under14.desc}`);

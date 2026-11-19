@@ -4,7 +4,7 @@ import { useConversationHistory } from "./use-conversation-history";
 import { Button } from "./ui/Button";
 import { safeHomeOpener, withHomeOpener } from "@/lib/home-opener";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
 import { companionState } from "@/lib/companion-state";
 import { ChatQueue, queuedChatContext } from "@/lib/chat-queue";
@@ -40,6 +40,8 @@ import HomeEntryGreeting from "./HomeEntryGreeting";
 import GetHelp from "./GetHelp";
 import Report, { type ReportMode } from "./Report";
 import Onboarding from "./Onboarding";
+import MemberBasicsStage from "./MemberBasicsStage";
+import { MemberBasicsContext } from "./member-basics-context";
 import CatLoading from "./CatLoading";
 
 type Status = "connecting" | "idle" | "listening" | "thinking" | "speaking";
@@ -83,6 +85,7 @@ function ProfileLoading({ error, onRetry, onSignOut }: { error: string; onRetry:
 
 function Home({ userId, signOut, startEmpty, onRestart }: { userId: string; signOut: () => Promise<void>; startEmpty: boolean; onRestart: () => void }) {
   const account = useAccountProfile(userId, { startEmpty, onRemoteReset: onRestart });
+  const basics = useContext(MemberBasicsContext);
   const activity = useAccountActivity(userId);
   const profile = account.profile === null ? DEV_PROFILE : account.profile;
   const [pendingProfile, setPendingProfile] = useState<Profile | null>(null);
@@ -450,6 +453,8 @@ function Home({ userId, signOut, startEmpty, onRestart }: { userId: string; sign
     // 저장이 끝나면 홈이 온보딩의 빛이 걷히는 모션(greet)으로 바로 이어진다.
     return (
       <Onboarding
+        basics={basics}
+        onSignOut={() => { void signOut(); }}
         saving={pendingProfile !== null && account.saving}
         saveError={pendingProfile ? account.saveError : undefined}
         onRetry={() => { if (pendingProfile) void account.save(pendingProfile); }}
@@ -464,6 +469,9 @@ function Home({ userId, signOut, startEmpty, onRestart }: { userId: string; sign
       />
     );
   }
+
+  // 캐릭터는 있는데 성별·생년월일이 비어 있으면 홈 앞에서 그 두 장면만 묻는다.
+  if (basics.needed) return <MemberBasicsStage basics={basics} nickname={profile.nickname} signOut={() => { void signOut(); }} />;
 
   const who = { name: profile.companion, shape: profile.shape ?? "cloud", color: profile.color ?? "lavender", accessory: profile.accessory };
   if (showHelp) return <GetHelp color={who.color} crisis={crisis} onBack={() => setShowHelp(false)} />;

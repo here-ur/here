@@ -8,6 +8,8 @@ import "./overview.css";
 const LABELS: Record<OnboardingStep, [string, string]> = {
   promise: ["시작 전 약속", "AI라는 것 · 기록 보관 · 109 (동의 칸 없이 '알겠어요')"],
   name: ["내 이름", "아주 큰 이름 칸 · 귀퉁이에서 들여다보는 고양이"],
+  birthday: ["생일", "숫자를 굴려서 고르기 · 만 14세 미만 안내"],
+  gender: ["성별", "동전 고르기 · 여성 · 남성"],
   q1: ["질문 1 · 요즘 마음", "떠다니는 방울 고르기"],
   q2: ["질문 2 · 마음이 가는 것", "돌림판"],
   q3: ["질문 3 · 바라는 것", "고르면 고양이가 걸어온다"],
@@ -19,6 +21,8 @@ const LABELS: Record<OnboardingStep, [string, string]> = {
 
 // 뒤 장면(데려가기·정리)이 실제처럼 보이도록 넣는 예시 답
 const SAMPLE = { lately: "조금 지쳤어요", concern: "일·학업", want: "털어놓고, 들어 주면 좋겠어요", support: "가끔 있어요" };
+
+const PREVIEW_BASICS = { needed: true, save: async () => "ok" as const };
 
 export default function Overview() {
   return <div className="ob-overview">
@@ -34,7 +38,7 @@ export default function Overview() {
       </figure>
       {ONBOARDING_STEPS.map((step, index) => <figure key={step} className="ob-overview-item">
         <figcaption><b>{index + 1}. {LABELS[step][0]}</b><span>{LABELS[step][1]}</span></figcaption>
-        <div className="ob-overview-frame"><Onboarding initialStep={step} initialAnswers={SAMPLE} onDone={() => {}} /></div>
+        <div className="ob-overview-frame"><Onboarding initialStep={step} initialAnswers={SAMPLE} basics={PREVIEW_BASICS} onDone={() => {}} /></div>
       </figure>)}
       {/* 질문 1에 '많이 힘들어요'를 고른 경우: 말투를 낮추고 109를 바로 보여 준다. */}
       <figure className="ob-overview-item">

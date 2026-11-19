@@ -2,9 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import OnboardingStage, { type StageSnapshot } from "./OnboardingStage";
+import type { MemberBasics } from "./member-basics-context";
+import { basicsFromAnswers, basicsSaveError } from "@/lib/member-basics";
 import {
   ONBOARDING_STEPS,
+  BASICS_SCENES,
   QUESTIONS,
+  STAGE_SCENES,
   type Answers,
   type ColorId,
   type OnboardingStep,
@@ -16,6 +20,7 @@ import {
   concernId,
   loadOnboardingDraft,
   matchStyle,
+  resumeStep,
   saveOnboardingDraft,
   sceneOfStep,
   stepOfScene,
@@ -25,7 +30,8 @@ import {
 // 첫 실행의 '캐릭터 만나기'. 화면은 1번 톤 무대(OnboardingStage · public/onboarding)가 그리고, 여기서는 값만 잇는다:
 // 하던 자리를 이 탭에 남겼다가 되살리고, 마지막 '대화 시작하기'에서 고른 답을 프로필로 바꿔 넘긴다.
 // 흐름은 만남(자는 고양이에게 다가가면 AI라고 밝힌다) → 시작 전 약속(AI·기록·109) → 내 이름 → 질문 넷
-// → 데려가기(많이 힘들면 109, 꾹 누른 뒤 들은 것 정리·확인) → 이름 짓기다. 동의와 성별·생년월일은 이 앞의 시트가 맡는다.
+// → 데려가기(많이 힘들면 109, 꾹 누른 뒤 들은 것 정리·확인) → 이름 짓기다. 새 회원은 내 이름 다음에 생일·성별을 묻고, 성별의 '다음'에서 저장한다.
+// 기억 동의는 이 앞의 시트가 맡는다.
 // 문구는 lib/onboarding.ts에 두고 무대에 넘긴다. 큰 글씨 중 한 글자씩 적히는 줄은 고양이의 말이고, 안내·질문·109는 서비스의 말이다.
 // 장면 순서(ONBOARDING_STEPS)는 하던 자리를 남길 때 쓰는 이름이다(무대의 장면과의 짝은 sceneOfStep · stepOfScene).
 export { ONBOARDING_STEPS, type OnboardingStep };
@@ -50,15 +56,17 @@ function pickAnswers(raw: Record<string, unknown>): Answers {
  * saving·saveError·onRetry: 마지막 '대화 시작하기' 뒤 프로필을 저장하는 동안 그 화면을 그대로 두고, 버튼에 진행·실패를 보여 준다.
  * onDone은 '대화 시작하기'를 눌렀을 때 한 번만 부르고, 실패한 뒤 다시 저장은 onRetry로 한다.
  */
-export default function Onboarding({ onDone, initialStep, initialAnswers = {}, saving = false, saveError, onRetry }: {
+export default function Onboarding({ onDone, initialStep, initialAnswers = {}, saving = false, saveError, onRetry, basics, onSignOut }: {
   onDone: (p: Profile) => void; initialStep?: OnboardingStep; initialAnswers?: Answers;
   saving?: boolean; saveError?: string; onRetry?: () => void;
+  basics?: MemberBasics; onSignOut?: () => void;
 }) {
   const preview = initialStep !== undefined;
   // 새로 고침·탭이 내려간 뒤에도 하던 장면부터 이어 간다(이 탭에만 잠깐 둔다).
   const [draft] = useState(() => (preview ? null : loadOnboardingDraft()));
+  const [askBasics] = useState(() => basics?.needed === true); // 시작할 때 정한다(저장한 뒤 뒤로 돌아와 고칠 수 있게 장면은 그대로 둔다)
   const [start] = useState(() => ({
-    ...sceneOfStep(initialStep ?? draft?.step ?? "promise", preview),
+    ...sceneOfStep(initialStep ?? resumeStep(draft?.step ?? "promise", askBasics), preview),
     initial: { nickname: draft?.nickname ?? "", companion: draft?.companion ?? "", answers: draft?.answers ?? initialAnswers },
   }));
   const finished = useRef(false);
@@ -72,6 +80,16 @@ export default function Onboarding({ onDone, initialStep, initialAnswers = {}, s
   function remember(snapshot: StageSnapshot) {
     if (preview || finished.current || snapshot.scene === "done") return;
     saveOnboardingDraft({ step: stepOfScene(snapshot.scene), nickname: snapshot.nickname, answers: pickAnswers(snapshot.answers), companion: snapshot.companion });
+  }
+
+  // 성별의 '다음': 생일·성별을 저장한 뒤에 넘어간다. 실패하면 그 글을 돌려주고 이 장면에 머문다.
+  function beforeNext(snapshot: StageSnapshot) {
+    if (snapshot.scene !== "gender" || !basics) return null;
+    const values = basicsFromAnswers(snapshot.answers);
+    if (!values) return Promise.resolve(basicsSaveError("invalid"));
+    return basics.save(values.gender, values.birthDate)
+      .then((result) => (result === "ok" ? null : basicsSaveError(result)))
+      .catch(() => basicsSaveError("failed"));
   }
 
   function finish(snapshot: StageSnapshot) {
@@ -89,5 +107,6 @@ export default function Onboarding({ onDone, initialStep, initialAnswers = {}, s
     });
   }
 
-  return <OnboardingStage scene={start.scene} state={start.state} initial={start.initial} saving={saving} saveError={saveError} onChange={remember} onFinish={finish} />;
+  return <OnboardingStage scene={start.scene} state={start.state} initial={start.initial} saving={saving} saveError={saveError} onChange={remember} onFinish={finish}
+    scenes={STAGE_SCENES.filter((id) => askBasics || !(BASICS_SCENES as readonly string[]).includes(id))} beforeNext={beforeNext} onSignOut={onSignOut} />;
 }

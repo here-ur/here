@@ -80,3 +80,12 @@ test("다시 묻지 않는 표시는 계정별로 이 기기에만 남는다", (
   assert.equal(hasBasicsDisplayHint(storage, ""), false);
   assert.equal(hasBasicsDisplayHint(undefined, "member-a"), false);
 });
+
+test("무대가 넘긴 답을 저장할 값으로 바꾼다", async () => {
+  const { basicsFromAnswers } = await import("./member-basics.ts");
+  assert.deepEqual(basicsFromAnswers({ gender: "여성", birth: "1999년 1월 1일" }, "2026-11-19"), { gender: "female", birthDate: "1999-01-01" });
+  assert.deepEqual(basicsFromAnswers({ gender: "남성", birth: "2000년 12월 31일" }, "2026-11-19"), { gender: "male", birthDate: "2000-12-31" });
+  assert.equal(basicsFromAnswers({ gender: "고르지 않을래요", birth: "1999년 1월 1일" }, "2026-11-19"), null);
+  assert.equal(basicsFromAnswers({ gender: "여성", birth: "2001년 2월 30일" }, "2026-11-19"), null);
+  assert.equal(basicsFromAnswers({ gender: "여성" }, "2026-11-19"), null);
+});

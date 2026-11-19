@@ -114,7 +114,7 @@ export function nameReply(nickname: string) {
 
 // 캐릭터 만나기의 장면 순서. 상담 접수처럼 안내(AI·기록·109)를 맨 앞(promise)에 두고 시작한다.
 // 질문 4개 → 데려가기(많이 힘들면 109) → 들은 것 정리·확인 → 이름 짓기에서 끝난다.
-export const ONBOARDING_STEPS = ["promise", "name", "q1", "q2", "q3", "q4", "meet", "summary", "naming"] as const;
+export const ONBOARDING_STEPS = ["promise", "name", "birthday", "gender", "q1", "q2", "q3", "q4", "meet", "summary", "naming"] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
 // 캐릭터 만나기(1번 톤 무대)의 첫 화면. 자는 고양이에게 다가가면 고양이가 AI라고 밝히고 뭘 하러 왔는지 묻고, 버튼이 내 대답이 된다.
@@ -140,9 +140,16 @@ export const STAGE_NOTICE = {
   reply: PROMISE_REPLY,
 } as const;
 
-// 무대의 장면(차례대로). 만남(open)에서 시작하고, 들은 것 정리는 데려가기(meet) 장면 안에 있다. 생일·성별·동의 장면은 아직 올리지 않았다.
-export const STAGE_SCENES = ["open", "promise", "name", "q1", "q2", "q3", "q4", "meet", "naming"] as const;
+// 무대의 장면(차례대로). 만남(open)에서 시작하고, 들은 것 정리는 데려가기(meet) 장면 안에 있다. 생일·성별은 물어야 하는 회원에게만 연다.
+export const STAGE_SCENES = ["open", "promise", "name", "birthday", "gender", "q1", "q2", "q3", "q4", "meet", "naming"] as const;
 export type StageScene = (typeof STAGE_SCENES)[number];
+export const BASICS_SCENES = ["birthday", "gender"] as const;
+// 새로 고친 뒤 이어 갈 자리. 생일·성별 값은 이 탭에 남기지 않으므로, 저장 전이면 생일부터 다시 묻고 저장을 마쳤으면 그 두 장면을 건너뛴다.
+export function resumeStep(step: OnboardingStep, askBasics: boolean): OnboardingStep {
+  const at = ONBOARDING_STEPS.indexOf(step);
+  if (askBasics) return at > ONBOARDING_STEPS.indexOf("name") ? "birthday" : step;
+  return step === "birthday" || step === "gender" ? "q1" : step;
+}
 // 무대의 장면 → 하던 자리(step). 새로 고치면 그 자리의 장면부터 다시 연다.
 export function stepOfScene(scene: string): OnboardingStep {
   return scene === "open" ? "promise" : (ONBOARDING_STEPS as readonly string[]).includes(scene) ? (scene as OnboardingStep) : "promise";

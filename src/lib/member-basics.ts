@@ -75,6 +75,22 @@ export async function saveMemberBasics(client: SupabaseClient, gender: Gender, b
   throw Error("basics_save_unknown");
 }
 
+/** 캐릭터 만나기 무대가 넘긴 답("여성", "1999년 1월 1일")을 저장할 값으로 바꾼다. 둘 중 하나라도 없거나 없는 날짜면 null. */
+export function basicsFromAnswers(answers: Record<string, unknown>, today = seoulToday()): { gender: Gender; birthDate: string } | null {
+  const gender = GENDERS.find((g) => g.label === answers.gender)?.id;
+  const match = typeof answers.birth === "string" ? /^(\d{4})년 (\d{1,2})월 (\d{1,2})일$/.exec(answers.birth) : null;
+  const birthDate = match ? parseBirthDate(`${match[1]}${pad(Number(match[2]))}${pad(Number(match[3]))}`, today) : null;
+  return gender && birthDate ? { gender, birthDate } : null;
+}
+
+/** 저장하지 못했을 때 화면에 보여 줄 말. */
+export function basicsSaveError(result: Exclude<SaveResult, "ok"> | "failed"): string {
+  if (result === "under_14") return `만 ${MIN_AGE}세 이상부터 쓸 수 있어요.`;
+  if (result === "invalid") return "생년월일을 다시 확인해 주세요.";
+  if (result === "not_member") return "계정 정보를 확인하지 못했어요. 로그아웃한 뒤 다시 로그인해 주세요.";
+  return "저장하지 못했어요. 연결을 확인하고 다시 시도해 주세요.";
+}
+
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 // 화면 안내용 표시일 뿐 권한이 아니다. 한 번 끝나면 다시 묻지 않으므로, 이 기기에서 확인을 건너뛰는 데만 쓴다.
 export function basicsDisplayKey(userId: string) {

@@ -2,17 +2,20 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
+  BASICS_SCENES,
   DEFAULT_COMPANION,
   QUESTIONS,
   REPLIES,
   STAGE_NOTICE,
   STAGE_OPEN,
+  STAGE_SCENES,
   type Answers,
   type StageScene,
   meetLine,
   nameReply,
   summaryLine,
 } from "@/lib/onboarding";
+import { isUnderAge, seoulToday } from "@/lib/member-basics";
 import { SFX_KEY, setSfxEnabled } from "@/lib/sfx";
 import { firstFamily, gothicA1, outfit } from "./onboarding-fonts";
 import { Button } from "./ui/Button";
@@ -23,9 +26,9 @@ import "./onboarding-stage.css";
 // 무대는 390×844 기준으로 그려지고, 이 칸의 크기에 맞게 한 비율로 줄거나 늘어난다(둘레에 남는 띠는 장면의 바탕색).
 // 무대 파일을 고치면 STAGE_VERSION을 올린다(브라우저가 옛 파일을 붙잡지 않게).
 const STAGE_BASE = "/onboarding/";
-const STAGE_VERSION = "2026-11-19";
-const SCRIPTS = ["copy.js", "cat.js", "sound.js", "phone.js", "scenes/promise.js", "scenes/q2.js", "scenes/q4.js", "scenes/meet.js"];
-const STYLES = ["phone.css", "scenes/promise.css", "scenes/q2.css", "scenes/q4.css", "scenes/meet.css"];
+const STAGE_VERSION = "2026-11-19c";
+const SCRIPTS = ["copy.js", "cat.js", "sound.js", "phone.js", "scenes/promise.js", "scenes/birthday.js", "scenes/gender.js", "scenes/q2.js", "scenes/q4.js", "scenes/meet.js"];
+const STYLES = ["phone.css", "scenes/promise.css", "scenes/birthday.css", "scenes/gender.css", "scenes/q2.css", "scenes/q4.css", "scenes/meet.css"];
 const CAT_ART = "/characters/motion/"; // 고양이 그림은 홈과 같은 파일을 쓴다(앉은 그림·걷는 그림만 더했다)
 const STAGE_W = 390;
 const STAGE_H = 844;
@@ -41,7 +44,9 @@ type FinishControl = { busy(on: boolean): void; fail(message: string, retryLabel
 type StageApi = { destroy(): void };
 type StageEngine = {
   mount(host: HTMLElement, options: {
-    assets: string; scene?: string; state?: string; initial?: StageStart;
+    assets: string; scene?: string; state?: string; initial?: StageStart; scenes?: readonly string[];
+    actions?: { signOut?: () => void };
+    beforeNext?: (snapshot: StageSnapshot, control: FinishControl) => boolean | Promise<boolean>;
     onChange?: (snapshot: StageSnapshot) => void;
     onFinish?: (snapshot: StageSnapshot, control: FinishControl) => void;
   }): StageApi;
@@ -55,6 +60,7 @@ type StageCopy = {
   summary: (nickname: string, answers: Answers) => string;
   name: { reply: (nickname: string) => string };
   naming: { defaultName: string };
+  about: { age: (year: number, month: number, day: number) => number };
 };
 type StageSound = { onChange(listener: (on: boolean) => void): () => void };
 
@@ -109,6 +115,8 @@ function applyCopy(copy: StageCopy) {
   copy.summary = (nickname, answers) => summaryLine(nickname, answers);
   copy.name.reply = (nickname) => nameReply(nickname);
   copy.naming.defaultName = DEFAULT_COMPANION;
+  // 나이는 서버와 같은 기준(한국 날짜)으로 잰다. 무대는 14 미만인지만 본다.
+  copy.about.age = (year, month, day) => isUnderAge(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`, seoulToday()) ? 13 : 14;
 }
 
 /**
@@ -116,24 +124,27 @@ function applyCopy(copy: StageCopy) {
  * onFinish는 마지막 버튼('대화 시작하기')을 누를 때마다 불린다. 저장하는 동안(saving)에는 버튼이 잠기고,
  * 실패하면(saveError) 버튼 위에 그 글이 뜨고 버튼이 '다시 저장'이 된다.
  */
-export default function OnboardingStage({ scene, state, initial, saving = false, saveError, onChange, onFinish }: {
+export default function OnboardingStage({ scene, state, initial, scenes, saving = false, saveError, onChange, onFinish, beforeNext, onSignOut }: {
   scene?: StageScene;
   state?: string;
   initial?: StageStart;
+  scenes?: readonly string[]; // 이번 흐름에서 여는 장면(없으면 생일·성별을 뺀 나머지)
   saving?: boolean;
   saveError?: string;
   onChange?: (snapshot: StageSnapshot) => void;
   onFinish: (snapshot: StageSnapshot) => void;
+  beforeNext?: (snapshot: StageSnapshot) => Promise<string | null> | null; // 장면을 떠나기 전 저장. 실패하면 그 글을 돌려준다
+  onSignOut?: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
-  const start = useRef({ scene, state, initial });
-  const handlers = useRef({ onChange, onFinish });
+  const start = useRef({ scene, state, initial, scenes: scenes ?? STAGE_SCENES.filter((id) => !(BASICS_SCENES as readonly string[]).includes(id)) });
+  const handlers = useRef({ onChange, onFinish, beforeNext, onSignOut });
   const finishing = useRef<FinishControl | null>(null);
   const [field, setField] = useState<StageField>("yellow");
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
 
-  useEffect(() => { handlers.current = { onChange, onFinish }; });
+  useEffect(() => { handlers.current = { onChange, onFinish, beforeNext, onSignOut }; });
 
   // 무대를 이 칸에 맞춘다(가로·세로 중 더 빠듯한 쪽에 맞춰 한 비율로).
   useEffect(() => {
@@ -183,6 +194,17 @@ export default function OnboardingStage({ scene, state, initial, saving = false,
       api = window.HerePhone.mount(box, {
         assets: CAT_ART,
         ...start.current,
+        actions: { signOut: () => handlers.current.onSignOut?.() },
+        beforeNext: (snapshot, control) => {
+          const saving = handlers.current.beforeNext?.(snapshot);
+          if (!saving) return true;
+          control.busy(true);
+          return saving.then((message) => {
+            if (message) { control.fail(message); return false; }
+            control.busy(false);
+            return true;
+          });
+        },
         onChange: (snapshot) => {
           if (snapshot.field) setField(snapshot.field);
           handlers.current.onChange?.(snapshot);

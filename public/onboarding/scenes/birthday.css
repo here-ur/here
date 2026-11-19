@@ -51,6 +51,7 @@
 /* 만 14세 안내: 하얀 카드. 고양이 앞(아래 버튼 위)에 조용히 올라온다 */
 .hp .hp-bd-card { position: absolute; left: 20px; right: 20px; bottom: 110px; z-index: 12; padding: 20px 12px 8px 22px; border-radius: 32px; background: var(--hp-white); color: var(--hp-ink); }
 .hp .hp-bd-card.is-out { opacity: 0; transform: translate3d(0, 12px, 0); pointer-events: none; transition: opacity 160ms linear, transform 200ms var(--hp-inout); }
+.hp .hp-bd-leave { display: block; width: 100%; min-height: 44px; margin-top: 2px; font-size: 15px; font-weight: 600; letter-spacing: -0.02em; color: var(--hp-ink); text-align: center; }
 .hp .hp-bd-card-title { display: block; font-size: 19px; font-weight: 600; line-height: 1.3; letter-spacing: -0.04em; }
 .hp .hp-bd-card-desc { display: block; margin-top: 3px; font-size: 16px; line-height: 1.4; font-weight: 500; color: rgb(19 17 17 / 72%); letter-spacing: -0.03em; }
 .hp .hp-bd-rule { display: block; height: 1.5px; margin: 14px 10px 0 0; border-radius: 1px; background: rgb(19 17 17 / 10%); }

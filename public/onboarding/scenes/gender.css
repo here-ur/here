@@ -40,8 +40,8 @@
 .hp .hp-still .hp-gd-mark { transition: none; }
 
 /* 동전 셋: 큰 버튼과 같은 너비(좌우 20px)에 꽉 차게 놓인다 */
-.hp .hp-gd-coins { position: absolute; left: 20px; right: 20px; top: 584px; height: 112px; z-index: 6; display: flex; justify-content: space-between; }
-.hp .hp-gd-coin { position: relative; flex: none; width: 112px; height: 112px; border-radius: 50%; color: var(--hp-ink); transition: transform 460ms var(--hp-spring); }
+.hp .hp-gd-coins { position: absolute; left: 20px; right: 20px; top: 576px; height: 128px; z-index: 6; display: flex; justify-content: center; gap: 22px; }
+.hp .hp-gd-coin { position: relative; flex: none; width: 128px; height: 128px; border-radius: 50%; color: var(--hp-ink); transition: transform 460ms var(--hp-spring); }
 .hp .hp-gd-coin:active { transform: scale(.94); transition-duration: 80ms; }
 .hp .hp-gd-coin:focus-visible { outline-offset: 2px; }
 .hp .hp-gd-hop { position: absolute; inset: 0; display: block; --up: -7px; }
@@ -56,3 +56,6 @@
 .hp .hp-gd-tick { position: absolute; right: 2px; top: 2px; width: 30px; height: 30px; border-radius: 50%; background: var(--dot); color: var(--dot-fg); display: grid; place-items: center; box-shadow: 0 0 0 3px var(--hp-ink); transform: scale(0); pointer-events: none; }
 .hp .hp-gd-tick svg { width: 17px; height: 17px; }
 .hp .hp-gd-coin.is-on .hp-gd-tick { transform: scale(1); }
+
+/* 성별: 저장 실패 알림이 동전과 쪽 표시를 가리지 않게 제목 아래에 띄운다 */
+.hp .hp-scene[data-scene="gender"] .hp-fail { top: 196px; bottom: auto; }

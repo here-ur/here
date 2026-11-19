@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { ONBOARDING_STEPS, PROMISE_REPLY, STAGE_NOTICE, STAGE_OPEN, STAGE_SCENES, sceneOfStep, stepOfScene } from "./onboarding.ts";
+import { ONBOARDING_STEPS, PROMISE_REPLY, STAGE_NOTICE, STAGE_OPEN, STAGE_SCENES, resumeStep, sceneOfStep, stepOfScene } from "./onboarding.ts";
 
 // 캐릭터 만나기는 1번 톤 무대가 그린다: 값은 app/Onboarding.tsx, 무대를 세우는 일은 app/OnboardingStage.tsx,
 // 장면·동작은 public/onboarding의 스크립트가 맡는다. 여기서는 그 셋이 지켜야 할 약속을 글자로 확인한다.
@@ -15,8 +15,8 @@ const block = (source: string, from: string, to?: string) => source.slice(source
 const loaded = (list: string) => [...(stage.match(new RegExp(`const ${list} = \\[([^\\]]*)\\]`))?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((m) => m[1]);
 
 test("캐릭터 만나기는 만남에서 AI라고 밝히고, 시작 전 약속(AI·기록·109)을 보여 준 뒤, 이름 짓기에서만 끝난다", () => {
-  assert.deepEqual([...STAGE_SCENES], ["open", "promise", "name", "q1", "q2", "q3", "q4", "meet", "naming"]);
-  assert.deepEqual([...ONBOARDING_STEPS], ["promise", "name", "q1", "q2", "q3", "q4", "meet", "summary", "naming"]);
+  assert.deepEqual([...STAGE_SCENES], ["open", "promise", "name", "birthday", "gender", "q1", "q2", "q3", "q4", "meet", "naming"]);
+  assert.deepEqual([...ONBOARDING_STEPS], ["promise", "name", "birthday", "gender", "q1", "q2", "q3", "q4", "meet", "summary", "naming"]);
   // 첫 화면: 고양이가 AI라고 밝히고, 서비스가 풀어서 한 번 더 알린다.
   assert.match(STAGE_OPEN.line, /나 AI야/);
   assert.match(STAGE_OPEN.note, /사람이 아니라 AI와 이야기/);
@@ -32,8 +32,8 @@ test("캐릭터 만나기는 만남에서 AI라고 밝히고, 시작 전 약속(
   assert.match(stage, /copy\.notice = \{ \.\.\.STAGE_NOTICE,/);
   assert.match(engine("scenes/promise.js"), /const N = C\.notice \|\| null;/);
   assert.match(engine("scenes/promise.js"), /call\.href = "tel:109"/);
-  // 올린 장면: 약속 · 질문 2 · 질문 4 · 데려가기(만남 · 내 이름 · 질문 1 · 질문 3 · 이름 짓기는 phone.js 안에 있다). 생일 · 성별은 아직 올리지 않았다.
-  assert.deepEqual(loaded("SCRIPTS"), ["copy.js", "cat.js", "sound.js", "phone.js", "scenes/promise.js", "scenes/q2.js", "scenes/q4.js", "scenes/meet.js"]);
+  // 올린 장면: 약속 · 생일 · 성별 · 질문 2 · 질문 4 · 데려가기(만남 · 내 이름 · 질문 1 · 질문 3 · 이름 짓기는 phone.js 안에 있다).
+  assert.deepEqual(loaded("SCRIPTS"), ["copy.js", "cat.js", "sound.js", "phone.js", "scenes/promise.js", "scenes/birthday.js", "scenes/gender.js", "scenes/q2.js", "scenes/q4.js", "scenes/meet.js"]);
   for (const name of loaded("SCRIPTS")) assert.ok(engine(name).length > 0, name);
   for (const name of loaded("STYLES")) assert.ok(engine(name).length > 0, name);
   // onDone을 부르는 곳은 마지막 버튼을 받는 finish 하나뿐이다.
@@ -43,6 +43,21 @@ test("캐릭터 만나기는 만남에서 AI라고 밝히고, 시작 전 약속(
   assert.match(component, /const START_COLOR: ColorId = "lavender";/);
   assert.match(component, /const START_VOICE: VoiceId = "marin";/);
   assert.match(block(component, "function finish(", "return <OnboardingStage"), /color: START_COLOR, voice: START_VOICE/);
+});
+
+test("생일·성별은 물어야 하는 회원에게만 열고, 성별은 여성·남성 둘이며, 저장한 뒤에 넘어간다", () => {
+  assert.match(engine("copy.js"), /genders: \["여성", "남성"\]/);
+  assert.ok(!engine("copy.js").includes("고르지 않을래요"));
+  assert.match(component, /askBasics \|\| !\(BASICS_SCENES as readonly string\[\]\)\.includes\(id\)/);
+  assert.match(component, /snapshot\.scene !== "gender"/);
+  assert.match(engine("scenes/birthday.js"), /tel:109/);
+  assert.match(engine("scenes/birthday.js"), /ctx\.actions\.signOut/);
+  // 생일·성별 값은 이 탭에 남기지 않으므로 저장 전이면 생일부터 다시 묻고, 저장을 마쳤으면 건너뛴다.
+  assert.equal(resumeStep("gender", true), "birthday");
+  assert.equal(resumeStep("q3", true), "birthday");
+  assert.equal(resumeStep("name", true), "name");
+  assert.equal(resumeStep("gender", false), "q1");
+  assert.equal(resumeStep("q3", false), "q3");
 });
 
 test("많이 힘들다고 고르면 그 자리에서, 그리고 데려가기 장면에서 109를 바로 보여 준다", () => {
@@ -79,7 +94,7 @@ test("마지막 버튼 뒤에는 그 화면에 머물며 저장 중·실패·다
 
 test("하던 자리를 이 탭에 남기고 되살리며, 미리보기(initialStep)에서는 쓰지 않는다", () => {
   assert.match(component, /useState\(\(\) => \(preview \? null : loadOnboardingDraft\(\)\)\)/);
-  assert.match(component, /sceneOfStep\(initialStep \?\? draft\?\.step \?\? "promise", preview\)/);
+  assert.match(component, /sceneOfStep\(initialStep \?\? resumeStep\(draft\?\.step \?\? "promise", askBasics\), preview\)/);
   assert.match(component, /if \(preview \|\| finished\.current \|\| snapshot\.scene === "done"\) return;\s*saveOnboardingDraft\(/);
   assert.match(block(component, "function finish(", "return <OnboardingStage"), /if \(!preview\) clearOnboardingDraft\(\);/);
   // 처음이면 만남부터, 미리보기에서는 약속 장면을 바로, 들은 것 정리는 데려가기의 끝 상태로 연다.
