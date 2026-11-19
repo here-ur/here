@@ -13,7 +13,9 @@ import { catExpression } from "@/lib/cat-expression";
 import Buddy, { type BuddyState } from "./Buddy";
 import PoseCat from "./PoseCat";
 import { useCatReactions } from "./use-cat-reactions";
+import { classifyGesture, LOAF_AFTER_PX, LOAF_MS, purrsBetween, STROKE_START_PX } from "@/lib/cat-touch";
 import { Icon } from "./art";
+import { PawLoader } from "./ui/PawLoader";
 import "./home-voice.css";
 import "./home-chat.css";
 import "./home-scene.css";
@@ -129,6 +131,7 @@ export default function HomeScreen({
   const micButtonRef = useRef<HTMLButtonElement>(null);
   const chatButtonRef = useRef<HTMLButtonElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
+  const sendButtonRef = useRef<HTMLButtonElement>(null);
   const frameRef = useRef<HTMLElement>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
   const wasVoiceActive = useRef(Boolean(voice));
@@ -145,27 +148,116 @@ export default function HomeScreen({
   const bottomRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
   const canSend = chat.open && Boolean(chat.draft.trim());
+  // 보낼 때: 보내기 버튼이 꾹 눌리며 화살표가 위로 쏙 올라가고, 내 말은 입력창에서 위로 떠오른다(data-pending).
+  function send() {
+    if (!canSend) return; // 답을 기다리는 중에도 이어서 보낼 수 있다(차례대로 보낸다)
+    const button = sendButtonRef.current;
+    if (button) { button.removeAttribute("data-fly"); void button.offsetWidth; button.setAttribute("data-fly", ""); }
+    chat.onSend();
+  }
+  // 대화 목록이 처음 그려진 뒤부터만 새 말풍선이 들어오는 움직임을 켠다(열 때 이미 있던 대화가 한꺼번에 움직이지 않게).
+  useEffect(() => {
+    if (!hasMessages) return;
+    const frame = requestAnimationFrame(() => requestAnimationFrame(() => messageListRef.current?.setAttribute("data-ready", "")));
+    return () => cancelAnimationFrame(frame);
+  }, [hasMessages]);
 
-  // 쉬는 홈에서만 고양이가 혼자 논다: 심심하면 발을 핥고, 오래 두면 웅크려 잔다.
-  // 세 번 연달아 누르면 하악, 자고 있으면 째려보며 깬다. 대화 중에는 기존 Buddy 상태를 그대로 쓴다.
+  // 쉬는 홈에서만 고양이가 혼자 논다: 심심하면 발을 핥고, 오래 두면 웅크려 잔다(동그란 눈으로 갸웃하기는 2026-11-17에 뺐다).
+  // 예전 누르기 반응(깜짝·울기·하악·째려보며 깨기)은 2026-11-17에 뺐다. 대신 쓰다듬기(src/lib/cat-touch.ts): 쓰다듬으면 '골골',
+  // 충분히 쓰다듬으면 식빵 자세. 누르기는 자고 있을 때 조용히 깨우기만 한다(눈 깜박임은 뺐다). 대화 중에는 기존 Buddy 상태를 그대로 쓴다.
   const [napping, setNapping] = useState(false);
-  const [catPokes, setCatPokes] = useState(0);
+  const [catTouches, setCatTouches] = useState(0); // 손을 대면 쉬는 타이머(발 핥기·잠)를 처음부터 다시 센다
+  const catTapRef = useRef<HTMLDivElement>(null);
+  const catGesture = useRef<{ id: number; x: number; y: number; at: number; moved: number; stroking: boolean } | null>(null);
+  // 손을 떼며 여러 번 쓰다듬어도 이어서 센다: 마지막 쓰다듬기에서 1.5초 안에 다시 쓰다듬으면 거리를 더한다.
+  const catStroke = useRef({ distance: 0, lastAt: 0, loafed: false });
   const homeCat = useCatReactions(resting && napping ? "sleep" : "base");
   const { play: catPlay } = homeCat;
   useEffect(() => {
     if (!resting || napping) return;
     const timers = [
-      window.setTimeout(() => catPlay([["groom", 4400]]), 32000),
-      window.setTimeout(() => setNapping(true), 75000),
+      window.setTimeout(() => { if (!catGesture.current) catPlay([["groom", 4400]]); }, 32000),
+      window.setTimeout(() => { if (!catGesture.current) setNapping(true); }, 75000),
     ];
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [resting, napping, catPokes, catPlay]);
-  function pokeCat() {
-    setCatPokes((n) => n + 1);
-    if (napping) { setNapping(false); catPlay([["glare", 1800]]); return; }
-    homeCat.tap();
-  }
+  }, [resting, napping, catPlay, catTouches]);
   function wakeForTalk() { setNapping(false); homeCat.reset(); }
+
+  /** 쓰다듬는 손끝 근처에 '골골'을 띄운다. 화면 그리기만 하는 장식이라 상태 대신 DOM에 바로 붙였다 지운다. */
+  function purrAt(clientX: number, clientY: number) {
+    const box = catTapRef.current;
+    if (!box || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const rect = box.getBoundingClientRect();
+    const el = document.createElement("span");
+    el.className = "home-purr";
+    el.textContent = "골골";
+    el.setAttribute("aria-hidden", "true");
+    el.style.left = `${clientX - rect.left}px`;
+    el.style.top = `${clientY - rect.top - 18}px`;
+    el.style.setProperty("--dx", `${Math.round((Math.random() - 0.5) * 36)}px`);
+    box.appendChild(el);
+    window.setTimeout(() => el.remove(), 1000);
+  }
+  /** 손가락이 고양이 칸 안(가장자리 8% 안쪽)에 있는지. 칸 밖으로 나간 손가락으로는 쓰다듬기를 세지 않는다. */
+  function insideCat(clientX: number, clientY: number) {
+    const r = catTapRef.current?.getBoundingClientRect();
+    if (!r) return false;
+    const inset = r.width * 0.08;
+    return clientX > r.left + inset && clientX < r.right - inset && clientY > r.top + inset && clientY < r.bottom - inset;
+  }
+  function endStroke() {
+    catStroke.current.lastAt = performance.now();
+    setCatTouches((n) => n + 1);
+  }
+  function cancelGesture() {
+    const g = catGesture.current;
+    catGesture.current = null;
+    if (g?.stroking) endStroke();
+  }
+  // 쓰다듬는 도중에 글·음성이 열리면(쉬는 상태가 끝나면) 손짓을 정리한다.
+  useEffect(() => {
+    if (!resting) catGesture.current = null;
+  }, [resting]);
+  const catHandlers = {
+    onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!resting || event.button !== 0 || catGesture.current) return;
+      try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* 이미 끝난 손가락이면 잡지 않아도 된다 */ }
+      catGesture.current = { id: event.pointerId, x: event.clientX, y: event.clientY, at: performance.now(), moved: 0, stroking: false };
+      setCatTouches((n) => n + 1); // 손을 대면 쉬는 타이머(발 핥기·잠)를 다시 센다
+    },
+    onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => {
+      const g = catGesture.current;
+      if (!resting || !g || g.id !== event.pointerId) return;
+      const step = Math.hypot(event.clientX - g.x, event.clientY - g.y);
+      g.x = event.clientX; g.y = event.clientY; g.moved += step;
+      if (g.moved <= STROKE_START_PX) return;
+      const stroke = catStroke.current;
+      if (!g.stroking) {
+        g.stroking = true;
+        if (performance.now() - stroke.lastAt > 1500) { stroke.distance = 0; stroke.loafed = false; }
+        if (napping) setNapping(false);
+        // 식빵 자세로 골골거리는 중이면 그대로 두고, 다른 동작(발 핥기 등)이면 기본 자세로 돌린다.
+        if (homeCat.busy && homeCat.pose !== "purr") homeCat.reset();
+      }
+      if (!insideCat(event.clientX, event.clientY)) return;
+      const before = stroke.distance;
+      stroke.distance += step;
+      for (let i = purrsBetween(before, stroke.distance); i > 0; i--) purrAt(event.clientX, event.clientY);
+      if (!stroke.loafed && stroke.distance >= LOAF_AFTER_PX) { stroke.loafed = true; catPlay([["purr", LOAF_MS]]); }
+    },
+    onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => {
+      const g = catGesture.current;
+      if (!g || g.id !== event.pointerId) return;
+      catGesture.current = null;
+      if (!resting) return;
+      const kind = classifyGesture(g.moved, performance.now() - g.at);
+      // 누르기: 자고 있으면 째려보지 않고 조용히 깨기만 한다.
+      if (kind === "tap" && napping) setNapping(false);
+      else if (g.stroking) endStroke();
+    },
+    onPointerCancel: cancelGesture,
+    onLostPointerCapture: (event: React.PointerEvent<HTMLDivElement>) => { if (catGesture.current?.id === event.pointerId) cancelGesture(); },
+  };
 
   useEffect(() => {
     if (wasVoiceActive.current && !voice && !chat.open) micButtonRef.current?.focus({ preventScroll: true });
@@ -302,15 +394,15 @@ export default function HomeScreen({
         onTouchStart={e => { touchStart.current=e.currentTarget.scrollTop<=4?e.touches[0].clientY:null; }}
         onTouchEnd={e => { if(touchStart.current!==null && e.changedTouches[0].clientY-touchStart.current>45) void older(); touchStart.current=null; }}>
         {chat.history && <div className="home-history-status">
-          {chat.history.loading ? <span role="status">이전 대화 불러오는 중…</span> : chat.history.error ?
-            <Button variant="plain" onClick={()=>void older()}>{chat.history.error}</Button> : chat.history.hasMore ?
+          {chat.history.loading ? <PawLoader size={10} gap={5} label="이전 대화를 불러오고 있어요" className="text-[#85591B]" /> : chat.history.error ?
+            <span role="alert" className="home-history-error">{chat.history.error}<Button variant="tonal" tone="ink" size="medium" className="home-history-retry" onClick={()=>void older()}><Icon name="refresh" size={15} />다시 불러오기</Button></span> : chat.history.hasMore ?
             <Button variant="plain" onClick={()=>void older()}>위로 한 번 더 올려 이전 대화 보기</Button> :
             <span>{chat.messages.length ? "최근 30일 대화의 시작이에요" : "이야기를 시작하면 여기에 대화가 남아요"}</span>}
         </div>}
         {chat.messages.map((message, index) => <Fragment key={message.id ?? index}>
           {message.at && (index===0 || new Date(message.at).toDateString()!==new Date(chat.messages[index-1].at??0).toDateString()) &&
             <time className="home-history-date" dateTime={new Date(message.at).toISOString()}>{new Date(message.at).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'})}</time>}
-          <div className="home-message" data-role={message.role}>
+          <div className="home-message" data-role={message.role} data-pending={(chat.sending && index === chat.messages.length - 1 && message.role === "user") || undefined}>
           <span className="sr-only">{message.role === "user" ? "나" : name}: </span>
           {message.role === "assistant" ? <div className="home-message-bubble"><ChatMarkdown content={message.content} /></div> : <p>{message.content}</p>}
         </div></Fragment>)}
@@ -323,7 +415,8 @@ export default function HomeScreen({
       <div className="home-character-wrap absolute inset-x-gutter flex flex-col items-center" data-hidden={chatting} aria-hidden={chatting}>
         {/* 하품(음성 열기 전 2.4초) 동안은 키우지 않고 제자리에서 하품만 한다. 연결을 시작하면 그때 커진다. */}
         <div className={`home-buddy ${expanded ? "home-buddy-expanded" : ""}`}>
-          <button type="button" className="home-cat-tap" onClick={pokeCat} disabled={!resting} aria-label={`${name} 건드려 보기`}>
+          <div ref={catTapRef} className="home-cat-tap" data-touchable={resting || undefined}
+            {...catHandlers}>
             <PoseCat
               pose={resting ? homeCat.pose : "base"}
               fx={resting ? homeCat.fx : undefined}
@@ -344,7 +437,7 @@ export default function HomeScreen({
                 voice: Boolean(voice),
               }}
             />
-          </button>
+          </div>
         </div>
         {voice && <div className="home-voice-status max-w-full px-4 text-center">
           <p role="status" className="text-t4 font-medium text-cat-ink">{voice.error ? "연결하지 못했어요" : voice.statusText}</p>
@@ -367,7 +460,7 @@ export default function HomeScreen({
           </div>
         )}
         <div ref={actionsRef} role="group" aria-label={voice ? "음성 대화" : chat.open ? "메시지 작성" : "대화 시작"} className="home-actions">
-          <form className="home-compose" data-open={chat.open} onSubmit={(event) => { event.preventDefault(); if (canSend) chat.onSend(); }}>
+          <form className="home-compose" data-open={chat.open} onSubmit={(event) => { event.preventDefault(); send(); }}>
             <div className="home-compose-content" inert={!chat.open} aria-hidden={!chat.open}>
               <Button variant="plain" type="button" onClick={collapseText} tabIndex={chat.open ? 0 : -1} aria-label="입력창 닫기" className="home-compose-close ui-press grid shrink-0 place-items-center rounded-full"><Icon name="close" size={18} /></Button>
               <label htmlFor="home-text-draft" className="sr-only">{name}에게 하고 싶은 말</label>
@@ -377,7 +470,7 @@ export default function HomeScreen({
                   if (event.key === "Escape") { event.preventDefault(); collapseText(); return; }
                   if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing || event.keyCode === 229) return;
                   event.preventDefault();
-                  if (canSend) chat.onSend();
+                  send();
                 }}
               />
             </div>
@@ -397,7 +490,7 @@ export default function HomeScreen({
             </Button>
           </form>
           <div className="home-right-action" data-send={canSend}>
-            <Button variant="plain" type="button" onClick={chat.onSend} disabled={!canSend} tabIndex={canSend ? 0 : -1} aria-hidden={!canSend} aria-label="메시지 보내기" className="home-send ui-press grid size-14 place-items-center rounded-full bg-cat-ink text-white disabled:opacity-40"><Icon name="send" size={23} /></Button>
+            <Button ref={sendButtonRef} variant="plain" type="button" onClick={send} disabled={!canSend} tabIndex={canSend ? 0 : -1} aria-hidden={!canSend} aria-label="메시지 보내기" className="home-send ui-press grid size-14 place-items-center rounded-full bg-cat-ink text-white disabled:opacity-40"><Icon name="send" size={23} /></Button>
             <div inert={canSend} aria-hidden={canSend} className="home-mic-action">
             <div className="home-voice-pill" data-expanded={Boolean(voice)}>
               <div className="home-voice-end" inert={!voice} aria-hidden={!voice}>

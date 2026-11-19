@@ -36,7 +36,7 @@ const PARTS: { id: string; label: string; icon: AccessoryId; items: AccessoryId[
 ];
 
 /** 캐릭터 페이지: 온보딩에서 고른 꾸미기·배경·목소리·이름을 언제든 다시 고른다(B안: 정원 장면 + 하단 서랍).
- * 메뉴에서 열면 오른쪽에서 밀려 들어오는 전체 페이지다. 바꾼 것은 나갈 때(뒤로·대화하기·정원 가기) 한 번에 저장하고,
+ * 메뉴에서 열면 오른쪽에서 밀려 들어오는 전체 페이지다. 바꾼 것은 나갈 때(뒤로·대화하기) 한 번에 저장하고,
  * 저장에 실패하면 페이지에 남아 오류를 보여 준다. 무언가 바꿀 때마다 호야가 반응한다: 배경은 고개를 들고, 꾸미기는 눈웃음,
  * 목소리는 미리듣기에 맞춰 말하고, 이름을 바꾸면 눈웃음. 모두 고른 항목으로만 움직이고 대화 내용과는 상관없다. */
 export default function Customize({ profile, onSave, onClose, onChat, onGarden, saving = false, error = "" }: {
@@ -139,7 +139,7 @@ export default function Customize({ profile, onSave, onClose, onChat, onGarden, 
       ref={pageRef}
       role="dialog"
       aria-modal="true"
-      aria-label="캐릭터"
+      aria-label="캐릭터 꾸미기"
       className="character-page"
       data-phase={phase}
       style={{ ...INK_THEME, backgroundColor: companionBackground(draft.color) }}
@@ -170,7 +170,8 @@ export default function Customize({ profile, onSave, onClose, onChat, onGarden, 
         </button>
         <div className="character-bar">
           <span className="character-chip"><AccessoryArt id="sprout" size={24} />구름 정원 Lv.{garden.level.level}</span>
-          {onGarden && <button type="button" className="character-go" onClick={() => void leave(onGarden)} disabled={saving}>정원 가꾸러 가기</button>}
+          {/* 구름 정원은 보류: 페이지를 떠나지 않고 '준비 중' 안내만 띄운다(onGarden). */}
+          {onGarden && <button type="button" className="character-go" onClick={onGarden} disabled={saving}>정원 가꾸러 가기</button>}
         </div>
       </div>
 

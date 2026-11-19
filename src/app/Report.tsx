@@ -84,7 +84,7 @@ const LIBRARY_TABS = [
   { id: "talk", label: "숫자" },
 ] as const;
 type Tab = "sky" | "talk" | "days";
-const TITLE: Record<ReportMode, string> = { insight: "구름 정원", library: "라이브러리" };
+const TITLE: Record<ReportMode, string> = { insight: "구름 정원", library: "리포트" };
 
 /** 하루 중 내가 가장 많이 말한 시각. 말한 시각이 없으면 null. */
 function busiestHour(hours: number[]) {
@@ -179,7 +179,7 @@ export function ReportView({ syncError, mode, who, days, sessions, now, choice, 
       {/* 인사이트(정원)는 화면 전체에 움직이는 하늘을 깔고, 카드를 반투명하게 띄운다. */}
       {mode === "insight" && <SkyBackdrop weather={gardenWeather(days, now)} color={who.color} />}
       <Header title={TITLE[mode]} back="처음 화면으로" onBack={onBack} headingRef={headingRef} />
-      {mode === "library" && <Segmented {...{ role: "tablist", "aria-label": "라이브러리 종류" }} className="here-segmented absolute inset-x-gutter top-[calc(env(safe-area-inset-top)+80px)] z-10 grid grid-cols-3 gap-1 rounded-r4 bg-white/70 p-1 backdrop-blur-md motion-safe:animate-screen-in">
+      {mode === "library" && <Segmented {...{ role: "tablist", "aria-label": "리포트 종류" }} className="here-segmented absolute inset-x-gutter top-[calc(env(safe-area-inset-top)+80px)] z-10 grid grid-cols-3 gap-1 rounded-r4 bg-white/70 p-1 backdrop-blur-md motion-safe:animate-screen-in">
         {/* 고른 탭 뒤의 흰 칸이 탭 사이를 미끄러지듯 옮겨 간다 */}
         <span
           aria-hidden="true"
@@ -455,7 +455,7 @@ function DayView({
   const started = saidTimes.length ? new Date(Math.min(...saidTimes)) : null;
   return (
     <Shell color={who.color} bloom="soft">
-      <Header title={`${m}월 ${d}일 ${WEEKDAY_FULL[weekday]}`} back="라이브러리로" onBack={onBack} headingRef={headingRef} />
+      <Header title={`${m}월 ${d}일 ${WEEKDAY_FULL[weekday]}`} back="리포트로" onBack={onBack} headingRef={headingRef} />
       <div className="absolute inset-x-0 top-[calc(env(safe-area-inset-top)+80px)] bottom-0 overflow-y-auto px-gutter pb-10">
         <section className={card} aria-label="그날의 하늘">
           {day?.crisis ? (
@@ -527,7 +527,7 @@ function SkySheet({ date, day, deep, onClose, onPick }: { date: string; day: Day
         </div>
       )}
     >
-      <p className="text-t3 text-pretty text-[#3D4559]">AI가 고른 하늘을 내가 고칠 수 있어요. 고친 하늘을 구름 정원과 라이브러리에 써요. AI가 고른 하늘은 진단이 아니에요.</p>
+      <p className="text-t3 text-pretty text-[#3D4559]">AI가 고른 하늘을 내가 고칠 수 있어요. 고친 하늘을 리포트에 써요. AI가 고른 하늘은 진단이 아니에요.</p>
       <fieldset className="mt-4">
         <legend className="mb-2 text-t3 font-bold text-[#3D4559]">{m}월 {d}일 {WEEKDAY_FULL[weekday]}의 하늘</legend>
         <div className="grid grid-cols-3 gap-2">

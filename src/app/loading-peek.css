@@ -1,0 +1,38 @@
+/* 로딩 화면 시안 H3(빼꼼)의 값을 그대로 옮겼다. 홈 고양이 그림(main-cat.png)을 128px 칸 배율로 잘라 머리와 앞발만 보여 준다. */
+.loading-peek { position: absolute; left: 50%; bottom: calc(max(32px, env(safe-area-inset-bottom)) + 76px); width: 120px; height: 100px; margin-left: -60px; pointer-events: none; z-index: 5; }
+.loading-peek__win { position: absolute; left: 0; top: 0; width: 120px; height: 57px; overflow: hidden; }
+.loading-peek__head { position: absolute; left: -0.77px; top: -7.5px; width: 128px; height: 128px; transform-origin: 60.77px 63.5px; animation: loading-peek-head 7.2s ease-in-out -5.9s infinite both; }
+.loading-peek__base { position: absolute; left: -50.9%; top: -4.959%; width: 197.213%; height: 107.549%; max-width: none; }
+.loading-peek__round { position: absolute; left: 49.32%; bottom: 14.89%; width: 52.36%; height: 70.3%; max-width: none; translate: -50% 0; opacity: 0; animation: loading-peek-eyes 7.2s ease-in-out -5.9s infinite both; }
+.loading-peek__pill {
+  position: absolute; left: 0; top: 56px; width: 120px; height: 44px; display: grid; place-items: center; border-radius: 22px; color: #85591B;
+  background: rgba(255, 253, 250, .92); box-shadow: 0 12px 32px rgba(41, 41, 39, .18), inset 0 -2px 0 rgba(133, 89, 27, .06);
+}
+.loading-peek__paw {
+  position: absolute; top: 52px; width: 12px; height: 9px; overflow: hidden; border-radius: 50% 50% 46% 46% / 60% 60% 40% 40%;
+  filter: drop-shadow(0 1px 1px rgba(41, 41, 39, .3)); transform-origin: 50% 100%; animation: loading-peek-grip 7.2s ease-in-out -5.9s infinite both;
+}
+.loading-peek__paw img { position: absolute; top: -105.77px; width: 252.43px; height: 137.66px; max-width: none; }
+.loading-peek__paw[data-side="l"] { left: 36px; }
+.loading-peek__paw[data-side="l"] img { left: -113.38px; }
+.loading-peek__paw[data-side="r"] { left: 72px; }
+.loading-peek__paw[data-side="r"] img { left: -126.31px; }
+@keyframes loading-peek-head {
+  0% { transform: translateY(0) rotate(0deg); }
+  10% { transform: translateY(-1.2px) rotate(0deg); }
+  20% { transform: translateY(0) rotate(0deg); animation-timing-function: cubic-bezier(.3, .7, .4, 1); }
+  23.5% { transform: translateY(-1px) rotate(-5deg); }
+  34% { transform: translateY(-1px) rotate(-5deg); }
+  40% { transform: translateY(0) rotate(0deg); }
+  53% { transform: translateY(-1.2px) rotate(0deg); }
+  66% { transform: translateY(0) rotate(0deg); animation-timing-function: cubic-bezier(.45, 0, .55, 1); }
+  76% { transform: translateY(16px) rotate(0deg); }
+  86% { transform: translateY(16px) rotate(0deg); animation-timing-function: cubic-bezier(.2, .8, .35, 1); }
+  93% { transform: translateY(-1px) rotate(0deg); }
+  98%, 100% { transform: translateY(0) rotate(0deg); }
+}
+@keyframes loading-peek-eyes { 0%, 20% { opacity: 0; } 21.8%, 34% { opacity: 1; } 35.8%, 100% { opacity: 0; } }
+@keyframes loading-peek-grip { 0%, 83%, 100% { transform: translateY(0) scale(1, 1); } 86.5% { transform: translateY(.3px) scale(1.07, .86); } 91% { transform: translateY(0) scale(1, 1); } }
+@media (prefers-reduced-motion: reduce) {
+  .loading-peek__head, .loading-peek__round, .loading-peek__paw { animation: none; }
+}

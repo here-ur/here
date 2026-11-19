@@ -1,0 +1,34 @@
+/* 캐릭터 만나기(1번 톤)의 무대가 놓이는 자리. 무대(390×844)는 섀도 루트 안에 있고, 이 칸에 맞게 한 비율로 줄거나 늘어난다.
+   무대 둘레에 남는 띠는 지금 장면의 바탕색으로 채운다(--stage-field). 앱의 다른 스타일은 섀도 루트 안으로 들어가지 않는다. */
+.onboarding-stage {
+  background: var(--stage-field, #FDE249);
+  transition: background-color 420ms linear;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+.onboarding-stage-host {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* 무대 파일을 받지 못했을 때만 보이는 안내. */
+.onboarding-stage-error {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+  color: #131111;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-stage { transition: none; }
+}

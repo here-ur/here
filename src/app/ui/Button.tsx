@@ -1,5 +1,6 @@
 import FrameworkButton from "framework7-react/components/button.js";
 import type { ComponentPropsWithRef } from "react";
+import { PawLoader } from "./PawLoader";
 
 type ButtonProps = Omit<ComponentPropsWithRef<"button">, "color"> & {
   variant?: "fill" | "tonal" | "plain";
@@ -63,7 +64,7 @@ export function Button({
       aria-busy={loading || props["aria-busy"]}
     >
       {variant === "plain" ? children : <span className="here-button__label">{children}</span>}
-      {loading && variant !== "plain" && <span aria-hidden="true" className="here-button__loader" />}
+      {loading && variant !== "plain" && <PawLoader className="here-button__loader" size={12} gap={6} />}
     </button>
   );
 }

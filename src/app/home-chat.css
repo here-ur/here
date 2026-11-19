@@ -120,9 +120,22 @@
 .home-character-wrap .buddy { width: min(320px, 82vw, 45svh); height: auto; }
 .home-character-wrap .pose-cat { width: min(320px, 82vw, 45svh); }
 /* 쉬는 홈의 고양이는 누를 수 있다. 대화 중에는 눌러지지 않는다. */
-.home-cat-tap { all: unset; display: block; cursor: pointer; border-radius: 32px; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-.home-cat-tap:disabled { cursor: default; }
-.home-cat-tap:focus-visible { outline: 2px solid var(--color-cat-ink); outline-offset: 4px; }
+/* 고양이 자리. 쉬는 홈에서는 쓰다듬을 수 있다(쓰다듬으면 '골골', 오래 쓰다듬으면 식빵 자세, src/lib/cat-touch.ts). */
+.home-cat-tap { position: relative; display: block; border-radius: 32px; -webkit-tap-highlight-color: transparent; }
+.home-cat-tap[data-touchable] { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+
+/* 쓰다듬는 손끝에서 떠오르는 '골골' */
+.home-purr {
+  position: absolute; z-index: 3; pointer-events: none; translate: -50% 0;
+  font-size: 15px; font-weight: 800; letter-spacing: -.02em; color: #fff;
+  text-shadow: 0 1px 0 rgb(133 89 27 / 60%), 0 2px 8px rgb(133 89 27 / 45%);
+  animation: home-purr 950ms cubic-bezier(.2, .8, .2, 1) forwards;
+}
+@keyframes home-purr {
+  0% { opacity: 0; transform: translate(0, 4px) scale(.8); }
+  22% { opacity: 1; transform: translate(calc(var(--dx, 0px) * .3), -8px) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx, 0px), -46px) scale(1.04); }
+}
 .home-character-wrap .home-buddy-expanded { transform: scale(1.1); }
 /* 글 대화 중에는 큰 몽글이를 감추고, 작은 몽글이가 입력창 위에 앉는다. */
 .home-character-wrap[data-hidden="true"] { opacity: 0; scale: .8; pointer-events: none; }
@@ -164,3 +177,33 @@
 .home-messages { overflow-anchor: none; overscroll-behavior-y: contain; }
 
 .home-history-date { display: block; margin: 18px 0 10px; text-align: center; font-size: 12px; color: var(--color-cat-muted, #6b6b65); }
+
+/* 글 대화 인터랙션 */
+/* 적기 시작하면 보내기 버튼이 통통 튀며 나타난다. */
+.home-right-action[data-send="true"] .home-send { transition-timing-function: ease, cubic-bezier(.34, 1.56, .64, 1), ease; }
+/* 적는 동안 입력칸이 살짝 떠 있는 느낌(그림자). */
+.home-compose[data-open="true"] textarea:not(:placeholder-shown) { box-shadow: var(--f7-glass-shadow), 0 6px 18px -10px rgb(41 41 39 / 35%); }
+@media (prefers-reduced-motion: no-preference) {
+  /* 보낼 때: 버튼이 꾹 눌리고 화살표가 위로 쏙 올라갔다가 아래에서 다시 들어온다. */
+  .home-send[data-fly] { animation: home-send-press 340ms cubic-bezier(.2, .8, .2, 1); }
+  .home-send[data-fly] .icon { animation: home-send-fly 560ms cubic-bezier(.3, .7, .3, 1); }
+  /* 내 말이 입력창 쪽에서 위로 떠오르며 자리 잡는다(보내는 동안의 임시 말풍선). */
+  .home-message[data-pending] > p { transform-origin: 100% 100%; animation: home-bubble-send 440ms cubic-bezier(.2, .8, .2, 1) both; }
+  /* 생각 중 점과 답 말풍선은 왼쪽 아래에서 부드럽게 들어온다. */
+  .home-messages[data-ready] .home-message[data-role="assistant"] { transform-origin: 0 100%; transition: opacity 260ms ease, translate 380ms cubic-bezier(.2, .8, .2, 1), scale 380ms cubic-bezier(.2, .8, .2, 1); }
+  @starting-style {
+    .home-messages[data-ready] .home-message[data-role="assistant"] { opacity: 0; translate: -6px 12px; scale: .96; }
+  }
+}
+@keyframes home-send-press { 0% { scale: 1; } 30% { scale: .86; } 70% { scale: 1.06; } 100% { scale: 1; } }
+@keyframes home-send-fly {
+  0% { translate: 0 0; opacity: 1; }
+  38% { translate: 0 -20px; opacity: 0; }
+  39% { translate: 0 16px; opacity: 0; }
+  100% { translate: 0 0; opacity: 1; }
+}
+@keyframes home-bubble-send { from { opacity: 0; translate: 0 26px; scale: .9; } 70% { scale: 1.02; } to { opacity: 1; translate: 0 0; scale: 1; } }
+
+/* 이전 대화를 불러오지 못했을 때: 한 줄 안내와 누를 수 있는 작은 알약 버튼 */
+.home-history-error { display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--color-cat-muted, #6b6b65); font-size: 12.5px; }
+.home-history-status .home-history-retry { min-height: 36px; padding-inline: 14px; gap: 6px; font-size: 13px; font-weight: 700; }

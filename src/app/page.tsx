@@ -4,7 +4,7 @@ import { useConversationHistory } from "./use-conversation-history";
 import { Button } from "./ui/Button";
 import { safeHomeOpener, withHomeOpener } from "@/lib/home-opener";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
 import { companionState } from "@/lib/companion-state";
 import { ChatQueue, queuedChatContext } from "@/lib/chat-queue";
@@ -29,7 +29,7 @@ import { useMicrophoneAsk } from "./MicrophoneAsk";
 import HomeHint from "./HomeHint";
 import { homeHintSeen, markHomeHintSeen } from "@/lib/home-hint";
 import { Crisis109 } from "./Conversation";
-import ComingSoon from "./ComingSoon";
+import ComingSoon, { type SoonFeature } from "./ComingSoon";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import Customize from "./Customize";
 import Drawer from "./Drawer";
@@ -40,7 +40,10 @@ import HomeEntryGreeting from "./HomeEntryGreeting";
 import GetHelp from "./GetHelp";
 import Report, { type ReportMode } from "./Report";
 import Onboarding from "./Onboarding";
-import { FirstRunFooter, FirstRunScreen } from "./FirstRun";
+import MemberBasicsStage from "./MemberBasicsStage";
+import { MemberBasicsContext } from "./member-basics-context";
+import { StageHandoff } from "./sheet-handoff";
+import CatLoading from "./CatLoading";
 
 type Status = "connecting" | "idle" | "listening" | "thinking" | "speaking";
 
@@ -62,44 +65,29 @@ const DEV_PROFILE: Profile | null =
 
 export default function Page() {
   useEffect(() => { pendingFriendInvite(); }, []);
-  return <AuthGate>{(userId, signOut) => <Home key={userId} userId={userId} signOut={signOut} />}</AuthGate>;
+  return <AuthGate>{(userId, signOut) => <Account key={userId} userId={userId} signOut={signOut} />}</AuthGate>;
+}
+
+/** 로그인한 계정의 화면. 캐릭터를 처음부터 다시 만들면(이 기기에서든 다른 기기에서든) 페이지를 새로 고치지 않고 홈만 새로 열어
+ * 캐릭터 만나기부터 시작한다. 새로 고치면 앱을 처음 여는 것처럼 로그인 확인 화면(환영 그림)이 잠깐 보였다가 넘어갔다.
+ * 새로 연 홈은 계정에 캐릭터가 없다는 걸 이미 알고 시작해서 '설정을 불러오는 중' 화면도 거치지 않는다(계정 확인은 뒤에서 그대로 한다). */
+function Account({ userId, signOut }: { userId: string; signOut: () => Promise<void> }) {
+  const [run, setRun] = useState(0);
+  const restart = useCallback(() => setRun((n) => n + 1), []);
+  const fromConsent = useContext(StageHandoff);
+  return <Home key={run} userId={userId} signOut={signOut} startEmpty={run > 0 || fromConsent?.newMember === true} afterConsent={run === 0 && fromConsent?.consented === true} onRestart={restart} />;
 }
 
 /** 이 기기에 남은 설정이 없어 계정의 캐릭터 설정을 처음 불러오는 동안(새로 가입했거나 이 기기에서 처음 로그인).
- * 로그인·기억 동의에서 넘어오는 화면 전환이 빈 화면에 내려앉지 않게 캐릭터 만나기와 같은 크림 바탕에 작은 원만 돌린다.
- * 오래 걸리면 로그아웃을, 불러오지 못하면 다시 확인·로그아웃을 보여 준다(이때는 메뉴가 없어 나갈 곳이 여기뿐이다). */
+ * 로그인·기억 동의에서 넘어오는 화면 전환 뒤라 그루밍하는 고양이(로딩 화면 시안 B)로 기다린다. 로그인 확인에서 곧바로 이어지면 같은 낮잠 고양이를 이어 쓴다.
+ * 8초가 넘으면 다시 시도·로그아웃을, 불러오지 못하면 한 줄과 다시 확인·로그아웃을 보여 준다(이때는 메뉴가 없어 나갈 곳이 여기뿐이다). */
 function ProfileLoading({ error, onRetry, onSignOut }: { error: string; onRetry: () => void; onSignOut: () => void }) {
-  const [slow, setSlow] = useState(false);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setSlow(true), 4000);
-    return () => window.clearTimeout(timer);
-  }, []);
-  if (error) return <FirstRunScreen tone="cream">
-    <div className="grid flex-1 place-items-center">
-      <div role="alert" className="fr-heading">
-        <p className="fr-title">{error}</p>
-        <p className="fr-desc">연결을 확인하고 다시 시도해 주세요.</p>
-      </div>
-    </div>
-    <FirstRunFooter>
-      <Button tone="ink" fullWidth onClick={onRetry}>다시 확인</Button>
-      <Button variant="plain" className="fr-link" onClick={onSignOut}>로그아웃</Button>
-    </FirstRunFooter>
-  </FirstRunScreen>;
-  // 로그아웃 자리는 처음부터 잡아 두고 늦어질 때만 보이게 해서, 나타날 때 원이 움직이지 않게 한다.
-  return <FirstRunScreen tone="cream">
-    <div className="grid flex-1 place-items-center" aria-hidden="true">
-      <span className="size-7 rounded-full border-[2.5px] border-cat-ink/60 border-e-transparent motion-safe:animate-spin" />
-    </div>
-    <p role="status" className="sr-only">캐릭터 설정을 불러오고 있어요</p>
-    <FirstRunFooter>
-      <Button variant="plain" className={`fr-link ${slow ? "" : "invisible"}`} onClick={onSignOut}>로그아웃</Button>
-    </FirstRunFooter>
-  </FirstRunScreen>;
+  return <CatLoading scene="groom" label="캐릭터 설정을 불러오고 있어요" error={error || undefined} onRetry={onRetry} onSignOut={onSignOut} />;
 }
 
-function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void> }) {
-  const account = useAccountProfile(userId);
+function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId: string; signOut: () => Promise<void>; startEmpty: boolean; afterConsent: boolean; onRestart: () => void }) {
+  const account = useAccountProfile(userId, { startEmpty, onRemoteReset: onRestart });
+  const basics = useContext(MemberBasicsContext);
   const activity = useAccountActivity(userId);
   const profile = account.profile === null ? DEV_PROFILE : account.profile;
   const [pendingProfile, setPendingProfile] = useState<Profile | null>(null);
@@ -116,7 +104,10 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   const [suggest, setSuggest] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const [helpSoon, setHelpSoon] = useState(false); // 도움받기는 준비 중: 화면은 두고 안내 창만 띄운다
+  // 도움받기·친구·구름 정원은 보류(준비 중): 메뉴·버튼은 그대로 두고 누르면 '준비 중' 안내만 잠깐 띄운다.
+  const [soon, setSoon] = useState<{ feature: SoonFeature; n: number } | null>(null);
+  const showSoon = useCallback((feature: SoonFeature) => setSoon((prev) => ({ feature, n: (prev?.n ?? 0) + 1 })), []);
+  const hideSoon = useCallback(() => setSoon(null), []);
   const [micOn, setMicOn] = useState(true);
   const [hearing, setHearing] = useState(false); // 음성에서 사용자가 말하는 중(몽글이 반응용)
   const [hasMic, setHasMic] = useState(false);
@@ -426,6 +417,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
     setReportMode(mode);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 친구 기능을 다시 열 때 쓴다(지금은 보류)
   function openFriends() {
     setHomeGreetingDone(true);
     cancelChat();
@@ -444,7 +436,7 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
   // 도움받기 화면(GetHelp)은 남겨 두고, 출시 전까지는 들어가는 대신 '준비 중' 안내만 보여 준다.
   function openHelpSoon() {
     setHomeGreetingDone(true);
-    setHelpSoon(true);
+    showSoon("help");
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 도움받기를 다시 열 때 쓴다
@@ -463,6 +455,9 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
     // 저장이 끝나면 홈이 온보딩의 빛이 걷히는 모션(greet)으로 바로 이어진다.
     return (
       <Onboarding
+        basics={basics}
+        afterConsent={afterConsent}
+        onSignOut={() => { void signOut(); }}
         saving={pendingProfile !== null && account.saving}
         saveError={pendingProfile ? account.saveError : undefined}
         onRetry={() => { if (pendingProfile) void account.save(pendingProfile); }}
@@ -477,6 +472,9 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
       />
     );
   }
+
+  // 캐릭터는 있는데 성별·생년월일이 비어 있으면 홈 앞에서 그 두 장면만 묻는다.
+  if (basics.needed) return <MemberBasicsStage basics={basics} nickname={profile.nickname} signOut={() => { void signOut(); }} />;
 
   const who = { name: profile.companion, shape: profile.shape ?? "cloud", color: profile.color ?? "lavender", accessory: profile.accessory };
   if (showHelp) return <GetHelp color={who.color} crisis={crisis} onBack={() => setShowHelp(false)} />;
@@ -561,10 +559,9 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
           }}
           onFriends={() => {
             setShowMenu(false);
-            openFriends();
+            showSoon("friends");
           }}
           onSignOut={() => { void signOut(); }}
-          allowPasswordSetup
           loadQuota={async (signal) => requestQuotaStatus(await accessToken(), signal)}
           onReset={() => setConfirmReset(true)}
         />
@@ -580,21 +577,10 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
               setShowMenu(false);
               setResetNote({ text: "설정을 초기화하고 있어요…" });
               void account.save(null).then(ok => {
-                if (ok) { setPendingProfile(null); location.reload(); return; }
+                // 홈을 새로 열어 음성·글 대화와 화면 상태를 모두 닫고 캐릭터 만나기부터 시작한다(새로 고침 없이).
+                if (ok) { setPendingProfile(null); onRestart(); return; }
                 account.clearSaveError();
                 setResetNote({ text: "설정을 초기화하지 못했어요. 연결을 확인하고 다시 시도해 주세요.", error: true });
-              });
-            }}
-          />
-        )}
-        {helpSoon && (
-          <ComingSoon
-            title="도움받기를 준비하고 있어요"
-            body="실제 상담사와 이야기할 수 있는 방법을 준비 중이에요. 열리면 이곳에서 알려 드릴게요."
-            onClose={() => {
-              setHelpSoon(false);
-              requestAnimationFrame(() => {
-                if (document.activeElement === document.body) menuButtonRef.current?.focus({ preventScroll: true });
               });
             }}
           />
@@ -607,9 +593,10 @@ function Home({ userId, signOut }: { userId: string; signOut: () => Promise<void
             onSave={(p) => account.save(p)}
             onClose={() => setCustomizing(false)}
             onChat={() => { setCustomizing(false); openText(); }}
-            onGarden={() => { setCustomizing(false); openReport("insight"); }}
+            onGarden={() => showSoon("garden")}
           />
         )}
+        <ComingSoon soon={soon} onDone={hideSoon} />
       </HomeScreen>
     );
   }

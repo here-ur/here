@@ -9,11 +9,7 @@
   transition: opacity 300ms ease;
 }
 .here-menu-overlay[data-open="true"] { opacity: 1; pointer-events: auto; }
-.here-menu-artwork { position: absolute; inset: 0; overflow: hidden; background: #e6a15c; pointer-events: none; }
-.here-menu-background { position: absolute; left: -24.173028%; top: 0; width: 141.984733%; height: 116.431925%; }
-.here-menu-background img, .here-menu-cat img { object-fit: cover; }
-.here-menu-topShade { position: absolute; inset: 0 0 auto; height: 52.699531%; background: linear-gradient(#ffd6a9, rgb(255 214 169 / 50%) 50%, rgb(254 181 103 / 0%)); }
-.here-menu-cat { position: absolute; left: -47.83715%; top: 23.70892%; width: 195.928753%; height: 106.870229cqw; }
+.here-menu-scrim { position: absolute; inset: 0; background: rgb(40 28 18 / 30%); pointer-events: none; }
 .here-menu-dismiss { z-index: 1; }
 .here-menu-overlay .here-panel.here-drawer {
   z-index: 2;
@@ -35,14 +31,29 @@
   --f7-list-item-border-color: transparent;
   --f7-list-border-color: transparent;
   --f7-list-bg-color: transparent;
-  justify-content: space-between;
-  padding: max(72px, env(safe-area-inset-top)) 0 max(48px, env(safe-area-inset-bottom));
-  gap: 24px;
-  font-family: "Pretendard Variable", Pretendard, -apple-system, sans-serif;
   color: var(--here-menu-ink);
 }
+/* 메뉴·설정 모두 같은 아래 여백과 글꼴: 설정 아래 안내 글은 메뉴 아래 대화 횟수와 같은 여백에 놓인다. */
+.here-menu-overlay .here-drawer:is([data-view="menu"], [data-view="settings"]) {
+  padding: max(72px, env(safe-area-inset-top)) 0 max(48px, env(safe-area-inset-bottom));
+  font-family: "Pretendard Variable", Pretendard, -apple-system, sans-serif;
+}
+/* 설정은 위 여백을 줄여 제목 줄을 더 위에 둔다(2026-11-18, 사용자 요청). 아래 여백은 메뉴와 같다. */
+.here-menu-overlay .here-drawer[data-view="settings"] { padding-top: max(32px, env(safe-area-inset-top)); }
+.here-drawer-view { display: flex; flex: 1 0 auto; flex-direction: column; min-height: 100%; }
+.here-drawer-view[data-view="menu"] { justify-content: space-between; gap: 24px; }
+.here-drawer-view[data-view="settings"] { padding-inline: 4px; }
+/* 뒤로 아이콘(40px 버튼 안 20px)을 메뉴 아이콘 왼쪽 선(32px)에 맞춘다. */
+.here-settings-header { min-height: 56px; padding-left: 18px; padding-right: 28px; }
+.here-settings-header h2 { font-size: 17px; letter-spacing: -.3px; }
+.here-settings-note { padding-inline: 28px; }
+@media (prefers-reduced-motion: no-preference) {
+  .here-drawer-view[data-dir="forward"] { animation: here-drawer-in-right 300ms cubic-bezier(.2, .8, .2, 1) both; }
+  .here-drawer-view[data-dir="back"] { animation: here-drawer-in-left 300ms cubic-bezier(.2, .8, .2, 1) both; }
+}
+@keyframes here-drawer-in-right { from { opacity: 0; translate: 28px 0; } }
+@keyframes here-drawer-in-left { from { opacity: 0; translate: -28px 0; } }
 .here-menu-primary, .here-menu-footer { width: 100%; flex-shrink: 0; }
-.here-menu-overlay .here-drawer[data-view="settings"] { padding-top: max(72px, env(safe-area-inset-top)); }
 .here-drawer .here-design-menu-list.list { width: 100%; margin: 0; border-radius: 0; }
 .here-drawer .here-design-menu-list.list ul { padding: 0; background: transparent; }
 .here-drawer .here-design-menu-list.list .item-link { height: 56px; color: var(--here-menu-ink); }

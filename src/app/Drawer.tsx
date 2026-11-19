@@ -1,5 +1,4 @@
 "use client";
-import { CHARACTER } from "@/lib/character";
 
 import { Switch } from "./ui/Controls";
 import { Button } from "./ui/Button";
@@ -11,8 +10,6 @@ import "./drawer-menu.css";
 import { type Profile, josa } from "@/lib/onboarding";
 import { type QuotaStatus, quotaSummary } from "@/lib/quota-status";
 import { Icon } from "./art";
-import PasswordSetup from "./PasswordSetup";
-import { MIN_PASSWORD_LENGTH } from "@/lib/password-policy";
 import { getSfxEnabled, setSfxEnabled, subscribeSfx } from "@/lib/sfx";
 import { SWIPE_IGNORE_SELECTOR, SWIPE_SETTLE_MS, swipeCloses, swipeOffset, swipeStart } from "@/lib/drawer-swipe";
 
@@ -64,7 +61,7 @@ function QuotaLine({ status }: { status: QuotaStatus }) {
   );
 }
 
-/** 라이브러리 아이콘. 라이브러리가 하늘 달력을 담아서 홈 헤더와 메뉴에서 같은 달력 모양을 쓴다. */
+/** 리포트(라이브러리) 아이콘. 리포트가 하늘 달력을 담아서 홈 헤더와 메뉴에서 같은 달력 모양을 쓴다. */
 export function CalendarIcon({ size = 20 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
@@ -91,7 +88,6 @@ export default function Drawer({
   onSignOut,
   onReset,
   loadQuota,
-  allowPasswordSetup,
 }: {
   open: boolean;
   profile: Profile;
@@ -103,18 +99,18 @@ export default function Drawer({
   onSignOut: () => void;
   onReset: () => void;
   loadQuota?: (signal: AbortSignal) => Promise<QuotaStatus | null>;
-  allowPasswordSetup?: boolean;
 }) {
   const panelRef = useRef<HTMLElement>(null);
-  const [view, setView] = useState<"menu" | "settings">("menu");
+  const [view, setViewState] = useState<"menu" | "settings">("menu");
+  // 메뉴 ↔ 설정 전환 방향: 설정은 오른쪽에서 들어오고, 돌아가면 메뉴가 왼쪽에서 들어온다.
+  const [viewDir, setViewDir] = useState<"forward" | "back" | null>(null);
+  const setView = (next: "menu" | "settings") => { setViewDir(next === "settings" ? "forward" : "back"); setViewState(next); };
   const [wasOpen, setWasOpen] = useState(false);
   const [quota, setQuota] = useState<QuotaStatus | null>(null);
-  const [passwordView, setPasswordView] = useState<"closed" | "form" | "saved">("closed");
   if (open !== wasOpen) {
     setWasOpen(open);
     if (!open) {
-      setView("menu"); // 닫았다 다시 열면 항상 메뉴부터 보여 준다
-      setPasswordView("closed");
+      setViewState("menu"); setViewDir(null); // 닫았다 다시 열면 항상 메뉴부터(움직임 없이) 보여 준다
     }
   }
   const onCloseRef = useRef(onClose);
@@ -129,7 +125,7 @@ export default function Drawer({
   const swipe = {
     onPointerDown: (event: React.PointerEvent<HTMLElement>) => {
       if (!open || event.button !== 0) return;
-      // 입력칸(설정의 비밀번호 등)에서 글자를 고르느라 옆으로 끄는 건 밀어 닫기로 보지 않는다.
+      // 입력칸에서 글자를 고르느라 옆으로 끄는 건 밀어 닫기로 보지 않는다.
       if (event.target instanceof Element && event.target.closest(SWIPE_IGNORE_SELECTOR)) return;
       drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, dx: 0, at: performance.now(), active: false };
       swiped.current = false;
@@ -228,11 +224,8 @@ export default function Drawer({
   const name = profile.companion;
   return (
     <div className="here-menu-overlay absolute inset-0 z-40" data-open={open} aria-hidden={!open} inert={!open}>
-      <div className="here-menu-artwork" aria-hidden="true">
-        <div className="here-menu-background"><Image src="/menu/sunlit-background.png" alt="" fill sizes="(max-width: 430px) 142vw, 611px" unoptimized /></div>
-        <div className="here-menu-topShade" />
-        <div className="here-menu-cat"><Image src={CHARACTER.transparentFront} alt="" fill sizes="(max-width: 430px) 196vw, 843px" unoptimized /></div>
-      </div>
+      {/* 메뉴 뒤에는 지금 홈이 그대로 비친다(예전에는 옛 홈 그림을 따로 깔아서 홈 배경이 바뀐 뒤 옛 화면이 보였다). */}
+      <div className="here-menu-scrim" aria-hidden="true" />
       <div onClick={onClose} className="here-menu-dismiss absolute inset-0" aria-hidden="true" />
       <nav
         ref={panelRef}
@@ -247,11 +240,12 @@ export default function Drawer({
           open ? "translate-x-0 shadow-[10px_0_40px_rgba(35,32,27,.12)]" : "-translate-x-full"
         }`}
       >
+        <div key={view} className="here-drawer-view" data-view={view} data-dir={viewDir ?? undefined}>
         {view === "menu" ? <>
           <div className="here-menu-primary">
             <List className="here-design-menu-list">
               <ul>
-                <MenuItem onClick={onLibrary} title="라이브러리" icon={<MenuIcon name="library" />} chevron={false} />
+                <MenuItem onClick={onLibrary} title="리포트" icon={<MenuIcon name="library" />} chevron={false} />
                 <MenuItem onClick={onFriends} title="친구" icon={<MenuIcon name="friends" />} chevron={false} />
                 <MenuItem onClick={onHelp} title="도움받기" icon={<MenuIcon name="help" />} chevron={false} />
               </ul>
@@ -259,7 +253,7 @@ export default function Drawer({
             <div className="here-menu-divider" aria-hidden="true"><span /></div>
             <List className="here-design-menu-list">
               <ul>
-                <MenuItem onClick={onCustomize} title="캐릭터" icon={<MenuIcon name="character" />} chevron={false} />
+                <MenuItem onClick={onCustomize} title="캐릭터 꾸미기" icon={<MenuIcon name="character" />} chevron={false} />
               </ul>
             </List>
           </div>
@@ -273,8 +267,8 @@ export default function Drawer({
             {quota ? <QuotaLine status={quota} /> : <div className="here-menu-quota" aria-hidden="true" />}
           </div>
         </> : <>
-          <div className="flex items-center gap-2">
-            <Button variant="plain" onClick={() => { setPasswordView("closed"); setView("menu"); }} aria-label="메뉴로 돌아가기" className="ui-press -ml-1.5 grid size-10 shrink-0 place-items-center rounded-full text-cat-ink hover:bg-cat-soft">
+          <div className="here-settings-header flex items-center gap-2">
+            <Button variant="plain" onClick={() => setView("menu")} aria-label="메뉴로 돌아가기" className="ui-press grid size-10 shrink-0 place-items-center rounded-full text-cat-ink hover:bg-cat-soft">
               <Icon name="back" size={20} />
             </Button>
             <h2 className="text-t5 font-bold text-cat-ink">설정</h2>
@@ -297,19 +291,14 @@ export default function Drawer({
 
           <List strong inset dividersIos className="mt-3">
             <ul>
-              {allowPasswordSetup && <MenuItem onClick={() => setPasswordView("form")} title="비밀번호 변경" />}
               <MenuItem onClick={onSignOut} title="로그아웃" chevron={false} />
               <MenuItem onClick={onReset} title={`${name} 처음부터 다시 만들기`} danger chevron={false} />
             </ul>
           </List>
-          {passwordView === "form" && <div className="mt-3 px-2">
-            <p className="mb-3 text-t3 text-cat-muted">{MIN_PASSWORD_LENGTH}자 이상으로 바꾸면 다음 로그인부터 새 비밀번호를 써요.</p>
-            <PasswordSetup onSaved={() => setPasswordView("saved")} />
-          </div>}
-          {passwordView === "saved" && <p role="status" className="mt-3 px-2 text-t3">비밀번호를 저장했어요.</p>}
 
-          <p className="mt-auto px-2 pt-6 text-t2 text-cat-muted">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
+          <p className="here-settings-note mt-auto pt-6 text-t2 text-cat-muted">{josa(name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
         </>}
+        </div>
         {/* 화면에는 닫기 버튼을 두지 않는다(바깥 누르기·왼쪽으로 밀기·Escape로 닫는다). 키보드로 포커스하면 나타난다. */}
         <Button variant="plain" onClick={onClose} aria-label="메뉴 닫기" className="here-drawer-close"><Icon name="close" size={18} /></Button>
       </nav>

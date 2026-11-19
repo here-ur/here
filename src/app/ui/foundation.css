@@ -53,18 +53,24 @@
 .here-button:active:not(:disabled) { background-color: var(--f7-button-pressed-bg-color); }
 .here-button:disabled { opacity: .55; }
 .here-button[data-loading] .here-button__label { opacity: 0; }
-.here-button__loader {
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  border: 2px solid currentColor;
-  border-inline-end-color: transparent;
-  border-radius: 50%;
+/* 기다리는 버튼은 누를 수 없지만 비활성처럼 회색이 되지 않고, 글자 자리에 발자국이 깜박인다(로딩 화면 시안 I). */
+.here-button[data-tone="ink"][data-loading]:disabled { --f7-theme-color: var(--color-cat-ink); }
+.here-button[data-tone="sun"][data-loading]:disabled { --f7-theme-color: #FBB400; --f7-button-fill-text-color: var(--color-cat-ink); }
+.here-button[data-loading]:disabled { opacity: 1; }
+.here-button__loader { position: absolute; }
+
+/* 발자국 로더: 세 개가 차례로 진해지며 살짝 들린다. 동작 줄이기와 still이면 흐려졌다 진해지기만 한다. */
+.here-paws { display: inline-flex; align-items: center; color: inherit; }
+.here-paws > span { display: block; opacity: .18; animation: here-paw 1.2s ease-in-out infinite both; }
+.here-paws > span:nth-child(2) { animation-delay: .2s; }
+.here-paws > span:nth-child(3) { animation-delay: .4s; }
+.here-paws > span > svg { display: block; }
+.here-paws[data-still] > span { animation-name: here-paw-fade; animation-duration: 1.4s; }
+@keyframes here-paw { 0%, 100% { opacity: .18; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+@keyframes here-paw-fade { 0%, 100% { opacity: .25; } 45% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .here-paws > span { animation-name: here-paw-fade; }
 }
-@media (prefers-reduced-motion: no-preference) {
-  .here-button__loader { animation: here-button-spin .7s linear infinite; }
-}
-@keyframes here-button-spin { to { transform: rotate(1turn); } }
 
 .here-field { display: grid; min-width: 0; gap: 6px; }
 .here-field__label { font-size: 14px; font-weight: 600; }

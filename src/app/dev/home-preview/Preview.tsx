@@ -5,7 +5,7 @@ import HomeScreen from "../../HomeScreen";
 import Drawer from "../../Drawer";
 import Customize from "../../Customize";
 import Friends from "../../Friends";
-import ComingSoon from "../../ComingSoon";
+import ComingSoon, { type SoonFeature } from "../../ComingSoon";
 import ReportPreview from "../report-preview/Preview";
 import HomeHint from "../../HomeHint";
 import { DEFAULT_COMPANION, type Profile } from "@/lib/onboarding";
@@ -16,7 +16,7 @@ const SAMPLE_QUOTA = { chat: { limit: 200, used: 46 }, realtime: { limit: 60, us
 export default function Preview() {
   const [menu, setMenu] = useState(false);
   const [screen, setScreen] = useState<"home" | "library" | "insight" | "friends">("home");
-  const [showHelp, setShowHelp] = useState(false);
+  const [soon, setSoon] = useState<{ feature: SoonFeature; n: number } | null>(null);
   const [customize, setCustomize] = useState(false);
   const [profile, setProfile] = useState<Profile>({ nickname: "", companion: DEFAULT_COMPANION, shape: "cloud", color: "lavender", voice: "marin", style: "listen" });
   const [previewControls, setPreviewControls] = useState(true);
@@ -75,13 +75,9 @@ export default function Preview() {
       { role: "assistant", content: "가장 좋아하는 보드게임은 **아줄**, 음료는 **따뜻한 보리차**였어.\n\n- 타일 한 장\n- 이야기 한 조각\n\n| 게임 | 음료 |\n| --- | --- |\n| 아줄 | 따뜻한 보리차 |\n\n`테스트 코드`도 읽기 쉽게 보여." },
     ] : [] }}
   >
-    <Drawer open={menu} profile={profile} onClose={() => setMenu(false)} onCustomize={() => { setMenu(false); setCustomize(true); }} onLibrary={() => openScreen("library")} onHelp={() => { setMenu(false); setShowHelp(true); }} onFriends={() => openScreen("friends")} onSignOut={() => setMenu(false)} onReset={() => setMenu(false)}
+    <Drawer open={menu} profile={profile} onClose={() => setMenu(false)} onCustomize={() => { setMenu(false); setCustomize(true); }} onLibrary={() => openScreen("library")} onHelp={() => { setMenu(false); setSoon({ feature: "help", n: Date.now() }); }} onFriends={() => { setMenu(false); setSoon({ feature: "friends", n: Date.now() }); }} onSignOut={() => setMenu(false)} onReset={() => setMenu(false)}
       loadQuota={async () => SAMPLE_QUOTA} />
-    {showHelp && <ComingSoon
-      title="도움받기를 준비하고 있어요"
-      body="실제 상담사와 이야기할 수 있는 방법을 준비 중이에요. 열리면 이곳에서 알려 드릴게요."
-      onClose={() => setShowHelp(false)}
-    />}
-    {customize && <Customize profile={profile} onClose={() => setCustomize(false)} onSave={(next) => { setProfile(next); return true; }} onChat={() => { setCustomize(false); setOpen(true); }} onGarden={() => { setCustomize(false); openScreen("insight"); }} />}
+    <ComingSoon soon={soon} onDone={() => setSoon(null)} />
+    {customize && <Customize profile={profile} onClose={() => setCustomize(false)} onSave={(next) => { setProfile(next); return true; }} onChat={() => { setCustomize(false); setOpen(true); }} onGarden={() => setSoon({ feature: "garden", n: Date.now() })} />}
   </HomeScreen></>;
 }

@@ -10,21 +10,23 @@ export type CatFx = "hop" | "tilt" | "shake";
 export type ReactionStep = readonly [CatPose, number, CatFx?];
 
 // rel·relW: 앉은 키 대비 높이·너비, drop: 바닥선 아래로 내려가는 양, shadow: 바닥 그림자 너비(앉은 키 대비)
-type PoseArt = { src: string; clip: boolean; rel: number; relW: number; drop: number; shadow: number };
+// tone: 털 밝기를 기본 그림(main-cat.png, 털 평균 밝기 43.8)에 맞추는 배율. 영상·그림마다 털이 12~36% 어두워서,
+// 바꿔 끼울 때마다 고양이가 어두워졌다 밝아지는(빛나 보이는) 것을 막는다. 값 = 43.8 / 그 파일의 털 평균 밝기(2026-11-17 측정).
+type PoseArt = { src: string; clip: boolean; rel: number; relW: number; drop: number; shadow: number; tone: number };
 
 export const CAT_SIT = 0.703;
 export const CAT_GROUND = 0.854;
 
 // 영상은 모두 같은 창(앉은 키의 1.21배 높이, 1.566배 너비)으로 잘랐다.
-const clip = (name: string, shadow: number): PoseArt => ({ src: `/characters/motion/${name}.webp`, clip: true, rel: 1.21, relW: 1.566, drop: 0.0587, shadow });
-const still = (name: string, rel: number, relW: number): PoseArt => ({ src: `/characters/motion/${name}.webp`, clip: false, rel, relW, drop: 0, shadow: relW });
+const clip = (name: string, shadow: number, tone = 1): PoseArt => ({ src: `/characters/motion/${name}.webp`, clip: true, rel: 1.21, relW: 1.566, drop: 0.0587, shadow, tone });
+const still = (name: string, rel: number, relW: number, tone = 1): PoseArt => ({ src: `/characters/motion/${name}.webp`, clip: false, rel, relW, drop: 0, shadow: relW, tone });
 
 export const CAT_POSE_ART: Record<Exclude<CatPose, "base">, PoseArt> = {
-  purr: still("purr", 0.6315, 0.9618), // 식빵 자세로 실눈 골골
+  purr: still("purr", 0.6315, 0.9618, 1.22), // 식빵 자세로 실눈 골골
   sleep: clip("sleep", 1.06),
-  glare: clip("glare", 1.25),
-  hiss: clip("hiss", 1),
-  groom: clip("groom", 0.72),
+  glare: clip("glare", 1.25, 1.36),
+  hiss: clip("hiss", 1, 1.25),
+  groom: clip("groom", 0.72, 1.2),
 };
 
 /** 칸 안에서 그림이 차지할 자리(%). 칸은 정사각형이라 높이·너비 모두 칸 크기 기준이다. */

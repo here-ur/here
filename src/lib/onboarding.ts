@@ -114,8 +114,52 @@ export function nameReply(nickname: string) {
 
 // 캐릭터 만나기의 장면 순서. 상담 접수처럼 안내(AI·기록·109)를 맨 앞(promise)에 두고 시작한다.
 // 질문 4개 → 데려가기(많이 힘들면 109) → 들은 것 정리·확인 → 이름 짓기에서 끝난다.
-export const ONBOARDING_STEPS = ["promise", "name", "q1", "q2", "q3", "q4", "meet", "summary", "naming"] as const;
+export const ONBOARDING_STEPS = ["promise", "name", "birthday", "gender", "q1", "q2", "q3", "q4", "meet", "summary", "naming"] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
+
+// 캐릭터 만나기(1번 톤 무대)의 첫 화면. 자는 고양이에게 다가가면 고양이가 AI라고 밝히고 뭘 하러 왔는지 묻고, 버튼이 내 대답이 된다.
+// 큰 글씨(line)는 고양이의 말, 작은 글씨(note)는 서비스의 안내다. 무대(public/onboarding)의 문구는 여기 값으로 덮어쓴다.
+export const STAGE_OPEN = {
+  eyebrow: "골목 끝에 누가 웅크리고 있어요",
+  line: "…뭐야. 나 AI야. 얘기하러 왔어?",
+  note: "사람이 아니라 AI와 이야기하게 돼요.",
+  approach: "다가가기",
+  cta: "이야기하러 왔어요",
+} as const;
+
+// 시작 전 약속: 이야기를 시작하기 전에 AI라는 것·기록·109를 먼저 알린다(동의는 가입할 때 따로 받는다). breaks = 제목 줄마다 낱말 수.
+export const STAGE_NOTICE = {
+  title: "이야기하기 전에 알아 두세요",
+  breaks: [2, 2],
+  items: [
+    { title: "이 고양이는 AI예요", desc: "들어 주는 건 해요. 진단과 치료는 사람 전문가가 해요." },
+    { title: "기록은 이렇게 둬요", desc: "원문은 이 기기에, 동의한 기억은 계정에 둬요. 답변을 만들 때는 AI 서비스로 보내요." },
+    { title: "위험한 말이 나오면 109부터", desc: "자살·자해 같은 말이 나오면 답보다 109 안내를 먼저 보여 줘요." },
+  ],
+  cta: "알겠어요",
+  reply: PROMISE_REPLY,
+} as const;
+
+// 무대의 장면(차례대로). 만남(open)에서 시작하고, 들은 것 정리는 데려가기(meet) 장면 안에 있다. 생일·성별은 물어야 하는 회원에게만 연다.
+export const STAGE_SCENES = ["open", "promise", "name", "birthday", "gender", "q1", "q2", "q3", "q4", "meet", "naming"] as const;
+export type StageScene = (typeof STAGE_SCENES)[number];
+export const BASICS_SCENES = ["birthday", "gender"] as const;
+// 새로 고친 뒤 이어 갈 자리. 생일·성별 값은 이 탭에 남기지 않으므로, 저장 전이면 생일부터 다시 묻고 저장을 마쳤으면 그 두 장면을 건너뛴다.
+export function resumeStep(step: OnboardingStep, askBasics: boolean): OnboardingStep {
+  const at = ONBOARDING_STEPS.indexOf(step);
+  if (askBasics) return at > ONBOARDING_STEPS.indexOf("name") ? "birthday" : step;
+  return step === "birthday" || step === "gender" ? "q1" : step;
+}
+// 무대의 장면 → 하던 자리(step). 새로 고치면 그 자리의 장면부터 다시 연다.
+export function stepOfScene(scene: string): OnboardingStep {
+  return scene === "open" ? "promise" : (ONBOARDING_STEPS as readonly string[]).includes(scene) ? (scene as OnboardingStep) : "promise";
+}
+// 하던 자리 → 무대에서 열 장면. 처음(promise)이면 만남부터, 들은 것 정리(summary)는 데려가기의 끝 상태로 연다.
+export function sceneOfStep(step: OnboardingStep, preview = false): { scene: StageScene; state?: string } {
+  if (step === "promise") return { scene: preview ? "promise" : "open" };
+  if (step === "summary") return { scene: "meet", state: "heard" };
+  return { scene: step };
+}
 // 질문 장면과 질문의 짝
 export const QUESTION_STEPS = { q1: "lately", q2: "concern", q3: "want", q4: "support" } as const satisfies Partial<Record<OnboardingStep, QuestionId>>;
 

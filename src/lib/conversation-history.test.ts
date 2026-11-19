@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseHistoryBatch,mergeHistory,legacyHistoryBatches } from './conversation-history.ts';
+import { parseHistoryBatch,mergeHistory,legacyHistoryBatches,isHistoryDisabled,HISTORY_DISABLED_CODE } from './conversation-history.ts';
 import { summarizeConversation } from './conversation-memory.ts';
 const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const message={id,role:'user' as const,content:'테스트',at:Date.now()};
@@ -36,4 +36,11 @@ test('최대 크기 대화 배치도 요약하고 문맥 개수 초과는 거절
  assert.equal(await summarizeConversation(messages,config,AbortSignal.timeout(1000),context),'가상 요약');
  await assert.rejects(summarizeConversation(messages,config,AbortSignal.timeout(1000),messages.slice(0,3)),/invalid_conversation/);
  assert.equal(called,1);
+});
+test('기능이 꺼졌다는 404만 꺼짐으로 보고, 다른 실패는 다시 시도할 실패로 둔다',()=>{
+  assert.equal(isHistoryDisabled(404,{error:'x',code:HISTORY_DISABLED_CODE}),true);
+  assert.equal(isHistoryDisabled(404,{error:'x'}),false);
+  assert.equal(isHistoryDisabled(404,null),false);
+  assert.equal(isHistoryDisabled(503,{code:HISTORY_DISABLED_CODE}),false);
+  assert.equal(isHistoryDisabled(403,{code:'consent_required'}),false);
 });

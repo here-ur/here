@@ -6,9 +6,13 @@ import { clearProfile, loadProfile, saveProfile, type Profile } from "@/lib/onbo
 import { browserSupabase } from "@/lib/supabase";
 
 /** 계정의 캐릭터 설정. 이 기기에 남은 설정(저장 중이던 것 → 지난번 캐시)으로 먼저 그려서, 로그인 뒤 화면 전환이 빈 화면에 내려앉지 않게 한다.
- * 계정에서 읽은 값이 오면 그것으로 바꾼다(다른 기기에서 바꾸거나 초기화했으면 그쪽을 따른다). 읽기에 실패해도 먼저 그린 설정은 그대로 쓴다. */
-export function useAccountProfile(userId: string) {
-  const [profile, setProfile] = useState<Profile | null | undefined>(() => loadPendingProfile() ?? loadProfile() ?? undefined);
+ * 계정에서 읽은 값이 오면 그것으로 바꾼다(다른 기기에서 바꾸거나 초기화했으면 그쪽을 따른다). 읽기에 실패해도 먼저 그린 설정은 그대로 쓴다.
+ * startEmpty: 방금 처음부터 다시 만들기로 캐릭터를 지운 뒤 새로 연 홈이라, 기다리지 않고 캐릭터 만나기부터 그린다.
+ * onRemoteReset: 먼저 그린 캐릭터가 계정에서는 지워져 있을 때(다른 기기에서 처음부터 다시 만들기) 홈을 새로 연다. */
+export function useAccountProfile(userId: string, { startEmpty = false, onRemoteReset }: { startEmpty?: boolean; onRemoteReset?: () => void } = {}) {
+  const [profile, setProfile] = useState<Profile | null | undefined>(() => loadPendingProfile() ?? (startEmpty ? null : loadProfile() ?? undefined));
+  const remoteReset = useRef(onRemoteReset);
+  useEffect(() => { remoteReset.current = onRemoteReset; }, [onRemoteReset]);
   const [loadError, setLoadError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -27,11 +31,12 @@ export function useAccountProfile(userId: string) {
       if (!active) return;
       // 먼저 그린 캐릭터를 읽는 사이 꾸미기에서 바꿨으면 그 저장이 더 새롭다. 읽은 값으로 되돌리지 않는다.
       if (writes.current !== writesAtStart) return;
-      // 먼저 그린 캐릭터가 계정에서는 초기화돼 있으면(다른 기기에서 처음부터 다시 만들기) 이 기기의 초기화처럼 새로 열어,
-      // 그사이 시작한 음성·글 대화를 모두 닫고 캐릭터 만나기부터 시작한다. 캐시가 지워지지 않으면 새로 열지 않는다(되풀이 방지).
-      if (!p && current.current) {
+      // 먼저 그린 캐릭터가 계정에서는 초기화돼 있으면(다른 기기에서 처음부터 다시 만들기) 이 기기의 초기화처럼 홈을 새로 열어,
+      // 그사이 시작한 음성·글 대화를 모두 닫고 캐릭터 만나기부터 시작한다. 새 홈은 빈 캐릭터로 시작하므로 되풀이되지 않는다.
+      if (!p && current.current && remoteReset.current) {
         clearProfile();
-        if (!loadProfile()) { location.reload(); return; }
+        remoteReset.current();
+        return;
       }
       savePendingProfile(null);
       if (p) saveProfile(p); else clearProfile();

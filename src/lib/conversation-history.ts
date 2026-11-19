@@ -3,6 +3,12 @@ export const HISTORY_PAGE_SIZE = 30;
 export type HistoryMessage = { id: string; role: 'user' | 'assistant'; content: string; at: number };
 export type HistoryBatch = { id: string; messages: HistoryMessage[] };
 export type HistoryCursor = { at: string; id: string };
+/** 계정 대화 기록 기능이 꺼져 있을 때(MEMORY_ENABLED가 아니거나 운영) 서버가 함께 보내는 코드. */
+export const HISTORY_DISABLED_CODE = 'conversation_disabled';
+/** 서버 응답이 '기능 꺼짐'인지. 꺼져 있으면 다시 시도하거나 오류를 띄우지 않고 이 기기 기록만 쓴다. */
+export function isHistoryDisabled(status: number, body: unknown): boolean {
+  return status === 404 && typeof body === 'object' && body !== null && (body as { code?: unknown }).code === HISTORY_DISABLED_CODE;
+}
 export const isUuid = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 export function parseHistoryBatch(value: unknown, now = Date.now()): HistoryBatch {
   const b = value as HistoryBatch | null;

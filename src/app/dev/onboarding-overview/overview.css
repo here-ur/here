@@ -1,4 +1,4 @@
-/* 캐릭터 만나기 6단계 펼쳐 보기. 휴대폰 크기(375×812) 칸을 줄여서 나란히 둔다. */
+/* 캐릭터 만나기 장면 펼쳐 보기. 휴대폰 크기(375×812) 칸을 줄여서 나란히 둔다. */
 .ob-overview { flex-shrink: 0; min-height: 100dvh; padding: 24px 16px 48px; background: #ECE8E1; color: #2B2A28; }
 .ob-overview-head { max-width: 640px; margin: 0 auto 20px; text-align: center; }
 .ob-overview-head h1 { font-size: 18px; font-weight: 800; }
