@@ -4,7 +4,9 @@
 
 export type SfxKind = "tap" | "success";
 
-const KEY = "here.sfx.v1";
+/** 효과음 켬/끔을 이 기기에 두는 자리. 캐릭터 만나기 무대의 스피커 버튼도 같은 값을 쓴다. */
+export const SFX_KEY = "here.sfx.v1";
+const KEY = SFX_KEY;
 let enabled: boolean | null = null;
 let muted = false; // 음성 대화 중
 let ctx: AudioContext | null = null;

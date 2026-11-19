@@ -1,0 +1,88 @@
+/* ═════════════════════════ 장면: promise (주황) — 시작 전 약속 ═════════════════════════
+ * 글이 가장 잘 읽혀야 하는 화면: 제목·설명은 15px 이상, 잘리는 글 없음. 하얀 카드는 읽을거리와 누를 것만 담는다.
+ * 색: 주황 색면 · 라일락 덩어리(고양이 뒤) · 하얀 카드 · 잉크. 알약 끝의 동그라미는 주황 색면의 규칙대로 노랑 + 잉크 체크. */
+
+/* 바깥 페이지의 낱말 사이 간격이 따라 들어오면 줄이 넘치므로 이 장면 안에서는 되돌린다(섀도 루트 안에 올려도 같은 줄바꿈) */
+.hp .hp-scene[data-scene="promise"] { word-spacing: normal; }
+
+/* ── 제목 줄 안의 알약 [두 가지 ○○]: 끝의 동그라미 둘이 동의 하나에 하나씩 찬다 ── */
+.hp .hp-promise-head { pointer-events: none; }
+.hp .hp-pill.hp-promise-pill { padding: 0 6px 0 16px; gap: 9px; margin-top: -2px; margin-bottom: -2px; }      /* 알약이 든 줄이 다른 줄보다 높아지지 않게 */
+.hp .hp-promise-count { display: flex; gap: 3px; }
+.hp .hp-promise-count i { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 0 0 2px #fff; color: var(--dot-fg); transition: background-color 80ms linear, box-shadow 80ms linear; }
+.hp .hp-promise-count i svg { width: 17px; height: 17px; opacity: 0; transform: scale(.3); transition: opacity 100ms linear, transform 460ms var(--hp-spring); }
+.hp .hp-promise-count i.is-on { background: var(--dot); box-shadow: inset 0 0 0 0 #fff; }
+.hp .hp-promise-count i.is-on svg { opacity: 1; transform: none; }
+.hp .hp-promise-count i.is-pop { animation: hp-promise-pop 520ms var(--hp-spring); }
+@keyframes hp-promise-pop { from { transform: scale(.5); } }
+/* 둘 다 찬 순간 알약이 한 번 통 튄다 */
+.hp .hp-promise-pill.is-full { animation: hp-promise-full 620ms var(--hp-spring); }
+@keyframes hp-promise-full { 0% { transform: scale(1); } 26% { transform: scale(1.09) rotate(-2deg); } 100% { transform: none; } }
+
+/* ── "모두 동의해요": 제목의 "…필요해요" 옆에 놓인 내 대답(하얀 알약 + 동그란 체크) ── */
+.hp .hp-promise-all { position: absolute; right: 4px; top: 99px; height: 40px; display: flex; align-items: center; gap: 9px; padding: 0 6px 0 16px; border-radius: 20px; background: var(--hp-white); color: var(--hp-ink); pointer-events: auto; transition: transform 460ms var(--hp-spring); }
+.hp .hp-promise-all::after { content: ""; position: absolute; inset: -4px; border-radius: 24px; }      /* 눌리는 자리는 48px */
+.hp .hp-promise-all:active { transform: scale(.94); transition-duration: 80ms; }
+.hp .hp-promise-all-text { font-size: 16px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; white-space: nowrap; }
+.hp .hp-promise-all .hp-promise-tick { width: 28px; height: 28px; }
+.hp .hp-promise-all .hp-promise-tick svg { width: 15px; height: 15px; }
+
+/* ── 동그란 체크: 빈 동그라미(잉크 테두리) → 누르면 잉크색으로 통 튀고 체크가 그려진다 ── */
+.hp .hp-promise-tick { flex: none; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 0 0 2px var(--hp-ink); color: #fff; transition: background-color 80ms linear; }
+.hp .hp-promise-tick svg { width: 24px; height: 24px; stroke-dasharray: 20; stroke-dashoffset: 20; }
+.hp .is-on > .hp-promise-tick { background: var(--hp-ink); }
+.hp .is-on > .hp-promise-tick svg { stroke-dashoffset: 0; transition: stroke-dashoffset 300ms var(--hp-out) 90ms; }
+.hp .is-pop > .hp-promise-tick { animation: hp-promise-pop 560ms var(--hp-spring); }
+/* 꺼진 큰 버튼을 눌렀을 때: 아직 빈 동그라미가 한 번 들썩인다(여기를 눌러야 한다는 표시) */
+.hp .is-nudge > .hp-promise-tick { animation: hp-promise-nudge 560ms var(--hp-spring); }
+@keyframes hp-promise-nudge { 0% { transform: scale(1); } 28% { transform: scale(1.22); } 100% { transform: none; } }
+
+/* ── 카드 기둥 ── */
+.hp .hp-block.hp-promise-list { left: 20px; right: 20px; display: flex; flex-direction: column; gap: 4px; }
+.hp .hp-promise-card { position: relative; display: block; width: 100%; padding: 11px 22px 10px; border-radius: 28px; background: var(--hp-white); color: var(--hp-ink); text-align: left; }
+.hp button.hp-promise-card { display: flex; align-items: center; gap: 12px; padding: 11px 14px 12px 22px; transition: transform 460ms var(--hp-spring); }
+.hp button.hp-promise-card:active { transform: scale(.975); transition-duration: 80ms; }
+.hp button.hp-promise-card:focus-visible { z-index: 1; }
+.hp .hp-promise-text { flex: 1; min-width: 0; display: block; }
+.hp .hp-promise-title { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 17px; font-weight: 600; line-height: 22px; letter-spacing: -0.035em; }
+.hp .hp-promise-req { flex: none; height: 21px; padding: 0 8px; border-radius: 11px; background: var(--hp-ink); color: #fff; font-size: 13px; font-weight: 600; line-height: 21px; letter-spacing: -0.02em; }
+.hp .hp-promise-desc { display: block; margin: 2px 0 0; font-size: 15px; font-weight: 400; line-height: 21px; letter-spacing: -0.03em; color: rgb(19 17 17 / 78%); }
+.hp .hp-promise-desc span { display: inline-block; }
+
+/* ── 109: 알림 카드 안의 조용한 줄(진짜 전화 링크). 장식 없음 ── */
+.hp .hp-promise-sos { position: relative; display: block; margin: 3px -10px -4px; padding: 5px 10px 4px; border-radius: 18px; color: var(--hp-ink); }
+.hp .hp-promise-sos-top { display: flex; align-items: center; gap: 6px; height: 20px; }
+.hp .hp-promise-sos-ic svg { width: 16px; height: 16px; }
+.hp .hp-promise-sos-top b { font-size: 15px; font-weight: 600; line-height: 20px; letter-spacing: -0.03em; }
+.hp .hp-promise-sos-go { margin-left: auto; display: inline-flex; align-items: center; gap: 1px; margin-right: -4px; font-size: 14px; font-weight: 600; letter-spacing: -0.02em; }
+.hp .hp-promise-sos-go svg { width: 18px; height: 18px; }
+.hp .hp-promise-sos-line { display: block; font-size: 14px; line-height: 19px; letter-spacing: -0.03em; color: rgb(19 17 17 / 74%); }
+.hp .hp-promise-sos:active { background: rgb(19 17 17 / 7%); }
+
+/* ── 아래: 작은 안내 · 글자 버튼(나가기) · 큰 버튼 ── */
+.hp .hp-promise-note { position: absolute; left: 28px; top: 615px; margin: 0; z-index: 6; font-size: 14px; line-height: 19px; letter-spacing: -0.03em; color: var(--fg2); }
+.hp .hp-promise-note span[aria-hidden] { display: block; width: max-content; max-width: 334px; }
+/* 알림만 모드: "알겠어요" 뒤에 고양이가 하는 한마디(적히는 줄). 작은 안내 글의 자리에 잉크색으로 조금 크게 */
+.hp .hp-promise-say { font-size: 18px; line-height: 26px; font-weight: 500; letter-spacing: -0.03em; color: var(--fg); max-width: 236px; }
+.hp .hp-promise-leave { position: absolute; left: 14px; bottom: 92px; height: 44px; padding: 0 14px; z-index: 20; border-radius: 22px; font-size: 15px; font-weight: 600; letter-spacing: -0.02em; color: var(--fg2); white-space: nowrap; transition: transform 420ms var(--hp-spring); }
+.hp .hp-promise-leave:active { transform: scale(.95); transition-duration: 80ms; }
+/* 꺼진 큰 버튼 위의 보이지 않는 덮개(눌림만 받는다). 둘 다 동의하면 사라진다 */
+.hp .hp-promise-guard { position: absolute; left: 20px; right: 20px; bottom: 30px; height: 58px; border-radius: 29px; z-index: 21; }
+.hp .hp-promise-guard[hidden] { display: none; }
+/* 켜진 큰 버튼 둘레에 바탕색 테두리 3px: 뒤의 검은 고양이와 검정 버튼이 붙어 버튼의 둥근 끝이 뭉개지지 않게(색면 위에서는 보이지 않는다) */
+.hp .hp-cta.hp-promise-cta:not([disabled]) { box-shadow: 0 0 0 3px var(--field); }
+/* 꺼진 버튼은 잉크를 바탕에 섞은 색으로 칠한다(비치지 않게: 뒤에 고양이가 있다) */
+.hp .hp-cta.hp-promise-cta[disabled] { background: #E7663D; background: color-mix(in srgb, var(--hp-ink) 10%, var(--hp-orange)); }
+
+/* ── 고양이와 라일락 덩어리의 자리: 큰 버튼의 가운데 높이(아래에서 59px)에서 잘린다 ── */
+.hp .hp-promise-den { position: absolute; inset: 0 0 59px 0; overflow: hidden; pointer-events: none; z-index: 3; }
+.hp .hp-catlayer.hp-promise-stage { inset: auto; left: 0; top: 0; width: 0; height: 0; --hc-shadow-o: 0;
+  transform: translate3d(calc(var(--sx, 316px) + var(--gx, 0px)), calc(var(--sy, 889px) + var(--gy, 0px)), 0) rotate(calc(var(--sr, -12deg) + var(--gr, 0deg)));
+  transition: transform 640ms var(--hp-spring-soft); }
+/* 둘 다 동의하면 오른쪽 위의 작은 반짝이가 물러나고 그 곁에 하트가 튀어나온다 */
+.hp .hp-promise-spark { transition: opacity 140ms linear; }
+.hp .hp-scene[data-state="agreed"] .hp-promise-spark { opacity: 0; }
+.hp .hp-promise-heart > span { transform: scale(0) rotate(-30deg); opacity: 0; transition: transform 220ms var(--hp-inout), opacity 160ms linear; }
+.hp .hp-scene[data-state="agreed"] .hp-promise-heart > span { transform: none; opacity: 1; transition: transform 620ms var(--hp-spring) 220ms, opacity 120ms linear 220ms; }
+/* 바로 보여 주는 상태(?state=…)도 처음부터 끝 모습으로 그려지므로 따로 멈출 것이 없다: 그 뒤에 누르면 평소처럼 움직인다.
+ * 동작 줄이기는 phone.css의 공용 규칙이 모든 움직임을 끈다 */
