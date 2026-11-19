@@ -13,6 +13,7 @@ import { catExpression } from "@/lib/cat-expression";
 import Buddy, { type BuddyState } from "./Buddy";
 import PoseCat from "./PoseCat";
 import { useCatReactions } from "./use-cat-reactions";
+import { classifyGesture, LOAF_AFTER_PX, LOAF_MS, purrsBetween, STROKE_START_PX } from "@/lib/cat-touch";
 import { Icon } from "./art";
 import { PawLoader } from "./ui/PawLoader";
 import "./home-voice.css";
@@ -162,19 +163,101 @@ export default function HomeScreen({
   }, [hasMessages]);
 
   // 쉬는 홈에서만 고양이가 혼자 논다: 심심하면 발을 핥고, 오래 두면 웅크려 잔다(동그란 눈으로 갸웃하기는 2026-11-17에 뺐다).
-  // 누르기 반응(깜짝·울기·하악·째려보며 깨기)은 2026-11-17에 뺐다: 고양이를 눌러도 표정이 바뀌지 않는다. 대화 중에는 기존 Buddy 상태를 그대로 쓴다.
+  // 예전 누르기 반응(깜짝·울기·하악·째려보며 깨기)은 2026-11-17에 뺐다. 대신 쓰다듬기(src/lib/cat-touch.ts): 쓰다듬으면 '골골',
+  // 충분히 쓰다듬으면 식빵 자세. 누르기는 자고 있을 때 조용히 깨우기만 한다(눈 깜박임은 뺐다). 대화 중에는 기존 Buddy 상태를 그대로 쓴다.
   const [napping, setNapping] = useState(false);
+  const [catTouches, setCatTouches] = useState(0); // 손을 대면 쉬는 타이머(발 핥기·잠)를 처음부터 다시 센다
+  const catTapRef = useRef<HTMLDivElement>(null);
+  const catGesture = useRef<{ id: number; x: number; y: number; at: number; moved: number; stroking: boolean } | null>(null);
+  // 손을 떼며 여러 번 쓰다듬어도 이어서 센다: 마지막 쓰다듬기에서 1.5초 안에 다시 쓰다듬으면 거리를 더한다.
+  const catStroke = useRef({ distance: 0, lastAt: 0, loafed: false });
   const homeCat = useCatReactions(resting && napping ? "sleep" : "base");
   const { play: catPlay } = homeCat;
   useEffect(() => {
     if (!resting || napping) return;
     const timers = [
-      window.setTimeout(() => catPlay([["groom", 4400]]), 32000),
-      window.setTimeout(() => setNapping(true), 75000),
+      window.setTimeout(() => { if (!catGesture.current) catPlay([["groom", 4400]]); }, 32000),
+      window.setTimeout(() => { if (!catGesture.current) setNapping(true); }, 75000),
     ];
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [resting, napping, catPlay]);
+  }, [resting, napping, catPlay, catTouches]);
   function wakeForTalk() { setNapping(false); homeCat.reset(); }
+
+  /** 쓰다듬는 손끝 근처에 '골골'을 띄운다. 화면 그리기만 하는 장식이라 상태 대신 DOM에 바로 붙였다 지운다. */
+  function purrAt(clientX: number, clientY: number) {
+    const box = catTapRef.current;
+    if (!box || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const rect = box.getBoundingClientRect();
+    const el = document.createElement("span");
+    el.className = "home-purr";
+    el.textContent = "골골";
+    el.setAttribute("aria-hidden", "true");
+    el.style.left = `${clientX - rect.left}px`;
+    el.style.top = `${clientY - rect.top - 18}px`;
+    el.style.setProperty("--dx", `${Math.round((Math.random() - 0.5) * 36)}px`);
+    box.appendChild(el);
+    window.setTimeout(() => el.remove(), 1000);
+  }
+  /** 손가락이 고양이 칸 안(가장자리 8% 안쪽)에 있는지. 칸 밖으로 나간 손가락으로는 쓰다듬기를 세지 않는다. */
+  function insideCat(clientX: number, clientY: number) {
+    const r = catTapRef.current?.getBoundingClientRect();
+    if (!r) return false;
+    const inset = r.width * 0.08;
+    return clientX > r.left + inset && clientX < r.right - inset && clientY > r.top + inset && clientY < r.bottom - inset;
+  }
+  function endStroke() {
+    catStroke.current.lastAt = performance.now();
+    setCatTouches((n) => n + 1);
+  }
+  function cancelGesture() {
+    const g = catGesture.current;
+    catGesture.current = null;
+    if (g?.stroking) endStroke();
+  }
+  // 쓰다듬는 도중에 글·음성이 열리면(쉬는 상태가 끝나면) 손짓을 정리한다.
+  useEffect(() => {
+    if (!resting) catGesture.current = null;
+  }, [resting]);
+  const catHandlers = {
+    onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!resting || event.button !== 0 || catGesture.current) return;
+      try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* 이미 끝난 손가락이면 잡지 않아도 된다 */ }
+      catGesture.current = { id: event.pointerId, x: event.clientX, y: event.clientY, at: performance.now(), moved: 0, stroking: false };
+      setCatTouches((n) => n + 1); // 손을 대면 쉬는 타이머(발 핥기·잠)를 다시 센다
+    },
+    onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => {
+      const g = catGesture.current;
+      if (!resting || !g || g.id !== event.pointerId) return;
+      const step = Math.hypot(event.clientX - g.x, event.clientY - g.y);
+      g.x = event.clientX; g.y = event.clientY; g.moved += step;
+      if (g.moved <= STROKE_START_PX) return;
+      const stroke = catStroke.current;
+      if (!g.stroking) {
+        g.stroking = true;
+        if (performance.now() - stroke.lastAt > 1500) { stroke.distance = 0; stroke.loafed = false; }
+        if (napping) setNapping(false);
+        // 식빵 자세로 골골거리는 중이면 그대로 두고, 다른 동작(발 핥기 등)이면 기본 자세로 돌린다.
+        if (homeCat.busy && homeCat.pose !== "purr") homeCat.reset();
+      }
+      if (!insideCat(event.clientX, event.clientY)) return;
+      const before = stroke.distance;
+      stroke.distance += step;
+      for (let i = purrsBetween(before, stroke.distance); i > 0; i--) purrAt(event.clientX, event.clientY);
+      if (!stroke.loafed && stroke.distance >= LOAF_AFTER_PX) { stroke.loafed = true; catPlay([["purr", LOAF_MS]]); }
+    },
+    onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => {
+      const g = catGesture.current;
+      if (!g || g.id !== event.pointerId) return;
+      catGesture.current = null;
+      if (!resting) return;
+      const kind = classifyGesture(g.moved, performance.now() - g.at);
+      // 누르기: 자고 있으면 째려보지 않고 조용히 깨기만 한다.
+      if (kind === "tap" && napping) setNapping(false);
+      else if (g.stroking) endStroke();
+    },
+    onPointerCancel: cancelGesture,
+    onLostPointerCapture: (event: React.PointerEvent<HTMLDivElement>) => { if (catGesture.current?.id === event.pointerId) cancelGesture(); },
+  };
 
   useEffect(() => {
     if (wasVoiceActive.current && !voice && !chat.open) micButtonRef.current?.focus({ preventScroll: true });
@@ -332,7 +415,8 @@ export default function HomeScreen({
       <div className="home-character-wrap absolute inset-x-gutter flex flex-col items-center" data-hidden={chatting} aria-hidden={chatting}>
         {/* 하품(음성 열기 전 2.4초) 동안은 키우지 않고 제자리에서 하품만 한다. 연결을 시작하면 그때 커진다. */}
         <div className={`home-buddy ${expanded ? "home-buddy-expanded" : ""}`}>
-          <div className="home-cat-tap">
+          <div ref={catTapRef} className="home-cat-tap" data-touchable={resting || undefined}
+            {...catHandlers}>
             <PoseCat
               pose={resting ? homeCat.pose : "base"}
               fx={resting ? homeCat.fx : undefined}

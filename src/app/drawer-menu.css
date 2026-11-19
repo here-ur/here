@@ -9,11 +9,7 @@
   transition: opacity 300ms ease;
 }
 .here-menu-overlay[data-open="true"] { opacity: 1; pointer-events: auto; }
-.here-menu-artwork { position: absolute; inset: 0; overflow: hidden; background: #e6a15c; pointer-events: none; }
-.here-menu-background { position: absolute; left: -24.173028%; top: 0; width: 141.984733%; height: 116.431925%; }
-.here-menu-background img, .here-menu-cat img { object-fit: cover; }
-.here-menu-topShade { position: absolute; inset: 0 0 auto; height: 52.699531%; background: linear-gradient(#ffd6a9, rgb(255 214 169 / 50%) 50%, rgb(254 181 103 / 0%)); }
-.here-menu-cat { position: absolute; left: -47.83715%; top: 23.70892%; width: 195.928753%; height: 106.870229cqw; }
+.here-menu-scrim { position: absolute; inset: 0; background: rgb(40 28 18 / 30%); pointer-events: none; }
 .here-menu-dismiss { z-index: 1; }
 .here-menu-overlay .here-panel.here-drawer {
   z-index: 2;
@@ -37,11 +33,13 @@
   --f7-list-bg-color: transparent;
   color: var(--here-menu-ink);
 }
-/* 메뉴·설정 모두 같은 위아래 여백과 글꼴: 설정 제목 줄은 메뉴 첫 항목과 같은 높이(56px)에, 아래 안내 글은 메뉴 아래 대화 횟수와 같은 여백에 놓인다. */
+/* 메뉴·설정 모두 같은 아래 여백과 글꼴: 설정 아래 안내 글은 메뉴 아래 대화 횟수와 같은 여백에 놓인다. */
 .here-menu-overlay .here-drawer:is([data-view="menu"], [data-view="settings"]) {
   padding: max(72px, env(safe-area-inset-top)) 0 max(48px, env(safe-area-inset-bottom));
   font-family: "Pretendard Variable", Pretendard, -apple-system, sans-serif;
 }
+/* 설정은 위 여백을 줄여 제목 줄을 더 위에 둔다(2026-11-18, 사용자 요청). 아래 여백은 메뉴와 같다. */
+.here-menu-overlay .here-drawer[data-view="settings"] { padding-top: max(32px, env(safe-area-inset-top)); }
 .here-drawer-view { display: flex; flex: 1 0 auto; flex-direction: column; min-height: 100%; }
 .here-drawer-view[data-view="menu"] { justify-content: space-between; gap: 24px; }
 .here-drawer-view[data-view="settings"] { padding-inline: 4px; }

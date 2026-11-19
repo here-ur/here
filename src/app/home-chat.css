@@ -120,8 +120,22 @@
 .home-character-wrap .buddy { width: min(320px, 82vw, 45svh); height: auto; }
 .home-character-wrap .pose-cat { width: min(320px, 82vw, 45svh); }
 /* 쉬는 홈의 고양이는 누를 수 있다. 대화 중에는 눌러지지 않는다. */
-/* 고양이 자리. 누르기 반응은 뺐다(2026-11-17). */
-.home-cat-tap { display: block; border-radius: 32px; }
+/* 고양이 자리. 쉬는 홈에서는 쓰다듬을 수 있다(쓰다듬으면 '골골', 오래 쓰다듬으면 식빵 자세, src/lib/cat-touch.ts). */
+.home-cat-tap { position: relative; display: block; border-radius: 32px; -webkit-tap-highlight-color: transparent; }
+.home-cat-tap[data-touchable] { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+
+/* 쓰다듬는 손끝에서 떠오르는 '골골' */
+.home-purr {
+  position: absolute; z-index: 3; pointer-events: none; translate: -50% 0;
+  font-size: 15px; font-weight: 800; letter-spacing: -.02em; color: #fff;
+  text-shadow: 0 1px 0 rgb(133 89 27 / 60%), 0 2px 8px rgb(133 89 27 / 45%);
+  animation: home-purr 950ms cubic-bezier(.2, .8, .2, 1) forwards;
+}
+@keyframes home-purr {
+  0% { opacity: 0; transform: translate(0, 4px) scale(.8); }
+  22% { opacity: 1; transform: translate(calc(var(--dx, 0px) * .3), -8px) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx, 0px), -46px) scale(1.04); }
+}
 .home-character-wrap .home-buddy-expanded { transform: scale(1.1); }
 /* 글 대화 중에는 큰 몽글이를 감추고, 작은 몽글이가 입력창 위에 앉는다. */
 .home-character-wrap[data-hidden="true"] { opacity: 0; scale: .8; pointer-events: none; }

@@ -1,5 +1,4 @@
 "use client";
-import { CHARACTER } from "@/lib/character";
 
 import { Switch } from "./ui/Controls";
 import { Button } from "./ui/Button";
@@ -225,11 +224,8 @@ export default function Drawer({
   const name = profile.companion;
   return (
     <div className="here-menu-overlay absolute inset-0 z-40" data-open={open} aria-hidden={!open} inert={!open}>
-      <div className="here-menu-artwork" aria-hidden="true">
-        <div className="here-menu-background"><Image src="/menu/sunlit-background.png" alt="" fill sizes="(max-width: 430px) 142vw, 611px" unoptimized /></div>
-        <div className="here-menu-topShade" />
-        <div className="here-menu-cat"><Image src={CHARACTER.transparentFront} alt="" fill sizes="(max-width: 430px) 196vw, 843px" unoptimized /></div>
-      </div>
+      {/* 메뉴 뒤에는 지금 홈이 그대로 비친다(예전에는 옛 홈 그림을 따로 깔아서 홈 배경이 바뀐 뒤 옛 화면이 보였다). */}
+      <div className="here-menu-scrim" aria-hidden="true" />
       <div onClick={onClose} className="here-menu-dismiss absolute inset-0" aria-hidden="true" />
       <nav
         ref={panelRef}
