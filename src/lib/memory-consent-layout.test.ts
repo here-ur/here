@@ -15,16 +15,16 @@ test("동의 화면은 바텀시트 본문 스크롤을 써서 긴 내용이 프
   assert.match(css, /\.auth-sheet-step\s*\{[^}]*safe-area-inset-bottom/);
 });
 
-test("동의 본문은 기본 접힘이며 체크박스는 접힘 영역 바깥에 둔다", () => {
+test("동의는 약속 장면에서 받고, 항목별 전문은 체크 칸 바깥의 '보기'로 열며, 저장한 뒤에만 넘어간다", () => {
   const component = readFileSync(new URL("../app/MemoryConsentGate.tsx", import.meta.url), "utf8");
-  const disclosures = [...component.matchAll(/<details>([\s\S]*?)<\/details>/g)];
-  assert.equal(disclosures.length, 2);
-  for (const [, content] of disclosures) {
-    assert.match(content, /<summary /);
-    assert.ok(!content.includes('type="checkbox"'));
-  }
-  assert.ok(!/<details\s+open/.test(component));
-  assert.match(component, /disabled=\{!privacy \|\| !sensitive \|\| busy\}/);
+  const scene = readFileSync(new URL("../../public/onboarding/scenes/promise.js", import.meta.url), "utf8");
+  const text = readFileSync(new URL("./memory-consent.ts", import.meta.url), "utf8");
+  assert.match(component, /<OnboardingStage consent /);
+  assert.match(component, /beforeNext=\{\(snapshot\) => \(snapshot\.scene === "promise" \? accept\(\) : null\)\}/);
+  assert.match(scene, /list\.append\(el\("div", "hp-promise-ask", b, more\)\)/);
+  assert.match(scene, /panel\.setAttribute\("role", "dialog"\)/);
+  assert.match(scene, /const cta = ui\.cta\(\{ label: K\.cta, disabled: !N,/);
+  for (const words of ["보관기간 초안", "공용 모델 학습", "음성 파일 자체는 저장하지 않아요", "정신·신체 건강"]) assert.ok(text.includes(words), words);
 });
 
 test("로그인 시트에서 이어 가기: 이미 동의한 기기면 바로 넘어가고, 다시 확인할 때 이미 홈이면 전환을 반복하지 않는다", () => {
@@ -63,14 +63,12 @@ test("동의 체크 상자는 키보드로 갈 수 있고 화면 낭독기에 �
   assert.match(restore, /label\.item-checkbox:has\(> input:focus-visible\) \{ outline: 2px solid/);
 });
 
-test("다시 확인이 잠깐 실패해도 동의 화면을 오류 화면으로 바꾸지 않고, 확인에 성공하면 남은 오류를 지운다", () => {
+test("다시 확인이 잠깐 실패해도 동의 화면을 오류 화면으로 바꾸지 않는다", () => {
   const consent = readFileSync(new URL("../app/MemoryConsentGate.tsx", import.meta.url), "utf8");
   const check = consent.slice(consent.indexOf("const check = () =>"), consent.indexOf("const onStorage"));
-  const [success, failure] = check.split(".catch(");
-  assert.match(success, /setError\(""\)/);
+  const [, failure] = check.split(".catch(");
   assert.match(failure, /setStatus\(current => current === "required" \|\| current === "ready" \? current : "error"\)/);
-  assert.ok(!failure.includes("setError("), "실패 문구를 상태에 남기지 않는다");
-  // 오류 화면 문구는 고정이고, error 상태는 동의 화면의 저장 실패 안내에만 쓴다.
+  // 오류 화면 문구는 고정이다.
   assert.match(consent, /<p role="alert" className="auth-sheet-desc">연결을 확인하지 못했어요\. 다시 시도해 주세요\.<\/p>/);
 });
 

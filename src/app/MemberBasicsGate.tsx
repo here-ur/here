@@ -6,7 +6,7 @@ import AuthScreen from "./AuthScreen";
 import Sheet from "./Sheet";
 import { MemberBasicsContext } from "./member-basics-context";
 import { movePage } from "./page-move";
-import { SheetHandoff } from "./sheet-handoff";
+import { SheetHandoff, StageHandoff } from "./sheet-handoff";
 import { withProfileTimeout } from "@/lib/account-profile";
 import { consentDisplayStorage } from "@/lib/consent-display-cache";
 import { hasBasicsDisplayHint, needsMemberBasics, saveMemberBasics, setBasicsDisplayHint, type Gender } from "@/lib/member-basics";
@@ -21,8 +21,9 @@ type Status = "checking" | "entering" | "ready" | "error";
  * 값은 members 행에만 저장하고 AI 대화에는 보내지 않는다. 이 기기에서 한 번 확인했으면 다시 묻지 않는다(화면 안내용 표시). */
 export default function MemberBasicsGate({ children, signOut, userId = "" }: { children: React.ReactNode; signOut: () => Promise<void>; userId?: string }) {
   const fromSheet = useContext(SheetHandoff);
-  const [status, setStatus] = useState<Status>(() => hasBasicsDisplayHint(consentDisplayStorage(), userId) ? (fromSheet ? "entering" : "ready") : "checking");
-  const [needed, setNeeded] = useState(false);
+  const known = useContext(StageHandoff)?.basicsNeeded; // 약속 장면에서 미리 확인했으면 다시 기다리지 않는다
+  const [status, setStatus] = useState<Status>(() => known !== undefined ? "ready" : hasBasicsDisplayHint(consentDisplayStorage(), userId) ? (fromSheet ? "entering" : "ready") : "checking");
+  const [needed, setNeeded] = useState(known === true);
   const [attempt, setAttempt] = useState(0);
   const entered = useRef(false);
 

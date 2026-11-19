@@ -20,6 +20,7 @@ export default function Preview() {
   const [run, setRun] = useState(0);
   const [result, setResult] = useState("");
   const [controls, setControls] = useState(true);
+  const [consented, setConsented] = useState(false);
 
   function open(next: Stage) {
     setRun((n) => n + 1);
@@ -30,10 +31,10 @@ export default function Preview() {
   let screen;
   switch (stage) {
     case "consent":
-      screen = <MemoryConsentPreview key={run} onAccept={() => open("onboarding")} onSignOut={() => open("consent")} />;
+      screen = <MemoryConsentPreview key={run} onAccept={() => { setConsented(true); open("onboarding"); }} onSignOut={() => open("consent")} />;
       break;
     case "onboarding":
-      screen = <Onboarding key={run} basics={{ needed: true, save: async (gender, birth) => { setResult(`성별 ${gender} · 생년월일 ${birth}`); return "ok"; } }} onSignOut={() => open("consent")} onDone={(p) => { setResult((r) => `${r ? `${r} · ` : ""}이름 ${p.companion} · 목소리 ${p.voice} · 자리 ${p.color} · 대화 방식 ${p.style}`); setStage("done"); }} />;
+      screen = <Onboarding key={run} afterConsent={consented} basics={{ needed: true, save: async (gender, birth) => { setResult(`성별 ${gender} · 생년월일 ${birth}`); return "ok"; } }} onSignOut={() => open("consent")} onDone={(p) => { setResult((r) => `${r ? `${r} · ` : ""}이름 ${p.companion} · 목소리 ${p.voice} · 자리 ${p.color} · 대화 방식 ${p.style}`); setStage("done"); }} />;
       break;
     case "done":
       screen = <main className="app-frame flex flex-col items-center justify-center gap-4 bg-[#F5F2EB] px-gutter text-center">
@@ -49,7 +50,7 @@ export default function Preview() {
     {screen}
     {controls && <div className="fixed left-2 top-2 z-50 flex items-center gap-2 rounded-xl bg-white p-2 text-sm text-black shadow">
       <label htmlFor="first-run-stage" className="sr-only">미리보기 단계</label>
-      <select id="first-run-stage" value={stage} onChange={(e) => open(e.target.value as Stage)} className="rounded-md bg-[#F4F1EA] px-1 py-0.5">
+      <select id="first-run-stage" value={stage} onChange={(e) => { setConsented(false); open(e.target.value as Stage); }} className="rounded-md bg-[#F4F1EA] px-1 py-0.5">
         {STAGES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
       </select>
       <Button variant="plain" onClick={() => open("consent")} className="min-h-8 whitespace-nowrap px-1">처음부터</Button>

@@ -23,7 +23,8 @@
       const { el: root, copy: C } = ctx;
       // 알림만 모드(앱): 동의는 가입할 때 따로 받으므로, 여기서는 이야기하기 전에 알아 둘 것(AI · 기록 · 109)만 보여 주고 "알겠어요"로 넘어간다.
       // HereCopy.notice = { title, breaks(제목 줄마다 낱말 수), items: [{ title, desc }], cta, reply(고양이의 한마디) }
-      const N = C.notice || null;
+      // 동의 모드(앱에서 기억 동의를 받을 때): actions.consent면 알림만 모드를 쓰지 않는다. 항목별 전문은 C.consentDetails에서 온다
+      const N = ctx.actions.consent ? null : (C.notice || null);
       const P = N ? N.items : C.promise, K = N ? { ...C.consent, title: N.title, cta: N.cta } : C.consent, S = C.sos, uid = "hp-promise-" + (++serial);
       const asks = P.filter((p) => p.consent), infos = P.filter((p) => !p.consent);      // 동의 두 가지 · 알림 하나
       const on = asks.map(() => false);                         // 값(동의했는지)
@@ -41,7 +42,7 @@
       const CAT_H = 246, PEEK = { x: 316, y: 889, r: -12 }, UP = { x: 326, y: 886, r: -8 }, OUT = { x: 334, y: 1050, r: -18 };
       const DISC = { x: 296, y: 736, r: 88, m: 0 }, STAR = { x: 298, y: 730, r: 100, m: 1 };
 
-      root.append(ui.topbar(ctx, { pages: true }));             // 큰 버튼 위에는 고양이가 있으므로 쪽 표시는 위 줄에
+      root.append(ui.topbar(ctx, { pages: true, back: !ctx.actions.noBack }));             // 큰 버튼 위에는 고양이가 있으므로 쪽 표시는 위 줄에
 
       /* ── 제목: "대화를 시작하려면 / [두 가지 ○○] 동의가 / 필요해요" + 그 옆의 "모두 동의해요" ── */
       const TOKEN = "두 가지";
@@ -94,9 +95,32 @@
         b.setAttribute("role", "checkbox"); b.setAttribute("aria-checked", "false");
         b.setAttribute("aria-labelledby", tId); b.setAttribute("aria-describedby", dId);
         b.addEventListener("click", () => press(i));
-        list.append(b);
+        const details = C.consentDetails && C.consentDetails[i];
+        if (details) {
+          // 전문 보기: 카드 전체가 체크 상자라 그 안에 버튼을 넣지 않고 카드 위에 따로 얹는다
+          const more = el("button", "hp-promise-more", "보기"); more.type = "button"; more.dataset.sfx = "none";
+          more.setAttribute("aria-haspopup", "dialog"); more.setAttribute("aria-label", `${p.title} 내용 보기`);
+          more.addEventListener("click", () => openDetails(p.title, details, more));
+          list.append(el("div", "hp-promise-ask", b, more));
+        } else list.append(b);
         return b;
       });
+
+      /** 동의 항목의 전문. 장면 안의 하얀 시트로 올라오고, 닫으면 누른 버튼으로 포커스가 돌아간다 */
+      function openDetails(heading, details, opener) {
+        const body = el("div", "hp-promise-sheet-body");
+        details.forEach(([term, text]) => { if (term) body.append(el("strong", "", term)); body.append(el("p", "", text)); });
+        const close = el("button", "hp-promise-sheet-close", "닫기"); close.type = "button";
+        const titleEl = el("h2", "", heading); titleEl.id = uid + "-sheet";
+        const panel = el("div", "hp-promise-sheet", titleEl, body, close);
+        panel.setAttribute("role", "dialog"); panel.setAttribute("aria-modal", "true"); panel.setAttribute("aria-labelledby", titleEl.id);
+        const scrim = el("div", "hp-promise-scrim", panel);
+        const shut = () => { scrim.remove(); opener.focus({ preventScroll: true }); };
+        close.addEventListener("click", shut);
+        scrim.addEventListener("click", (e) => { if (e.target === scrim) shut(); });
+        scrim.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); shut(); } else if (e.key === "Tab") { e.preventDefault(); close.focus(); } });
+        root.append(scrim); close.focus({ preventScroll: true });
+      }
 
       /* ── 아래: 작은 안내 · 나가기 · 큰 버튼 ── */
       const noteParts = K.note.split(/\s*·\s*/);                 // "…없어요 · 만 14세…" → 가운뎃점 자리에서 줄을 나눈다(읽기 프로그램에는 원문 그대로)
@@ -104,7 +128,7 @@
       note.id = uid + "-note"; note.style.setProperty("--i", 7);
       const leave = el("button", "hp-promise-leave hp-rise", K.leave); leave.type = "button"; leave.style.setProperty("--i", 8);
       // "동의하지 않고 나가기": 켜 둔 동의가 있었다면 거두고(답을 지우고) 앞 장면으로 돌아간다. 위 줄의 뒤로 화살표는 고른 것을 그대로 둔다
-      leave.addEventListener("click", () => { seq++; if (count()) { on.fill(false); commit(); stampAll(); mood(); } ctx.back(leave); });
+      leave.addEventListener("click", () => { seq++; if (count()) { on.fill(false); commit(); stampAll(); mood(); } if (ctx.actions.signOut && ctx.actions.consent) ctx.actions.signOut(); else ctx.back(leave); });
       // 알림만 모드: "알겠어요"를 누르면 고양이가 한마디 하고(적히는 동안 다시 누르면 그 줄만 끝까지 보인다) 다음 장면으로 간다
       const talk = ui.speech(); let said = false;
       const say = N && N.reply ? ui.typed(N.reply, "hp-promise-note hp-promise-say") : null;

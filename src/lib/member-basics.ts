@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** 새로 가입한 회원이 기억 동의 다음, 캐릭터 만나기 전에 한 번 적는 성별·생년월일.
- * 값은 members 행에만 두고(0016_member_basics.sql) AI 대화·기억·리포트에는 보내지 않는다.
+ * 값은 members 행에만 두고(0020_member_basics.sql) AI 대화·기억·리포트에는 보내지 않는다.
  * 이 마이그레이션 전에 가입한 회원은 묻지 않는다(basics_required = false). */
 export type Gender = "female" | "male";
 export const GENDERS: readonly { id: Gender; label: string }[] = [

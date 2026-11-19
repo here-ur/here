@@ -23,7 +23,7 @@ test("PostgreSQL: 새 회원만 성별·생년월일을 묻고, 본인 행만 RP
     await migrate("0001_invite_auth");
     for (let n = 1; n <= 4; n++) await db.query("insert into auth.users(id) values($1)", [id(n)]);
     await db.query("insert into public.members(user_id) values($1)", [id(1)]); // 마이그레이션 전에 가입한 회원
-    await migrate("0016_member_basics");
+    await migrate("0020_member_basics");
     await db.query("insert into public.members(user_id) values($1),($2)", [id(2), id(3)]); // 새 회원. 4는 회원이 아님
 
     const flags = (await db.query<{ user_id: string; basics_required: boolean }>("select user_id, basics_required from public.members order by user_id")).rows;

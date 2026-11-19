@@ -30,7 +30,7 @@ test("캐릭터 만나기는 만남에서 AI라고 밝히고, 시작 전 약속(
   assert.equal(STAGE_NOTICE.reply, PROMISE_REPLY);
   // 무대는 약속 장면을 알림만 모드로 올리고(동의 칸 없음), 109는 진짜 전화 링크다.
   assert.match(stage, /copy\.notice = \{ \.\.\.STAGE_NOTICE,/);
-  assert.match(engine("scenes/promise.js"), /const N = C\.notice \|\| null;/);
+  assert.match(engine("scenes/promise.js"), /const N = ctx\.actions\.consent \? null : \(C\.notice \|\| null\);/);
   assert.match(engine("scenes/promise.js"), /call\.href = "tel:109"/);
   // 올린 장면: 약속 · 생일 · 성별 · 질문 2 · 질문 4 · 데려가기(만남 · 내 이름 · 질문 1 · 질문 3 · 이름 짓기는 phone.js 안에 있다).
   assert.deepEqual(loaded("SCRIPTS"), ["copy.js", "cat.js", "sound.js", "phone.js", "scenes/promise.js", "scenes/birthday.js", "scenes/gender.js", "scenes/q2.js", "scenes/q4.js", "scenes/meet.js"]);
@@ -94,7 +94,7 @@ test("마지막 버튼 뒤에는 그 화면에 머물며 저장 중·실패·다
 
 test("하던 자리를 이 탭에 남기고 되살리며, 미리보기(initialStep)에서는 쓰지 않는다", () => {
   assert.match(component, /useState\(\(\) => \(preview \? null : loadOnboardingDraft\(\)\)\)/);
-  assert.match(component, /sceneOfStep\(initialStep \?\? resumeStep\(draft\?\.step \?\? "promise", askBasics\), preview\)/);
+  assert.match(component, /sceneOfStep\(initialStep \?\? resumeStep\(afterConsent && \(draft\?\.step \?\? "promise"\) === "promise" \? "name" : draft\?\.step \?\? "promise", askBasics\), preview\)/);
   assert.match(component, /if \(preview \|\| finished\.current \|\| snapshot\.scene === "done"\) return;\s*saveOnboardingDraft\(/);
   assert.match(block(component, "function finish(", "return <OnboardingStage"), /if \(!preview\) clearOnboardingDraft\(\);/);
   // 처음이면 만남부터, 미리보기에서는 약속 장면을 바로, 들은 것 정리는 데려가기의 끝 상태로 연다.

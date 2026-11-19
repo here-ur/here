@@ -86,3 +86,15 @@
 .hp .hp-scene[data-state="agreed"] .hp-promise-heart > span { transform: none; opacity: 1; transition: transform 620ms var(--hp-spring) 220ms, opacity 120ms linear 220ms; }
 /* 바로 보여 주는 상태(?state=…)도 처음부터 끝 모습으로 그려지므로 따로 멈출 것이 없다: 그 뒤에 누르면 평소처럼 움직인다.
  * 동작 줄이기는 phone.css의 공용 규칙이 모든 움직임을 끈다 */
+
+/* 동의 항목의 전문 보기 */
+.hp .hp-promise-ask { position: relative; }
+.hp .hp-promise-more { position: absolute; right: 74px; top: 2px; min-width: 44px; height: 40px; padding: 0 6px; z-index: 2; font-size: 14px; font-weight: 600; letter-spacing: -0.02em; color: var(--hp-ink); text-decoration: underline; text-underline-offset: 3px; }
+.hp .hp-promise-scrim { position: absolute; inset: 0; z-index: 60; display: flex; align-items: flex-end; background: rgb(19 17 17 / 44%); }
+.hp .hp-promise-sheet { width: 100%; max-height: 78%; display: flex; flex-direction: column; padding: 26px 24px 30px; border-radius: 32px 32px 0 0; background: var(--hp-white); color: var(--hp-ink); }
+.hp .hp-promise-sheet h2 { margin: 0 0 12px; font-size: 24px; font-weight: 600; line-height: 1.3; letter-spacing: -0.04em; }
+.hp .hp-promise-sheet-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; font-size: 15px; line-height: 1.55; letter-spacing: -0.02em; }
+.hp .hp-promise-sheet-body strong { display: block; margin-top: 12px; font-weight: 600; }
+.hp .hp-promise-sheet-body strong:first-child { margin-top: 0; }
+.hp .hp-promise-sheet-body p { margin: 2px 0 0; color: rgb(19 17 17 / 76%); }
+.hp .hp-promise-sheet-close { flex: none; height: 58px; margin-top: 16px; border-radius: 29px; background: var(--hp-ink); color: #fff; font-size: 17px; font-weight: 600; }

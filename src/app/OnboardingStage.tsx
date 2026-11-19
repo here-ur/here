@@ -16,6 +16,7 @@ import {
   summaryLine,
 } from "@/lib/onboarding";
 import { isUnderAge, seoulToday } from "@/lib/member-basics";
+import { MEMORY_CONSENT_DETAILS, MEMORY_CONSENT_NOTE } from "@/lib/memory-consent";
 import { SFX_KEY, setSfxEnabled } from "@/lib/sfx";
 import { firstFamily, gothicA1, outfit } from "./onboarding-fonts";
 import { Button } from "./ui/Button";
@@ -26,7 +27,7 @@ import "./onboarding-stage.css";
 // 무대는 390×844 기준으로 그려지고, 이 칸의 크기에 맞게 한 비율로 줄거나 늘어난다(둘레에 남는 띠는 장면의 바탕색).
 // 무대 파일을 고치면 STAGE_VERSION을 올린다(브라우저가 옛 파일을 붙잡지 않게).
 const STAGE_BASE = "/onboarding/";
-const STAGE_VERSION = "2026-11-19c";
+const STAGE_VERSION = "2026-11-19d";
 const SCRIPTS = ["copy.js", "cat.js", "sound.js", "phone.js", "scenes/promise.js", "scenes/birthday.js", "scenes/gender.js", "scenes/q2.js", "scenes/q4.js", "scenes/meet.js"];
 const STYLES = ["phone.css", "scenes/promise.css", "scenes/birthday.css", "scenes/gender.css", "scenes/q2.css", "scenes/q4.css", "scenes/meet.css"];
 const CAT_ART = "/characters/motion/"; // 고양이 그림은 홈과 같은 파일을 쓴다(앉은 그림·걷는 그림만 더했다)
@@ -38,6 +39,8 @@ export type StageField = "yellow" | "lilac" | "orange";
 export type StageSnapshot = { scene: StageScene | "done"; field: StageField | null; nickname: string; companion: string; answers: Record<string, unknown> };
 export type StageStart = { nickname?: string; companion?: string; answers?: Answers };
 const FIELD: Record<StageField, string> = { yellow: "#FDE249", lilac: "#DDC1FF", orange: "#FE6F42" };
+// 장면의 바탕색. 무대가 뜨기 전에도 그 장면의 색으로 칸을 채운다.
+const SCENE_FIELD: Record<StageScene, StageField> = { open: "yellow", promise: "orange", name: "lilac", birthday: "yellow", gender: "orange", q1: "yellow", q2: "lilac", q3: "orange", q4: "yellow", meet: "orange", naming: "lilac" };
 
 /** 마지막 버튼의 진행·실패 표시(무대가 넘겨준다). */
 type FinishControl = { busy(on: boolean): void; fail(message: string, retryLabel?: string): void };
@@ -45,7 +48,7 @@ type StageApi = { destroy(): void };
 type StageEngine = {
   mount(host: HTMLElement, options: {
     assets: string; scene?: string; state?: string; initial?: StageStart; scenes?: readonly string[];
-    actions?: { signOut?: () => void };
+    actions?: { signOut?: () => void; consent?: boolean; noBack?: boolean };
     beforeNext?: (snapshot: StageSnapshot, control: FinishControl) => boolean | Promise<boolean>;
     onChange?: (snapshot: StageSnapshot) => void;
     onFinish?: (snapshot: StageSnapshot, control: FinishControl) => void;
@@ -61,6 +64,8 @@ type StageCopy = {
   name: { reply: (nickname: string) => string };
   naming: { defaultName: string };
   about: { age: (year: number, month: number, day: number) => number };
+  consent: { note: string };
+  consentDetails?: unknown;
 };
 type StageSound = { onChange(listener: (on: boolean) => void): () => void };
 
@@ -115,6 +120,8 @@ function applyCopy(copy: StageCopy) {
   copy.summary = (nickname, answers) => summaryLine(nickname, answers);
   copy.name.reply = (nickname) => nameReply(nickname);
   copy.naming.defaultName = DEFAULT_COMPANION;
+  copy.consent.note = MEMORY_CONSENT_NOTE;
+  copy.consentDetails = MEMORY_CONSENT_DETAILS;
   // 나이는 서버와 같은 기준(한국 날짜)으로 잰다. 무대는 14 미만인지만 본다.
   copy.about.age = (year, month, day) => isUnderAge(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`, seoulToday()) ? 13 : 14;
 }
@@ -124,7 +131,7 @@ function applyCopy(copy: StageCopy) {
  * onFinish는 마지막 버튼('대화 시작하기')을 누를 때마다 불린다. 저장하는 동안(saving)에는 버튼이 잠기고,
  * 실패하면(saveError) 버튼 위에 그 글이 뜨고 버튼이 '다시 저장'이 된다.
  */
-export default function OnboardingStage({ scene, state, initial, scenes, saving = false, saveError, onChange, onFinish, beforeNext, onSignOut }: {
+export default function OnboardingStage({ scene, state, initial, scenes, saving = false, saveError, onChange, onFinish, beforeNext, onSignOut, consent = false, noBack = false }: {
   scene?: StageScene;
   state?: string;
   initial?: StageStart;
@@ -135,12 +142,14 @@ export default function OnboardingStage({ scene, state, initial, scenes, saving 
   onFinish: (snapshot: StageSnapshot) => void;
   beforeNext?: (snapshot: StageSnapshot) => Promise<string | null> | null; // 장면을 떠나기 전 저장. 실패하면 그 글을 돌려준다
   onSignOut?: () => void;
+  consent?: boolean; // 약속 장면에서 기억 동의를 받는다
+  noBack?: boolean; // 첫 장면이라 돌아갈 곳이 없다
 }) {
   const host = useRef<HTMLDivElement>(null);
-  const start = useRef({ scene, state, initial, scenes: scenes ?? STAGE_SCENES.filter((id) => !(BASICS_SCENES as readonly string[]).includes(id)) });
+  const start = useRef({ consent, noBack, scene, state, initial, scenes: scenes ?? STAGE_SCENES.filter((id) => !(BASICS_SCENES as readonly string[]).includes(id)) });
   const handlers = useRef({ onChange, onFinish, beforeNext, onSignOut });
   const finishing = useRef<FinishControl | null>(null);
-  const [field, setField] = useState<StageField>("yellow");
+  const [field, setField] = useState<StageField>(SCENE_FIELD[scene ?? "open"]);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
 
@@ -193,8 +202,8 @@ export default function OnboardingStage({ scene, state, initial, scenes, saving 
       stopSound = window.HereSound?.onChange((on) => setSfxEnabled(on));
       api = window.HerePhone.mount(box, {
         assets: CAT_ART,
-        ...start.current,
-        actions: { signOut: () => handlers.current.onSignOut?.() },
+        scene: start.current.scene, state: start.current.state, initial: start.current.initial, scenes: start.current.scenes,
+        actions: { signOut: () => handlers.current.onSignOut?.(), consent: start.current.consent, noBack: start.current.noBack },
         beforeNext: (snapshot, control) => {
           const saving = handlers.current.beforeNext?.(snapshot);
           if (!saving) return true;

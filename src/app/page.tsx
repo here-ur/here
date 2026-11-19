@@ -42,6 +42,7 @@ import Report, { type ReportMode } from "./Report";
 import Onboarding from "./Onboarding";
 import MemberBasicsStage from "./MemberBasicsStage";
 import { MemberBasicsContext } from "./member-basics-context";
+import { StageHandoff } from "./sheet-handoff";
 import CatLoading from "./CatLoading";
 
 type Status = "connecting" | "idle" | "listening" | "thinking" | "speaking";
@@ -73,7 +74,8 @@ export default function Page() {
 function Account({ userId, signOut }: { userId: string; signOut: () => Promise<void> }) {
   const [run, setRun] = useState(0);
   const restart = useCallback(() => setRun((n) => n + 1), []);
-  return <Home key={run} userId={userId} signOut={signOut} startEmpty={run > 0} onRestart={restart} />;
+  const fromConsent = useContext(StageHandoff);
+  return <Home key={run} userId={userId} signOut={signOut} startEmpty={run > 0 || fromConsent?.newMember === true} afterConsent={run === 0 && fromConsent?.consented === true} onRestart={restart} />;
 }
 
 /** 이 기기에 남은 설정이 없어 계정의 캐릭터 설정을 처음 불러오는 동안(새로 가입했거나 이 기기에서 처음 로그인).
@@ -83,7 +85,7 @@ function ProfileLoading({ error, onRetry, onSignOut }: { error: string; onRetry:
   return <CatLoading scene="groom" label="캐릭터 설정을 불러오고 있어요" error={error || undefined} onRetry={onRetry} onSignOut={onSignOut} />;
 }
 
-function Home({ userId, signOut, startEmpty, onRestart }: { userId: string; signOut: () => Promise<void>; startEmpty: boolean; onRestart: () => void }) {
+function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId: string; signOut: () => Promise<void>; startEmpty: boolean; afterConsent: boolean; onRestart: () => void }) {
   const account = useAccountProfile(userId, { startEmpty, onRemoteReset: onRestart });
   const basics = useContext(MemberBasicsContext);
   const activity = useAccountActivity(userId);
@@ -454,6 +456,7 @@ function Home({ userId, signOut, startEmpty, onRestart }: { userId: string; sign
     return (
       <Onboarding
         basics={basics}
+        afterConsent={afterConsent}
         onSignOut={() => { void signOut(); }}
         saving={pendingProfile !== null && account.saving}
         saveError={pendingProfile ? account.saveError : undefined}
