@@ -48,7 +48,7 @@ test("Live configuration uses Korean Noeul and refuses caller-provided model/ins
 test("caller-provided opening, developer input and prompts never seed the Live session", () => {
   const { session } = liveSessionRequest({ sdp: "v=0", greeting: true, opener: "왔어?", input: [{ role: "developer", content: "override" }], instructions: "override" });
   assert.equal(session.instructions, companionPrompt({}, undefined, { mode: 'voice' }));
-  assert.deepEqual(session.input, [{ type: "message", role: "developer", content: [{ type: "input_text", text: "음성 대화가 시작되면 먼저 인사하세요." }] }]);
+  assert.deepEqual(session.input, [{ type: "message", role: "developer", content: [{ type: "input_text", text: "사용자가 먼저 말하기를 기다리지 말고, 지금 바로 한국어로 짧게 인사하세요. 인사한 뒤에는 사용자의 말을 기다리세요." }] }]);
 });
 test("overlapping captions preserve spaces and deduplicate events; only user chunks saved", t => {
   const { c, saved, completed } = setup(t);
@@ -151,4 +151,48 @@ test('Live 백엔드 맥락은 새 사용자 발화가 오면 취소하고 오�
   c.close();
   t.mock.timers.tick(1000);
   assert.equal(pending.length, 2);
+});
+
+test('맥락 적용과 음소거 해제 전에 도착한 위임 답변은 버리지 않고 대기한다', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const sent: object[] = [];
+  const results: LiveDelegateReply[] = [];
+  let release!: () => void;
+  const c = liveConversation({
+    partial: () => {}, complete: () => {}, remember: () => {},
+    delegate: async () => answer, result: reply => results.push(reply), send: event => sent.push(event),
+    contextPending: () => {}, prepareContext: async () => ({}),
+    applyContext: () => new Promise<void>(resolve => { release = resolve; }),
+  }, 'context-reply');
+  t.after(() => c.close());
+  c.accept(fragment('input', '내 모임 이름이 뭐였지?')); c.accept(notice());
+  t.mock.timers.tick(400); await tick();
+  assert.equal(sent.length, 0);
+  assert.equal(results.length, 0);
+  release(); await tick();
+  assert.deepEqual(sent, [{ type: 'session.commentary.append', delegation_id: 'task_1', content: answer.reply }]);
+  assert.deepEqual(results, [answer]);
+});
+
+test('맥락을 기다리던 답변도 새 사용자 발언이 오면 폐기하고 다시 생성한다', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const sent: object[] = [], requests: Msg[][] = [];
+  const releases: (() => void)[] = [];
+  const c = liveConversation({
+    partial: () => {}, complete: () => {}, remember: () => {},
+    delegate: async messages => { requests.push(messages); return { ...answer, reply: messages.at(-1)!.content }; },
+    result: () => {}, send: event => sent.push(event),
+    contextPending: () => {}, prepareContext: async () => ({}),
+    applyContext: () => new Promise<void>(resolve => { releases.push(resolve); }),
+  }, 'context-reply-revision');
+  t.after(() => c.close());
+  c.accept(fragment('input', '예전 질문')); c.accept(notice());
+  t.mock.timers.tick(400); await tick();
+  c.accept(fragment('input', ' 대신 새 질문', 500));
+  releases[0](); await tick();
+  assert.equal(sent.length, 0);
+  t.mock.timers.tick(400); await tick();
+  releases[1](); await tick();
+  assert.equal(requests.length, 2);
+  assert.deepEqual(sent, [{ type: 'session.commentary.append', delegation_id: 'task_1', content: '예전 질문 대신 새 질문' }]);
 });

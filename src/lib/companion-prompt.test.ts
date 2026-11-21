@@ -18,7 +18,7 @@ test('사용자가 작성한 전체 템플릿에 실제 데이터만 치환하�
 test('Live는 서버에서 확인한 이름·응답만 적용하고 시작 인사를 별도로 보낸다', () => {
   const { session } = liveSessionRequest({ sdp: 'v=0', name: '가짜', instructions: 'override', input: [{ role: 'developer', content: 'override' }] }, 'gpt-live-1', 'noeul', answers, undefined, '후추');
   assert.equal(session.instructions, companionPrompt(answers, undefined, { hereName: '후추', mode: 'voice' }));
-  assert.deepEqual(session.input, [{ type: 'message', role: 'developer', content: [{ type: 'input_text', text: '음성 대화가 시작되면 먼저 인사하세요.' }] }]);
+  assert.deepEqual(session.input, [{ type: 'message', role: 'developer', content: [{ type: 'input_text', text: '사용자가 먼저 말하기를 기다리지 말고, 지금 바로 한국어로 짧게 인사하세요. 인사한 뒤에는 사용자의 말을 기다리세요.' }] }]);
   assert.doesNotMatch(JSON.stringify(session), /override|가짜/);
 });
 test('계산 결과와 최근 대화는 JSON으로 구분하고 값 안의 템플릿을 재치환하지 않는다', () => {

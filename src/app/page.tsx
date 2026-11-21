@@ -277,15 +277,16 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
     setMemoryWarning("");
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     setYawning(!reducedMotion);
+    // Animate while connecting; the intro must not delay microphone/network setup.
+    void waitForCatYawn(controller.signal, reducedMotion).then(() => {
+      if (current()) setYawning(false);
+    }).catch(() => {});
     try {
-      await waitForCatYawn(controller.signal, reducedMotion);
-      if (!current()) return;
-      setYawning(false);
       const token = await accessToken();
       if (!current()) return;
       const conn = await connectLive({
         onOutputLevel: (level, shape) => { if (current()) { outputLevel.current = level; outputShape.current = shape; } },
-        onStatus: (next) => { if (current()) setStatus(next); },
+        onStatus: (next) => { if (current()) { setStatus(next); if (next === "speaking") setYawning(false); } },
         onUserPartial: (text) => {
           if (!current()) return;
           setHearing(true);

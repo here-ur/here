@@ -34,6 +34,15 @@ export function liveConversation(c: Callbacks, sessionId: string) {
   let contextWork: AbortController | undefined;
   let contextTimer: ReturnType<typeof setTimeout> | undefined;
   let contextBlocked = false;
+  let pendingReply: { id: string; revision: number; reply: LiveDelegateReply } | undefined;
+  function deliverReply() {
+    if (!pendingReply || contextBlocked || closed || stopping) return;
+    const result = pendingReply;
+    pendingReply = undefined;
+    if (result.revision !== revision) return;
+    c.result(result.reply);
+    c.send({ type: "session.commentary.append", delegation_id: result.id, content: result.reply.reply });
+  }
   const textOf = (segment: Segment) => segment.fragments.slice().sort((a, b) => a.start_ms - b.start_ms).map(f => f.delta).join("");
   function flush(role: Msg["role"]) {
     clearTimeout(timers[role]);
@@ -72,7 +81,7 @@ export function liveConversation(c: Callbacks, sessionId: string) {
     clearTimeout(contextTimer);
     contextWork?.abort();
     if (!c.prepareContext || c.contextEnabled?.() === false || closed || stopping) return;
-    // Analyse a settled transcript burst without holding up Live audio or its acknowledgments.
+    // Analyse a settled transcript burst; release a delegated answer only after playback is ready.
     contextTimer = setTimeout(async () => {
       const messages = context();
       if (!messages.length || closed || stopping) return;
@@ -84,7 +93,7 @@ export function liveConversation(c: Callbacks, sessionId: string) {
         if (!controller.signal.aborted && !closed && !stopping && revision === atRevision && prepared) {
           if (c.applyContext) await c.applyContext(prepared, controller.signal);
           else c.send({ type: 'session.thinking.append', delegation_id: null, content: JSON.stringify({ backend_context: prepared }) });
-          if (!controller.signal.aborted && revision === atRevision) contextBlocked = false;
+          if (!controller.signal.aborted && revision === atRevision) { contextBlocked = false; deliverReply(); }
         }
         else if (!controller.signal.aborted && revision === atRevision && !closed && !stopping) c.contextFailed?.();
       } catch { if (!controller.signal.aborted && revision === atRevision && !closed && !stopping) c.contextFailed?.(); }
@@ -107,8 +116,8 @@ export function liveConversation(c: Callbacks, sessionId: string) {
       const reply = await c.delegate(messages, controller.signal);
       if (closed || stopping) return;
       if (revision !== atRevision) { queued ??= id; return; }
-      c.result(reply);
-      c.send({ type: "session.commentary.append", delegation_id: id, content: reply.reply });
+      pendingReply = { id, revision: atRevision, reply };
+      deliverReply();
     } catch {
       if (closed || stopping) return;
       if (revision !== atRevision) queued ??= id;
@@ -137,6 +146,8 @@ export function liveConversation(c: Callbacks, sessionId: string) {
         || typeof event.start_ms !== "number" || typeof event.end_ms !== "number"
         || !Number.isFinite(event.start_ms) || !Number.isFinite(event.end_ms) || event.start_ms < 0 || event.end_ms < event.start_ms) return;
       if (role === "user") {
+        // A completed answer waiting behind the playback gate is stale too.
+        if (pendingReply) { queued ??= pendingReply.id; pendingReply = undefined; }
         revision++; work?.abort(); schedule();
         if (c.prepareContext && c.contextPending && c.contextEnabled?.() !== false) {
           if (!contextBlocked) flush('assistant');
@@ -154,10 +165,11 @@ export function liveConversation(c: Callbacks, sessionId: string) {
       clearTimeout(timers[role]);
       timers[role] = setTimeout(() => flush(role), 2500);
     },
-    stopWork() { stopping = true; queued = undefined; clearTimeout(workTimer); clearTimeout(contextTimer); contextWork?.abort(); work?.abort(); },
+    stopWork() { stopping = true; queued = undefined; pendingReply = undefined; clearTimeout(workTimer); clearTimeout(contextTimer); contextWork?.abort(); work?.abort(); },
     close() {
       if (closed) return;
       closed = true;
+      pendingReply = undefined;
       clearTimeout(workTimer);
       clearTimeout(contextTimer);
       contextWork?.abort();
