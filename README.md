@@ -51,7 +51,7 @@ npm run dev
 
 ### 사용자별 기억·가입 동의 — 개발 파일럿
 
-서울 `here-dev`에 `memory_consents`·`conversation_memories` 테이블과 접근 제어를 추가했다. `MEMORY_ENABLED`는 기본 `false`이며, 현재 고정 개발 웹에 아직 배포·활성화하지 않았다. 운영은 코드로 비활성화한다. 상세 구조·API·검증·배포 조건은 [MEMORY.md](docs/MEMORY.md)에 정리한다.
+서울 `here-dev`에 `memory_consents`·`conversation_memories` 테이블과 접근 제어를 추가했다. `MEMORY_ENABLED`는 기본 `false`다. 2026-11-21에 고정 개발 웹(`here-dev.vercel.app`, Preview/dev)과 로컬 개발에서 활성화했다. `0018`·`0019`·`0021`·`0022`·`0023`을 개발 DB에 적용했고, 기억 처리 재시도와 야간 정리 cron을 활성화했다. 운영은 코드로 비활성화한다. 상세 구조·API·검증·배포 조건은 [MEMORY.md](docs/MEMORY.md)와 [CONVERSATION_CONTEXT.md](docs/CONVERSATION_CONTEXT.md)에 정리한다.
 
 기능을 켠 개발 환경에서는 신규·기존 회원 모두 현재 버전의 개인정보·민감정보 항목을 각각 확인해야 대화를 시작한다. 별도 기억 토글은 없다. 텍스트 답변 성공 후 최신 사용자 발언을 Runyour로 요약하고 OpenAI `text-embedding-3-large` 1536차원으로 저장·검색한다. 동의 화면은 개발용 초안이며 가상 대화만 사용한다. 음성 기억·관리 화면·실제 로그인부터 회상까지의 통합 검증은 남아 있다.
 
