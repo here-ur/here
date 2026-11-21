@@ -21,9 +21,10 @@ function setup(t: TestContext, fail = false, media?: () => Promise<unknown>) {
   const emit = (event: object) => channel.onmessage?.({ data: JSON.stringify(event) });
   let peerClosed = false;
   class Peer {
-    iceGatheringState = "complete";
+    // ICE gathering deliberately never completes: startup must not wait for it.
+    iceGatheringState = "gathering";
     localDescription = { sdp: "v=0\r\no=test" };
-    createDataChannel() { return channel; }
+    createDataChannel(_label: string, options: RTCDataChannelInit) { assert.deepEqual(options, { negotiated: true, id: 4 }); return channel; }
     addTrack() { assert.equal(track.enabled, false); }
     addTransceiver() {}
     async createOffer() { return { type: "offer", sdp: this.localDescription.sdp }; }
@@ -52,7 +53,7 @@ test("Live exchanges SDP through authenticated app route and sends no Realtime c
   const m = setup(t);
   const rt = await connectLive(m.handlers, { name: "보리" }, undefined, "test-token", {});
   assert.equal(m.requests[0].url, "/api/live");
-  assert.deepEqual(m.requests[0].body, { sdp: "v=0\r\no=test" });
+  assert.deepEqual(m.requests[0].body, { sdp: "v=0\r\no=test", dcid: 4 });
   assert.equal(m.track.enabled, true);
   assert.deepEqual(m.sent.map(e => e.type), ["session.input_audio.unmute"]);
   rt.setMic(false); assert.equal(m.track.enabled, false);

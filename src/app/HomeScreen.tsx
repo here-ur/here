@@ -118,7 +118,7 @@ export default function HomeScreen({
   spotlight?: React.ReactNode; // 기본 홈 위쪽에 작게 두는 것(오늘 해 볼 만한 것 시안). 대화 중에는 감춘다
   nudge?: React.ReactNode; // 쉬는 동안 하단 버튼 바로 위에 보여 주는 작은 카드(지금은 홈 첫 방문 안내 HomeHint)
   banner?: { text: string; error?: boolean }; // 메뉴에서 한 일의 진행·실패를 하단 버튼 위에 알린다(지금은 처음부터 다시 만들기)
-  onVoice: () => void;
+  onVoice: (startedAt?: number) => void;
   onText: () => void;
   onMenu: () => void;
   menuButtonRef?: React.Ref<HTMLButtonElement>;
@@ -498,7 +498,7 @@ export default function HomeScreen({
               <Button variant="fill"
                 ref={micButtonRef}
                 type="button"
-                onClick={voice ? voice.onMic : () => { wakeForTalk(); onVoice(); }}
+                onClick={voice ? voice.onMic : event => { wakeForTalk(); onVoice(event.timeStamp); }}
                 disabled={chat.sending || Boolean(voice && (voice.connecting || (!voice.hasMic && !voice.error)))}
                 tabIndex={canSend ? -1 : 0}
                 // 이름이 지금 할 일(끄기·켜기)을 말하므로 aria-pressed는 두지 않는다. 함께 쓰면 '마이크 끄기, 선택됨'처럼 상태가 거꾸로 읽힌다.

@@ -12,7 +12,7 @@ test("홈 첫 방문 안내는 한 번 보면 저장소가 없어도 같은 탭�
 test("홈 첫 방문 안내는 글·음성·메뉴를 열거나 안내를 누르면 닫히고, 고양이 말투를 쓰지 않는다", () => {
   const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(page, /nudge=\{showHint/);
-  for (const opener of ["function openText()", "function toVoice()"]) {
+  for (const opener of ["function openText(", "function toVoice("]) {
     const body = page.slice(page.indexOf(opener), page.indexOf("}", page.indexOf(opener)));
     assert.match(body, /dismissHint\(\)/, opener);
   }

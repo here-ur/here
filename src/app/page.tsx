@@ -123,6 +123,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
   const headlineLocked = useRef(false);
   const openingLine = safeHomeOpener(headline);
   const outputLevel = useRef(0);
+  const voiceClickedAt = useRef<number | undefined>(undefined);
   const outputShape = useRef<import("@/lib/mouth-shape").MouthShape>("rest");
   // 음성 대화 중에는 효과음이 마이크에 섞이지 않게 모두 쉰다.
   useEffect(() => { muteSfx(voiceMode); return () => muteSfx(false); }, [voiceMode]);
@@ -256,7 +257,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
   }
 
   /** 음성 대화만 기존 OpenAI Realtime 연결을 사용한다. */
-  async function begin() {
+  async function begin(startedAt = performance.now()) {
     headlineLocked.current = true;
     cancelChat();
     const attempt = ++connectionAttempt.current;
@@ -309,7 +310,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
         onError: (message) => { if (current()) setError(message); },
         onMemoryWarning: (message) => { if (current()) setMemoryWarning(message); },
         onSearchSources: (sources) => { if (current()) setSearchSources(sources); },
-      }, { name: profile?.companion, voice: profile?.voice, nickname: profile?.nickname || undefined, style: profile?.style }, controller.signal, token, { historyManaged: true });
+      }, { name: profile?.companion, voice: profile?.voice, nickname: profile?.nickname || undefined, style: profile?.style }, controller.signal, token, { historyManaged: true, startedAt });
       if (!current()) { conn.close(); return; }
       rt.current = conn;
       conn.setSound(true);
@@ -355,18 +356,19 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
     if (chatRequest.current || voiceRequest.current) return;
     setTyping(false);
     setMicOn(true);
-    void begin();
+    void begin(voiceClickedAt.current);
   }
   // 마이크 권한은 처음 마이크를 누를 때 묻는다(권한이 있거나 이미 거쳤으면 바로 연결). 글을 고르면 글 입력창을 열고 바로 포커스한다.
   // 허용 뒤에는 시트가 돌려주려는 마이크 버튼이 연결 중이라 눌리지 않으므로, 바로 옆 '음성 대화 종료' 버튼으로 포커스를 옮긴다.
   const micAsk = useMicrophoneAsk(startVoice, () => openText(),
     () => document.getElementById("home-text-draft")?.focus({ preventScroll: true }),
     () => document.getElementById("home-voice-end")?.focus({ preventScroll: true }));
-  function toVoice() {
+  function toVoice(startedAt = performance.now()) {
     dismissHint();
     setResetNote(null);
     // 글 답변을 기다리는 중이거나 이미 음성을 여는 중(하품 포함)이면 다시 시작하지 않는다.
     if (chatRequest.current || voiceRequest.current) return;
+    voiceClickedAt.current = startedAt;
     // 안내 시트가 떠도 홈 인사가 뒤에서 계속 말하지 않게 먼저 멈춘다.
     headlineLocked.current = true;
     micAsk.ask();

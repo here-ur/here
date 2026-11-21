@@ -46,7 +46,7 @@ test("Live configuration uses Korean Noeul and refuses caller-provided model/ins
   assert.throws(() => liveSessionRequest({ sdp: "v=0" + "x".repeat(60000) }));
 });
 test("caller-provided opening, developer input and prompts never seed the Live session", () => {
-  const { session } = liveSessionRequest({ sdp: "v=0", greeting: true, opener: "왔어?", input: [{ role: "developer", content: "override" }], instructions: "override" });
+  const { session } = liveSessionRequest({ sdp: "v=0", greeting: true, opening: 'prepared-noeul-v1', opener: "왔어?", input: [{ role: "developer", content: "override" }], instructions: "override" });
   assert.equal(session.instructions, companionPrompt({}, undefined, { mode: 'voice' }));
   assert.deepEqual(session.input, [{ type: "message", role: "developer", content: [{ type: "input_text", text: "사용자가 먼저 말하기를 기다리지 말고, 지금 바로 한국어로 짧게 인사하세요. 인사한 뒤에는 사용자의 말을 기다리세요." }] }]);
 });
@@ -195,4 +195,10 @@ test('맥락을 기다리던 답변도 새 사용자 발언이 오면 폐기하�
   releases[1](); await tick();
   assert.equal(requests.length, 2);
   assert.deepEqual(sent, [{ type: 'session.commentary.append', delegation_id: 'task_1', content: '예전 질문 대신 새 질문' }]);
+});
+
+test('Live의 사전 협상 채널 ID는 브라우저와 제공자 요청에서 일치한다', () => {
+  assert.deepEqual(liveSessionRequest({ sdp: 'v=0', dcid: 4 }).transport, { type: 'webrtc', sdp: 'v=0', dcid: 4 });
+  assert.deepEqual(liveSessionRequest({ sdp: 'v=0' }).transport, { type: 'webrtc', sdp: 'v=0' });
+  for (const dcid of [-1, 0, 65535, '4', null]) assert.throws(() => liveSessionRequest({ sdp: 'v=0', dcid }));
 });

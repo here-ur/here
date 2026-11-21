@@ -15,13 +15,14 @@ export async function connectLive(
   persona: { name?: string; voice?: string; nickname?: string; style?: StyleId } = {},
   signal?: AbortSignal,
   accessToken?: string,
-  options: { microphone?: boolean;
+  options: { microphone?: boolean; startedAt?: number;
     historyManaged?: boolean; inputStream?: MediaStream; onDiagnostic?: (event: string) => void } = {},
 ): Promise<Realtime> {
   const controller = new AbortController();
-  const timing = voiceTiming();
+  const timing = voiceTiming(undefined, undefined, options.startedAt);
   const peer = new RTCPeerConnection();
-  const channel = peer.createDataChannel("live-events");
+  // Pre-negotiate the event channel to avoid an extra data-channel handshake.
+  const channel = peer.createDataChannel("live-events", { negotiated: true, id: 4 });
   const audio = new Audio();
   audio.autoplay = false;
   let mic: MediaStream | undefined;
@@ -263,11 +264,12 @@ export async function connectLive(
     }
     controller.signal.throwIfAborted(); timing("media_ready");
     await peer.setLocalDescription(await peer.createOffer());
-    await waitForIce(peer, controller.signal);
+    // The server answer contains reachable ICE candidates. Gathering continues in
+    // the browser while the authenticated session request is in flight.
     const response = await fetch("/api/live", {
       method: "POST", credentials: "same-origin", cache: "no-store",
       headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
-      body: JSON.stringify({ sdp: peer.localDescription?.sdp }),
+      body: JSON.stringify({ sdp: peer.localDescription?.sdp, dcid: 4 }),
       signal: AbortSignal.any([controller.signal, AbortSignal.timeout(25_000)]),
     });
     if (!response.ok) throw new Error(CONNECTION_ERROR);
@@ -286,19 +288,4 @@ export async function connectLive(
       setSound(on) { requestedSound = on; audio.muted = contextMuted || !on; if (!on) h.onOutputLevel?.(0, "rest"); }, close,
     };
   } catch (error) { cleanup(); throw error; }
-}
-
-function waitForIce(peer: RTCPeerConnection, signal: AbortSignal): Promise<void> {
-  if (signal.aborted) return Promise.reject(signal.reason);
-  if (peer.iceGatheringState === "complete") return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const finish = (error?: unknown) => {
-      clearTimeout(timer); peer.removeEventListener("icegatheringstatechange", check); signal.removeEventListener("abort", abort);
-      if (error) reject(error); else resolve();
-    };
-    const check = () => { if (peer.iceGatheringState === "complete") finish(); };
-    const abort = () => finish(signal.reason);
-    const timer = setTimeout(() => finish(new Error(CONNECTION_ERROR)), 10_000);
-    peer.addEventListener("icegatheringstatechange", check); signal.addEventListener("abort", abort, { once: true });
-  });
 }
