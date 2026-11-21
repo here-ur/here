@@ -19,6 +19,8 @@ import { useAccountProfile } from "./use-account-profile";
 import { type Realtime, type Handlers } from "@/lib/realtime";
 import { connectLive, LiveConnectionError } from "@/lib/live";
 import { prepareLiveSession } from '@/lib/live-preconnect';
+import { createVoicePreparationOwner, voiceProfileKey as preparationProfileKey } from '@/lib/voice-preparation-owner';
+import { VoicePreparationContext } from './voice-preparation-context';
 import { muteSfx } from "@/lib/sfx";
 import { displayNameForServer } from "@/lib/friends";
 import { requestQuotaStatus } from "@/lib/quota-status";
@@ -55,8 +57,15 @@ const DEV_PROFILE: Profile | null =
     : null;
 
 export default function Page() {
+  const [preparation] = useState(() => createVoicePreparationOwner());
   useEffect(() => { pendingFriendInvite(); }, []);
-  return <AuthGate>{(userId, signOut) => <Account key={userId} userId={userId} signOut={signOut} />}</AuthGate>;
+  useEffect(() => {
+    const hide = () => { if (document.hidden) preparation.clear(); };
+    const leave = () => preparation.clear();
+    document.addEventListener('visibilitychange', hide); window.addEventListener('pagehide', leave);
+    return () => { document.removeEventListener('visibilitychange', hide); window.removeEventListener('pagehide', leave); preparation.clear(); };
+  }, [preparation]);
+  return <VoicePreparationContext.Provider value={preparation}><AuthGate>{(userId, signOut) => <Account key={userId} userId={userId} signOut={signOut} />}</AuthGate></VoicePreparationContext.Provider>;
 }
 
 /** 로그인한 계정의 화면. 캐릭터를 처음부터 다시 만들면(이 기기에서든 다른 기기에서든) 페이지를 새로 고치지 않고 홈만 새로 열어
@@ -77,6 +86,7 @@ function ProfileLoading({ error, onRetry, onSignOut }: { error: string; onRetry:
 }
 
 function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId: string; signOut: () => Promise<void>; startEmpty: boolean; afterConsent: boolean; onRestart: () => void }) {
+  const preparation = useContext(VoicePreparationContext);
   const account = useAccountProfile(userId, { startEmpty, onRemoteReset: onRestart });
   const basics = useContext(MemberBasicsContext);
   const activity = useAccountActivity(userId);
@@ -128,12 +138,19 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
   const outputShape = useRef<import("@/lib/mouth-shape").MouthShape>("rest");
   const voiceWarmup = useRef<ReturnType<typeof prepareLiveSession> | null>(null);
   const canPrepareVoice = Boolean(profile) && !basics.needed && !typing && !reportMode && !customizing && !showFriends;
-  const voiceProfileKey = JSON.stringify([profile?.companion, profile?.onboardingAnswers]);
+  const profileLoaded = profile !== undefined;
+  const voiceProfileKey = preparationProfileKey(profile?.companion, profile?.onboardingAnswers);
   useEffect(() => {
     const dispose = () => { voiceWarmup.current?.dispose(); voiceWarmup.current = null; };
     const prepare = () => {
-      if (document.hidden || !canPrepareVoice) { dispose(); return; }
-      if (!voiceMode && !voiceWarmup.current) voiceWarmup.current = prepareLiveSession(async () => {
+      if (document.hidden || !canPrepareVoice) {
+        dispose();
+        // During profile loading, retain the early connection until its identity
+        // and profile can be compared. Other screens must release it immediately.
+        if (document.hidden || profileLoaded) preparation?.clear();
+        return;
+      }
+      if (!voiceMode && !voiceWarmup.current) voiceWarmup.current = preparation?.take(userId, voiceProfileKey) ?? prepareLiveSession(async () => {
         const client = browserSupabase();
         const result = await client?.auth.getSession();
         if (!result?.data.session) throw Error('authentication_required');
@@ -145,7 +162,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
     window.addEventListener('pagehide', dispose);
     // The claimed session is removed from this ref before entering voice mode.
     return () => { document.removeEventListener('visibilitychange', prepare); window.removeEventListener('pagehide', dispose); dispose(); };
-  }, [canPrepareVoice, voiceMode, voiceProfileKey]);
+  }, [canPrepareVoice, voiceMode, voiceProfileKey, preparation, userId, profileLoaded]);
   // 음성 대화 중에는 효과음이 마이크에 섞이지 않게 모두 쉰다.
   useEffect(() => { muteSfx(voiceMode); return () => muteSfx(false); }, [voiceMode]);
 

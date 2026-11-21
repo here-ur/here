@@ -221,6 +221,7 @@ export async function connectLive(
     let event: Record<string, unknown>;
     try { event = JSON.parse(message.data); } catch { return; }
     if (!event || typeof event !== "object") return;
+    if (event.type === 'session.instructions.appended' || event.type === 'session.commentary.appended') options.onDiagnostic?.(event.type);
     if (event.type === 'session.thinking.appended' && typeof event.client_event_id === 'string') acknowledgments.get(event.client_event_id)?.resolve();
     if (event.type === "session.delegation.created" || event.type === "session.started" || event.type === "session.closed") options.onDiagnostic?.(event.type);
     if (event.type === "session.started" && !started) {
@@ -364,6 +365,9 @@ export async function connectLive(
         if (audio.srcObject) void audio.play().catch(() => {});
         applyMic(); updateStatus('listening');
         timing('channel_ready');
+        // Explicitly end standby even when activation follows session.started
+        // immediately; commentary alone can leave the model waiting for speech.
+        send({ type: 'session.instructions.append', delegation_id: null, content: '음성 대화가 시작됐습니다. 지금 한 번만 짧게 인사하세요.' });
         send({ type: 'session.commentary.append', delegation_id: null, content: '안녕!' });
       },
       // Text conversations use /api/chat. Live accepts context, not Realtime conversation.item.create.

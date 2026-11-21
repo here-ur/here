@@ -1,6 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { VoicePreparationContext } from './voice-preparation-context';
+import { accountCompanionName, accountOnboardingAnswers } from '@/lib/account-profile';
+import { voiceProfileKey } from '@/lib/voice-preparation-owner';
 import { setLocalOwner } from "@/lib/local-scope";
 import { browserSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { checkEntry, clearPasswordReset, isPasswordResetPending, markPasswordReset, resetStorage, shouldRecheckAuth, type Entry } from "@/lib/session-entry";
@@ -26,6 +29,7 @@ const RESEND_SECONDS = 60;
 
 export default function AuthGate({ children }: { children: (userId: string, signOut: () => Promise<void>) => React.ReactNode }) {
   const client = browserSupabase();
+  const preparation = useContext(VoicePreparationContext);
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(isSupabaseConfigured);
   const [checkFailed, setCheckFailed] = useState(false);
@@ -77,19 +81,34 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   useEffect(() => {
     if (!client) return;
     let active = true;
+    let entryChecked = false;
     const generation = ++checkGeneration.current;
+    // Start independently of UI entry checks. Cached metadata is an eligibility
+    // hint only: /api/live verifies current identity, membership, consent, quota
+    // and stored context before it creates any paid provider session.
+    void client.auth.getSession().then(({ data }) => {
+      if (!active || entryChecked || generation !== checkGeneration.current || document.hidden) return;
+      const session = data.session;
+      const name = accountCompanionName(session?.user.user_metadata);
+      if (!session || !name || isPasswordResetPending(resetStorage(), session.user.id)) { preparation?.clear(); return; }
+      const answers = accountOnboardingAnswers(session.user.user_metadata);
+      preparation?.prepare(session.user.id, voiceProfileKey(name, answers), async () => session.access_token);
+    }).catch(() => {});
     void checkEntry(client).then(result => {
       if (!active || generation !== checkGeneration.current) return;
+      entryChecked = true;
+      if (result.kind !== 'member') preparation?.clear();
       // 확인을 마치고 홈(또는 시트)으로 들어갈 때는 시트 단계를 마칠 때와 같은 화면 넘김으로 바꾼다.
       if (result.kind === "member") void movePage("enter", () => enter(result)); else enter(result);
     });
-    return () => { active = false; };
-  }, [client, attempt, enter]);
+    return () => { active = false; preparation?.clear(); };
+  }, [client, attempt, enter, preparation]);
 
   useEffect(() => {
     if (!client) return;
     const { data } = client.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
+        preparation?.clear();
         clearPasswordReset(resetStorage()); checkGeneration.current++;
         // 로그아웃해서 환영 화면으로 돌아갈 때도 시트를 마칠 때와 같은 화면 넘김을 쓴다.
         void movePage("enter", () => enter({ kind: "login" })); return;
@@ -97,6 +116,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
       if (!shouldRecheckAuth(event, session?.user.id, { userId, pendingUserId: pendingUser,
         idle: showWelcome || step === "login", busy: busyRef.current })) return;
       checkGeneration.current++;
+      preparation?.clear();
       if (userId || pendingUser) setLoading(true);
       setAttempt(n => n + 1);
     });
@@ -104,7 +124,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     window.addEventListener("online", recover);
     window.addEventListener("focus", recover);
     return () => { data.subscription.unsubscribe(); window.removeEventListener("online", recover); window.removeEventListener("focus", recover); };
-  }, [client, userId, pendingUser, step, showWelcome, checkFailed, enter]);
+  }, [client, userId, pendingUser, step, showWelcome, checkFailed, enter, preparation]);
 
   useEffect(() => {
     if (loading || showWelcome) return;
@@ -126,11 +146,12 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   }, [resendAt]);
 
   const signOut = useCallback(async () => {
+    preparation?.clear();
     const result = await client?.auth.signOut({ scope: "local" });
     if (!result?.error) clearPasswordReset(resetStorage());
     // 성공하면 SIGNED_OUT 이벤트가 화면 넘김과 함께 환영 화면으로 바꾼다(여기서 또 바꾸면 넘김이 끊긴다). 실패하면 다시 확인 화면.
     if (!client || result?.error) enter({ kind: result?.error ? "retry" : "login" });
-  }, [client, enter]);
+  }, [client, enter, preparation]);
 
   function fail(message: string, field: Field | null = null) {
     setErrorField(field); setError(message); setNotice("");

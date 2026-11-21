@@ -147,7 +147,7 @@ test('app-entry standby connects silently; only activation opens the mic and req
   assert.equal(m.microphoneOpens(), 1);
   assert.equal(rt.hasMic, true);
   assert.equal(m.track.enabled, true);
-  assert.deepEqual(m.sent.map(e => e.type), ['session.input_audio.mute', 'session.input_audio.unmute', 'session.commentary.append']);
+  assert.deepEqual(m.sent.map(e => e.type), ['session.input_audio.mute', 'session.input_audio.unmute', 'session.instructions.append', 'session.commentary.append']);
   rt.close(); m.emit({type:'session.closed'});
 });
 
