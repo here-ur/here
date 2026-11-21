@@ -59,6 +59,7 @@ export async function connectLive(
       if (response.status === 401 || response.status === 403) fail('회원·이용 동의를 다시 확인하려면 새로고침해 주세요.');
       if (!response.ok) return null;
       const { context } = await response.json();
+      if (context?.support_mode === 'counsel' && !closed && !closing) h.onTool("show_get_help");
       return { ...context, recent_messages: messages, app_signals: { conversation_mode: 'voice' } };
     },
     partial: (role, text) => {

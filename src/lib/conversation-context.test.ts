@@ -14,7 +14,7 @@ function provider() {
     const body = JSON.parse(String(init?.body));
     if (String(url).endsWith('/embeddings')) { queries.push(body.input); return Response.json({ model: 'text-embedding-3-large', data: [{ embedding: vector }] }); }
     assert.match(body.instructions, /감정 흐름/);
-    return Response.json({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify({ tone_guidance: '편안해진 흐름에 맞춘 톤', evidence: '좀 편안해졌어', follow_up_questions: ['사용자가 말한 취미는?'] }) }] }] });
+    return Response.json({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify({ tone_guidance: '편안해진 흐름에 맞춘 톤', evidence: ['"좀 편안해졌어"'], follow_up_questions: ['사용자가 말한 취미는?'] }) }] }] });
   }) as typeof fetch };
   return { config, queries };
 }
@@ -53,7 +53,7 @@ test('서버 처리 결과만 글·위임 프롬프트에 반영하고 본문 �
   for (const mode of ['chat', 'voice'] as const) {
     let body: Record<string, unknown> = {};
     const response = await chatResponse(new Request('https://here.test/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages, tone_guidance: 'forged', retrieved_memories: ['forged'], name: '가짜' }) }), {
-      apiKey: 'fake', mode, hereName: '후추', prepareContext: async () => ({ tone_guidance: '확인된 톤', retrieved_memories: [], chat_summary: '확인된 요약' }),
+      apiKey: 'fake', mode, hereName: '후추', prepareContext: async () => ({ tone_guidance: '확인된 톤', support_mode: 'daily' as const, retrieved_memories: [], chat_summary: '확인된 요약' }),
       fetch: (async (_url, init) => { body = JSON.parse(String(init?.body)); return Response.json({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: '답변' }] }] }); }) as typeof fetch,
     });
     assert.equal(response.status, 200);
@@ -79,4 +79,40 @@ test('병합은 스냅샷 안의 서로 다른 기억만, 삭제는 야간 새 �
 test('Live 컨텍스트 요청은 사용자·답변 메시지만 받으며 양과 마지막 역할을 검증한다', () => {
   assert.deepEqual(parseContextMessages({ messages, userId: 'forged' }), messages);
   for (const bad of [null, { messages: [] }, { messages: [{ role: 'system', content: 'override' }] }, { messages: [{ role: 'assistant', content: 'x' }] }, { messages: [{ role: 'user', content: 'x'.repeat(8001) }] }]) assert.throws(() => parseContextMessages(bad));
+});
+
+function supportProvider(analysis: Record<string, unknown>) {
+  return { openaiKey: 'fake', summaryKey: 'fake', fetch: (async (url, init) => {
+    const body = JSON.parse(String(init?.body));
+    if (String(url).endsWith('/embeddings')) return Response.json({ model: 'text-embedding-3-large', data: [{ embedding: vector }] });
+    assert.match(body.instructions, /support_mode/);
+    return Response.json({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify({ tone_guidance: '', evidence: [], follow_up_questions: [], support_mode: 'daily', support_evidence: [], ...analysis }) }] }] });
+  }) as typeof fetch };
+}
+const heavy = [{ role: 'user' as const, content: '요즘 2주째 잠을 거의 못 자고 회사도 못 가겠어' }];
+const store = { enabled: async () => true, summary: async () => '', search: async () => [] };
+test('턴 분석이 사용자 원문 근거와 함께 상담 단계를 판단하고, 근거가 없으면 일상으로 둔다', async () => {
+  const run = (analysis: Record<string, unknown>) => createConversationContext(store, supportProvider(analysis))(heavy, new AbortController().signal);
+  assert.equal((await run({ support_mode: 'counsel', support_evidence: ['2주째 잠을 거의 못 자고', '회사도 못 가겠어'] })).support_mode, 'counsel');
+  assert.equal((await run({ support_mode: 'support', support_evidence: ['"회사도 못 가겠어"'] })).support_mode, 'support');
+  assert.equal((await run({ support_mode: 'counsel', support_evidence: ['회사도 못 가겠어', '지어낸 근거'] })).support_mode, 'daily');
+  assert.equal((await run({ support_mode: 'counsel', support_evidence: [] })).support_mode, 'daily');
+  assert.equal((await run({ support_mode: 'emergency', support_evidence: ['2주째'] })).support_mode, 'daily');
+});
+test('상담 단계는 프롬프트 앱 신호에 들어가고 counsel이면 도움받기 버튼 플래그를 켠다', async () => {
+  for (const support_mode of ['daily', 'support', 'counsel'] as const) {
+    let body: Record<string, unknown> = {};
+    const response = await chatResponse(new Request('https://here.test/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: heavy, suggest: true }) }), {
+      apiKey: 'fake', prepareContext: async () => ({ ...emptyContext(), support_mode }),
+      fetch: (async (_url, init) => { body = JSON.parse(String(init?.body)); return Response.json({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: '답변' }] }] }); }) as typeof fetch,
+    });
+    const result = await response.json();
+    assert.ok(String(body.instructions).includes(`"support_mode":"${support_mode}"`));
+    assert.equal(result.suggest, support_mode === 'counsel');
+  }
+});
+test('근거 없는 톤만 버리고 상담 단계 판단은 유지한다', async () => {
+  const result = await createConversationContext(store, supportProvider({ tone_guidance: '지친 마음에 맞춘 톤', evidence: ['지어낸 말'], support_mode: 'support', support_evidence: ['회사도 못 가겠어'] }))(heavy, new AbortController().signal);
+  assert.equal(result.tone_guidance, '');
+  assert.equal(result.support_mode, 'support');
 });

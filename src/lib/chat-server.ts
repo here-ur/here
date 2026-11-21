@@ -181,6 +181,8 @@ export async function chatResponse(request: Request, config: ChatServerConfig): 
     const url = endpoint(config.baseUrl?.trim() || DEFAULT_BASE_URL);
     const model = config.model?.trim() || DEFAULT_MODEL;
     const context = await config.prepareContext?.(messages, controller.signal).catch(() => undefined);
+    // 턴 분석이 상담을 권할 단계로 보면 화면에 도움받기 버튼을 띄운다.
+    if (context?.support_mode === 'counsel') flags.suggest = true;
     const call = async () => {
       controller.signal.throwIfAborted();
       const response = await (config.fetch ?? fetch)(url, {
