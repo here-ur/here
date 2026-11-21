@@ -18,7 +18,9 @@ export async function POST(request: Request) {
   let messages;
   try { messages = parseContextMessages(await readSmallJson(request, 5000, 256000)); }
   catch { return json({ error: 'invalid_messages' }, 400); }
-  const context = await createConversationContext(contextStore(access.supabase), contextConfig(process.env))(messages, request.signal);
+  let context;
+  try { context = await createConversationContext(contextStore(access.supabase), contextConfig(process.env), 4500, true)(messages, request.signal); }
+  catch { return json({ error: 'context_unavailable' }, 503); }
   const revoked = await requireMemoryConsent(access.supabase);
   if (revoked) return revoked;
   return json({ context });

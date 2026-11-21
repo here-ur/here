@@ -14,11 +14,12 @@ export async function POST(request: Request) {
   if (consent) return consent;
   const quota = await requireApiQuota(access.supabase, "chat");
   if (quota) return quota;
-  const prepareContext = memoryEnabled(process.env) ? createConversationContext(contextStore(access.supabase), contextConfig(process.env)) : undefined;
+  const prepareContext = memoryEnabled(process.env) ? createConversationContext(contextStore(access.supabase), contextConfig(process.env), 4500, true) : undefined;
   return chatResponse(request, {
     onboardingAnswers: access.onboardingAnswers,
     hereName: access.hereName,
     prepareContext,
+    contextRequired: Boolean(prepareContext),
     mode: "voice",
     apiKey: process.env.RUNYOUR_API_KEY,
     baseUrl: process.env.RUNYOUR_BASE_URL,

@@ -43,11 +43,12 @@ test("output tap preserves playback, gates mute/pause, closes context and cancel
   }
   let level = 0, time = 0;
   const tick = () => { time += 16; const pending = [...frames.values()]; frames.clear(); pending.forEach(fn => fn(time)); };
-  const meter = createOutputAudioMeter(value => { level = value; });
+  const raw: boolean[] = [];
+  const meter = createOutputAudioMeter(value => { level = value; }, active => raw.push(active));
   meter.attach(remote, audio);
   tick(); assert.equal(level, 0);
   meter.setEnabled(true); tick(); assert.ok(level > 0);
-  audio.muted = true; tick(); assert.equal(level, 0);
+  audio.muted = true; tick(); assert.equal(level, 0); assert.equal(raw.at(-1), true, '음소거 중에도 미재생 음성 경계를 관측');
   audio.muted = false; tick(); assert.ok(level > 0);
   Object.defineProperty(audio, "paused", { configurable: true, value: true });
   tick(); assert.equal(level, 0);

@@ -6,6 +6,7 @@ import { liveConversation, type LiveDelegateReply } from "./live-conversation.ts
 import { requestVoiceMemory, VoiceMemoryAccessError } from "./voice-memory-client.ts";
 import { liveContextChunks } from "./live-context.ts";
 import { voiceTiming } from "./voice-timing.ts";
+import { livePlaybackGate } from './live-playback-gate.ts';
 
 const CONNECTION_ERROR = "음성 대화를 연결하지 못했어요. 잠시 후 다시 눌러 주세요.";
 
@@ -27,6 +28,8 @@ export async function connectLive(
   let microphoneError: string | undefined;
   let started = false, closed = false, closing = false, memory = false;
   let requestedMic = options.microphone !== false;
+  let requestedSound = true, contextMuted = false;
+  const acknowledgments = new Map<string, { resolve(): void; reject(error: Error): void }>();
   let status: Parameters<Handlers["onStatus"]>[0] = "connecting";
   let lastSpeechAt = 0;
   let closeTimer: ReturnType<typeof setTimeout> | undefined;
@@ -45,21 +48,45 @@ export async function connectLive(
   function send(event: object) {
     if (!started || closed || closing || channel.readyState !== "open") return;
     const command = event as { type: string; content?: string };
-    const contents = typeof command.content === "string" ? liveContextChunks(command.content) : [undefined];
+    const contents = typeof command.content === "string" ? (command.content ? liveContextChunks(command.content) : ['']) : [undefined];
     for (const content of contents) channel.send(JSON.stringify({ ...event, ...(content !== undefined ? { content } : {}), event_id: crypto.randomUUID() }));
   }
+  async function appendContext(context: unknown, signal: AbortSignal) {
+    const chunks = liveContextChunks(JSON.stringify({ backend_context: context }));
+    // Every chunk must be accepted. Register all callbacks before sending anything.
+    await Promise.all(chunks.map(content => new Promise<void>((resolve, reject) => {
+      const id = crypto.randomUUID();
+      const finish = (error?: Error) => { acknowledgments.delete(id); signal.removeEventListener('abort', abort); if (error) reject(error); else resolve(); };
+      const abort = () => finish(Error('context_cancelled'));
+      if (signal.aborted || !started || closed || closing || channel.readyState !== 'open') { reject(Error('context_unavailable')); return; }
+      acknowledgments.set(id, { resolve: () => finish(), reject: finish });
+      signal.addEventListener('abort', abort, { once: true });
+      try { channel.send(JSON.stringify({ type: 'session.thinking.append', delegation_id: null, content, event_id: id })); }
+      catch { finish(Error('context_unavailable')); }
+    })));
+  }
+  const playback = livePlaybackGate({
+    mute: blocked => { contextMuted = blocked; audio.muted = contextMuted || !requestedSound; },
+    instruction: content => send({ type: 'session.instructions.append', delegation_id: null, content }),
+    append: appendContext,
+  });
   const conversation = liveConversation({
+    contextEnabled: () => memory && Boolean(accessToken),
+    contextPending: () => { if (memory && accessToken) playback.begin(); },
+    applyContext: (context, signal) => playback.apply(context, signal),
+    contextFailed: () => fail('사용자 맥락을 불러오지 못했어요. 마이크를 눌러 다시 연결해 주세요.'),
     prepareContext: async (messages, workSignal) => {
-      if (!memory || !accessToken) return null;
+      if (!memory || !accessToken) return {};
       const response = await fetch('/api/live/context', {
         method: 'POST', credentials: 'same-origin', cache: 'no-store',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ messages }), signal: AbortSignal.any([workSignal, controller.signal, AbortSignal.timeout(6000)]),
+        body: JSON.stringify({ messages }), signal: AbortSignal.any([workSignal, controller.signal, AbortSignal.timeout(8000)]),
       });
       if (response.status === 401 || response.status === 403) fail('회원·이용 동의를 다시 확인하려면 새로고침해 주세요.');
-      if (!response.ok) return null;
+      if (!response.ok) throw Error('context_unavailable');
       const { context } = await response.json();
-      return { ...context, recent_messages: messages, app_signals: { conversation_mode: 'voice' } };
+      if (!context || typeof context.tone_guidance !== 'string' || typeof context.chat_summary !== 'string' || !Array.isArray(context.retrieved_memories)) throw Error('invalid_context');
+      return { ...context, recent_messages: messages.slice(-8).map(m => ({ role: m.role, content: m.content.slice(-1000) })), app_signals: { conversation_mode: 'voice' } };
     },
     partial: (role, text) => {
       if (closing || closed) return;
@@ -111,7 +138,7 @@ export async function connectLive(
       lastSpeechAt = performance.now();
       timing("first_audio"); updateStatus("speaking");
     }
-  });
+  }, active => playback.observe(active));
   meter.setEnabled(true);
   const monitor = setInterval(() => {
     if (closed || closing || !started) return;
@@ -123,8 +150,11 @@ export async function connectLive(
   function cleanup() {
     if (closed) return;
     conversation.close();
+    playback.close();
     closed = true;
     controller.abort();
+    for (const pending of acknowledgments.values()) pending.reject(Error('session_closed'));
+    acknowledgments.clear();
     clearInterval(monitor); clearTimeout(closeTimer); clearTimeout(startTimer);
     signal?.removeEventListener("abort", close);
     if (resumePlayback) {
@@ -144,6 +174,7 @@ export async function connectLive(
   function close() {
     if (closed || closing) return;
     conversation.stopWork();
+    playback.close();
     // Stop transmitting/playing immediately; retain transport for final events.
     mic?.getTracks().forEach(track => { track.enabled = false; });
     audio.muted = true;
@@ -168,6 +199,7 @@ export async function connectLive(
     let event: Record<string, unknown>;
     try { event = JSON.parse(message.data); } catch { return; }
     if (!event || typeof event !== "object") return;
+    if (event.type === 'session.thinking.appended' && typeof event.client_event_id === 'string') acknowledgments.get(event.client_event_id)?.resolve();
     if (event.type === "session.delegation.created" || event.type === "session.started" || event.type === "session.closed") options.onDiagnostic?.(event.type);
     if (event.type === "session.started" && !started) {
       started = true; clearTimeout(startTimer); timing("channel_ready");
@@ -251,7 +283,7 @@ export async function connectLive(
       // Text conversations use /api/chat. Live accepts context, not Realtime conversation.item.create.
       sendText(text) { send({ type: "session.thinking.append", delegation_id: null, content: JSON.stringify({ role: "user", content: text.slice(0, 8000) }) }); },
       setMic(on) { requestedMic = on; applyMic(); if (status !== "speaking") updateStatus(on && mic ? "listening" : "idle"); },
-      setSound(on) { audio.muted = !on; if (!on) h.onOutputLevel?.(0, "rest"); }, close,
+      setSound(on) { requestedSound = on; audio.muted = contextMuted || !on; if (!on) h.onOutputLevel?.(0, "rest"); }, close,
     };
   } catch (error) { cleanup(); throw error; }
 }

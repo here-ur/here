@@ -23,13 +23,16 @@ test('context DB: isolation, capability leases, atomic merges, summary cursor, f
  const age=async()=>{await admin();await db.exec("update public.context_worker_runs set created_at=now()-interval '6 minutes',expires_at=now()-interval '1 minute'");};
  try {
   await db.exec(`create role anon;create role authenticated;create schema auth;create schema extensions;create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public,extensions to authenticated,anon;create table public.members(user_id uuid primary key);insert into public.members values('${a}'),('${b}');`);
-  for(const file of ['0003_conversation_memory.sql','0005_consent_events.sql','0012_conversation_history.sql','0014_conversation_message_replay.sql','0015_conversation_summary_version.sql','0018_conversation_worker.sql','0021_conversation_context.sql']) await db.exec(readFileSync(new URL('../../supabase/migrations/'+file,import.meta.url),'utf8'));
+  for(const file of ['0003_conversation_memory.sql','0005_consent_events.sql','0012_conversation_history.sql','0014_conversation_message_replay.sql','0015_conversation_summary_version.sql','0018_conversation_worker.sql','0021_conversation_context.sql','0023_live_context_snapshot.sql']) await db.exec(readFileSync(new URL('../../supabase/migrations/'+file,import.meta.url),'utf8'));
   await user(a);await val("select public.accept_memory_consent('2026-11-16-dev-v2',true,true) v");
   const one=await add(1,'기타를 좋아한다고 말했다'),two=await add(2,'기타가 취미라고 말했다');
   await val('select public.save_conversation_batch($1,$2::jsonb) v',[a,JSON.stringify([{id:a,role:'user',content:'기타 좋아해',at:new Date().toISOString()}])]);
   const job=(await start())!;assert.ok(job);assert.equal(job.memories.length,2);assert.equal(job.messages.length,1);
   assert.equal(await start(),null,'single active job');
-  await user(b);assert.equal(await val('select public.read_chat_summary() v'),null);
+  const snapshot = await val('select public.read_live_context() v') as {retrieved_memories: unknown[]; recent_messages: unknown[]};
+  assert.equal(snapshot.retrieved_memories.length, 2);assert.equal(snapshot.recent_messages.length, 1);
+  await user(b);assert.equal(await val('select public.read_live_context() v'),null);
+  assert.equal(await val('select public.read_chat_summary() v'),null);
   assert.equal(await finish(job.token,'타인 덮어쓰기'),false);
   await assert.rejects(db.exec('select * from public.context_worker_runs'),/permission denied/);
   await user(a);
@@ -44,6 +47,7 @@ test('context DB: isolation, capability leases, atomic merges, summary cursor, f
   assert.equal(await val('select public.forget_memory($1) v',[two]),true);
   assert.equal(await finish(second.token,'되살리기'),false);
   assert.equal(await val('select public.read_chat_summary() v'),'');
+  assert.equal(((await val('select public.read_live_context() v')) as {retrieved_memories:unknown[]}).retrieved_memories.length,0);
   assert.equal(await val("select count(*)::int v from public.conversation_memories where status='ready'"),0);
   await add(3,'안녕이라고 인사했다');
   await admin();const issued=(await db.query<{token:string}>('select * from public.issue_context_work()')).rows[0];assert.ok(issued);

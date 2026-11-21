@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     summaryModel: process.env.MEMORY_SUMMARY_MODEL,
   };
   const memory = memoryEnabled(process.env) ? createMemoryService(supabaseMemoryStore(access.supabase), memoryConfig) : null;
-  const prepareContext = memory ? createConversationContext(contextStore(access.supabase), memoryConfig) : undefined;
+  const prepareContext = memory ? createConversationContext(contextStore(access.supabase), memoryConfig, 4500, true) : undefined;
   let history: {batchId:string;userMessageId:string;assistantMessageId:string;userAt:number;assistantAt:number}|undefined;
   const historyVersion = request.headers.get("x-here-history");
   if(memory && (historyVersion === "v1" || historyVersion === "v2")) {
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
     onboardingAnswers: access.onboardingAnswers,
     hereName: access.hereName,
     prepareContext,
+    contextRequired: Boolean(prepareContext),
     onExchange: history ? async (messages, reply) => {
       const h=history!;
       const assistantAt = historyVersion === "v2" ? Math.max(Date.now(), h.userAt + 1) : h.assistantAt;

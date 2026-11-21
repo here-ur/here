@@ -9,6 +9,9 @@ export type ConversationContext = {
   chat_summary: string;
 };
 export const emptyContext = (): ConversationContext => ({ tone_guidance: '', retrieved_memories: [], chat_summary: '' });
+export class ContextUnavailableError extends Error {
+  constructor() { super('context_unavailable'); }
+}
 type ContextStore = {
   enabled(signal: AbortSignal): Promise<boolean>;
   summary(signal: AbortSignal): Promise<string>;
@@ -44,20 +47,20 @@ export async function analyseTurn(messages: MemoryMessage[], config: MemoryConfi
   return { tone_guidance: result.tone_guidance.trim(), follow_up_questions: result.follow_up_questions as string[] };
 }
 
-export function createConversationContext(store: ContextStore, config: MemoryConfig, timeoutMs = 3500) {
+export function createConversationContext(store: ContextStore, config: MemoryConfig, timeoutMs = 3500, required = false) {
   return async (messages: MemoryMessage[], requestSignal: AbortSignal): Promise<ConversationContext> => {
     const context = emptyContext();
     const signal = AbortSignal.any([requestSignal, AbortSignal.timeout(timeoutMs)]);
     const latest = messages.at(-1);
     if (latest?.role !== 'user' || !latest.content.trim()) return context;
     try {
-      if (!await store.enabled(signal)) return context;
+      if (!await store.enabled(signal)) throw new ContextUnavailableError();
       const hits = new Map<string, MemoryHit>();
       async function search(query: string) {
         try {
           const found = await store.search(await embed(query.slice(0, 1500), config, signal), signal);
           return found.filter(h => typeof h.id === 'string' && typeof h.summary === 'string' && h.summary.length <= 902 && Number.isFinite(Date.parse(h.created_at)));
-        } catch { return []; }
+        } catch { if (required) throw new ContextUnavailableError(); return []; }
       }
       // Start the direct query and summary read while tone/search questions are being generated.
       const [direct, followups] = await Promise.all([
@@ -66,17 +69,18 @@ export function createConversationContext(store: ContextStore, config: MemoryCon
           try {
             const analysis = await analyseTurn(messages, config, signal);
             context.tone_guidance = analysis.tone_guidance;
-            return await Promise.all(analysis.follow_up_questions.map(search));
+            // Direct search is required; optional query expansion must not suppress its results.
+            return await Promise.all(analysis.follow_up_questions.map(q => search(q).catch(() => [])));
           } catch { return []; }
         })(),
-        store.summary(signal).then(summary => { context.chat_summary = summary; }).catch(() => {}),
+        store.summary(signal).then(summary => { context.chat_summary = summary; }).catch(() => { if (required) throw new ContextUnavailableError(); }),
       ]);
       for (const hit of [...direct, ...followups.flat()]) if (!hits.has(hit.id)) hits.set(hit.id, hit);
       context.retrieved_memories = [...hits.values()].slice(0, 5).map(h => ({ summary: h.summary, at: h.created_at }));
       // Withdrawal while the providers were running must also suppress their results.
-      if (requestSignal.aborted || !await store.enabled(AbortSignal.any([requestSignal, AbortSignal.timeout(1000)]))) return emptyContext();
+      if (requestSignal.aborted || !await store.enabled(AbortSignal.any([requestSignal, AbortSignal.timeout(1000)]))) throw new ContextUnavailableError();
       return context;
-    } catch { return emptyContext(); }
+    } catch { if (required) throw new ContextUnavailableError(); return emptyContext(); }
   };
 }
 

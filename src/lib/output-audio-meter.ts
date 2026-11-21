@@ -1,5 +1,5 @@
 import { estimateMouthShape, type MouthShape } from "./mouth-shape.ts";
-/** Visual-only tap of the remote audio. Never connects to speakers or reads the microphone. */
+/** Remote audio tap for visuals and the context playback gate. Never connects to speakers or reads the microphone. */
 export function speechEnvelope(samples: Float32Array, previous: number, elapsedMs: number): number {
   let energy = 0;
   for (const sample of samples) energy += sample * sample;
@@ -10,7 +10,7 @@ export function speechEnvelope(samples: Float32Array, previous: number, elapsedM
   return next < 0.015 ? 0 : next;
 }
 
-export function createOutputAudioMeter(onLevel: (level: number, shape: MouthShape) => void) {
+export function createOutputAudioMeter(onLevel: (level: number, shape: MouthShape) => void, onSignal?: (active: boolean) => void) {
   let context: AudioContext | undefined;
   let source: MediaStreamAudioSourceNode | undefined;
   let analyser: AnalyserNode | undefined;
@@ -58,6 +58,12 @@ export function createOutputAudioMeter(onLevel: (level: number, shape: MouthShap
           if (closed) return;
           const elapsed = last ? time - last : 16;
           last = time;
+          if (onSignal && enabled && context?.state === 'running' && !document.hidden && !audio?.paused) {
+            analyser!.getFloatTimeDomainData(samples);
+            let energy = 0;
+            for (const sample of samples) energy += sample * sample;
+            onSignal?.(Math.sqrt(energy / samples.length) > 0.008);
+          }
           if (enabled && context?.state === "running" && !document.hidden && !audio?.paused && !audio?.muted && audio?.volume !== 0) {
             analyser!.getFloatTimeDomainData(samples);
             level = speechEnvelope(samples, level, elapsed);

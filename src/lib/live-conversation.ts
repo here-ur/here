@@ -4,7 +4,11 @@ type Fragment = { delta: string; start_ms: number; end_ms: number };
 type Segment = { role: Msg["role"]; fragments: Fragment[]; index: number };
 export type LiveDelegateReply = { reply: string; crisis: boolean; suggest: boolean; sources?: import("./web-search-protocol.ts").SearchSource[] };
 type Callbacks = {
+  contextEnabled?(): boolean;
   prepareContext?(messages: Msg[], signal: AbortSignal): Promise<unknown>;
+  contextPending?(): void;
+  applyContext?(context: unknown, signal: AbortSignal): Promise<void>;
+  contextFailed?(): void;
   partial(role: Msg["role"], text: string): void;
   complete(role: Msg["role"], text: string): void;
   remember(text: string, sourceId: string): void;
@@ -29,6 +33,7 @@ export function liveConversation(c: Callbacks, sessionId: string) {
   let work: AbortController | undefined;
   let contextWork: AbortController | undefined;
   let contextTimer: ReturnType<typeof setTimeout> | undefined;
+  let contextBlocked = false;
   const textOf = (segment: Segment) => segment.fragments.slice().sort((a, b) => a.start_ms - b.start_ms).map(f => f.delta).join("");
   function flush(role: Msg["role"]) {
     clearTimeout(timers[role]);
@@ -66,7 +71,7 @@ export function liveConversation(c: Callbacks, sessionId: string) {
   function scheduleContext() {
     clearTimeout(contextTimer);
     contextWork?.abort();
-    if (!c.prepareContext || closed || stopping) return;
+    if (!c.prepareContext || c.contextEnabled?.() === false || closed || stopping) return;
     // Analyse a settled transcript burst without holding up Live audio or its acknowledgments.
     contextTimer = setTimeout(async () => {
       const messages = context();
@@ -77,9 +82,12 @@ export function liveConversation(c: Callbacks, sessionId: string) {
       try {
         const prepared = await c.prepareContext!(messages, controller.signal);
         if (!controller.signal.aborted && !closed && !stopping && revision === atRevision && prepared) {
-          c.send({ type: 'session.thinking.append', delegation_id: null, content: JSON.stringify({ backend_context: prepared }) });
+          if (c.applyContext) await c.applyContext(prepared, controller.signal);
+          else c.send({ type: 'session.thinking.append', delegation_id: null, content: JSON.stringify({ backend_context: prepared }) });
+          if (!controller.signal.aborted && revision === atRevision) contextBlocked = false;
         }
-      } catch { /* Late or failed context never interrupts audio. */ }
+        else if (!controller.signal.aborted && revision === atRevision && !closed && !stopping) c.contextFailed?.();
+      } catch { if (!controller.signal.aborted && revision === atRevision && !closed && !stopping) c.contextFailed?.(); }
     }, 400);
   }
   async function run() {
@@ -128,7 +136,16 @@ export function liveConversation(c: Callbacks, sessionId: string) {
       if (!role || typeof event.delta !== "string" || !event.delta || event.delta.length > 8000
         || typeof event.start_ms !== "number" || typeof event.end_ms !== "number"
         || !Number.isFinite(event.start_ms) || !Number.isFinite(event.end_ms) || event.start_ms < 0 || event.end_ms < event.start_ms) return;
-      if (role === "user") { revision++; work?.abort(); schedule(); }
+      if (role === "user") {
+        revision++; work?.abort(); schedule();
+        if (c.prepareContext && c.contextPending && c.contextEnabled?.() !== false) {
+          if (!contextBlocked) flush('assistant');
+          contextBlocked = true;
+          c.contextPending();
+        }
+      }
+      // Speech suppressed by the playback gate is not shown or saved as a heard answer.
+      if (role === 'assistant' && contextBlocked) return;
       if (pending[role] && textOf(pending[role]!).length + event.delta.length > 8000) flush(role);
       pending[role] ??= { role, fragments: [], index: sequence++ };
       pending[role]!.fragments.push({ delta: event.delta, start_ms: event.start_ms, end_ms: event.end_ms });

@@ -80,3 +80,24 @@ test('Live 컨텍스트 요청은 사용자·답변 메시지만 받으며 양�
   assert.deepEqual(parseContextMessages({ messages, userId: 'forged' }), messages);
   for (const bad of [null, { messages: [] }, { messages: [{ role: 'system', content: 'override' }] }, { messages: [{ role: 'assistant', content: 'x' }] }, { messages: [{ role: 'user', content: 'x'.repeat(8001) }] }]) assert.throws(() => parseContextMessages(bad));
 });
+
+test('필수 맥락 모드에서는 DB/검색 실패와 철회를 빈 기억으로 취급하지 않는다', async () => {
+  const { config } = provider();
+  for (const store of [
+    { enabled: async () => false, summary: async () => '', search: async () => [] },
+    { enabled: async () => true, summary: async () => { throw Error('db'); }, search: async () => [] },
+    { enabled: async () => true, summary: async () => '', search: async () => { throw Error('search'); } },
+  ]) await assert.rejects(createConversationContext(store, config, 1000, true)(messages, new AbortController().signal), /context_unavailable/);
+  const empty = await createConversationContext({ enabled: async () => true, summary: async () => '', search: async () => [] }, config, 1000, true)(messages, new AbortController().signal);
+  assert.deepEqual(empty.retrieved_memories, []);
+});
+test('맥락 조회 실패 시 글·음성 위임은 답변 모델을 호출하지 않는다', async () => {
+  for (const mode of ['chat','voice'] as const) {
+    const r = await chatResponse(new Request('https://here.test/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages }) }), {
+      apiKey: 'fake', mode, contextRequired: true, prepareContext: async () => { throw Error('missing_rpc'); },
+      fetch: async () => { assert.fail('맥락 없이 답변 모델을 호출함'); },
+    });
+    assert.equal(r.status, 503);
+    assert.doesNotMatch(await r.text(), /missing_rpc/);
+  }
+});

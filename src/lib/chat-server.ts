@@ -27,6 +27,7 @@ export type ChatServerConfig = {
   fetch?: typeof fetch;
   timeoutMs?: number;
   prepareContext?: (messages: Message[], signal: AbortSignal) => Promise<ConversationContext>;
+  contextRequired?: boolean;
   onExchange?: (messages: Message[], reply: string) => Promise<void | { assistantAt: number }>;
   memory?: {
     recall(messages: Message[], signal: AbortSignal): Promise<string>;
@@ -180,7 +181,10 @@ export async function chatResponse(request: Request, config: ChatServerConfig): 
     if (!key) throw new ChatFailure(503, "채팅 연결이 아직 설정되지 않았어요.");
     const url = endpoint(config.baseUrl?.trim() || DEFAULT_BASE_URL);
     const model = config.model?.trim() || DEFAULT_MODEL;
-    const context = await config.prepareContext?.(messages, controller.signal).catch(() => undefined);
+    let context: ConversationContext | undefined;
+    try { context = await config.prepareContext?.(messages, controller.signal); }
+    catch { if (config.contextRequired) throw new ChatFailure(503, '대화 맥락을 불러오지 못했어요. 잠시 뒤 다시 보내 주세요.'); }
+    if (config.contextRequired && !context) throw new ChatFailure(503, '대화 맥락을 불러오지 못했어요. 잠시 뒤 다시 보내 주세요.');
     const call = async () => {
       controller.signal.throwIfAborted();
       const response = await (config.fetch ?? fetch)(url, {
