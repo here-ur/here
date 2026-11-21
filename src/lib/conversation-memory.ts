@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { embed, readProvider, DEFAULT_SUMMARY_MODEL, type MemoryConfig, type MemoryMessage } from './memory.ts';
 import { memoryRetryFetch } from './ai-operations.ts';
+import { processContextMaintenance } from './context-maintenance.ts';
 
 export async function summarizeConversation(messages: MemoryMessage[], config: MemoryConfig, signal: AbortSignal, context: MemoryMessage[] = []): Promise<string> {
   const input = JSON.stringify({context, messages});
@@ -23,10 +24,12 @@ export async function summarizeConversation(messages: MemoryMessage[], config: M
 }
 
 export async function processConversationMemories(client: SupabaseClient, config: MemoryConfig) {
+  const deadline = Date.now() + 60000;
   const {data: pending,error}=await client.rpc('pending_conversation_batches').abortSignal(AbortSignal.timeout(5000));
   if(error || !Array.isArray(pending)) return;
   for(const batch of pending) {
-    const signal=AbortSignal.timeout(45000);
+    if (Date.now() >= deadline) break;
+    const signal=AbortSignal.timeout(Math.min(45000, Math.max(1, deadline - Date.now())));
     const {data:job,error:claimError}=await client.rpc('claim_conversation_batch',{p_id:batch.id}).abortSignal(signal);
     if(claimError || !job) continue;
     try {
@@ -39,4 +42,5 @@ export async function processConversationMemories(client: SupabaseClient, config
       await client.rpc('fail_memory',{p_id:job.id,p_lease:job.lease}).abortSignal(AbortSignal.timeout(3000));
     }
   }
+  await processContextMaintenance(client, config);
 }

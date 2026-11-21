@@ -347,7 +347,7 @@ test("데이터 채널이 열리면 음성 인사를 도구 호출 없이 한 �
   assert.equal(channel.sent.filter((event) => event.type === "response.create").length, 1);
   assert.deepEqual(greeting.response?.output_modalities, ["audio"]);
   assert.equal(greeting.response?.tool_choice, "none");
-  assert.ok(greeting.response?.instructions?.trim());
+  assert.equal(greeting.response?.instructions, "음성 대화가 시작되면 먼저 인사하세요.");
   assert.ok(Object.keys(greeting.response?.metadata ?? {}).length > 0);
   assert.equal(m.statuses.at(-1), "connecting");
 });

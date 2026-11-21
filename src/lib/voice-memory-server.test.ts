@@ -50,5 +50,5 @@ test("음성 API는 서버 회원·개발 환경·동의를 강제하며 동일 
   assert.match(route, /if \(!memoryEnabled\(process.env\)\)/);
   assert.match(route, /supabaseMemoryStore\(access.supabase\)/);
   assert.match(route, /requireMemoryConsent\(access.supabase\)/);
-  assert.match(route, /after\(\(\) => memory.remember\(messages, sourceId\)\)/);
+  assert.match(route, /after\(async \(\) => \{ await memory.remember\(messages, sourceId\); await processContextMaintenance/);
 });

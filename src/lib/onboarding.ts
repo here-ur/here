@@ -1,5 +1,5 @@
 // localStorage는 계정 프로필의 캐시. 원본은 Supabase 사용자 메타데이터에 저장한다.
-// 프로필 중 이름은 채팅·음성 설정에, 목소리는 음성 설정에 사용한다. 대화 내용은 답변 생성을 위해 별도로 전송한다.
+// 네 질문의 응답은 서버가 계정에서 읽어 글·음성 공통 프롬프트에 전달한다. 대화 내용은 별도로 전송한다.
 
 import { accountKey } from "./local-scope.ts";
 
@@ -69,6 +69,18 @@ export const QUESTIONS = [
 
 export type QuestionId = (typeof QUESTIONS)[number]["id"];
 export type Answers = Partial<Record<QuestionId, string>>;
+
+/** 네 질문의 실제 선택지만 보관한다. 자유 입력·다른 프로필 필드는 제외한다. */
+export function pickOnboardingAnswers(raw: unknown): Answers {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const source = raw as Record<string, unknown>;
+  const answers: Answers = {};
+  for (const q of QUESTIONS) {
+    const value = source[q.id];
+    if (typeof value === "string" && (q.options as readonly string[]).includes(value)) answers[q.id] = value;
+  }
+  return answers;
+}
 
 // 답을 고르면 고양이가 한 줄 받아친다. 말투는 시니컬하게 두되, 시니컬은 고양이 자신·상황에만 쓴다.
 // 사용자의 감정·고민을 평가하거나 단정하지 않고, 충고하지 않고, "나한테만 말해" 같은 말을 하지 않는다(상담자 기본 원칙 [2]·[3]·[5]).
@@ -164,7 +176,7 @@ export function sceneOfStep(step: OnboardingStep, preview = false): { scene: Sta
 export const QUESTION_STEPS = { q1: "lately", q2: "concern", q3: "want", q4: "support" } as const satisfies Partial<Record<OnboardingStep, QuestionId>>;
 
 // 계정 프로필에는 화면 문구 대신 짧은 값으로 남긴다(문구를 고쳐도 저장 값은 그대로).
-// '요즘 마음' 답은 지금처럼 저장하지 않는다(대화 방식에만 반영). 아래 두 값도 아직 AI 지시문에는 넘기지 않는다.
+// 네 질문의 원래 선택은 onboardingAnswers에 별도로 보관한다. 아래 ID는 기존 화면과의 호환용이다.
 export const CONCERN_IDS = { "일·학업": "work", "사람·관계": "relationship", "나 자신": "self", "몸·생활": "life", "그냥 이야기하고 싶어요": "just_talk" } as const;
 export const SUPPORT_IDS = { "있어요": "has", "가끔 있어요": "sometimes", "지금은 없어요": "none" } as const;
 export type ConcernId = (typeof CONCERN_IDS)[keyof typeof CONCERN_IDS];
@@ -263,8 +275,9 @@ export type Profile = {
   voice: VoiceId;
   style: StyleId;
   accessory?: string; // 구름 정원에서 연 꾸미기 아이템(없으면 맨몸)
-  concern?: ConcernId; // 질문 2(요즘 마음이 가장 많이 가는 것). 아직 AI 지시문에는 넘기지 않는다.
-  support?: SupportId; // 질문 4(힘들 때 이야기할 사람). 아직 AI 지시문에는 넘기지 않는다.
+  concern?: ConcernId; // 질문 2의 기존 저장 ID.
+  support?: SupportId; // 질문 4의 기존 저장 ID.
+  onboardingAnswers?: Answers; // 네 질문에서 사용자가 선택한 원래 응답.
 };
 
 const KEY = "here.profile.v1";
@@ -317,7 +330,9 @@ export function parseProfile(raw: string | null): Profile | null {
   try {
     const p = JSON.parse(raw ?? "null");
     if (!p || typeof p.companion !== "string" || !p.companion.trim()) return null;
+    const onboardingAnswers = pickOnboardingAnswers(p.onboardingAnswers);
     return {
+      ...(Object.keys(onboardingAnswers).length ? { onboardingAnswers } : {}),
       nickname: typeof p.nickname === "string" ? p.nickname.trim().slice(0, 20) : "",
       companion: cleanName(p.companion),
       shape: SHAPES.some(x => x.id === p.shape) ? p.shape : "cloud",

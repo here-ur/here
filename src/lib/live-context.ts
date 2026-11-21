@@ -1,9 +1,3 @@
-import { safeHomeOpener } from "./home-opener.ts";
-
-export function liveGreeting(opener?: string) {
-  return `한국어로 다음 인사를 한 번만 자연스럽게 말하고 기다려: ${JSON.stringify(safeHomeOpener(opener))}`;
-}
-
 /** Live context appends allow 500 tokens. A 440 UTF-8-byte ceiling is a
  * conservative token upper bound, including Korean/emoji, without guessing
  * tokens from character count. Never split a Unicode code point. */

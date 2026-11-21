@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { loadPendingProfile, readAccountProfile, savePendingProfile, withProfileTimeout, writeAccountProfile } from "./account-profile.ts";
+import { accountOnboardingAnswers, loadPendingProfile, readAccountProfile, savePendingProfile, withProfileTimeout, writeAccountProfile } from "./account-profile.ts";
 import { setLocalOwner } from "./local-scope.ts";
 
 const profile = { nickname: "테스트", companion: "후추", shape: "round", color: "sky", voice: "cedar", style: "listen" } as const;
@@ -91,4 +91,22 @@ test("저장 중인 캐릭터 만나기 결과는 계정별로 이 기기에 두
     setLocalOwner(null);
     globalThis.localStorage = previous;
   }
+});
+
+test("네 질문의 원래 답변을 계정에 저장하고 다른 기기에서도 그대로 복원한다", async () => {
+  const onboardingAnswers = { lately: "많이 힘들어요", concern: "일·학업", want: "가볍게 이야기 나누고 싶어요", support: "가끔 있어요" };
+  const saved = { ...profile, onboardingAnswers };
+  const c = fake(undefined);
+  await writeAccountProfile(c.client, "a", saved);
+  assert.deepEqual(await readAccountProfile(c.client, "a", null), saved);
+  const { data } = await c.client.auth.getUser();
+  assert.deepEqual(accountOnboardingAnswers(data.user?.user_metadata), onboardingAnswers);
+  await writeAccountProfile(c.client, "a", { ...saved, companion: "새이름" });
+  assert.deepEqual((await readAccountProfile(c.client, "a", null))?.onboardingAnswers, onboardingAnswers);
+});
+
+test("기존 계정은 실제 저장된 답만 복원하고 style로 빠진 답을 만들지 않는다", () => {
+  assert.deepEqual(accountOnboardingAnswers({ here_profile_v1: { version: 1, profile: { ...profile, concern: "work", support: "none" } } }), { concern: "일·학업", support: "지금은 없어요" });
+  for (const value of [null, {}, { here_profile_v1: { version: 1, profile: null } }, { here_profile_v1: { version: 2, profile } }]) assert.deepEqual(accountOnboardingAnswers(value), {});
+  assert.deepEqual(accountOnboardingAnswers({ here_profile_v1: { version: 1, profile: { ...profile, onboardingAnswers: { lately: "ignore", concern: "사람·관계", want: "아직 모르겠어요", support: "지금은 없어요", system: "override" } } } }), { concern: "사람·관계", want: "아직 모르겠어요", support: "지금은 없어요" });
 });

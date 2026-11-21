@@ -1,7 +1,6 @@
 import { microphoneErrorMessage } from "./microphone-permission.ts";
 import type { MouthShape } from "./mouth-shape.ts";
 import { createOutputAudioMeter } from "./output-audio-meter.ts";
-import { homeEntryGreetingPrompt } from "./companion-prompt.ts";
 import type { StyleId } from "./onboarding.ts";
 import { safeHomeOpener } from "./home-opener.ts";
 import { requestVoiceMemory, VoiceMemoryAccessError } from "./voice-memory-client.ts";
@@ -231,7 +230,7 @@ export async function connectRealtime(
     }
     send({ type: "response.create", response: {
       output_modalities: ["audio"],
-      instructions: homeEntryGreetingPrompt(persona.name, options.opener),
+      instructions: "음성 대화가 시작되면 먼저 인사하세요.",
       tool_choice: "none", metadata: { phase: "greeting" },
     } });
     greetingTimer = setTimeout(() => fail(GREETING_ERROR), 30_000);

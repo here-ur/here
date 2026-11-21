@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { ONBOARDING_STEPS, PROMISE_REPLY, STAGE_NOTICE, STAGE_OPEN, STAGE_SCENES, resumeStep, sceneOfStep, stepOfScene } from "./onboarding.ts";
+import { ONBOARDING_STEPS, PROMISE_REPLY, STAGE_NOTICE, STAGE_OPEN, STAGE_SCENES, pickOnboardingAnswers, resumeStep, sceneOfStep, stepOfScene } from "./onboarding.ts";
 
 // 캐릭터 만나기는 1번 톤 무대가 그린다: 값은 app/Onboarding.tsx, 무대를 세우는 일은 app/OnboardingStage.tsx,
 // 장면·동작은 public/onboarding의 스크립트가 맡는다. 여기서는 그 셋이 지켜야 할 약속을 글자로 확인한다.
@@ -107,7 +107,7 @@ test("하던 자리를 이 탭에 남기고 되살리며, 미리보기(initialSt
   for (const scene of STAGE_SCENES) assert.ok((ONBOARDING_STEPS as readonly string[]).includes(stepOfScene(scene)), scene);
   assert.equal(stepOfScene("done"), "promise");
   // 무대가 넘긴 값 가운데 질문의 선택지에 있는 답만 남긴다.
-  assert.match(component, /if \(typeof value === "string" && \(q\.options as readonly string\[\]\)\.includes\(value\)\) answers\[q\.id\] = value;/);
+  assert.deepEqual(pickOnboardingAnswers({ lately: "조금 지쳤어요", want: "invalid", birthday: "2000-01-01" }), { lately: "조금 지쳤어요" });
 });
 
 test("고양이의 말은 건너뛸 수 없고, 화면 낭독기도 읽는다", () => {

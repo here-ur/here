@@ -9,8 +9,8 @@ import { createMemoryService, memoryEnabled } from "@/lib/memory";
 import { supabaseMemoryStore } from "@/lib/memory-store";
 import { requireMemoryConsent } from "@/lib/memory-access";
 import { requireApiQuota } from "@/lib/api-quota";
-import { searchWeb } from "@/lib/web-search";
-import { SEARCH_UNAVAILABLE } from "@/lib/web-search-protocol";
+import { contextStore, createConversationContext } from '@/lib/conversation-context';
+import { processContextMaintenance } from '@/lib/context-maintenance';
 
 export const maxDuration = 120;
 
@@ -28,11 +28,7 @@ export async function POST(request: Request) {
     summaryModel: process.env.MEMORY_SUMMARY_MODEL,
   };
   const memory = memoryEnabled(process.env) ? createMemoryService(supabaseMemoryStore(access.supabase), memoryConfig) : null;
-  const search = memoryEnabled(process.env) ? async (query: string, signal: AbortSignal) => {
-    // Recheck consent before transmitting a query. Search counts against the same chat budget.
-    if (await requireMemoryConsent(access.supabase) || await requireApiQuota(access.supabase, "chat")) return SEARCH_UNAVAILABLE;
-    return searchWeb(query, { apiKey: process.env.RUNYOUR_API_KEY }, signal);
-  } : undefined;
+  const prepareContext = memory ? createConversationContext(contextStore(access.supabase), memoryConfig) : undefined;
   let history: {batchId:string;userMessageId:string;assistantMessageId:string;userAt:number;assistantAt:number}|undefined;
   const historyVersion = request.headers.get("x-here-history");
   if(memory && (historyVersion === "v1" || historyVersion === "v2")) {
@@ -44,6 +40,9 @@ export async function POST(request: Request) {
     } catch { /* Main request validation returns the user-facing error. */ }
   }
   return chatResponse(request, {
+    onboardingAnswers: access.onboardingAnswers,
+    hereName: access.hereName,
+    prepareContext,
     onExchange: history ? async (messages, reply) => {
       const h=history!;
       const assistantAt = historyVersion === "v2" ? Math.max(Date.now(), h.userAt + 1) : h.assistantAt;
@@ -57,10 +56,9 @@ export async function POST(request: Request) {
       // Return the exact timestamp even if the durable client outbox must retry this save.
       return { assistantAt };
     } : undefined,
-    search,
     apiKey: process.env.RUNYOUR_API_KEY,
     baseUrl: process.env.RUNYOUR_BASE_URL,
     model: process.env.CHAT_MODEL,
-    memory: memory ? { recall: memory.recall, schedule: messages => { if (historyVersion !== "v1" && historyVersion !== "v2") after(() => memory.remember(messages)); } } : undefined,
+    memory: memory ? { recall: memory.recall, schedule: messages => { if (historyVersion !== "v1" && historyVersion !== "v2") after(async () => { await memory.remember(messages); await processContextMaintenance(access.supabase, memoryConfig); }); } } : undefined,
   });
 }

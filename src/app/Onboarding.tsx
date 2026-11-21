@@ -7,7 +7,7 @@ import { basicsFromAnswers, basicsSaveError } from "@/lib/member-basics";
 import {
   ONBOARDING_STEPS,
   BASICS_SCENES,
-  QUESTIONS,
+  pickOnboardingAnswers,
   STAGE_SCENES,
   type Answers,
   type ColorId,
@@ -41,16 +41,6 @@ const START_SHAPE: ShapeId = "cloud"; // Legacy profile value; the character is 
 const START_COLOR: ColorId = "lavender";
 const START_VOICE: VoiceId = "marin";
 
-/** 무대가 넘긴 답에서 질문의 선택지에 있는 것만 남긴다(무대는 동의·생일 같은 다른 값도 같은 곳에 둘 수 있다). */
-function pickAnswers(raw: Record<string, unknown>): Answers {
-  const answers: Answers = {};
-  for (const q of QUESTIONS) {
-    const value = raw[q.id];
-    if (typeof value === "string" && (q.options as readonly string[]).includes(value)) answers[q.id] = value;
-  }
-  return answers;
-}
-
 /**
  * initialStep·initialAnswers는 개발용 미리보기에서 중간 장면부터 열 때만 쓴다(이때는 하던 자리를 되살리거나 남기지 않는다).
  * saving·saveError·onRetry: 마지막 '대화 시작하기' 뒤 프로필을 저장하는 동안 그 화면을 그대로 두고, 버튼에 진행·실패를 보여 준다.
@@ -80,7 +70,7 @@ export default function Onboarding({ onDone, initialStep, initialAnswers = {}, s
   // 장면·이름·답이 바뀔 때마다 하던 자리를 남긴다(마지막 버튼을 누른 뒤에는 남기지 않는다).
   function remember(snapshot: StageSnapshot) {
     if (preview || finished.current || snapshot.scene === "done") return;
-    saveOnboardingDraft({ step: stepOfScene(snapshot.scene), nickname: snapshot.nickname, answers: pickAnswers(snapshot.answers), companion: snapshot.companion });
+    saveOnboardingDraft({ step: stepOfScene(snapshot.scene), nickname: snapshot.nickname, answers: pickOnboardingAnswers(snapshot.answers), companion: snapshot.companion });
   }
 
   // 성별의 '다음': 생일·성별을 저장한 뒤에 넘어간다. 실패하면 그 글을 돌려주고 이 장면에 머문다.
@@ -99,11 +89,12 @@ export default function Onboarding({ onDone, initialStep, initialAnswers = {}, s
     if (finished.current) return; // 두 번 눌러도 저장은 한 번만 시작한다
     finished.current = true;
     if (!preview) clearOnboardingDraft();
-    const answers = pickAnswers(snapshot.answers);
+    const answers = pickOnboardingAnswers(snapshot.answers);
     const concern = concernId(answers.concern);
     const support = supportId(answers.support);
     onDone({
       nickname: snapshot.nickname.trim(), companion: cleanName(snapshot.companion), shape: START_SHAPE, color: START_COLOR, voice: START_VOICE,
+      onboardingAnswers: answers,
       style: matchStyle(answers), ...(concern ? { concern } : {}), ...(support ? { support } : {}),
     });
   }

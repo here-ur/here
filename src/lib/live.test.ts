@@ -50,9 +50,9 @@ function setup(t: TestContext, fail = false, media?: () => Promise<unknown>) {
 
 test("Live exchanges SDP through authenticated app route and sends no Realtime commands", async t => {
   const m = setup(t);
-  const rt = await connectLive(m.handlers, { name: "보리" }, undefined, "test-token", { greeting: false });
+  const rt = await connectLive(m.handlers, { name: "보리" }, undefined, "test-token", {});
   assert.equal(m.requests[0].url, "/api/live");
-  assert.equal(m.requests[0].body.sdp, "v=0\r\no=test");
+  assert.deepEqual(m.requests[0].body, { sdp: "v=0\r\no=test" });
   assert.equal(m.track.enabled, true);
   assert.deepEqual(m.sent.map(e => e.type), ["session.input_audio.unmute"]);
   rt.setMic(false); assert.equal(m.track.enabled, false);
@@ -65,7 +65,7 @@ test("Live exchanges SDP through authenticated app route and sends no Realtime c
 });
 test("close drains the final transcript, saves once, then releases transport", async t => {
   const m = setup(t);
-  const rt = await connectLive(m.handlers, {}, undefined, "test-token", { greeting: false });
+  const rt = await connectLive(m.handlers, {}, undefined, "test-token", {});
   m.emit({ type: "session.input_transcript.delta", event_id: "a", delta: "기타를", start_ms: 0, end_ms: 100 });
   rt.close(); rt.close();
   m.emit({ type: "session.input_transcript.delta", event_id: "b", delta: " 배웠어", start_ms: 100, end_ms: 200 });
@@ -76,12 +76,12 @@ test("close drains the final transcript, saves once, then releases transport", a
 });
 test("failed session exchange stops the acquired microphone", async t => {
   const m = setup(t, true);
-  await assert.rejects(connectLive(m.handlers, {}, undefined, "test-token", { greeting: false }));
+  await assert.rejects(connectLive(m.handlers, {}, undefined, "test-token", {}));
   assert.equal(m.peerClosed(), true); assert.equal(m.track.stops, 1);
 });
 test("synthetic audio uses the same Live transport without opening the device microphone", async t => {
   const m = setup(t, false, async () => { throw new Error("Device microphone must not open"); });
-  const rt = await connectLive(m.handlers, {}, undefined, "test-token", { greeting: false, inputStream: m.stream as unknown as MediaStream });
+  const rt = await connectLive(m.handlers, {}, undefined, "test-token", { inputStream: m.stream as unknown as MediaStream });
   assert.equal(rt.hasMic, true);
   assert.equal(m.requests[0].url, "/api/live");
   rt.close(); m.emit({type:"session.closed"});
@@ -91,7 +91,7 @@ test("late microphone permission after cancel never starts a paid session", asyn
   let resolve!: (value: unknown) => void;
   const m = setup(t, false, () => new Promise(r => { resolve = r; }));
   const controller = new AbortController();
-  const connecting = connectLive(m.handlers, {}, controller.signal, "test-token", { greeting: false });
+  const connecting = connectLive(m.handlers, {}, controller.signal, "test-token", {});
   controller.abort(); resolve(m.stream);
   await assert.rejects(connecting);
   assert.equal(m.requests.length, 0); assert.equal(m.track.stops, 1);

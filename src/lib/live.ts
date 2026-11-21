@@ -4,8 +4,7 @@ import { createOutputAudioMeter } from "./output-audio-meter.ts";
 import { microphoneErrorMessage } from "./microphone-permission.ts";
 import { liveConversation, type LiveDelegateReply } from "./live-conversation.ts";
 import { requestVoiceMemory, VoiceMemoryAccessError } from "./voice-memory-client.ts";
-import { safeHomeOpener } from "./home-opener.ts";
-import { liveGreeting, liveContextChunks } from "./live-context.ts";
+import { liveContextChunks } from "./live-context.ts";
 import { voiceTiming } from "./voice-timing.ts";
 
 const CONNECTION_ERROR = "음성 대화를 연결하지 못했어요. 잠시 후 다시 눌러 주세요.";
@@ -15,7 +14,7 @@ export async function connectLive(
   persona: { name?: string; voice?: string; nickname?: string; style?: StyleId } = {},
   signal?: AbortSignal,
   accessToken?: string,
-  options: { greeting?: boolean; microphone?: boolean; opener?: string; onGreetingEnd?: () => void;
+  options: { microphone?: boolean;
     historyManaged?: boolean; inputStream?: MediaStream; onDiagnostic?: (event: string) => void } = {},
 ): Promise<Realtime> {
   const controller = new AbortController();
@@ -28,12 +27,9 @@ export async function connectLive(
   let microphoneError: string | undefined;
   let started = false, closed = false, closing = false, memory = false;
   let requestedMic = options.microphone !== false;
-  let playbackReady = false, greeted = false, heardAudio = false;
-  const greeting = options.greeting !== false && Boolean(safeHomeOpener(options.opener));
   let status: Parameters<Handlers["onStatus"]>[0] = "connecting";
   let lastSpeechAt = 0;
   let closeTimer: ReturnType<typeof setTimeout> | undefined;
-  let greetingTimer: ReturnType<typeof setTimeout> | undefined;
   let startTimer: ReturnType<typeof setTimeout> | undefined;
   let resumePlayback: (() => void) | undefined;
   let silenceContext: AudioContext | undefined;
@@ -53,6 +49,18 @@ export async function connectLive(
     for (const content of contents) channel.send(JSON.stringify({ ...event, ...(content !== undefined ? { content } : {}), event_id: crypto.randomUUID() }));
   }
   const conversation = liveConversation({
+    prepareContext: async (messages, workSignal) => {
+      if (!memory || !accessToken) return null;
+      const response = await fetch('/api/live/context', {
+        method: 'POST', credentials: 'same-origin', cache: 'no-store',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ messages }), signal: AbortSignal.any([workSignal, controller.signal, AbortSignal.timeout(6000)]),
+      });
+      if (response.status === 401 || response.status === 403) fail('회원·이용 동의를 다시 확인하려면 새로고침해 주세요.');
+      if (!response.ok) return null;
+      const { context } = await response.json();
+      return { ...context, recent_messages: messages, app_signals: { conversation_mode: 'voice' } };
+    },
     partial: (role, text) => {
       if (closing || closed) return;
       if (role === "user") h.onUserPartial(text);
@@ -100,7 +108,7 @@ export async function connectLive(
     if (closed || closing) return;
     h.onOutputLevel?.(level, shape);
     if (level > .035) {
-      heardAudio = true; lastSpeechAt = performance.now();
+      lastSpeechAt = performance.now();
       timing("first_audio"); updateStatus("speaking");
     }
   });
@@ -108,9 +116,7 @@ export async function connectLive(
   const monitor = setInterval(() => {
     if (closed || closing || !started) return;
     if (status === "speaking" && performance.now() - lastSpeechAt > 1400) {
-      if (greeting && heardAudio && options.microphone === false) {
-        options.onGreetingEnd?.(); close();
-      } else updateStatus(requestedMic && mic ? "listening" : "idle");
+      updateStatus(requestedMic && mic ? "listening" : "idle");
     }
   }, 150);
 
@@ -119,7 +125,7 @@ export async function connectLive(
     conversation.close();
     closed = true;
     controller.abort();
-    clearInterval(monitor); clearTimeout(closeTimer); clearTimeout(startTimer); clearTimeout(greetingTimer);
+    clearInterval(monitor); clearTimeout(closeTimer); clearTimeout(startTimer);
     signal?.removeEventListener("abort", close);
     if (resumePlayback) {
       document.removeEventListener("pointerdown", resumePlayback);
@@ -156,14 +162,6 @@ export async function connectLive(
     mic?.getTracks().forEach(track => { track.enabled = started && requestedMic && !closed && !closing; });
     if (started) send({ type: requestedMic ? "session.input_audio.unmute" : "session.input_audio.mute" });
   }
-  function startGreeting() {
-    if (!greeting || greeted || !started || !playbackReady) return;
-    greeted = true;
-    send({ type: "session.commentary.append", delegation_id: null, content: liveGreeting(options.opener) });
-    greetingTimer = setTimeout(() => {
-      if (options.microphone === false) { options.onGreetingEnd?.(); close(); }
-    }, 30_000);
-  }
   signal?.addEventListener("abort", close, { once: true });
   channel.onmessage = message => {
     if (closed) return;
@@ -173,7 +171,7 @@ export async function connectLive(
     if (event.type === "session.delegation.created" || event.type === "session.started" || event.type === "session.closed") options.onDiagnostic?.(event.type);
     if (event.type === "session.started" && !started) {
       started = true; clearTimeout(startTimer); timing("channel_ready");
-      applyMic(); startGreeting(); updateStatus(mic && requestedMic ? "listening" : "idle");
+      applyMic(); updateStatus(mic && requestedMic ? "listening" : "idle");
       readyResolve();
     } else if (event.type === "session.closed") {
       if (!closing) { h.onStatus("idle"); h.onError("음성 대화가 종료됐어요. 마이크를 눌러 다시 이어갈 수 있어요."); }
@@ -194,9 +192,8 @@ export async function connectLive(
       if (closed || closing) return;
       void audio.play().then(() => {
         if (closed || closing) return;
-        playbackReady = true;
         document.removeEventListener("pointerdown", play); document.removeEventListener("keydown", play);
-        resumePlayback = undefined; startGreeting();
+        resumePlayback = undefined;
       }).catch(error => {
         if (closed || closing) return;
         if (error instanceof DOMException && error.name === "NotAllowedError") {
@@ -223,7 +220,7 @@ export async function connectLive(
         peer.addTransceiver("audio", { direction: "recvonly" });
       }
     } else {
-      // GPT-Live needs an advancing input timeline even for a home greeting.
+      // A receive-only session still needs an advancing input timeline.
       // A generated silent track is not microphone access or recorded user audio.
       silenceContext = new AudioContext();
       const destination = silenceContext.createMediaStreamDestination();
@@ -238,7 +235,7 @@ export async function connectLive(
     const response = await fetch("/api/live", {
       method: "POST", credentials: "same-origin", cache: "no-store",
       headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
-      body: JSON.stringify({ ...persona, sdp: peer.localDescription?.sdp, greeting, opener: options.opener }),
+      body: JSON.stringify({ sdp: peer.localDescription?.sdp }),
       signal: AbortSignal.any([controller.signal, AbortSignal.timeout(25_000)]),
     });
     if (!response.ok) throw new Error(CONNECTION_ERROR);
@@ -252,7 +249,7 @@ export async function connectLive(
     return {
       hasMic: Boolean(mic), microphoneError,
       // Text conversations use /api/chat. Live accepts context, not Realtime conversation.item.create.
-      sendText(text) { send({ type: "session.thinking.append", delegation_id: null, content: `사용자가 글로 보낸 내용: ${JSON.stringify(text.slice(0, 8000))}` }); },
+      sendText(text) { send({ type: "session.thinking.append", delegation_id: null, content: JSON.stringify({ role: "user", content: text.slice(0, 8000) }) }); },
       setMic(on) { requestedMic = on; applyMic(); if (status !== "speaking") updateStatus(on && mic ? "listening" : "idle"); },
       setSound(on) { audio.muted = !on; if (!on) h.onOutputLevel?.(0, "rest"); }, close,
     };

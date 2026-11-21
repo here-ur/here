@@ -1,28 +1,15 @@
 import { failed, openai } from "@/lib/openai";
 import { requireMember } from "@/lib/member-auth";
 import { requireMemoryConsent } from "@/lib/memory-access";
-import { DEFAULT_COMPANION, VOICES, cleanName, cleanNickname, isStyleId } from "@/lib/onboarding";
+import { VOICES } from "@/lib/onboarding";
 import { memoryEnabled } from "@/lib/memory";
-import { VOICE_MEMORY_INSTRUCTIONS, VOICE_MEMORY_TOOL } from "@/lib/voice-memory-protocol";
-import { companionConversationPrompt } from "@/lib/companion-prompt";
+import { companionPrompt } from "@/lib/companion-prompt";
 import { requireApiQuota } from "@/lib/api-quota";
 import { JsonRequestError, readSmallJson } from "@/lib/request-json";
-import { VOICE_WEB_SEARCH_TOOL, WEB_SEARCH_INSTRUCTIONS } from "@/lib/web-search-protocol";
 
 // 브라우저가 OpenAI realtime에 직접 붙을 때 쓰는 임시 키를 발급한다. 진짜 키는 서버에만 있다.
 // 테스트용으로 Vercel 환경변수 REALTIME_MODEL에 "gpt-realtime-2.1"을 넣으면 큰 모델로 바뀐다(약 3배 비쌈).
 const MODEL = process.env.REALTIME_MODEL || "gpt-realtime-2.1-mini";
-
-const SAFETY_INSTRUCTIONS = `
-## 안전과 도구
-- 상대가 방금 한 말에 답해. 잘 안 들렸거나, 말이 끊겼거나, 무슨 뜻인지 애매하면 짐작하지 말고 "미안, 잘 못 들었어. 한 번만 다시 말해 줄래?"처럼 되물어.
-- 앞에서 들은 이야기를 기억하고 이어서 말해. 같은 질문을 반복하지 마.
-- 너는 AI야. 물어보면 솔직하게 AI라고 말해. 묻지 않았는데 굳이 AI라고 끼워 넣지는 마(화면에 이미 AI라고 보여 줘).
-- 진단하지 마. 병명, 약, 치료법, 처방을 말하지 마. 특정 병원이나 의사를 추천하지 마.
-- 자살이나 자해 생각, 자신을 해칠 위험이 보이면 가장 먼저 show_crisis_help를 부르고, 안전을 묻고, 자살예방상담전화 109에 지금 바로 전화할 수 있다고 말해.
-- 어려움이 2주 넘게 이어지거나, 잠·식사·일상이 무너졌다고 하거나, 전문가 도움을 원하면 show_get_help를 부르고 "전문가와 이야기해 보는 것도 방법이야" 정도로만 가볍게 말해.
-- 도움받기는 현재 준비 중인 메뉴야. 상담사 프로필을 지금 고를 수 있다고 하거나 실제 상담사와 연결하거나 상담을 예약할 수 있다고 말하지 마.
-- 홈 첫 진입 인사는 별도 요청으로 처리해. 음성 대화 연결·재연결 때 인사나 자기소개를 반복하지 말고 사용자의 말에 바로 답해.`;
 
 export async function POST(req: Request) {
   const access = await requireMember(req);
@@ -35,12 +22,7 @@ export async function POST(req: Request) {
     const parsed = await readSmallJson(req, 5000, 4096);
     const body = parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {};
     const voice = VOICES.some((v) => v.id === body.voice) ? body.voice : "marin";
-    const name = typeof body.name === "string" ? cleanName(body.name) : DEFAULT_COMPANION;
-    // 이름은 cleanName이 한글·영문·숫자·띄어쓰기만 남긴 것이라 지시문에 넣어도 된다.
-    // 사용자가 불러 달라고 한 이름(cleanNickname: 글자·숫자·띄어쓰기 12자)과 고른 대화 방식(정해진 값만)도 글 대화와 같게 넣는다.
-    const user = { nickname: cleanNickname(body.nickname), style: isStyleId(body.style) ? body.style : undefined };
     const memory = memoryEnabled(process.env);
-    const instructions = companionConversationPrompt(name, "voice", user) + SAFETY_INSTRUCTIONS + (memory ? VOICE_MEMORY_INSTRUCTIONS + WEB_SEARCH_INSTRUCTIONS : "");
     const res = await openai("realtime/client_secrets", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -49,7 +31,7 @@ export async function POST(req: Request) {
         session: {
           type: "realtime",
           model: MODEL,
-          instructions,
+          instructions: companionPrompt(access.onboardingAnswers, undefined, { hereName: access.hereName, mode: "voice" }),
           output_modalities: ["audio"],
           audio: {
             input: {
@@ -61,16 +43,12 @@ export async function POST(req: Request) {
             },
             output: { voice },
           },
-          tools: [
-            ...(memory ? [VOICE_MEMORY_TOOL, VOICE_WEB_SEARCH_TOOL] : []),
-            { type: "function", name: "show_crisis_help", description: "화면에 자살예방상담전화 109 안내를 띄운다.", parameters: { type: "object", properties: {} } },
-            { type: "function", name: "show_get_help", description: "준비 중인 도움받기 메뉴의 안내 버튼을 띄운다. 현재 실제 상담 연결이나 예약은 제공하지 않는다.", parameters: { type: "object", properties: {} } },
-          ],
+          tools: [],
         },
       }),
     });
     const { value } = await res.json();
-    return Response.json({ key: value, model: MODEL, memory, webSearch: memory }, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ key: value, model: MODEL, memory, webSearch: false }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     if (err instanceof JsonRequestError) return Response.json({ error: err.message }, { status: err.status, headers: { "Cache-Control": "no-store" } });
     return failed();

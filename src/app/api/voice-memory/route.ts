@@ -5,8 +5,10 @@ import { createMemoryService, memoryEnabled } from "@/lib/memory";
 import { supabaseMemoryStore } from "@/lib/memory-store";
 import { voiceMemoryResponse } from "@/lib/voice-memory-server";
 import { requireApiQuota } from "@/lib/api-quota";
+import { contextConfig } from '@/lib/conversation-context';
+import { processContextMaintenance } from '@/lib/context-maintenance';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(request: Request) {
   const access = await requireMember(request);
@@ -22,7 +24,7 @@ export async function POST(request: Request) {
   });
   return voiceMemoryResponse(request, {
     recall: memory.recall,
-    schedule: (messages, sourceId) => after(() => memory.remember(messages, sourceId)),
+    schedule: (messages, sourceId) => after(async () => { await memory.remember(messages, sourceId); await processContextMaintenance(access.supabase, contextConfig(process.env)); }),
     checkConsent: () => requireMemoryConsent(access.supabase),
   });
 }

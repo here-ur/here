@@ -32,7 +32,6 @@ export type HomeVoiceControls = {
   listening: boolean;
   micOn: boolean;
   hasMic: boolean;
-  statusText: string;
   error: string;
   sources?: SearchSource[];
   warning?: string;
@@ -439,9 +438,6 @@ export default function HomeScreen({
             />
           </div>
         </div>
-        {voice && <div className="home-voice-status max-w-full px-4 text-center">
-          <p role="status" className="text-t4 font-medium text-cat-ink">{voice.error ? "연결하지 못했어요" : voice.statusText}</p>
-        </div>}
       </div>
 
       <div ref={bottomRef} className="home-bottom absolute inset-x-5 bottom-[max(32px,env(safe-area-inset-bottom))] flex flex-col gap-3">

@@ -2,7 +2,7 @@
 
 import { useConversationHistory } from "./use-conversation-history";
 import { Button } from "./ui/Button";
-import { safeHomeOpener, withHomeOpener } from "@/lib/home-opener";
+import { safeHomeOpener } from "@/lib/home-opener";
 
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
@@ -13,7 +13,7 @@ import type { HistoryMessage } from "@/lib/conversation-history";
 import { ChatRequestError, requestChat } from "@/lib/chat";
 import { waitForCatYawn } from "@/lib/cat-yawn";
 import { type Msg, type Session, loadStoredSessions, pruneLog, saveSession } from "@/lib/log";
-import { DEFAULT_COMPANION, type Profile, josa } from "@/lib/onboarding";
+import { DEFAULT_COMPANION, type Profile } from "@/lib/onboarding";
 import { useAccountActivity } from "./use-account-activity";
 import { useAccountProfile } from "./use-account-profile";
 import { type Realtime } from "@/lib/realtime";
@@ -36,7 +36,6 @@ import Drawer from "./Drawer";
 import { pendingFriendInvite } from "@/lib/friend-connections";
 import Friends from "./Friends";
 import HomeScreen from "./HomeScreen";
-import HomeEntryGreeting from "./HomeEntryGreeting";
 import GetHelp from "./GetHelp";
 import Report, { type ReportMode } from "./Report";
 import Onboarding from "./Onboarding";
@@ -46,15 +45,6 @@ import { StageHandoff } from "./sheet-handoff";
 import CatLoading from "./CatLoading";
 
 type Status = "connecting" | "idle" | "listening" | "thinking" | "speaking";
-
-const hint = (status: Status, name: string) =>
-  ({
-    connecting: "",
-    idle: `편하게 말해요. ${josa(name, "이", "가")} 듣고 있어요`,
-    listening: "듣고 있어요",
-    thinking: "생각하는 중…",
-    speaking: `${josa(name, "이", "가")} 말하는 중`,
-  })[status];
 
 
 // 개발 중 화면 확인용 프로필. 브라우저 저장소에는 온보딩 완료로 기록하지 않는다.
@@ -130,14 +120,10 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
   const [customizing, setCustomizing] = useState(false);
   const [showFriends, setShowFriends] = useState(() => Boolean(pendingFriendInvite()));
   const [headline, setHeadline] = useState<string | null>(null);
-  const [headlineReady, setHeadlineReady] = useState(false);
   const headlineLocked = useRef(false);
   const openingLine = safeHomeOpener(headline);
-  const [homeGreetingDone, setHomeGreetingDone] = useState(false);
-  const [homeSpeaking, setHomeSpeaking] = useState(false);
   const outputLevel = useRef(0);
   const outputShape = useRef<import("@/lib/mouth-shape").MouthShape>("rest");
-  const onOutputLevel = useCallback((level: number, shape: import("@/lib/mouth-shape").MouthShape) => { outputLevel.current = level; outputShape.current = shape; }, []);
   // 음성 대화 중에는 효과음이 마이크에 섞이지 않게 모두 쉰다.
   useEffect(() => { muteSfx(voiceMode); return () => muteSfx(false); }, [voiceMode]);
 
@@ -158,7 +144,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
         const result = await response.json();
         if (!controller.signal.aborted && !headlineLocked.current && typeof result.headline === "string" && result.headline.length <= 100) setHeadline(result.headline);
       } catch { /* No generic greeting when personalisation is unavailable. */ }
-      finally { if (!controller.signal.aborted) setHeadlineReady(true); }
     })();
     return () => controller.abort();
   }, []);
@@ -198,7 +183,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
   function add(msg: Msg) {
     const saved = { ...msg, id: crypto.randomUUID(), at: msg.at ?? Date.now() };
     history.append([saved]);
-    commitMessages([...withHomeOpener(messagesRef.current, openingLine), saved]);
+    commitMessages([...messagesRef.current, saved]);
   }
 
   function cancelChat() {
@@ -227,7 +212,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
     const message: HistoryMessage = { id: crypto.randomUUID(), role: "user", content: text,
       at: Math.max(Date.now(), (messagesRef.current.at(-1)?.at ?? 0) + 1) };
     history.append([message]);
-    commitMessages([...withHomeOpener(messagesRef.current, openingLine), message]);
+    commitMessages([...messagesRef.current, message]);
     draftRef.current = "";
     setDraft("");
     setError("");
@@ -273,7 +258,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
   /** 음성 대화만 기존 OpenAI Realtime 연결을 사용한다. */
   async function begin() {
     headlineLocked.current = true;
-    setHomeGreetingDone(true);
     cancelChat();
     const attempt = ++connectionAttempt.current;
     voiceRequest.current?.abort();
@@ -324,7 +308,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
         onError: (message) => { if (current()) setError(message); },
         onMemoryWarning: (message) => { if (current()) setMemoryWarning(message); },
         onSearchSources: (sources) => { if (current()) setSearchSources(sources); },
-      }, { name: profile?.companion, voice: profile?.voice, nickname: profile?.nickname || undefined, style: profile?.style }, controller.signal, token, { historyManaged: true, greeting: false, opener: messages.length ? undefined : openingLine });
+      }, { name: profile?.companion, voice: profile?.voice, nickname: profile?.nickname || undefined, style: profile?.style }, controller.signal, token, { historyManaged: true });
       if (!current()) { conn.close(); return; }
       rt.current = conn;
       conn.setSound(true);
@@ -349,7 +333,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
     setResetNote(null);
     setYawning(false);
     headlineLocked.current = true;
-    setHomeGreetingDone(true);
     setHearing(false);
     connectionAttempt.current += 1;
     voiceRequest.current?.abort();
@@ -385,7 +368,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
     if (chatRequest.current || voiceRequest.current) return;
     // 안내 시트가 떠도 홈 인사가 뒤에서 계속 말하지 않게 먼저 멈춘다.
     headlineLocked.current = true;
-    setHomeGreetingDone(true);
     micAsk.ask();
   }
 
@@ -411,7 +393,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
   }
 
   function openReport(mode: ReportMode) {
-    setHomeGreetingDone(true);
     cancelChat();
     stopVoice();
     setReportMode(mode);
@@ -419,7 +400,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 친구 기능을 다시 열 때 쓴다(지금은 보류)
   function openFriends() {
-    setHomeGreetingDone(true);
     cancelChat();
     stopVoice();
     setShowFriends(true);
@@ -435,13 +415,11 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
 
   // 도움받기 화면(GetHelp)은 남겨 두고, 출시 전까지는 들어가는 대신 '준비 중' 안내만 보여 준다.
   function openHelpSoon() {
-    setHomeGreetingDone(true);
     showSoon("help");
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 도움받기를 다시 열 때 쓴다
   function openHelp() {
-    setHomeGreetingDone(true);
     cancelChat();
     // 사람 상담 화면에서는 AI가 계속 듣거나 말하지 않게 한다.
     stopVoice();
@@ -467,7 +445,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
           setJustMet(true);
           headlineLocked.current = true;
           setHeadline(null);
-          setHeadlineReady(true);
         }}
       />
     );
@@ -484,7 +461,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
   if (reportMode) return <Report syncError={activity.error} key={reportMode} mode={reportMode} who={who} accessToken={accessToken} onBack={() => setReportMode(null)} onSeed={startSeed} onDecorate={() => { setReportMode(null); account.clearSaveError(); setCustomizing(true); }} />;
 
   const listening = !error && hasMic && micOn && (status === "listening" || status === "idle");
-  const statusText = !micOn && status === "idle" ? "마이크가 꺼져 있어요" : hint(status, who.name);
 
   {
     const me = { ...profile, shape: who.shape, color: who.color };
@@ -495,7 +471,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
         headline={openingLine}
         onVoice={toVoice}
         onText={openText}
-        onMenu={() => { dismissHint(); setResetNote(null); setHomeGreetingDone(true); setShowMenu(true); }}
+        onMenu={() => { dismissHint(); setResetNote(null); setShowMenu(true); }}
         nudge={showHint ? <HomeHint name={profile.companion} onDismiss={dismissHint} /> : undefined}
         banner={resetNote ?? undefined}
         menuButtonRef={menuButtonRef}
@@ -508,7 +484,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
           draft,
           sending: chatSending,
           error: voiceMode ? "" : error || history.saveError || activity.error,
-          state: companionState({ error: Boolean(error), speaking: !homeGreetingDone && homeSpeaking, thinking: chatSending, composing: typing && Boolean(draft.trim()) }),
+          state: companionState({ error: Boolean(error), speaking: false, thinking: chatSending, composing: typing && Boolean(draft.trim()) }),
           onDraft: (value) => { draftRef.current = value; setDraft(value); },
           onRetry: chatFailed ? () => { setError(""); chatQueue.current?.retry(); } : undefined,
           onSend: () => { void sendChat(); },
@@ -520,7 +496,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
           listening,
           micOn,
           hasMic,
-          statusText,
           error,
           sources: searchSources,
           warning: memoryWarning || history.saveError || activity.error,
@@ -539,7 +514,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
         </div> : undefined}
       >
         {micAsk.sheet}
-        {!homeGreetingDone && headlineReady && openingLine && <HomeEntryGreeting name={profile.companion} voice={profile.voice} opener={openingLine} onOutputLevel={onOutputLevel} onSpeaking={setHomeSpeaking} onDone={setHomeGreetingDone} />}
         <Drawer
           open={showMenu}
           profile={me}

@@ -69,7 +69,7 @@ export default function Preview() {
     greet={false} headline={headline}
     nudge={mode === "first" && hint ? <HomeHint name={profile.companion} onDismiss={() => setHint(false)} /> : undefined}
     onVoice={() => { setHint(false); setOpen(false); setMicOn(true); setVoice(true); void startVoice(); }} onText={() => { setHint(false); setOpen(true); }} onMenu={() => { setHint(false); setMenu(true); }}
-    voice={voice ? { state: yawning ? "yawning" : micOn ? "listening" : "idle", connecting: yawning, listening: !yawning && micOn, micOn, hasMic: true, statusText: yawning ? "" : micOn ? "듣고 있어요" : "마이크가 꺼져 있어요", error: "", onEnd: endVoice, onMic: () => setMicOn(!micOn) } : undefined}
+    voice={voice ? { state: yawning ? "yawning" : micOn ? "listening" : "idle", connecting: yawning, listening: !yawning && micOn, micOn, hasMic: true, error: "", onEnd: endVoice, onMic: () => setMicOn(!micOn) } : undefined}
     chat={{ open, draft, sending: false, error: "", state: "idle", onDraft: setDraft, onClose: () => setOpen(false), onSend: () => {}, messages: open ? [
       { role: "user", content: "테스트 화면: 내가 좋아하는 게임과 음료는?" },
       { role: "assistant", content: "가장 좋아하는 보드게임은 **아줄**, 음료는 **따뜻한 보리차**였어.\n\n- 타일 한 장\n- 이야기 한 조각\n\n| 게임 | 음료 |\n| --- | --- |\n| 아줄 | 따뜻한 보리차 |\n\n`테스트 코드`도 읽기 쉽게 보여." },

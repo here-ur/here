@@ -1,10 +1,10 @@
 // 서버 전용. 환경값은 /api/chat만 전달하며, 음성용 OpenAI 키로 대체하지 않는다.
 // 요청 읽기·주소·오류 변환은 리포트 하늘 고르기(report-sky-server.ts)도 함께 쓴다.
 import { hasCrisisSignal } from "./crisis.ts";
-import { cleanName, cleanNickname, isStyleId } from "./onboarding.ts";
-import { companionConversationPrompt, type CompanionUser } from "./companion-prompt.ts";
+import { cleanName, cleanNickname, isStyleId, type Answers } from "./onboarding.ts";
+import { companionPrompt } from "./companion-prompt.ts";
 import { operationMetric, usageMetric } from "./ai-operations.ts";
-import { parseSearchQuery, searchCitations, SEARCH_UNAVAILABLE, WEB_SEARCH_TOOL, WEB_SEARCH_INSTRUCTIONS, type WebSearchResult, type SearchSource } from "./web-search-protocol.ts";
+import type { ConversationContext } from './conversation-context.ts';
 
 const MAX_MESSAGES = 60;
 const MAX_MESSAGE_CHARS = 8_000;
@@ -15,20 +15,19 @@ export const DEFAULT_BASE_URL = "https://api.runyour.ai/v1";
 export const DEFAULT_MODEL = "openai/gpt-5.6-sol";
 
 type Message = { role: "user" | "assistant"; content: string };
-type ToolName = "show_crisis_help" | "show_get_help" | "search_web";
-type ToolCall = { call_id: string; name: ToolName; arguments: string };
-type ProviderItem = Record<string, unknown>;
 type Flags = { crisis: boolean; suggest: boolean };
 
 export type ChatServerConfig = {
+  hereName?: string;
+  onboardingAnswers?: Answers;
   mode?: "chat" | "voice";
   apiKey?: string;
   baseUrl?: string;
   model?: string;
   fetch?: typeof fetch;
   timeoutMs?: number;
+  prepareContext?: (messages: Message[], signal: AbortSignal) => Promise<ConversationContext>;
   onExchange?: (messages: Message[], reply: string) => Promise<void | { assistantAt: number }>;
-  search?: (query: string, signal: AbortSignal) => Promise<WebSearchResult>;
   memory?: {
     recall(messages: Message[], signal: AbortSignal): Promise<string>;
     schedule(messages: Message[]): void;
@@ -45,36 +44,8 @@ export class ChatFailure extends Error {
 
 const INVALID_REQUEST = "메시지 형식을 확인해 주세요.";
 const INVALID_RESPONSE = "답변을 받지 못했어요. 잠시 뒤 다시 보내 주세요.";
-const TOOLS = [
-  {
-    type: "function",
-    name: "show_crisis_help",
-    description: "화면에 자살예방상담전화 109 안내를 띄운다.",
-    parameters: { type: "object", properties: {}, required: [], additionalProperties: false },
-    strict: true,
-  },
-  {
-    type: "function",
-    name: "show_get_help",
-    description: "준비 중인 도움받기 메뉴의 안내 버튼을 띄운다. 현재 실제 상담 연결이나 예약은 제공하지 않는다.",
-    parameters: { type: "object", properties: {}, required: [], additionalProperties: false },
-    strict: true,
-  },
-];
-
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function instructions(name: string, user: CompanionUser, mode: "chat" | "voice" = "chat") {
-  return `${companionConversationPrompt(name, mode, user)}
-## 안전과 도구
-- 뜻이 애매하면 짐작하지 말고 부드럽게 되물어. 사용자나 대화 상대의 감정을 확정하거나 분석 결과처럼 말하지 마.
-- 너는 AI야. 물어보면 솔직하게 AI라고 말해. 진단하지 마. 병명, 약, 치료법, 처방을 제시하거나 특정 병원·의사를 추천하지 마.
-- 자살·자해 생각이나 자신을 해칠 위험이 보이면 가장 먼저 show_crisis_help를 부르고 안전을 물어봐. 자살예방상담전화 109 안내를 확인할 수 있다고 말해.
-- 어려움이 2주 넘게 이어지거나, 잠·식사·일상이 무너졌다고 하거나, 전문가 도움을 원하면 show_get_help를 부르고 "전문가와 이야기해 보는 것도 방법이야" 정도로 안내해. 진단처럼 들리지 않게 해.
-- 도움받기는 현재 준비 중인 메뉴야. 실제 상담사 연결·예약·결제는 제공하지 않아. 상담사 프로필을 지금 고를 수 있다고 하거나 연결이나 예약을 완료했다고 말하지 마.
-- 도구는 화면 안내를 표시할 뿐이야. 필요한 도구를 부른 뒤에도 사용자의 말에 답하는 한국어 문장을 꼭 남겨.`;
 }
 
 /** Content-Length가 없거나 잘못돼도 실제 읽은 바이트 수로 제한한다. */
@@ -118,7 +89,7 @@ export async function readJson(source: Request | Response, limit: number, signal
   }
 }
 
-function validateInput(body: unknown): { messages: Message[]; name: string; user: CompanionUser } {
+function validateInput(body: unknown): { messages: Message[]; name: string; user: { nickname?: unknown; style?: unknown } } {
   if (!isRecord(body) || !Array.isArray(body.messages) || body.messages.length < 1 || body.messages.length > MAX_MESSAGES) {
     throw new ChatFailure(400, INVALID_REQUEST);
   }
@@ -162,25 +133,12 @@ export function providerFailure(status: number) {
   return new ChatFailure(502, "채팅 모델 또는 연결 설정을 확인해 주세요.");
 }
 
-function completion(data: unknown, flags: Flags) {
+function completion(data: unknown) {
   if (!isRecord(data) || !Array.isArray(data.output) || data.output.length > 20) throw new ChatFailure(502, INVALID_RESPONSE);
-  const output: ProviderItem[] = [];
   const text: string[] = [];
-  const calls: ToolCall[] = [];
   for (const item of data.output) {
     if (!isRecord(item)) throw new ChatFailure(502, INVALID_RESPONSE);
-    if (item.type === "function_call") {
-      if (typeof item.call_id !== "string" || !item.call_id || item.call_id.length > 200 || typeof item.arguments !== "string") {
-        throw new ChatFailure(502, INVALID_RESPONSE);
-      }
-      const name = item.name;
-      if (name !== "show_crisis_help" && name !== "show_get_help" && name !== "search_web") throw new ChatFailure(502, INVALID_RESPONSE);
-      if (name === "show_crisis_help") flags.crisis = true;
-      if (name === "show_get_help") flags.suggest = true;
-      if (calls.length >= 4 || calls.some((call) => call.call_id === item.call_id)) throw new ChatFailure(502, INVALID_RESPONSE);
-      // 도구는 UI 신호뿐이며 인자를 코드로 실행하지 않는다.
-      calls.push({ call_id: item.call_id, name, arguments: item.arguments });
-    } else if (item.type === "message") {
+    if (item.type === "message") {
       if (item.role !== "assistant" || !Array.isArray(item.content) || (item.status !== undefined && item.status !== "completed")) {
         throw new ChatFailure(502, INVALID_RESPONSE);
       }
@@ -193,12 +151,10 @@ function completion(data: unknown, flags: Flags) {
     } else if (item.type !== "reasoning") {
       throw new ChatFailure(502, INVALID_RESPONSE);
     }
-    // 추론 내용은 해석·기록·클라이언트 반환하지 않고 동일 요청의 도구 후속에만 원형으로 전달한다.
-    output.push(item);
   }
   const reply = text.join("\n").trim();
   if (data.status !== "completed" || reply.length > MAX_MESSAGE_CHARS) throw new ChatFailure(502, INVALID_RESPONSE);
-  return { reply, calls, output };
+  return { reply };
 }
 
 /** fetch/config 주입으로 실제 키·네트워크 없이 전체 서버 경로를 검증한다. */
@@ -218,32 +174,30 @@ export async function chatResponse(request: Request, config: ChatServerConfig): 
   try {
     controller.signal.throwIfAborted();
     if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type") ?? "")) throw new ChatFailure(415, "JSON 형식의 메시지를 보내 주세요.");
-    const { messages, name, user } = validateInput(await readJson(request, MAX_REQUEST_BYTES, controller.signal));
+    const { messages } = validateInput(await readJson(request, MAX_REQUEST_BYTES, controller.signal));
     flags.crisis = messages.some((message) => message.role === "user" && hasCrisisSignal(message.content));
     const key = config.apiKey?.trim();
     if (!key) throw new ChatFailure(503, "채팅 연결이 아직 설정되지 않았어요.");
     const url = endpoint(config.baseUrl?.trim() || DEFAULT_BASE_URL);
     const model = config.model?.trim() || DEFAULT_MODEL;
-    const history: ProviderItem[] = [...messages];
-    let remembered = "";
-    try { remembered = await config.memory?.recall(messages, controller.signal) ?? ""; } catch { /* Chat still works without memory. */ }
-    const call = async (followUp: boolean) => {
+    const context = await config.prepareContext?.(messages, controller.signal).catch(() => undefined);
+    const call = async () => {
       controller.signal.throwIfAborted();
       const response = await (config.fetch ?? fetch)(url, {
         method: "POST",
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-        // Responses에서 추론과 function tools를 함께 쓴다. 답변·추론을 합쳐 4,096토큰으로 제한한다.
+        // 음성 위임은 추론 대기를 줄이고, 글 대화는 기존 추론 수준을 유지한다.
         body: JSON.stringify({
           model,
-          instructions: instructions(name, user, config.mode) + remembered + (config.search ? WEB_SEARCH_INSTRUCTIONS : ""),
-          input: history,
+          instructions: companionPrompt(config.onboardingAnswers, context, { hereName: config.hereName, recentMessages: messages, mode: config.mode ?? 'chat' }),
+          input: messages,
           stream: false,
           store: false,
-          reasoning: { effort: "medium" },
+          reasoning: { effort: config.mode === "voice" ? "low" : "medium" },
           include: ["reasoning.encrypted_content"],
           max_output_tokens: 4_096,
-          tools: [...TOOLS, ...(config.search ? [WEB_SEARCH_TOOL] : [])],
-          tool_choice: followUp ? "none" : "auto",
+          tools: [],
+          tool_choice: "none",
         }),
         signal: controller.signal,
         cache: "no-store",
@@ -257,35 +211,12 @@ export async function chatResponse(request: Request, config: ChatServerConfig): 
       }
       const body = await readJson(response, MAX_RESPONSE_BYTES, controller.signal, true);
       usageMetric("chat", body);
-      return completion(body, flags);
+      return completion(body);
     };
-    let result = await call(false);
-    const sources: SearchSource[] = [];
-    if (result.calls.some(tool => tool.name === "search_web") || (!result.reply && result.calls.length)) {
-      // store:false이므로 reasoning/function_call 항목까지 보존해 한 번의 도구 후속을 이어 간다.
-      history.push(...result.output);
-      let searches = 0;
-      for (const tool of result.calls) {
-        let output: object = { shown: true };
-        if (tool.name === "search_web") {
-          output = SEARCH_UNAVAILABLE;
-          try {
-            const query = parseSearchQuery(JSON.parse(tool.arguments));
-            if (query && config.search && searches < 2) {
-              searches++;
-              const searched = await config.search(query, controller.signal);
-              output = searched;
-              if (searched.available) sources.push(...searched.sources);
-            }
-          } catch { /* Tell the model search failed, never invent a result. */ }
-        }
-        history.push({ type: "function_call_output", call_id: tool.call_id, output: JSON.stringify(output) });
-      }
-      result = await call(true); // 도구만 답했을 때 문장 응답을 한 번만 더 요청한다.
-    }
+    const result = await call();
     if (!result.reply) throw new ChatFailure(502, INVALID_RESPONSE);
     try { config.memory?.schedule(messages); } catch { /* Saving memory must not fail a successful reply. */ }
-    const reply = (result.reply + searchCitations(sources, result.reply)).trim();
+    const reply = result.reply;
     let saved: void | { assistantAt: number } = undefined;
     try { saved = await config.onExchange?.(messages, reply); } catch { /* Client durable outbox retries with the same message IDs. */ }
     return json({ reply, ...flags, ...(saved ? { assistantAt: saved.assistantAt } : {}) });

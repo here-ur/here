@@ -1,10 +1,30 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { accountKey } from "./local-scope.ts";
-import { parseProfile, type Profile } from "./onboarding.ts";
+import { parseProfile, pickOnboardingAnswers, CONCERN_IDS, SUPPORT_IDS, type Answers, type Profile } from "./onboarding.ts";
 
 const FIELD = "here_profile_v1";
 const PENDING_KEY = "here.profile.pending.v1";
+export function accountCompanionName(metadata: unknown): string | undefined {
+  const stored = (metadata as { here_profile_v1?: { version?: unknown; profile?: { companion?: unknown } } } | null)?.here_profile_v1;
+  const name = stored?.version === 1 ? stored.profile?.companion : undefined;
+  return typeof name === 'string' ? name : undefined;
+}
 export const PROFILE_TIMEOUT_MS = 10000;
+
+/** auth.getUser()로 읽은 현재 계정 메타데이터만 사용한다. 과거의 가공된 style로 원래 답을 추측하지 않는다. */
+export function accountOnboardingAnswers(metadata: unknown): Answers {
+  if (!metadata || typeof metadata !== "object") return {};
+  const stored = (metadata as Record<string, unknown>)[FIELD];
+  if (!stored || typeof stored !== "object" || !("version" in stored) || stored.version !== 1 || !("profile" in stored)) return {};
+  const raw = stored.profile;
+  if (!raw || typeof raw !== "object") return {};
+  const profile = raw as Record<string, unknown>;
+  const answers = pickOnboardingAnswers(profile.onboardingAnswers);
+  // 이전 계정에는 질문 2·4의 실제 선택 ID만 남아 있다. 없는 질문 1·3은 채우지 않는다.
+  if (!answers.concern) answers.concern = Object.entries(CONCERN_IDS).find(([, id]) => id === profile.concern)?.[0];
+  if (!answers.support) answers.support = Object.entries(SUPPORT_IDS).find(([, id]) => id === profile.support)?.[0];
+  return pickOnboardingAnswers(answers);
+}
 
 // Preferences only. Never use user-editable metadata for membership or consent.
 export async function writeAccountProfile(client: SupabaseClient, userId: string, profile: Profile | null) {

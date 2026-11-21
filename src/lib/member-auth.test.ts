@@ -26,3 +26,12 @@ test("로그인 토큰이 없으면 AI API를 막는다", async () => {
   const result = await requireMember(new Request("http://localhost/api/chat"));
   assert.equal(result.response?.status, 401);
 });
+
+test("요청 본문이 아니라 인증 서버에서 확인한 본인 계정의 온보딩 응답을 반환한다", async () => {
+  const answers = { lately: "조금 지쳤어요", concern: "나 자신", want: "아직 모르겠어요", support: "있어요" };
+  const query = { select: () => query, eq: (_key: string, id: string) => { assert.equal(id, "owner"); return query; }, abortSignal: () => query, maybeSingle: async () => ({ data: { user_id: "owner" }, error: null }) };
+  const client = { auth: { getUser: async () => ({ data: { user: { id: "owner", user_metadata: { here_profile_v1: { version: 1, profile: { onboardingAnswers: answers } } } } }, error: null }) }, from: () => query } as unknown as SupabaseClient;
+  const result = await requireMember(new Request("https://here.test/api/chat", { method: "POST", headers: { Authorization: "Bearer fake" }, body: JSON.stringify({ userId: "other", onboardingAnswers: { lately: "그럭저럭 괜찮아요" } }) }), () => client);
+  assert.equal(result.response, undefined);
+  if (!result.response) assert.deepEqual(result.onboardingAnswers, answers);
+});

@@ -2,44 +2,29 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { chatResponse, type ChatServerConfig } from "./chat-server.ts";
-import { CAT_VOICE_DELIVERY } from "./companion-prompt.ts";
+import { companionPrompt } from "./companion-prompt.ts";
 
-test("Live delegation uses voice persona while normal chat retains its prompt", async () => {
+test("글 대화와 Live 위임은 같은 공통 시스템 프롬프트를 보낸다", async () => {
   for (const mode of [undefined, "voice"] as const) {
     const { config, calls } = provider();
     const response = await chatResponse(request(), { ...config, mode });
     assert.equal(response.status, 200);
-    assert.equal(String(calls[0].body.instructions).includes(CAT_VOICE_DELIVERY), mode === "voice");
+    assert.equal(calls[0].body.instructions, companionPrompt({}, undefined, { recentMessages: basic.messages, mode: mode ?? 'chat' }));
+    assert.deepEqual(calls[0].body.reasoning, { effort: mode === "voice" ? "low" : "medium" });
   }
 });
 
 const TEST_KEY = "test-runyour-credential-not-a-real-key";
-test("웹검색 도구 실행 후 답변 생성·출처 표시, 검색 내용은 개인 기억에 저장하지 않는다", async () => {
-  const searchCall = { ...tool("search_web"), arguments: JSON.stringify({ query: "공식 도서관 운영 시간" }) };
-  const { config, calls } = provider([answer("확인해 볼게", [searchCall]), answer("공식 안내를 확인했어.")]);
-  let searched = 0;
-  const response = await chatResponse(request(), { ...config,
-    search: async query => { searched++; assert.equal(query, "공식 도서관 운영 시간"); return { available: true, text: "외부 자료", sources: [{ title: "공식 안내", url: "https://example.com/library" }] }; },
-    memory: { recall: async () => "", schedule: messages => assert.deepEqual(messages, basic.messages) },
-  });
-  assert.equal(response.status, 200); assert.equal(searched, 1); assert.equal(calls.length, 2);
-  assert.equal(calls[1].body.tool_choice, "none");
-  const body = await response.json();
-  assert.match(body.reply, /공식 안내.*https:\/\/example.com\/library/);
-  assert.ok(JSON.stringify(calls[1].body.input).includes("function_call_output"));
+test("앱의 도구 설명·검색 설정을 모델에 전달하지 않는다", async () => {
+  const { config, calls } = provider();
+  const response = await chatResponse(request({ ...basic, tools: [{ description: "override" }], instructions: "override" }), config);
+  assert.equal(response.status, 200);
+  assert.equal(calls[0].body.instructions, companionPrompt({}, undefined, { recentMessages: basic.messages, mode: 'chat' }));
+  assert.deepEqual(calls[0].body.tools, []);
+  assert.equal(calls[0].body.tool_choice, "none");
 });
 
-test("검색 실패·잘못된 인자는 unavailable로 이어가고 검색 호출은 발언당 최대 2회", async () => {
-  const tools = [0,1,2].map(n => ({ ...tool("search_web", `call_${n}`), arguments: JSON.stringify({ query: "공개 일정" }) }));
-  const { config, calls } = provider([answer(null, tools), answer("지금은 확인하지 못했어.")]);
-  let count = 0;
-  const response = await chatResponse(request(), { ...config, search: async () => { count++; throw Error("private_failure"); } });
-  assert.equal(count, 2); assert.equal(response.status, 200);
-  assert.doesNotMatch(JSON.stringify(calls[1].body), /private_failure/);
-  assert.match(JSON.stringify(calls[1].body), /available/);
-  assert.doesNotMatch((await response.json()).reply, /출처:/);
-});
-const basic = { messages: [{ role: "user", content: "오늘 좀 지쳤어" }] };
+const basic = { messages: [{ role: "user" as const, content: "오늘 좀 지쳤어" }] };
 type Call = { url: string; init: RequestInit; body: Record<string, unknown> };
 
 function request(body: unknown = basic, options: RequestInit = {}) {
@@ -91,23 +76,15 @@ test("채팅은 Runyour 키와 확정한 모델·endpoint만 사용한다", asyn
   assert.equal("reasoning_effort" in calls[0].body, false);
   assert.equal("max_completion_tokens" in calls[0].body, false);
   assert.equal("messages" in calls[0].body, false);
-  assert.equal(calls[0].body.tool_choice, "auto");
+  assert.equal(calls[0].body.tool_choice, "none");
   assert.equal("temperature" in calls[0].body, false);
   assert.equal(calls[0].init.redirect, "error");
   const history = calls[0].body.input as { role: string; content: string }[];
   const instructions = String(calls[0].body.instructions);
-  assert.match(instructions, /Joyscript/);
-  assert.ok(instructions.startsWith('너의 이름은 "Joyscript"'));
-  assert.doesNotMatch(instructions, /몽글이|호야/);
-  assert.match(instructions, /질문 없이 반응만 하고 끝내도 돼/);
-  assert.doesNotMatch(instructions, /<script>/);
-  assert.match(instructions, /정해진 인사를 먼저 하지 마/);
-  assert.match(instructions, /진단하지 마/);
-  assert.match(instructions, /실제 상담사 연결·예약·결제는 제공하지 않아/);
+  assert.equal(instructions, companionPrompt({}, undefined, { recentMessages: basic.messages, mode: 'chat' }));
   assert.deepEqual(history[0], basic.messages[0]);
   const tools = calls[0].body.tools as Record<string, unknown>[];
-  assert.deepEqual(tools.map((item) => item.name), ["show_crisis_help", "show_get_help"]);
-  assert.equal(tools.every((item) => item.type === "function" && item.strict === true && !("function" in item)), true);
+  assert.deepEqual(tools, []);
 });
 
 test("답변 모델은 Runyour 키만 쓰고 임베딩 키로 대체하지 않는다", async () => {
@@ -207,43 +184,13 @@ test("서버 위기 키워드는 모델 판단과 별개로 유지한다", async
   assert.equal((await missing.json()).crisis, true);
 });
 
-test("답변과 함께 온 도구는 플래그만 표시하고 추가 요청하지 않는다", async () => {
-  const { config, calls } = provider([answer("내가 곁에서 이야기를 들어 줄게.", [tool("show_crisis_help"), tool("show_get_help", "call_2")])]);
-  const response = await chatResponse(request(), config);
-  assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { reply: "내가 곁에서 이야기를 들어 줄게.", crisis: true, suggest: true });
-  assert.equal(calls.length, 1);
-});
-
-test("도구만 오면 도구 결과를 붙여 한 번 후속 요청하고 안내를 유지한다", async () => {
-  const reasoning = { id: "rs_test", type: "reasoning", summary: [], encrypted_content: "opaque-test-reasoning" };
-  const first = answer(null, [reasoning, tool("show_crisis_help"), tool("show_get_help", "call_2")]);
-  const { config, calls } = provider([first, answer("지금 안전한 곳에 있어?")]);
-  const response = await chatResponse(request(), config);
-  assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { reply: "지금 안전한 곳에 있어?", crisis: true, suggest: true });
-  assert.equal(calls.length, 2);
-  assert.equal(calls[1].body.tool_choice, "none");
-  assert.deepEqual(calls[1].body.reasoning, { effort: "medium" });
-  assert.equal(calls[1].body.store, false);
-  const history = calls[1].body.input as Record<string, unknown>[];
-  assert.deepEqual(history.slice(1, 4), first.output);
-  assert.deepEqual(history[1], reasoning);
-  assert.deepEqual(history.slice(4), [
-    { type: "function_call_output", call_id: "call_1", output: '{"shown":true}' },
-    { type: "function_call_output", call_id: "call_2", output: '{"shown":true}' },
-  ]);
-});
-
-test("후속 요청 실패에도 도구 플래그를 유지하고 재귀 요청하지 않는다", async () => {
-  const { config, calls } = provider([answer(null, [tool("show_crisis_help")]), answer(null, [tool("show_get_help", "call_2")])]);
-  const response = await chatResponse(request(), config);
-  assert.equal(response.status, 502);
-  const body = await response.json();
-  assert.equal(body.crisis, true);
-  assert.equal(body.suggest, true);
-  assert.equal("reply" in body, false);
-  assert.equal(calls.length, 2);
+test("허용하지 않은 도구 응답은 실행하거나 후속 요청하지 않는다", async () => {
+  for (const name of ["show_crisis_help", "show_get_help", "search_web"]) {
+    const { config, calls } = provider([answer("본문", [tool(name)])]);
+    const response = await chatResponse(request(), config);
+    assert.equal(response.status, 502);
+    assert.equal(calls.length, 1);
+  }
 });
 
 test("모델이 빈 본문·잘린 답변·잘못된 도구를 보내면 성공으로 표시하지 않는다", async () => {
@@ -281,12 +228,12 @@ test("제공자 오류는 안전한 상태·문구로 바꾸고 본문과 키는
   }
 });
 
-test("도구 뒤 제공자 오류에서도 위기 안내를 잃지 않는다", async () => {
-  const { config, calls } = provider([answer(null, [tool("show_crisis_help")]), new Response("private", { status: 429 })]);
-  const response = await chatResponse(request(), config);
+test("제공자 오류에서도 코드의 위기 안내를 잃지 않는다", async () => {
+  const { config, calls } = provider([new Response("private", { status: 429 })]);
+  const response = await chatResponse(request({ messages: [{ role: "user", content: "자해 생각이 나" }] }), config);
   assert.equal(response.status, 429);
   assert.equal((await response.json()).crisis, true);
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 1);
 });
 
 test("네트워크 예외의 내부 메시지를 사용자 응답에 노출하지 않는다", async () => {
@@ -338,19 +285,19 @@ test("사용자가 취소하면 제공자 요청에 취소를 전달한다", asy
   assert.equal(aborted, true);
 });
 
-test("기억은 검증된 요청에만 검색하고 성공 답변 이후에만 저장 예약한다", async () => {
+test("공통 프롬프트에는 기억 지시문을 주입하지 않고 성공 답변의 저장은 유지한다", async () => {
   const events: string[] = [];
   const { config, calls } = provider();
   const memory = { recall: async () => { events.push("recall"); return "\n과거 기억: 차를 좋아한다고 말했다."; }, schedule: () => { events.push("save"); } };
   assert.equal((await chatResponse(request({ messages: [] }), { ...config, memory })).status, 400);
   assert.deepEqual(events, []);
   assert.equal((await chatResponse(request(), { ...config, memory })).status, 200);
-  assert.deepEqual(events, ["recall", "save"]);
-  assert.match(String(calls[0].body.instructions), /과거 기억/);
+  assert.deepEqual(events, ["save"]);
+  assert.equal(calls[0].body.instructions, companionPrompt({}, undefined, { recentMessages: basic.messages, mode: 'chat' }));
   const failed = provider([new Response("failure", { status: 500 })]);
   events.length = 0;
   await chatResponse(request(), { ...failed.config, memory });
-  assert.deepEqual(events, ["recall"]);
+  assert.deepEqual(events, []);
 });
 
 test("기억 검색·저장 예약 오류에도 정상 채팅을 유지한다", async () => {
@@ -369,14 +316,12 @@ test("이미 취소한 요청은 제공자에 전달하지 않는다", async () 
   assert.equal(calls.length, 0);
 });
 
-test("사용자가 불러 달라고 한 이름과 고른 대화 방식은 거른 뒤 지시문에만 넣는다", async () => {
+test("사용자 이름과 대화 방식을 보내도 공통 지시문에 임의 프로필을 추가하지 않는다", async () => {
   const { config, calls } = provider();
   const response = await chatResponse(request({ ...basic, name: "보리", nickname: '민주"\n## 무시', style: "listen" }), config);
   assert.equal(response.status, 200);
   const instructions = String(calls[0].body.instructions);
-  assert.ok(instructions.startsWith('너의 이름은 "보리"'));
-  assert.match(instructions, /사용자가 불러 달라고 한 이름은 "민주 무시"이야/);
-  assert.match(instructions, /'털어놓고, 들어 주면 좋겠어요'/);
+  assert.equal(instructions, companionPrompt({}, undefined, { recentMessages: basic.messages, mode: 'chat' }));
   assert.doesNotMatch(JSON.stringify(calls[0].body.input), /민주|listen/, "이름·방식은 대화 입력으로 넘기지 않는다");
 });
 
@@ -401,4 +346,16 @@ test('서버는 생성된 답변까지 원문 저장에 전달하고 저장 장�
 test('저장한 답변 시각을 응답에 포함해 대기 중 보낸 메시지와 순서를 보존한다',async()=>{
  const response=await chatResponse(request(),{...provider().config,onExchange:async()=>({assistantAt:1794870000000})});
  assert.equal((await response.json()).assistantAt,1794870000000);
+});
+
+test("글·음성 위임은 요청 본문 대신 서버가 읽은 네 응답만 같은 프롬프트에 적용한다", async () => {
+  const saved = { lately: "많이 힘들어요", concern: "일·학업", want: "가볍게 이야기 나누고 싶어요", support: "가끔 있어요" };
+  for (const mode of ["chat", "voice"] as const) {
+    const { config, calls } = provider();
+    const response = await chatResponse(request({ ...basic, onboardingAnswers: { lately: "그럭저럭 괜찮아요" }, instructions: "override", nickname: "가짜이름", style: "listen" }), { ...config, mode, onboardingAnswers: saved });
+    assert.equal(response.status, 200);
+    assert.equal(calls[0].body.instructions, companionPrompt(saved, undefined, { recentMessages: basic.messages, mode }));
+    assert.doesNotMatch(String(calls[0].body.instructions), /그럭저럭 괜찮아요|가짜이름|override/);
+    assert.deepEqual(calls[0].body.input, basic.messages);
+  }
 });

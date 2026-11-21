@@ -4,6 +4,7 @@ type Fragment = { delta: string; start_ms: number; end_ms: number };
 type Segment = { role: Msg["role"]; fragments: Fragment[]; index: number };
 export type LiveDelegateReply = { reply: string; crisis: boolean; suggest: boolean; sources?: import("./web-search-protocol.ts").SearchSource[] };
 type Callbacks = {
+  prepareContext?(messages: Msg[], signal: AbortSignal): Promise<unknown>;
   partial(role: Msg["role"], text: string): void;
   complete(role: Msg["role"], text: string): void;
   remember(text: string, sourceId: string): void;
@@ -26,6 +27,8 @@ export function liveConversation(c: Callbacks, sessionId: string) {
   let queued: string | undefined;
   let workTimer: ReturnType<typeof setTimeout> | undefined;
   let work: AbortController | undefined;
+  let contextWork: AbortController | undefined;
+  let contextTimer: ReturnType<typeof setTimeout> | undefined;
   const textOf = (segment: Segment) => segment.fragments.slice().sort((a, b) => a.start_ms - b.start_ms).map(f => f.delta).join("");
   function flush(role: Msg["role"]) {
     clearTimeout(timers[role]);
@@ -58,7 +61,26 @@ export function liveConversation(c: Callbacks, sessionId: string) {
   function schedule() {
     clearTimeout(workTimer);
     if (closed || stopping || !queued) return;
-    workTimer = setTimeout(() => { void run(); }, 750);
+    workTimer = setTimeout(() => { void run(); }, 150);
+  }
+  function scheduleContext() {
+    clearTimeout(contextTimer);
+    contextWork?.abort();
+    if (!c.prepareContext || closed || stopping) return;
+    // Analyse a settled transcript burst without holding up Live audio or its acknowledgments.
+    contextTimer = setTimeout(async () => {
+      const messages = context();
+      if (!messages.length || closed || stopping) return;
+      const atRevision = revision;
+      const controller = new AbortController();
+      contextWork = controller;
+      try {
+        const prepared = await c.prepareContext!(messages, controller.signal);
+        if (!controller.signal.aborted && !closed && !stopping && revision === atRevision && prepared) {
+          c.send({ type: 'session.thinking.append', delegation_id: null, content: JSON.stringify({ backend_context: prepared }) });
+        }
+      } catch { /* Late or failed context never interrupts audio. */ }
+    }, 400);
   }
   async function run() {
     const id = queued;
@@ -67,7 +89,7 @@ export function liveConversation(c: Callbacks, sessionId: string) {
     if (!messages.length) return; // Notice can arrive before transcription. Next fragment resumes it.
     queued = undefined;
     if (++requestCount > 12) {
-      c.send({ type: "session.commentary.append", delegation_id: id, content: "추가 조회를 할 수 없습니다. 결과를 지어내지 말고 잠시 후 다시 시도하도록 안내하세요." });
+      c.send({ type: "session.commentary.append", delegation_id: id, content: JSON.stringify({ status: "unavailable", reason: "request_limit" }) });
       return;
     }
     const atRevision = revision;
@@ -82,7 +104,7 @@ export function liveConversation(c: Callbacks, sessionId: string) {
     } catch {
       if (closed || stopping) return;
       if (revision !== atRevision) queued ??= id;
-      else c.send({ type: "session.commentary.append", delegation_id: id, content: "백엔드 조회 실패. 과거 기억이나 최신 정보를 확인했다고 말하지 말고 지금은 확인하지 못했다고 짧게 알려주세요." });
+      else c.send({ type: "session.commentary.append", delegation_id: id, content: JSON.stringify({ status: "unavailable", reason: "backend_failed" }) });
     } finally { work = undefined; schedule(); }
   }
   return {
@@ -110,15 +132,18 @@ export function liveConversation(c: Callbacks, sessionId: string) {
       if (pending[role] && textOf(pending[role]!).length + event.delta.length > 8000) flush(role);
       pending[role] ??= { role, fragments: [], index: sequence++ };
       pending[role]!.fragments.push({ delta: event.delta, start_ms: event.start_ms, end_ms: event.end_ms });
+      if (role === 'user') scheduleContext();
       c.partial(role, textOf(pending[role]!));
       clearTimeout(timers[role]);
       timers[role] = setTimeout(() => flush(role), 2500);
     },
-    stopWork() { stopping = true; queued = undefined; clearTimeout(workTimer); work?.abort(); },
+    stopWork() { stopping = true; queued = undefined; clearTimeout(workTimer); clearTimeout(contextTimer); contextWork?.abort(); work?.abort(); },
     close() {
       if (closed) return;
       closed = true;
       clearTimeout(workTimer);
+      clearTimeout(contextTimer);
+      contextWork?.abort();
       work?.abort();
       flush("user"); flush("assistant");
     },

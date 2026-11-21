@@ -21,8 +21,3 @@
   bottom: calc(max(18%, var(--home-cat-clearance), var(--home-bottom-space, 96px) + 24px) - var(--home-cat-size) * .146);
 }
 .home-scene .home-buddy { transform-origin: 50% 85.4%; }
-.home-voice-status {
-  position: absolute;
-  top: calc(85.4% + 12px);
-  inset-inline: 0;
-}
