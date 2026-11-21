@@ -56,8 +56,7 @@ test("Live exchanges SDP through authenticated app route and sends no Realtime c
   assert.equal(m.requests[0].url, "/api/live");
   assert.deepEqual(m.requests[0].body, { sdp: "v=0\r\no=test", dcid: 4 });
   assert.equal(m.track.enabled, true);
-  assert.deepEqual(m.sent.map(e => e.type), ["session.input_audio.unmute", "session.commentary.append"]);
-  assert.equal(m.sent[1].content, '안녕!');
+  assert.deepEqual(m.sent.map(e => e.type), ["session.input_audio.unmute"]);
   rt.setMic(false); assert.equal(m.track.enabled, false);
   assert.equal(m.sent.at(-1)?.type, "session.input_audio.mute");
   rt.close();

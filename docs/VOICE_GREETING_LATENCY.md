@@ -26,8 +26,8 @@ No network throttling. Times below are rounded only for display.
 | Exact short real-time greeting instruction (experiment reverted) | 3,193.5 / 5,165.4 / 18,865.2 | All fail |
 | Send microphone RTP earlier (experiment reverted) | 3,660.1 / 3,580.4 / 3,525.9 | All fail |
 | Feature preview with negotiated channel + no ICE wait | 5,344.1 / no greeting / 3,965.0 / 3,414.8 / 4,030.4 | All fail |
-| Local: speakable greeting cue + parallel authorized microphone setup | 2,743.2 / 1,794.7 / 1,665.7 / 2,581.8 / 2,431.7 | 2/5 pass; overall fail |
-| Local: also prepare browser transport on home and overlap audio meter setup | 1,726.4 / 2,432.6 / 2,031.4 / 2,081.5 / 2,215.7 | 1/5 pass; overall fail |
+| Local experiment: speakable greeting cue + parallel authorized microphone setup | 2,743.2 / 1,794.7 / 1,665.7 / 2,581.8 / 2,431.7 | 2/5 pass; overall fail; cue later withdrawn |
+| Local experiment: also prepare browser transport on home and overlap audio meter setup | 1,726.4 / 2,432.6 / 2,031.4 / 2,081.5 / 2,215.7 | 1/5 pass; overall fail; cue later withdrawn |
 
 The latest five-run batch kept GPT-Live 1 and Noeul and generated every greeting
 live, after the button press. All five requests returned HTTP 200 and a greeting;
@@ -35,6 +35,15 @@ none contained user speech or browser errors. The 2,031.4-ms run is a failure.
 Transport RTT was 35 ms in the first run and 124–136 ms in the other four;
 provider session creation took 193–553 ms. These observations identify variable
 connection costs; they do not establish provider geography or a causal speedup.
+
+The extra `session.commentary.append` greeting cue was subsequently withdrawn.
+A hosted follow-up test greeted but produced no answer within 30 seconds after
+the synthetic user's question, despite successful context API calls. With that
+cue removed, a separate test answered from the saved backend summary. These two
+runs do not establish causation, but the cue has not passed conversation regression
+testing and must not ship as an accepted optimization. The original server startup
+greeting instruction remains. The local timings above describe the experiment,
+not the final retained implementation, and the 2-second requirement remains unmet.
 
 The existing deployment's authentication, consent and startup-context/quota
 checks took roughly 140–153 ms in these runs. They were not the dominant delay.
@@ -75,9 +84,6 @@ remain unresolved. Do not label this change “under 2 seconds” or “fixed.�
 - When microphone permission is already granted, overlap device opening with
   session setup. Unresolved permission still blocks the paid request. Late device
   streams are stopped if the user cancels.
-- Send `session.commentary.append` with the greeting text `안녕!` once at
-  `session.started`, keeping the existing server startup instruction. The same
-  GPT-Live 1 session synthesizes it with Noeul; there is no stored audio.
 - Initialize the playback meter while the session request is in flight, and log
   peer, permission, offer and player stages separately. The benchmark also records
   WebRTC RTT, jitter and packet loss without recording the client's address.
