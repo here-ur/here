@@ -137,11 +137,15 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
   const voiceClickedAt = useRef<number | undefined>(undefined);
   const outputShape = useRef<import("@/lib/mouth-shape").MouthShape>("rest");
   const voiceWarmup = useRef<ReturnType<typeof prepareLiveSession> | null>(null);
+  const warmupEffect = useRef(0);
+  const warmupProfile = useRef('');
   const canPrepareVoice = Boolean(profile) && !basics.needed && !typing && !reportMode && !customizing && !showFriends;
   const profileLoaded = profile !== undefined;
   const voiceProfileKey = preparationProfileKey(profile?.companion, profile?.onboardingAnswers);
   useEffect(() => {
+    const effect = ++warmupEffect.current;
     const dispose = () => { voiceWarmup.current?.dispose(); voiceWarmup.current = null; };
+    if (warmupProfile.current !== voiceProfileKey) { dispose(); warmupProfile.current = voiceProfileKey; }
     const prepare = () => {
       if (document.hidden || !canPrepareVoice) {
         dispose();
@@ -161,7 +165,12 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
     document.addEventListener('visibilitychange', prepare);
     window.addEventListener('pagehide', dispose);
     // The claimed session is removed from this ref before entering voice mode.
-    return () => { document.removeEventListener('visibilitychange', prepare); window.removeEventListener('pagehide', dispose); dispose(); };
+    return () => {
+      document.removeEventListener('visibilitychange', prepare); window.removeEventListener('pagehide', dispose);
+      // React's development effect replay immediately sets up the same owner.
+      // Preserve its in-flight request; a real unmount still closes in this task.
+      queueMicrotask(() => { if (warmupEffect.current === effect) dispose(); });
+    };
   }, [canPrepareVoice, voiceMode, voiceProfileKey, preparation, userId, profileLoaded]);
   // 음성 대화 중에는 효과음이 마이크에 섞이지 않게 모두 쉰다.
   useEffect(() => { muteSfx(voiceMode); return () => muteSfx(false); }, [voiceMode]);
