@@ -13,6 +13,39 @@ It ends when the browser plays measurable assistant speech. HTTP success,
 floating-point elapsed time: 2,000 ms passes; 2,000.001 ms and 2,100 ms fail.
 Every run must pass independently; averages do not determine acceptance.
 
+## Recheck after recharge — 2026-11-21 (KST)
+
+Tested the deployed development app at `https://here-dev.vercel.app`, commit
+`0e371f95fc4c555eaed32e54bdb3c54a27b6ba1e` (deployment
+`https://here-4yxezbmvc-here23.vercel.app`). This was actual Chrome home-button
+interaction with microphone permission already granted, silent synthetic input,
+and a fresh browser context per run. No autoplay override was used for these
+latency measurements. Only the optional home dwell differed between scenarios.
+
+| Scenario | Click to audible greeting, ms | Result |
+| --- | --- | --- |
+| Stay on home for 5 seconds; connection ready before click in all 3 runs | 1,307.0 / 1,096.4 / 1,208.5 | 3/3 pass |
+| Click as soon as the home voice button is available; connection not ready in all 3 runs | 3,140.5 / no greeting within the 18-second observation window / 4,143.9 | 0/3 pass |
+
+All six session requests returned HTTP 200 and reached `session.started` with
+GPT-Live 1, Noeul and backend memory enabled. None accessed the microphone or
+generated a transcript before the click. No browser error or user speech was
+observed. The earlier provider quota failure did not recur.
+
+The immediate-entry runs took 2,140.2 / 1,539.9 / 2,019.4 ms from the click to
+activation of the connected session. Even after connecting, one run produced no
+greeting. Connection preparation alone therefore does not establish the required
+deadline or reliable greeting delivery for immediate entry. **Overall: FAIL.**
+
+A separate real-provider functional test activated a standby session, spoke a
+synthetic question and received a completed answer recalling the saved backend
+summary about a board-game gathering. Context requests and delegation succeeded;
+no conversation error occurred. This functional harness used an autoplay override
+and is explicitly excluded from the latency acceptance results.
+
+Unrounded measurements and the functional result are saved in
+[the JSON report](evaluations/voice-greeting-2026-11-21-recharged.json).
+
 ## User-requested app-entry preconnection
 
 The current candidate starts an authenticated Live session after login, consent,
@@ -33,7 +66,7 @@ can incur provider cost even if the user never enters voice.
 - There is no background retry loop. The 2-second timer still starts at the
   actual voice click. A click before standby finishes includes the remaining wait.
 
-Actual home-button experiments with a five-second home dwell:
+Earlier home-button experiments, before recharge, with a five-second home dwell:
 
 | Activation experiment | Click to first sound, ms | Result |
 | --- | --- | --- |
@@ -46,8 +79,8 @@ speech. The final variant's additional runs could not create a session: OpenAI
 returned HTTP 429 classified from its error as billing/quota exhaustion. The
 application now preserves that status and avoids a duplicate activation retry.
 This is distinct from the development account's separate five-per-minute quota.
-No claim of a passing two-second implementation is supported. Final live follow-up
-conversation validation and immediate-entry measurements remain outstanding.
+The post-recharge measurements above supersede that blocked verification state:
+follow-up conversation passed, while immediate-entry greeting latency still failed.
 
 ## Findings (2026-11-21)
 
@@ -153,6 +186,9 @@ still includes it if the user is prompted.
 five seconds before clicking. The default is zero extra wait. Report these scenarios
 separately; warm results do not prove immediate-entry performance. The script also
 fails on speech generation or microphone access before the button press.
+It verifies the returned model, voice and memory-enabled flag, spaces run starts
+by at least 16 seconds to respect the member quota, and enters text during cleanup
+so it does not accidentally open another paid standby session between runs.
 
 ## References
 
