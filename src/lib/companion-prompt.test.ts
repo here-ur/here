@@ -2,6 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { SYSTEM_PROMPT, companionPrompt } from './companion-prompt.ts';
 import { liveSessionRequest } from './live-session.ts';
+
+test('standby keeps the same user context and voice but waits for the voice button before greeting', () => {
+  const live = liveSessionRequest({sdp:'v=0', standby:true}, 'gpt-live-1', 'noeul', {want:'가볍게 이야기 나누고 싶어요'});
+  const immediate = liveSessionRequest({sdp:'v=0'}, 'gpt-live-1', 'noeul', {want:'가볍게 이야기 나누고 싶어요'});
+  assert.equal(live.session.instructions, immediate.session.instructions);
+  assert.equal(live.session.model, 'gpt-live-1'); assert.equal(live.session.audio.output.voice, 'noeul');
+  assert.match(live.session.input[0].content[0].text, /시작할 때까지 조용히 기다리/);
+  assert.throws(() => liveSessionRequest({sdp:'v=0', standby:'true'}));
+});
 import { QUESTIONS } from './onboarding.ts';
 
 const answers = { lately: '많이 힘들어요', concern: '일·학업', want: '가볍게 이야기 나누고 싶어요', support: '지금은 없어요' };

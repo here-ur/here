@@ -44,6 +44,6 @@ export async function POST(request: Request) {
       voice: body.session.audio.output.voice, memory: memoryEnabled(process.env) }, { headers: { "Cache-Control": "no-store", "Server-Timing": timings.join(', ') } });
   } catch (error) {
     if (error instanceof JsonRequestError) return Response.json({ error: error.message }, { status: error.status });
-    return failed();
+    return failed(error);
   }
 }

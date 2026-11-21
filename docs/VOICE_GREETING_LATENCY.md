@@ -13,6 +13,42 @@ It ends when the browser plays measurable assistant speech. HTTP success,
 floating-point elapsed time: 2,000 ms passes; 2,000.001 ms and 2,100 ms fail.
 Every run must pass independently; averages do not determine acceptance.
 
+## User-requested app-entry preconnection
+
+The current candidate starts an authenticated Live session after login, consent,
+onboarding and member-basics checks, when the home screen is visible. It uses the
+same backend context, GPT-Live 1 and Noeul. This consumes a voice-session quota and
+can incur provider cost even if the user never enters voice.
+
+- Standby sends synthetic silence, never opens the microphone, mutes output and
+  tells the model to wait. No greeting text or recording is prepared for playback.
+- Pressing voice claims that session, opens the microphone, refreshes the token
+  used for subsequent context requests, and requests a freshly synthesized `안녕!`
+  through commentary. It does not add a second greeting to the cold-start path.
+- Any speech generated before activation invalidates the standby session. It is
+  closed rather than replayed. Unsupported/failed standby can fall back to a new
+  connection; authentication, consent and quota denials are not retried.
+- Entering text, leaving home, changing profile, hiding/closing the page or
+  signing out disposes unused standby. A claimed call owns its cancellation.
+- There is no background retry loop. The 2-second timer still starts at the
+  actual voice click. A click before standby finishes includes the remaining wait.
+
+Actual home-button experiments with a five-second home dwell:
+
+| Activation experiment | Click to first sound, ms | Result |
+| --- | --- | --- |
+| Full spoken instruction | 2,724.2 / 3,645.6 / 2,579.9 | All fail |
+| Short start notice plus speakable greeting | app quota denial / 1,380.7 / 2,332.1 | Overall fail |
+| Final, greeting commentary only | provider failures | Not latency-validated |
+
+The successful session-creation runs above had no pre-click microphone access or
+speech. The final variant's additional runs could not create a session: OpenAI
+returned HTTP 429 classified from its error as billing/quota exhaustion. The
+application now preserves that status and avoids a duplicate activation retry.
+This is distinct from the development account's separate five-per-minute quota.
+No claim of a passing two-second implementation is supported. Final live follow-up
+conversation validation and immediate-entry measurements remain outstanding.
+
 ## Findings (2026-11-21)
 
 Chrome with microphone permission already granted, a silent synthetic microphone,
@@ -36,12 +72,12 @@ Transport RTT was 35 ms in the first run and 124–136 ms in the other four;
 provider session creation took 193–553 ms. These observations identify variable
 connection costs; they do not establish provider geography or a causal speedup.
 
-The extra `session.commentary.append` greeting cue was subsequently withdrawn.
+The extra cold-start `session.commentary.append` greeting cue was subsequently withdrawn.
 A hosted follow-up test greeted but produced no answer within 30 seconds after
 the synthetic user's question, despite successful context API calls. With that
 cue removed, a separate test answered from the saved backend summary. These two
-runs do not establish causation, but the cue has not passed conversation regression
-testing and must not ship as an accepted optimization. The original server startup
+runs do not establish causation, but that duplicate cold-start cue has not passed
+conversation regression testing. The original server startup
 greeting instruction remains. The local timings above describe the experiment,
 not the final retained implementation, and the 2-second requirement remains unmet.
 
@@ -59,8 +95,8 @@ Additional **diagnostic-only** runs (not acceptance tests):
   configured model remains GPT-Live 1.
 - A session already connected and waiting silently, then instructed to generate
   its greeting at a button press, took 2,680.3 / 1,577.8 / 3,163.9 ms. Preconnecting
-  alone therefore did not satisfy the strict criterion either. It was not added
-  to the application; the app still creates paid voice sessions on user request.
+  alone therefore did not satisfy the strict criterion either. This was an early
+  diagnostic; the subsequent user-requested app-entry candidate is described above.
 
 The local and hosted runs are different environments, so these results do not
 establish a percentage improvement. Provider generation and transport variance
@@ -78,9 +114,8 @@ remain unresolved. Do not label this change “under 2 seconds” or “fixed.�
 - Add a repeatable, opt-in browser acceptance test that exits nonzero if any run
   exceeds the deadline, never greets, has an API/browser error, or contains user
   speech that could have triggered the response.
-- Prepare a browser peer, transceiver and negotiated channel on the home screen.
-  This makes no paid request, opens no microphone and generates no greeting.
-  Generate the SDP offer only when the user starts voice; release unused peers.
+- Prepare the actual authenticated connection on the home screen, using the
+  standby lifecycle described above. This replaces the earlier browser-only warmup.
 - When microphone permission is already granted, overlap device opening with
   session setup. Unresolved permission still blocks the paid request. Late device
   streams are stopped if the user cancels.
@@ -113,6 +148,11 @@ pregrants the browser's microphone permission, and feeds only generated silence.
 Delete the disposable account and session file after testing. Initial human
 permission-dialog time is not covered by this scenario; the application's clock
 still includes it if the user is prompted.
+
+`GREETING_PRECONNECT_WAIT_MS=5000` explicitly tests a user who stays on home for
+five seconds before clicking. The default is zero extra wait. Report these scenarios
+separately; warm results do not prove immediate-entry performance. The script also
+fails on speech generation or microphone access before the button press.
 
 ## References
 
