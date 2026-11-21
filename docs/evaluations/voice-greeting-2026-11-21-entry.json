@@ -1,0 +1,878 @@
+{
+  "implementationCommit": "af436e0df7990ea8183bd7dade88ae1d0497fb7b",
+  "status": "FAIL",
+  "stoppedAtUserRequest": true,
+  "local": {
+    "target": "http://localhost:3000",
+    "budgetMs": 2000,
+    "preconnectWaitMs": 0,
+    "runIntervalMs": 16000,
+    "reuseBrowserState": true,
+    "runs": 3,
+    "passed": true,
+    "results": [
+      {
+        "run": 1,
+        "passed": true,
+        "elapsedMs": 912.0999999046326,
+        "budgetMs": 2000,
+        "preconnectWaitMs": 0,
+        "storageReused": false,
+        "buttonAvailableMs": 1348.9000000953674,
+        "buttonClickableMs": 1357.4000000953674,
+        "navigationToClickMs": 1363.3000001907349,
+        "readyBeforeClick": false,
+        "earlySpeech": false,
+        "earlyMicrophone": false,
+        "userSpeech": false,
+        "transcript": " 안녕! 오늘도 잘 왔지?",
+        "stages": [
+          {
+            "event": "here_voice_timing",
+            "stage": "connect_begin",
+            "elapsedMs": 0
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "peer_ready",
+            "elapsedMs": 87.90000009536743
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "permission_ready",
+            "elapsedMs": 97.90000009536743
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "media_ready",
+            "elapsedMs": 229.70000004768372
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "offer_ready",
+            "elapsedMs": 246.29999995231628
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "session_request",
+            "elapsedMs": 246.29999995231628
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "player_ready",
+            "elapsedMs": 247.5
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "session_key",
+            "elapsedMs": 695.5
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "channel_ready",
+            "elapsedMs": 942.4000000953674
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "channel_ready",
+            "elapsedMs": 126.79999995231628
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "first_audio",
+            "elapsedMs": 911.7999999523163,
+            "budgetMs": 2000,
+            "passed": true
+          }
+        ],
+        "transport": [
+          {
+            "type": "candidate-pair",
+            "rttMs": 36,
+            "serverProtocol": "udp"
+          },
+          {
+            "type": "inbound-audio",
+            "jitterMs": 1,
+            "averageJitterBufferMs": 34.955752212389385,
+            "packetsLost": 0
+          },
+          {
+            "type": "transport",
+            "dtlsCipher": "TLS_AES_128_GCM_SHA256"
+          }
+        ],
+        "sessionRequests": 1,
+        "api": [
+          {
+            "status": 200,
+            "timing": "member;dur=89.5, consent;dur=50.8, context_quota;dur=40.6, provider;dur=259.8",
+            "model": "gpt-live-1",
+            "voice": "noeul",
+            "memory": true
+          }
+        ],
+        "errors": []
+      },
+      {
+        "run": 2,
+        "passed": true,
+        "elapsedMs": 976.7999999523163,
+        "budgetMs": 2000,
+        "preconnectWaitMs": 0,
+        "storageReused": true,
+        "buttonAvailableMs": 704.7999999523163,
+        "buttonClickableMs": 1250.5999999046326,
+        "navigationToClickMs": 1254.3999998569489,
+        "readyBeforeClick": true,
+        "earlySpeech": false,
+        "earlyMicrophone": false,
+        "userSpeech": false,
+        "transcript": "안녕! 드디어 얘기",
+        "stages": [
+          {
+            "event": "here_voice_timing",
+            "stage": "connect_begin",
+            "elapsedMs": 0
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "peer_ready",
+            "elapsedMs": 3.200000047683716
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "permission_ready",
+            "elapsedMs": 4.299999952316284
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "media_ready",
+            "elapsedMs": 6.599999904632568
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "offer_ready",
+            "elapsedMs": 8.5
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "session_request",
+            "elapsedMs": 8.5
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "player_ready",
+            "elapsedMs": 10.700000047683716
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "session_key",
+            "elapsedMs": 568.2999999523163
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "channel_ready",
+            "elapsedMs": 757
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "channel_ready",
+            "elapsedMs": 103.40000009536743
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "first_audio",
+            "elapsedMs": 976.4000000953674,
+            "budgetMs": 2000,
+            "passed": true
+          }
+        ],
+        "transport": [
+          {
+            "type": "candidate-pair",
+            "rttMs": 38,
+            "serverProtocol": "udp"
+          },
+          {
+            "type": "inbound-audio",
+            "jitterMs": 1,
+            "averageJitterBufferMs": 47.52,
+            "packetsLost": 0
+          },
+          {
+            "type": "transport",
+            "dtlsCipher": "TLS_AES_128_GCM_SHA256"
+          }
+        ],
+        "sessionRequests": 1,
+        "api": [
+          {
+            "status": 200,
+            "timing": "member;dur=192.9, consent;dur=65.8, context_quota;dur=61.3, provider;dur=233.0",
+            "model": "gpt-live-1",
+            "voice": "noeul",
+            "memory": true
+          }
+        ],
+        "errors": []
+      },
+      {
+        "run": 3,
+        "passed": true,
+        "elapsedMs": 1108.9000000953674,
+        "budgetMs": 2000,
+        "preconnectWaitMs": 0,
+        "storageReused": true,
+        "buttonAvailableMs": 643.7999999523163,
+        "buttonClickableMs": 1184.2000000476837,
+        "navigationToClickMs": 1189.2999999523163,
+        "readyBeforeClick": false,
+        "earlySpeech": false,
+        "earlyMicrophone": false,
+        "userSpeech": false,
+        "transcript": "안녕! 이렇게 또",
+        "stages": [
+          {
+            "event": "here_voice_timing",
+            "stage": "connect_begin",
+            "elapsedMs": 0
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "peer_ready",
+            "elapsedMs": 2.9000000953674316
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "permission_ready",
+            "elapsedMs": 3.8000001907348633
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "media_ready",
+            "elapsedMs": 5.900000095367432
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "offer_ready",
+            "elapsedMs": 7
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "session_request",
+            "elapsedMs": 7.1000001430511475
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "player_ready",
+            "elapsedMs": 10.300000190734863
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "session_key",
+            "elapsedMs": 525.3000001907349
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "channel_ready",
+            "elapsedMs": 862.1000001430511
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "channel_ready",
+            "elapsedMs": 101.79999995231628
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "first_audio",
+            "elapsedMs": 1108.4000000953674,
+            "budgetMs": 2000,
+            "passed": true
+          }
+        ],
+        "transport": [
+          {
+            "type": "candidate-pair",
+            "rttMs": 36,
+            "serverProtocol": "udp"
+          },
+          {
+            "type": "inbound-audio",
+            "jitterMs": 0,
+            "averageJitterBufferMs": 45.19083969465649,
+            "packetsLost": 0
+          },
+          {
+            "type": "transport",
+            "dtlsCipher": "TLS_AES_128_GCM_SHA256"
+          }
+        ],
+        "sessionRequests": 1,
+        "api": [
+          {
+            "status": 200,
+            "timing": "member;dur=74.0, consent;dur=39.9, context_quota;dur=58.3, provider;dur=337.0",
+            "model": "gpt-live-1",
+            "voice": "noeul",
+            "memory": true
+          }
+        ],
+        "errors": []
+      }
+    ]
+  },
+  "preview": {
+    "target": "https://here-htjb7cxct-here23.vercel.app",
+    "budgetMs": 2000,
+    "preconnectWaitMs": 0,
+    "runIntervalMs": 16000,
+    "reuseBrowserState": true,
+    "runs": 5,
+    "passed": false,
+    "results": [
+      {
+        "run": 1,
+        "passed": false,
+        "elapsedMs": 2140.600000143051,
+        "budgetMs": 2000,
+        "preconnectWaitMs": 0,
+        "storageReused": false,
+        "buttonAvailableMs": 3738.899999856949,
+        "buttonClickableMs": 3758.399999856949,
+        "navigationToClickMs": 3766.199999809265,
+        "readyBeforeClick": false,
+        "earlySpeech": false,
+        "earlyMicrophone": false,
+        "userSpeech": false,
+        "transcript": "안녕! 오늘도 만나서 반가",
+        "stages": [
+          {
+            "event": "here_voice_timing",
+            "stage": "connect_begin",
+            "elapsedMs": 0
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "peer_ready",
+            "elapsedMs": 91.20000004768372
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "permission_ready",
+            "elapsedMs": 98.5
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "media_ready",
+            "elapsedMs": 231
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "offer_ready",
+            "elapsedMs": 244.79999995231628
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "session_request",
+            "elapsedMs": 244.90000009536743
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "player_ready",
+            "elapsedMs": 249.20000004768372
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "session_key",
+            "elapsedMs": 1988.7999999523163
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "channel_ready",
+            "elapsedMs": 2592.0999999046326
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "channel_ready",
+            "elapsedMs": 1133.2000000476837
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "first_audio",
+            "elapsedMs": 2140.600000143051,
+            "budgetMs": 2000,
+            "passed": false
+          }
+        ],
+        "transport": [
+          {
+            "type": "candidate-pair",
+            "rttMs": 134,
+            "serverProtocol": "udp"
+          },
+          {
+            "type": "inbound-audio",
+            "jitterMs": 1,
+            "averageJitterBufferMs": 34.296875,
+            "packetsLost": 1
+          },
+          {
+            "type": "transport",
+            "dtlsCipher": "TLS_AES_128_GCM_SHA256"
+          }
+        ],
+        "sessionRequests": 1,
+        "api": [
+          {
+            "status": 200,
+            "timing": "member;dur=233.1, consent;dur=35.0, context_quota;dur=64.6, provider;dur=522.5",
+            "model": "gpt-live-1",
+            "voice": "noeul",
+            "memory": true
+          }
+        ],
+        "errors": []
+      },
+      {
+        "run": 2,
+        "passed": false,
+        "elapsedMs": 2162,
+        "budgetMs": 2000,
+        "preconnectWaitMs": 0,
+        "storageReused": true,
+        "buttonAvailableMs": 1335.6000001430511,
+        "buttonClickableMs": 1817.7000000476837,
+        "navigationToClickMs": 1821.5,
+        "readyBeforeClick": false,
+        "earlySpeech": false,
+        "earlyMicrophone": false,
+        "userSpeech": false,
+        "transcript": " 안녕!",
+        "stages": [
+          {
+            "event": "here_voice_timing",
+            "stage": "connect_begin",
+            "elapsedMs": 0
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "peer_ready",
+            "elapsedMs": 3.5
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "permission_ready",
+            "elapsedMs": 4.400000095367432
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "media_ready",
+            "elapsedMs": 6.5
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "offer_ready",
+            "elapsedMs": 9.200000047683716
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "session_request",
+            "elapsedMs": 9.200000047683716
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "player_ready",
+            "elapsedMs": 10
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "session_key",
+            "elapsedMs": 1766.4000000953674
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "channel_ready",
+            "elapsedMs": 1936.7999999523163
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "channel_ready",
+            "elapsedMs": 1184.1000001430511
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "first_audio",
+            "elapsedMs": 2161.9000000953674,
+            "budgetMs": 2000,
+            "passed": false
+          }
+        ],
+        "transport": [
+          {
+            "type": "candidate-pair",
+            "rttMs": 36,
+            "serverProtocol": "udp"
+          },
+          {
+            "type": "inbound-audio",
+            "jitterMs": 1,
+            "averageJitterBufferMs": 31.311475409836067,
+            "packetsLost": 0
+          },
+          {
+            "type": "transport",
+            "dtlsCipher": "TLS_AES_128_GCM_SHA256"
+          }
+        ],
+        "sessionRequests": 1,
+        "api": [
+          {
+            "status": 200,
+            "timing": "member;dur=78.0, consent;dur=27.4, context_quota;dur=67.4, provider;dur=221.9",
+            "model": "gpt-live-1",
+            "voice": "noeul",
+            "memory": true
+          }
+        ],
+        "errors": []
+      },
+      {
+        "run": 3,
+        "passed": false,
+        "elapsedMs": 2458.300000190735,
+        "budgetMs": 2000,
+        "preconnectWaitMs": 0,
+        "storageReused": true,
+        "buttonAvailableMs": 1566.7000000476837,
+        "buttonClickableMs": 1658.5,
+        "navigationToClickMs": 1663,
+        "readyBeforeClick": false,
+        "earlySpeech": false,
+        "earlyMicrophone": false,
+        "userSpeech": false,
+        "transcript": " 안녕!",
+        "stages": [
+          {
+            "event": "here_voice_timing",
+            "stage": "connect_begin",
+            "elapsedMs": 0.09999990463256836
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "peer_ready",
+            "elapsedMs": 3.1999998092651367
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "permission_ready",
+            "elapsedMs": 4
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "media_ready",
+            "elapsedMs": 5.799999952316284
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "offer_ready",
+            "elapsedMs": 7
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "session_request",
+            "elapsedMs": 7
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "player_ready",
+            "elapsedMs": 9
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "session_key",
+            "elapsedMs": 2022.1999998092651
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "channel_ready",
+            "elapsedMs": 2205.399999856949
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "channel_ready",
+            "elapsedMs": 1471.3000001907349
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "first_audio",
+            "elapsedMs": 2458.2000000476837,
+            "budgetMs": 2000,
+            "passed": false
+          }
+        ],
+        "transport": [
+          {
+            "type": "candidate-pair",
+            "rttMs": 38,
+            "serverProtocol": "udp"
+          },
+          {
+            "type": "inbound-audio",
+            "jitterMs": 1,
+            "averageJitterBufferMs": 39.67479674796748,
+            "packetsLost": 0
+          },
+          {
+            "type": "transport",
+            "dtlsCipher": "TLS_AES_128_GCM_SHA256"
+          }
+        ],
+        "sessionRequests": 1,
+        "api": [
+          {
+            "status": 200,
+            "timing": "member;dur=85.4, consent;dur=25.9, context_quota;dur=54.3, provider;dur=222.8",
+            "model": "gpt-live-1",
+            "voice": "noeul",
+            "memory": true
+          }
+        ],
+        "errors": []
+      },
+      {
+        "run": 4,
+        "passed": false,
+        "elapsedMs": 3759.7000000476837,
+        "budgetMs": 2000,
+        "preconnectWaitMs": 0,
+        "storageReused": true,
+        "buttonAvailableMs": 1537.6000001430511,
+        "buttonClickableMs": 1704.6000001430511,
+        "navigationToClickMs": 1708.7999999523163,
+        "readyBeforeClick": false,
+        "earlySpeech": false,
+        "earlyMicrophone": false,
+        "userSpeech": false,
+        "transcript": "안녕! 이렇게 만나서 반가",
+        "stages": [
+          {
+            "event": "here_voice_timing",
+            "stage": "connect_begin",
+            "elapsedMs": 0
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "peer_ready",
+            "elapsedMs": 3
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "permission_ready",
+            "elapsedMs": 3.9000000953674316
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "media_ready",
+            "elapsedMs": 5.900000095367432
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "offer_ready",
+            "elapsedMs": 6.900000095367432
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "session_request",
+            "elapsedMs": 6.900000095367432
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "player_ready",
+            "elapsedMs": 9.5
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "session_key",
+            "elapsedMs": 2656.7999999523163
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "channel_ready",
+            "elapsedMs": 3240.9000000953674
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "channel_ready",
+            "elapsedMs": 2409.2000000476837
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "first_audio",
+            "elapsedMs": 3759.7000000476837,
+            "budgetMs": 2000,
+            "passed": false
+          }
+        ],
+        "transport": [
+          {
+            "type": "candidate-pair",
+            "rttMs": 134,
+            "serverProtocol": "udp"
+          },
+          {
+            "type": "inbound-audio",
+            "jitterMs": 0,
+            "averageJitterBufferMs": 36.3013698630137,
+            "packetsLost": 0
+          },
+          {
+            "type": "transport",
+            "dtlsCipher": "TLS_AES_128_GCM_SHA256"
+          }
+        ],
+        "sessionRequests": 1,
+        "api": [
+          {
+            "status": 200,
+            "timing": "member;dur=76.2, consent;dur=39.1, context_quota;dur=175.0, provider;dur=292.4",
+            "model": "gpt-live-1",
+            "voice": "noeul",
+            "memory": true
+          }
+        ],
+        "errors": []
+      },
+      {
+        "run": 5,
+        "passed": false,
+        "elapsedMs": 2511.2000000476837,
+        "budgetMs": 2000,
+        "preconnectWaitMs": 0,
+        "storageReused": true,
+        "buttonAvailableMs": 1691.7000000476837,
+        "buttonClickableMs": 1818.8000001907349,
+        "navigationToClickMs": 1822.4000000953674,
+        "readyBeforeClick": false,
+        "earlySpeech": false,
+        "earlyMicrophone": false,
+        "userSpeech": false,
+        "transcript": " 안녕, 와줘서 고마워",
+        "stages": [
+          {
+            "event": "here_voice_timing",
+            "stage": "connect_begin",
+            "elapsedMs": 0
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "peer_ready",
+            "elapsedMs": 2.3999998569488525
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "permission_ready",
+            "elapsedMs": 3.1999998092651367
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "media_ready",
+            "elapsedMs": 6.199999809265137
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "offer_ready",
+            "elapsedMs": 7.3999998569488525
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "session_request",
+            "elapsedMs": 7.5
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "player_ready",
+            "elapsedMs": 10
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "session_key",
+            "elapsedMs": 2151.0999999046326
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "channel_ready",
+            "elapsedMs": 2320.5
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "channel_ready",
+            "elapsedMs": 1540.2000000476837
+          },
+          {
+            "event": "here_voice_timing",
+            "stage": "first_audio",
+            "elapsedMs": 2511.2000000476837,
+            "budgetMs": 2000,
+            "passed": false
+          }
+        ],
+        "transport": [
+          {
+            "type": "candidate-pair",
+            "rttMs": 35,
+            "serverProtocol": "udp"
+          },
+          {
+            "type": "inbound-audio",
+            "jitterMs": 0,
+            "averageJitterBufferMs": 34.59016393442623,
+            "packetsLost": 0
+          },
+          {
+            "type": "transport",
+            "dtlsCipher": "TLS_AES_128_GCM_SHA256"
+          }
+        ],
+        "sessionRequests": 1,
+        "api": [
+          {
+            "status": 200,
+            "timing": "member;dur=111.1, consent;dur=42.2, context_quota;dur=73.9, provider;dur=328.2",
+            "model": "gpt-live-1",
+            "voice": "noeul",
+            "memory": true
+          }
+        ],
+        "errors": []
+      }
+    ]
+  },
+  "functional": {
+    "test": "actual-live-synthetic-context",
+    "latencyAcceptance": false,
+    "contextRequests": 4,
+    "contextSucceeded": 4,
+    "delegations": 1,
+    "liveCreated": true,
+    "reply": "안녕하세요! 반가워요. 오늘 어떤 이야기 나눠볼까요? 어, 보드게임 모임을 준비하고 있었어. '무슨 사용자를'은 오타인 것 같네, 후추가 알아들었지. 🐾",
+    "users": [
+      "내가 무슨사용자를 준비하고 있었지"
+    ],
+    "recalled": true,
+    "opening": " 안녕하세요! 반가워요. 오늘 어떤 이야기 나눠볼까요?",
+    "userTranscribed": true,
+    "errors": [],
+    "diagnostics": [
+      "session.started",
+      "session.instructions.appended",
+      "session.commentary.appended",
+      "session.instructions.appended",
+      "session.delegation.created",
+      "session.instructions.appended",
+      "delegation.completed:sources=0",
+      "session.commentary.appended",
+      "session.closed"
+    ]
+  }
+}

@@ -13,6 +13,33 @@ It ends when the browser plays measurable assistant speech. HTTP success,
 floating-point elapsed time: 2,000 ms passes; 2,000.001 ms and 2,100 ms fail.
 Every run must pass independently; averages do not determine acceptance.
 
+## App-entry checkpoint — stopped at user request
+
+Implementation: `af436e0df7990ea8183bd7dade88ae1d0497fb7b` on
+`feature/system-prompt`. Authenticated preparation now overlaps entry checks and
+is handed to the matching account/profile. Activation explicitly ends waiting,
+requests a live greeting, then continues the conversation. React development
+effect replay no longer duplicates the preparation request.
+
+The stricter browser test clicks as soon as the button is hit-testable, without
+Playwright's extra animation-stability wait. It also checks request count and
+reuses saved browser state in subsequent runs to cover returning users.
+
+| Scenario | Click to first sound, ms | Result |
+| --- | --- | --- |
+| Local, immediate entry; first fresh, then 2 cached-state entries | 912.1 / 976.8 / 1,108.9 | 3/3 pass |
+| Feature preview, immediate entry; first fresh, then 4 cached-state entries | 2,140.6 / 2,162.0 / 2,458.3 / 3,759.7 / 2,511.2 | 0/5 pass |
+
+Preview: `https://here-htjb7cxct-here23.vercel.app`. Each run created one session,
+kept GPT-Live 1, Noeul and backend memory enabled, and produced a greeting. No
+pre-click speech or microphone access occurred. A separate functional test
+received a completed follow-up recalling the stored board-game gathering; it
+used an autoplay override and does not count toward latency acceptance.
+
+**The strict 2-second requirement remains unmet.** Work stopped at the user's
+request; this candidate was not promoted to the development alias or production.
+Unrounded results: [checkpoint JSON](evaluations/voice-greeting-2026-11-21-entry.json).
+
 ## Recheck after recharge — 2026-11-21 (KST)
 
 Tested the deployed development app at `https://here-dev.vercel.app`, commit
@@ -48,8 +75,10 @@ Unrounded measurements and the functional result are saved in
 
 ## User-requested app-entry preconnection
 
-The current candidate starts an authenticated Live session after login, consent,
-onboarding and member-basics checks, when the home screen is visible. It uses the
+The original candidate started an authenticated Live session after login, consent,
+onboarding and member-basics checks, when the home screen was visible. The latest
+checkpoint above starts during entry checks; the server still verifies membership,
+consent, quota and backend context before creating a paid provider session. It uses the
 same backend context, GPT-Live 1 and Noeul. This consumes a voice-session quota and
 can incur provider cost even if the user never enters voice.
 
