@@ -18,6 +18,7 @@ import { useAccountActivity } from "./use-account-activity";
 import { useAccountProfile } from "./use-account-profile";
 import { type Realtime } from "@/lib/realtime";
 import { connectLive } from "@/lib/live";
+import { prewarmLiveTransport } from '@/lib/live-transport';
 import { muteSfx } from "@/lib/sfx";
 import { displayNameForServer } from "@/lib/friends";
 import { requestQuotaStatus } from "@/lib/quota-status";
@@ -125,6 +126,18 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
   const outputLevel = useRef(0);
   const voiceClickedAt = useRef<number | undefined>(undefined);
   const outputShape = useRef<import("@/lib/mouth-shape").MouthShape>("rest");
+  const voiceWarmup = useRef<(() => void) | undefined>(undefined);
+  const hasProfile = Boolean(profile);
+  useEffect(() => {
+    if (!hasProfile || typing) {
+      voiceWarmup.current?.(); voiceWarmup.current = undefined;
+    } else if (!voiceMode) {
+      voiceWarmup.current?.(); voiceWarmup.current = prewarmLiveTransport();
+    }
+    // Entering voice must leave the prepared transport for connectLive to claim
+    // after authentication. This prepares only local browser resources.
+  }, [hasProfile, typing, voiceMode]);
+  useEffect(() => () => voiceWarmup.current?.(), []);
   // 음성 대화 중에는 효과음이 마이크에 섞이지 않게 모두 쉰다.
   useEffect(() => { muteSfx(voiceMode); return () => muteSfx(false); }, [voiceMode]);
 

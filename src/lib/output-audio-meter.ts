@@ -10,7 +10,7 @@ export function speechEnvelope(samples: Float32Array, previous: number, elapsedM
   return next < 0.015 ? 0 : next;
 }
 
-export function createOutputAudioMeter(onLevel: (level: number, shape: MouthShape) => void, onSignal?: (active: boolean) => void) {
+export function createOutputAudioMeter(onLevel: (level: number, shape: MouthShape) => void, onSignal?: (active: boolean) => void, deferInitialization = false) {
   let context: AudioContext | undefined;
   let source: MediaStreamAudioSourceNode | undefined;
   let analyser: AnalyserNode | undefined;
@@ -20,24 +20,32 @@ export function createOutputAudioMeter(onLevel: (level: number, shape: MouthShap
   let last = 0;
   let enabled = false;
   let closed = false;
+  let initialized = false;
   let shape: MouthShape = "rest", candidate: MouthShape = "rest", candidateMs = 0;
   const reset = () => { level = 0; shape = candidate = "rest"; candidateMs = 0; onLevel(0, "rest"); };
   const resume = () => {
     if (!closed && context?.state === "suspended") void context.resume().catch(() => {});
   };
-  try {
-    if (typeof AudioContext !== "undefined") context = new AudioContext();
-  } catch { /* Visual analysis must never prevent a voice call. */ }
   const hasDocument = typeof document !== "undefined";
   const visibility = () => { if (document.hidden) reset(); else resume(); };
-  if (context && hasDocument) {
-    document.addEventListener("pointerdown", resume);
-    document.addEventListener("keydown", resume);
-    document.addEventListener("visibilitychange", visibility);
-  }
-  resume();
+  const initialize = () => {
+    if (closed || initialized) return;
+    initialized = true;
+    try {
+      if (typeof AudioContext !== "undefined") context = new AudioContext();
+    } catch { /* Visual analysis must never prevent a voice call. */ }
+    if (context && hasDocument) {
+      document.addEventListener("pointerdown", resume);
+      document.addEventListener("keydown", resume);
+      document.addEventListener("visibilitychange", visibility);
+    }
+    resume();
+  };
+  if (!deferInitialization) initialize();
   return {
+    initialize,
     attach(stream: MediaStream, element: HTMLAudioElement) {
+      initialize();
       if (closed || !context) return;
       cancelAnimationFrame(frame);
       source?.disconnect();

@@ -69,3 +69,23 @@ test("unsupported audio analysis remains a silent, disposable visual fallback", 
   meter.setEnabled(true); meter.close();
   assert.deepEqual(levels, [0]);
 });
+
+test('deferred audio setup initializes once and cancellation allocates no audio device', t => {
+  let opened = 0, closed = 0;
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'AudioContext');
+  Object.defineProperty(globalThis, 'AudioContext', { configurable: true, value: class {
+    state = 'running';
+    constructor() { opened++; }
+    async close() { closed++; }
+  } });
+  t.after(() => { if (original) Object.defineProperty(globalThis, 'AudioContext', original); else Reflect.deleteProperty(globalThis, 'AudioContext'); });
+  const cancelled = createOutputAudioMeter(() => {}, undefined, true);
+  cancelled.setEnabled(true); cancelled.close(); cancelled.initialize();
+  assert.equal(opened, 0);
+  const active = createOutputAudioMeter(() => {}, undefined, true);
+  assert.equal(opened, 0);
+  active.initialize(); active.initialize();
+  assert.equal(opened, 1);
+  active.close(); active.close();
+  assert.equal(closed, 1);
+});

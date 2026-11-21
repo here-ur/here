@@ -1,4 +1,4 @@
-type Stage = "session_key" | "media_ready" | "channel_ready" | "first_audio";
+type Stage = "connect_begin" | "peer_ready" | "player_ready" | "permission_ready" | "offer_ready" | "session_request" | "session_key" | "media_ready" | "channel_ready" | "first_audio";
 export const GREETING_BUDGET_MS = 2000;
 export function greetingWithinBudget(elapsedMs: number): boolean {
   return Number.isFinite(elapsedMs) && elapsedMs >= 0 && elapsedMs <= GREETING_BUDGET_MS;

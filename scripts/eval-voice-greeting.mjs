@@ -25,7 +25,7 @@ const silentMicrophone=join(temporary,'silent.wav');writeFileSync(silentMicropho
 const browser=await chromium.launch({channel:'chrome',headless:true,args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream',`--use-file-for-fake-audio-capture=${silentMicrophone}`]});
 try {
  for(let i=0;i<runs;i++) {
-  const context=await browser.newContext({permissions:['microphone'],viewport:{width:390,height:844}});
+  const context=await browser.newContext({permissions:['microphone'],viewport:{width:390,height:844},storageState:process.env.GREETING_BROWSER_STATE});
   const cookies=createChunks('sb-mwjwfumpxdlllikcdvkh-auth-token','base64-'+stringToBase64URL(JSON.stringify(fixture.session)));
   await context.addCookies(cookies.map(c=>({name:c.name,value:c.value,url:target,secure:target.startsWith('https:'),sameSite:'Lax'})));
   const page=await context.newPage();const api=[],errors=[];
@@ -36,18 +36,27 @@ try {
    document.addEventListener('click',e=>{const b=e.target.closest?.('button');if(b?.getAttribute('aria-label')?.includes('음성 대화 시작'))window.__greeting.started=e.timeStamp;},true);
    const original=console.info.bind(console);console.info=(...args)=>{try{const m=JSON.parse(args[0]);if(m.event==='here_voice_timing'){window.__greeting.stages.push(m);if(m.stage==='first_audio'&&window.__greeting.started!==null)window.__greeting.elapsed=performance.now()-window.__greeting.started;}}catch{} original(...args);};
    const originalChannel=RTCPeerConnection.prototype.createDataChannel;
-   RTCPeerConnection.prototype.createDataChannel=function(...args){const ch=originalChannel.apply(this,args);ch.addEventListener('message',e=>{try{const m=JSON.parse(e.data);if(m.type==='session.output_transcript.delta')window.__greeting.transcript+=m.delta;if(m.type==='session.input_transcript.delta'&&m.delta?.trim())window.__greeting.userSpeech=true;}catch{}});return ch;};
+   RTCPeerConnection.prototype.createDataChannel=function(...args){window.__voicePeer=this;const ch=originalChannel.apply(this,args);ch.addEventListener('message',e=>{try{const m=JSON.parse(e.data);if(m.type==='session.output_transcript.delta')window.__greeting.transcript+=m.delta;if(m.type==='session.input_transcript.delta'&&m.delta?.trim())window.__greeting.userSpeech=true;}catch{}});return ch;};
   });
   await page.goto(target,{waitUntil:'domcontentloaded',timeout:45000});
   await page.getByRole('button',{name:/음성 대화 시작/}).waitFor({timeout:30000});
   await page.getByRole('button',{name:/음성 대화 시작/}).click();
   try {await page.waitForFunction(()=>window.__greeting.elapsed!==null,{},{timeout:18000});}catch{}
   await page.waitForTimeout(1400);
-  const data=await page.evaluate(()=>window.__greeting);
+  const data=await page.evaluate(async()=>{
+   const stats=await window.__voicePeer?.getStats();
+   const transport=[];
+   stats?.forEach(s=>{
+    if(s.type==='candidate-pair'&&s.state==='succeeded'&&s.nominated){const remote=stats.get(s.remoteCandidateId);transport.push({type:'candidate-pair',rttMs:s.currentRoundTripTime*1000,serverAddress:remote?.address,serverProtocol:remote?.protocol});}
+    if(s.type==='inbound-rtp'&&s.kind==='audio')transport.push({type:'inbound-audio',jitterMs:s.jitter*1000,averageJitterBufferMs:s.jitterBufferEmittedCount?s.jitterBufferDelay/s.jitterBufferEmittedCount*1000:null,packetsLost:s.packetsLost});
+    if(s.type==='transport')transport.push({type:'transport',dtlsCipher:s.dtlsCipher});
+   });
+   return {...window.__greeting,transport};
+  });
   const measured=data.stages.find(s=>s.stage==='first_audio')?.elapsedMs;
   const elapsed=data.elapsed===null||!Number.isFinite(measured)?null:Math.max(data.elapsed,measured);
   const passed=elapsed!==null&&elapsed<=2000&&!data.userSpeech&&/안녕|반가|왔|만나/.test(data.transcript)&&api.length===1&&api[0].status===200&&errors.length===0;
-  const result={run:i+1,passed,elapsedMs:elapsed,budgetMs:2000,userSpeech:data.userSpeech,transcript:data.transcript,stages:data.stages,api,errors};results.push(result);console.log(JSON.stringify(result));
+  const result={run:i+1,passed,elapsedMs:elapsed,budgetMs:2000,userSpeech:data.userSpeech,transcript:data.transcript,stages:data.stages,transport:data.transport,api,errors};results.push(result);console.log(JSON.stringify(result));
   const end=page.getByRole('button',{name:'음성 대화 종료'});if(await end.isVisible())await end.click();await page.waitForTimeout(500);await context.close();
  }
 }finally{await browser.close();rmSync(temporary,{recursive:true,force:true});}

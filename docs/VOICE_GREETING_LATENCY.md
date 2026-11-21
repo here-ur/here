@@ -25,6 +25,16 @@ No network throttling. Times below are rounded only for display.
 | Local candidate: negotiated channel + no ICE-gathering wait | 2,611.4 / 2,481.6 / 3,664.4 | All fail |
 | Exact short real-time greeting instruction (experiment reverted) | 3,193.5 / 5,165.4 / 18,865.2 | All fail |
 | Send microphone RTP earlier (experiment reverted) | 3,660.1 / 3,580.4 / 3,525.9 | All fail |
+| Feature preview with negotiated channel + no ICE wait | 5,344.1 / no greeting / 3,965.0 / 3,414.8 / 4,030.4 | All fail |
+| Local: speakable greeting cue + parallel authorized microphone setup | 2,743.2 / 1,794.7 / 1,665.7 / 2,581.8 / 2,431.7 | 2/5 pass; overall fail |
+| Local: also prepare browser transport on home and overlap audio meter setup | 1,726.4 / 2,432.6 / 2,031.4 / 2,081.5 / 2,215.7 | 1/5 pass; overall fail |
+
+The latest five-run batch kept GPT-Live 1 and Noeul and generated every greeting
+live, after the button press. All five requests returned HTTP 200 and a greeting;
+none contained user speech or browser errors. The 2,031.4-ms run is a failure.
+Transport RTT was 35 ms in the first run and 124–136 ms in the other four;
+provider session creation took 193–553 ms. These observations identify variable
+connection costs; they do not establish provider geography or a causal speedup.
 
 The existing deployment's authentication, consent and startup-context/quota
 checks took roughly 140–153 ms in these runs. They were not the dominant delay.
@@ -59,9 +69,22 @@ remain unresolved. Do not label this change “under 2 seconds” or “fixed.�
 - Add a repeatable, opt-in browser acceptance test that exits nonzero if any run
   exceeds the deadline, never greets, has an API/browser error, or contains user
   speech that could have triggered the response.
+- Prepare a browser peer, transceiver and negotiated channel on the home screen.
+  This makes no paid request, opens no microphone and generates no greeting.
+  Generate the SDP offer only when the user starts voice; release unused peers.
+- When microphone permission is already granted, overlap device opening with
+  session setup. Unresolved permission still blocks the paid request. Late device
+  streams are stopped if the user cancels.
+- Send `session.commentary.append` with the greeting text `안녕!` once at
+  `session.started`, keeping the existing server startup instruction. The same
+  GPT-Live 1 session synthesizes it with Noeul; there is no stored audio.
+- Initialize the playback meter while the session request is in flight, and log
+  peer, permission, offer and player stages separately. The benchmark also records
+  WebRTC RTT, jitter and packet loss without recording the client's address.
 
-The shared system prompt, onboarding/backend context, model, voice, access
-checks, and context synchronization are unchanged.
+Onboarding/backend context, model, voice, access checks and context synchronization
+are unchanged by latency work. A separate user-requested shared-prompt change
+prohibits cat speech endings (`냥`, `야옹`) in both text and voice.
 
 ## Repeat the acceptance test
 
