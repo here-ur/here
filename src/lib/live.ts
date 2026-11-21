@@ -7,11 +7,16 @@ import { requestVoiceMemory, VoiceMemoryAccessError } from "./voice-memory-clien
 import { liveContextChunks } from "./live-context.ts";
 import { voiceTiming } from "./voice-timing.ts";
 import { livePlaybackGate } from './live-playback-gate.ts';
+import { voiceConnectionErrorMessage } from './voice-errors.ts';
 
 const CONNECTION_ERROR = "음성 대화를 연결하지 못했어요. 잠시 후 다시 눌러 주세요.";
 export class LiveConnectionError extends Error {
   readonly status: number;
-  constructor(status: number) { super(CONNECTION_ERROR); this.status = status; }
+  constructor(status: number, code?: unknown) { super(voiceConnectionErrorMessage(status, code)); this.status = status; }
+  static async fromResponse(response: Response) {
+    const body = await response.json().catch(() => null);
+    return new LiveConnectionError(response.status, body?.code);
+  }
 }
 export type LiveConnection = Realtime & {
   activate(handlers: Handlers, startedAt: number, token?: string): Promise<void>;
@@ -322,7 +327,7 @@ export async function connectLive(
     // while the session request is already in flight, before remote audio arrives.
     meter.initialize(); timing('player_ready');
     const response = await exchange;
-    if (!response.ok) throw new LiveConnectionError(response.status);
+    if (!response.ok) throw await LiveConnectionError.fromResponse(response);
     const result = await response.json();
     if (typeof result.sdp !== "string" || !result.sdp.startsWith("v=0")) throw new Error(CONNECTION_ERROR);
     memory = result.memory === true && Boolean(accessToken);

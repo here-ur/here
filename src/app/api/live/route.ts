@@ -28,7 +28,7 @@ export async function POST(request: Request) {
         : Promise.resolve({ value: undefined, failed: false }),
     ]);
     if (quota) return quota;
-    if (snapshot.failed) return Response.json({ error: '대화 맥락을 불러오지 못했어요. 잠시 뒤 다시 연결해 주세요.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+    if (snapshot.failed) return Response.json({ error: '대화 맥락을 불러오지 못했어요. 잠시 뒤 다시 연결해 주세요.', code: 'context_unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
     const startup = snapshot.value;
     timed('context_quota');
     try { body = liveSessionRequest(input, process.env.LIVE_MODEL || "gpt-live-1", process.env.LIVE_VOICE || "noeul", access.onboardingAnswers, startup?.context, access.hereName, startup?.messages); }

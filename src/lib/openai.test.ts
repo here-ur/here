@@ -20,7 +20,30 @@ test('provider quota is preserved without logging its private error message or r
   assert.equal(requests, 1);
   const response = failed(error);
   assert.equal(response.status, 429);
-  assert.deepEqual(Object.keys(await response.json()), ['error']);
+  const body = await response.json();
+  assert.equal(body.code, 'voice_provider_quota');
+  assert.match(body.error, /서비스 이용 한도/);
+  assert.doesNotMatch(body.error, /잠시 후|private-account-id/);
   assert.ok(logs.some(line => JSON.parse(line).kind === 'quota'));
   assert.ok(logs.every(line => !line.includes('private-account-id') && !line.includes('synthetic-key')));
 });
+
+for (const [detail, kind, code] of [
+  [{ type: 'insufficient_quota', code: null, message: '' }, 'quota', 'voice_provider_quota'],
+  [{ code: 'project_spend_limit_exceeded', message: '' }, 'quota', 'voice_provider_quota'],
+  [{ code: 'rate_limit_exceeded', message: 'requests per minute' }, 'rate_limit', 'voice_provider_busy'],
+  [{ message: 'too many concurrent sessions' }, 'concurrency', 'voice_provider_busy'],
+] as const) {
+  test(`provider 429 ${kind} produces the corresponding public code`, async t => {
+    const before = process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = 'synthetic-key';
+    t.after(() => { if (before === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = before; });
+    t.mock.method(console, 'info', () => {}); t.mock.method(console, 'warn', () => {});
+    t.mock.method(globalThis, 'fetch', async () => Response.json({ error: detail }, {status:429}));
+    await assert.rejects(openai('live/sessions', {}), asyncError => {
+      assert.ok(asyncError instanceof VoiceProviderError); assert.equal(asyncError.kind, kind);
+      return true;
+    });
+    assert.equal((await failed(new VoiceProviderError(429, kind)).json()).code, code);
+  });
+}
