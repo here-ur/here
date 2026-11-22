@@ -17,6 +17,19 @@ export const SKIES = [
 export type SkyId = (typeof SKIES)[number]["id"];
 export const SKY_IDS = SKIES.map((s) => s.id) as SkyId[];
 
+/**
+ * 리포트 화면에 보이는 이름. 2026-11-22부터 날씨 대신 표정으로 보여 준다(팀 확인 전 임시값).
+ * 안쪽 값(sunny 등)·저장 형식·AI가 고르는 기준(report-sky-server.ts)은 그대로다. 위 label은 구름 정원의 날씨 이름으로만 쓴다.
+ */
+export const MOOD_LABEL: Record<SkyId, string> = {
+  sunny: "즐거움",
+  cozy: "편안함",
+  cloudy: "지침",
+  rain: "속상함",
+  thunder: "화남",
+  wind: "정신없음",
+};
+
 export function isSkyId(value: unknown): value is SkyId {
   return typeof value === "string" && (SKY_IDS as string[]).includes(value);
 }
@@ -387,6 +400,118 @@ export function monthView(days: DayStat[], year: number, month: number): MonthVi
     words: [...words].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([word, count]) => ({ word, count })),
     buckets: BUCKETS.map((b) => ({ id: b.id, label: b.label, count: (b.hours as readonly number[]).reduce((a: number, h: number) => a + hours[h], 0) })),
     peak,
+  };
+}
+
+// ── 인사이트(이번 주·이어서 이야기한 날·지금까지) ──
+// 모두 날짜별 숫자에서만 센다. AI에 보내지 않고, 해석 없이 횟수만 말한다.
+function shiftDate(date: string, by: number) {
+  const [y, m, d] = date.split("-").map(Number);
+  return localDate(new Date(y, m - 1, d + by).getTime());
+}
+
+function daysApart(from: string, to: string) {
+  const utc = (date: string) => { const [y, m, d] = date.split("-").map(Number); return Date.UTC(y, m - 1, d); };
+  return Math.round((utc(to) - utc(from)) / DAY_MS);
+}
+
+export type WeekCell = { date: string; weekday: number; day?: DayStat; today: boolean; future: boolean };
+
+/** 오늘이 든 주(일~토). 이야기한 날에는 그날 숫자가 함께 온다. */
+export function weekCells(days: DayStat[], now = Date.now()): WeekCell[] {
+  const today = localDate(now);
+  const start = shiftDate(today, -new Date(now).getDay());
+  const byDate = new Map(days.map((d) => [d.date, d]));
+  return Array.from({ length: 7 }, (_, weekday) => {
+    const date = shiftDate(start, weekday);
+    return { date, weekday, day: byDate.get(date), today: date === today, future: date > today };
+  });
+}
+
+export type Streak = { current: number; record: number; through: "today" | "yesterday" | null };
+
+/**
+ * 이어서 이야기한 날 수와 가장 길게 이어진 날 수.
+ * 오늘 아직 이야기하지 않았으면 어제까지 이어진 날을 센다(하루가 끝나기 전에 0으로 보이지 않게).
+ */
+export function talkStreak(days: DayStat[], now = Date.now()): Streak {
+  const today = localDate(now);
+  const talked = new Set(days.filter((d) => d.said > 0 && d.date <= today).map((d) => d.date));
+  const yesterday = shiftDate(today, -1);
+  const through = talked.has(today) ? "today" : talked.has(yesterday) ? "yesterday" : null;
+  let current = 0;
+  if (through) for (let date = through === "today" ? today : yesterday; talked.has(date); date = shiftDate(date, -1)) current++;
+  let record = 0;
+  let run = 0;
+  let prev = "";
+  for (const date of [...talked].sort()) {
+    run = prev && shiftDate(prev, 1) === date ? run + 1 : 1;
+    record = Math.max(record, run);
+    prev = date;
+  }
+  return { current, record, through };
+}
+
+export type Insights = {
+  week: WeekCell[];
+  weekTalked: number;
+  streak: Streak;
+  totalDays: number;
+  totalSaid: number;
+  /** 오늘까지 7일 동안 */
+  recentDays: number;
+  recentSaid: number;
+  /** 숫자가 남아 있는 첫날과, 그날부터 오늘까지 날 수(첫날이 1일). 보관 기간(1년)을 채웠으면 capped. */
+  since: string | null;
+  sinceDays: number;
+  capped: boolean;
+  /** 최근 30일에 가장 많이 이야기한 때. 사흘 이상 이야기했고 하나로 정해질 때만. */
+  busiest: { id: string; label: string; count: number } | null;
+  /** 최근 30일에 많았던 표정 세 가지까지(날 수). 109 안내가 있었던 날은 뺀다. */
+  moods: { id: SkyId; count: number }[];
+  /** 최근 30일 자주 한 말 세 개까지. 사흘 이상 이야기했고 두 번 이상 나온 말만(달 화면과 같은 기준). */
+  words: { word: string; count: number }[];
+};
+
+export function insights(days: DayStat[], now = Date.now()): Insights {
+  const today = localDate(now);
+  const past = days.filter((d) => d.said > 0 && d.date <= today).sort((a, b) => a.date.localeCompare(b.date));
+  const week = weekCells(past, now);
+  const weekAgo = shiftDate(today, -6);
+  const recent = past.filter((d) => d.date >= weekAgo);
+  const monthAgo = shiftDate(today, -29);
+  const month = past.filter((d) => d.date >= monthAgo);
+  const buckets = BUCKETS.map((b) => ({
+    id: b.id as string,
+    label: b.label as string,
+    count: month.reduce((sum, d) => sum + (b.hours as readonly number[]).reduce((a: number, h: number) => a + d.hours[h], 0), 0),
+  })).sort((a, b) => b.count - a.count);
+  const since = past[0]?.date ?? null;
+  const sinceDays = since ? daysApart(since, today) + 1 : 0;
+  const moods = SKY_IDS
+    .map((id) => ({ id, count: month.filter((d) => !d.crisis && effectiveSky(d) === id).length }))
+    .filter((m) => m.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
+  const wordCounts = new Map<string, number>();
+  for (const day of month) for (const [word, n] of Object.entries(day.words)) wordCounts.set(word, (wordCounts.get(word) ?? 0) + n);
+  const words = month.length >= 3
+    ? [...wordCounts].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([word, count]) => ({ word, count }))
+    : [];
+  return {
+    week,
+    weekTalked: week.filter((cell) => cell.day).length,
+    streak: talkStreak(past, now),
+    totalDays: past.length,
+    totalSaid: past.reduce((sum, d) => sum + d.said, 0),
+    recentDays: recent.length,
+    recentSaid: recent.reduce((sum, d) => sum + d.said, 0),
+    since,
+    sinceDays,
+    capped: sinceDays >= KEEP_DAYS,
+    busiest: month.length >= 3 && buckets[0].count >= 3 && buckets[0].count > buckets[1].count ? buckets[0] : null,
+    moods,
+    words,
   };
 }
 

@@ -10,6 +10,7 @@ import {
   countWords,
   dayMessages,
   effectiveSky,
+  insights,
   loadReport,
   localDate,
   mergeDays,
@@ -23,6 +24,8 @@ import {
   standoutWeekday,
   summarizeDays,
   syncReport,
+  talkStreak,
+  weekCells,
   weekdaySkies,
 } from "./report.ts";
 
@@ -243,4 +246,92 @@ test("눈에 띄는 요일은 두 번 이상이고 하나로 정해질 때만 �
   assert.equal(standoutWeekday([row(1, 1), row(2, 1)]), null);
   assert.equal(standoutWeekday([row(1, 2), row(2, 2)]), null);
   assert.deepEqual(standoutWeekday([row(1, 3), row(2, 2)]), { weekday: 1, sky: "sunny", count: 3 });
+});
+
+test("이번 주는 일요일부터 토요일까지이고, 오늘과 아직 오지 않은 날을 구분한다", () => {
+  // 2026-11-05는 목요일
+  const cells = weekCells([day("2026-11-01"), day("2026-11-03", { ai: "sunny" }), day("2026-10-31")], at(11, 5, 21));
+  assert.deepEqual(cells.map((c) => c.date), ["2026-11-01", "2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07"]);
+  assert.deepEqual(cells.map((c) => c.weekday), [0, 1, 2, 3, 4, 5, 6]);
+  assert.deepEqual(cells.map((c) => Boolean(c.day)), [true, false, true, false, false, false, false]);
+  assert.deepEqual(cells.filter((c) => c.today).map((c) => c.date), ["2026-11-05"]);
+  assert.deepEqual(cells.filter((c) => c.future).map((c) => c.date), ["2026-11-06", "2026-11-07"]);
+});
+
+test("이번 주는 달이 바뀌는 주도 이어서 센다", () => {
+  // 2026-10-31은 토요일
+  const cells = weekCells([], at(10, 31, 9));
+  assert.equal(cells[0].date, "2026-10-25");
+  assert.equal(cells[6].date, "2026-10-31");
+  assert.equal(cells[6].today, true);
+});
+
+test("이어서 이야기한 날은 오늘까지 세고, 오늘 아직 안 했으면 어제까지 센다", () => {
+  const days = [day("2026-10-30"), day("2026-11-01"), day("2026-11-02"), day("2026-11-03")];
+  assert.deepEqual(talkStreak(days, at(11, 3, 8)), { current: 3, record: 3, through: "today" });
+  assert.deepEqual(talkStreak(days, at(11, 4, 8)), { current: 3, record: 3, through: "yesterday" });
+  // 이틀을 쉬면 이어진 날은 0이지만 가장 길게 이어진 날은 그대로 남는다.
+  assert.deepEqual(talkStreak(days, at(11, 5, 8)), { current: 0, record: 3, through: null });
+  assert.deepEqual(talkStreak([], at(11, 5, 8)), { current: 0, record: 0, through: null });
+});
+
+test("가장 길게 이어진 날은 달이 바뀌어도 이어서 세고, 미래 날짜는 세지 않는다", () => {
+  const days = [day("2026-09-29"), day("2026-09-30"), day("2026-10-01"), day("2026-10-02"), day("2026-10-10"), day("2026-10-11"), day("2026-12-25")];
+  assert.deepEqual(talkStreak(days, at(10, 11, 8)), { current: 2, record: 4, through: "today" });
+});
+
+test("인사이트는 이번 주·지난 7일·지금까지의 숫자를 날짜별 숫자에서만 센다", () => {
+  const hours = (h: number, n: number) => { const list = Array(24).fill(0); list[h] = n; return list; };
+  const days = [
+    day("2026-10-02", { said: 3, hours: hours(9, 3) }), // 30일보다 오래된 날
+    day("2026-10-29", { said: 4, hours: hours(20, 4) }),
+    day("2026-11-01", { said: 2, hours: hours(21, 2) }),
+    day("2026-11-03", { said: 5, hours: hours(23, 5), crisis: true }),
+    day("2026-11-05", { said: 1, hours: hours(13, 1) }),
+  ];
+  const view = insights(days, at(11, 5, 21));
+  assert.equal(view.weekTalked, 3);
+  assert.equal(view.totalDays, 5);
+  assert.equal(view.totalSaid, 15);
+  // 지난 7일은 10월 30일부터 11월 5일까지
+  assert.equal(view.recentDays, 3);
+  assert.equal(view.recentSaid, 8);
+  assert.equal(view.since, "2026-10-02");
+  assert.equal(view.sinceDays, 35);
+  assert.equal(view.capped, false);
+  assert.deepEqual(view.streak, { current: 1, record: 1, through: "today" });
+  // 최근 30일(10월 7일부터): 저녁 6번, 밤 5번, 낮 1번. 아침 3번은 30일 밖이라 세지 않는다.
+  assert.deepEqual(view.busiest, { id: "evening", label: "저녁", count: 6 });
+});
+
+test("가장 많이 이야기한 때는 사흘 이상 이야기했고 하나로 정해질 때만 고른다", () => {
+  const hours = (h: number, n: number) => { const list = Array(24).fill(0); list[h] = n; return list; };
+  const now = at(11, 5, 21);
+  assert.equal(insights([day("2026-11-04", { hours: hours(20, 9) }), day("2026-11-05", { hours: hours(20, 9) })], now).busiest, null);
+  assert.equal(insights([day("2026-11-03", { hours: hours(20, 3) }), day("2026-11-04", { hours: hours(9, 3) }), day("2026-11-05", { hours: hours(13, 1) })], now).busiest, null);
+  const empty = insights([], now);
+  assert.equal(empty.since, null);
+  assert.equal(empty.sinceDays, 0);
+  assert.equal(empty.busiest, null);
+  assert.equal(empty.week.length, 7);
+});
+
+test("인사이트의 많았던 표정·자주 한 말은 최근 30일에서 세고, 109 안내가 있던 날은 표정에서 뺀다", () => {
+  const now = at(11, 5, 21);
+  const view = insights([
+    day("2026-09-20", { ai: "rain", words: { 오래된말: 9 } }), // 30일 밖
+    day("2026-10-20", { ai: "sunny", words: { 산책: 2, 회의: 1 } }),
+    day("2026-10-28", { ai: "sunny", mine: "cozy", words: { 산책: 1, 회의: 1 } }),
+    day("2026-11-02", { ai: "sunny", words: { 주말: 1 } }),
+    day("2026-11-03", { ai: "thunder", crisis: true }),
+    day("2026-11-04", { ai: "cozy", words: { 회의: 1, 주말: 1 } }),
+  ], now);
+  // 날 수가 같으면 표정 목록 순서(즐거움 → 편안함 …)를 따른다.
+  assert.deepEqual(view.moods, [{ id: "sunny", count: 2 }, { id: "cozy", count: 2 }]);
+  assert.deepEqual(view.words, [{ word: "산책", count: 3 }, { word: "회의", count: 3 }, { word: "주말", count: 2 }]);
+});
+
+test("인사이트의 자주 한 말은 사흘 넘게 이야기했을 때만 보여 준다", () => {
+  const view = insights([day("2026-11-04", { words: { 산책: 5 } }), day("2026-11-05", { words: { 산책: 5 } })], at(11, 5, 21));
+  assert.deepEqual(view.words, []);
 });

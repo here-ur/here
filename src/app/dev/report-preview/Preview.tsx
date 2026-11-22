@@ -6,7 +6,8 @@ import { DEFAULT_COMPANION } from "@/lib/onboarding";
 import { type ReportMode, ReportView } from "../../Report";
 
 // API·저장소 없이 리포트 화면을 확인하는 개발용 미리보기. 시안과 같은 2026년 10월·11월 예시다.
-const NOW = new Date(2026, 10, 1, 21, 30).getTime();
+// 오늘은 11월 5일 목요일: 이번 주(11월 1~7일)에 표정이 있는 날·아직 없는 날·오늘·오지 않은 날이 모두 보인다.
+const NOW = new Date(2026, 10, 5, 21, 30).getTime();
 const at = (m: number, d: number, h: number, min = 0) => new Date(2026, m - 1, d, h, min).getTime();
 const hours = (...pairs: [number, number][]) => { const list = Array(24).fill(0); for (const [h, n] of pairs) list[h] = n; return list; };
 
@@ -26,7 +27,11 @@ const DAYS: DayStat[] = [
     ...(sky ? { ai: d === 26 ? "rain" : sky } : {}),
     ...(d === 26 ? { mine: "cozy" as SkyId } : {}),
   })),
-  { date: "2026-11-01", said: 4, replies: 4, hours: hours([21, 4]), words: { 휴식: 1 }, crisis: false },
+  { date: "2026-11-01", said: 4, replies: 4, hours: hours([21, 4]), words: { 휴식: 1 }, crisis: false, ai: "none" },
+  { date: "2026-11-02", said: 6, replies: 6, hours: hours([8, 2], [22, 4]), words: { 회의: 2, 산책: 1 }, crisis: false, ai: "sunny" },
+  { date: "2026-11-03", said: 3, replies: 3, hours: hours([23, 3]), words: { 주말: 2, 산책: 1 }, crisis: false, ai: "cloudy", mine: "cozy" },
+  { date: "2026-11-04", said: 5, replies: 5, hours: hours([20, 5]), words: { 회의: 1, 잠: 2 }, crisis: false, ai: "rain" },
+  { date: "2026-11-05", said: 2, replies: 2, hours: hours([21, 2]), words: { 산책: 1 }, crisis: false },
 ];
 
 const SESSIONS: Session[] = [
@@ -42,12 +47,16 @@ const SESSIONS: Session[] = [
   ] },
 ];
 
-export default function Preview({ initialMode = "library", onBack, onDecorate }: {
+// 빈 상태 확인용: quiet는 이번 주(11월)에 이야기가 없고, empty는 이야기한 날이 하나도 없다.
+const SAMPLES = { full: DAYS, quiet: DAYS.filter((day) => day.date < "2026-11-01"), empty: [] };
+
+export default function Preview({ initialMode = "library", sample = "full", onBack, onDecorate }: {
   initialMode?: ReportMode;
+  sample?: keyof typeof SAMPLES;
   onBack?: () => void;
   onDecorate?: () => void;
 } = {}) {
-  const [days, setDays] = useState(DAYS);
+  const [days, setDays] = useState(SAMPLES[sample]);
   const [choice, setChoice] = useState<"on" | "off" | null>(null);
   // 뒤로 버튼을 누르면 인사이트 ↔ 라이브러리를 바꿔 본다.
   const [mode, setMode] = useState<ReportMode>(initialMode);

@@ -90,7 +90,7 @@ export default function Log({ who, onBack, title = "대화 기록", back = "리�
 
         <p className="mt-6 flex items-center justify-center gap-text text-t2 text-pretty text-ios-secondary">
           <Icon name="lock" size={14} />
-          대화 원문은 이 브라우저에 30일간 보관해요. 리포트의 날짜별 숫자는 최대 1년 남아요. 답변 생성과 하늘 고르기에는 대화 내용이 AI 서비스로 전송돼요.
+          대화 원문은 이 브라우저에 30일간 보관해요. 리포트의 날짜별 숫자는 최대 1년 남아요. 답변 생성과 리포트의 표정 고르기에는 대화 내용이 AI 서비스로 전송돼요.
         </p>
         {sessions.length > 0 && (
           <Button variant="plain" onClick={() => setConfirmClear(true)} className="ui-press mx-auto mt-2 block h-11 rounded-r2 px-3 text-t4 font-medium text-[#3D4559] underline underline-offset-4">
