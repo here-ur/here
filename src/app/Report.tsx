@@ -1,18 +1,20 @@
 "use client";
 
-import Segmented from "framework7-react/components/segmented.js";
 import { Tab } from "./ui/Controls";
 import { Button } from "./ui/Button";
 import { useEffect, useId, useRef, useState } from "react";
 import { type Session, loadLog, loadStoredSessions } from "@/lib/log";
 import { gardenWeather } from "@/lib/garden";
-import { COLORS, josa } from "@/lib/onboarding";
+import { josa } from "@/lib/onboarding";
 import {
   type DayStat,
+  type Insights,
   type SkyId,
-  SKIES,
+  MOOD_LABEL,
+  SKY_IDS,
   applySkyResults,
   effectiveSky,
+  insights,
   loadReport,
   loadSkyChoice,
   localDate,
@@ -24,23 +26,22 @@ import {
   saveReport,
   saveSkyChoice,
   setMySky,
-  standoutWeekday,
   syncReport,
-  weekdaySkies,
 } from "@/lib/report";
 import { ACTIVITY_CHANGED } from "@/lib/activity-outbox";
 import { Icon } from "./art";
-import Buddy from "./Buddy";
 import { Crisis109, Shell, type Who } from "./Conversation";
 import Garden from "./Garden";
 import SkyBackdrop from "./SkyBackdrop";
 import Sheet from "./Sheet";
-import { SKY_LOOK, SkyDot, SkyIcon } from "./sky";
+import { MOOD_LOOK, MoodFace } from "./mood";
+import "./report.css";
 
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 const WEEKDAY_FULL = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
 
-const skyLabel = (id: SkyId) => SKIES.find((s) => s.id === id)?.label ?? "";
+// 화면에는 날씨 대신 표정으로 보여 준다. 안쪽 이름(sky)은 저장 형식과 맞춰 그대로 둔다.
+const skyLabel = (id: SkyId) => MOOD_LABEL[id];
 
 function hourLabel(hour: number) {
   const h = hour % 24;
@@ -60,38 +61,52 @@ function dateParts(date: string) {
   return { y, m, d, weekday: new Date(y, m - 1, d).getDay() };
 }
 
-const Header = ({ title, back, onBack, headingRef }: { title: string; back: string; onBack: () => void; headingRef?: React.Ref<HTMLHeadingElement> }) => (
+// 구름 정원(보류 중)의 위 줄. 리포트는 아래 TopBar를 쓴다.
+const GardenHeader = ({ title, back, onBack }: { title: string; back: string; onBack: () => void }) => (
   <header className="here-navbar absolute inset-x-0 top-[calc(env(safe-area-inset-top)+12px)] z-10 flex h-14 items-center justify-between px-gutter">
     <Button variant="plain" onClick={onBack} aria-label={back} className="ui-press grid size-12 place-items-center rounded-full bg-white/72 text-[#1F2A55] shadow-[0_2px_10px_rgba(28,38,80,.05)] backdrop-blur-md">
       <Icon name="back" size={22} />
     </Button>
-    <h1 ref={headingRef} tabIndex={-1} className="text-t6 font-bold outline-none">{title}</h1>
+    <h1 className="text-t6 font-bold outline-none">{title}</h1>
     <span className="size-12" />
   </header>
 );
 
-const card = "here-card p-5";
+/** 리포트 화면의 바탕: 메뉴·캐릭터 화면과 같은 종이색에 잉크 글자. */
+function Page({ children }: { children: React.ReactNode }) {
+  return <main className="app-frame report-page motion-safe:animate-fade">{children}</main>;
+}
+
+const TopBar = ({ title, back, onBack, headingRef }: { title: string; back: string; onBack: () => void; headingRef?: React.Ref<HTMLHeadingElement> }) => (
+  <header className="report-top">
+    <Button variant="plain" onClick={onBack} aria-label={back} className="report-back ui-press">
+      <Icon name="back" size={22} />
+    </Button>
+    <h1 ref={headingRef} tabIndex={-1} className="report-title">{title}</h1>
+  </header>
+);
+
 // 화면이 열리거나 탭을 바꿀 때 카드가 위에서부터 차례로 올라온다(동작 줄이기에서는 움직이지 않는다).
 const STAGGER = "motion-safe:[&>*]:animate-screen-in [&>*:nth-child(2)]:[animation-delay:50ms] [&>*:nth-child(3)]:[animation-delay:100ms] [&>*:nth-child(4)]:[animation-delay:150ms] [&>*:nth-child(n+5)]:[animation-delay:200ms]";
 
 // 계정에 저장한 대화 숫자를 두 화면으로 나눠 보여 준다.
-// 구름 정원(예전 인사이트): 쌓이는 이야기·씨앗·도감·앨범. 탭 없이 한 화면.
-// 라이브러리: 보관함(하늘 달력, 하루하루와 대화 기록, 이번 달 숫자). 마음 점검·상담 같은 탭은 팀 결정 전이라 넣지 않는다.
+// 구름 정원(mode "insight", 보류 중): 쌓이는 이야기·씨앗·도감·앨범. 탭 없이 한 화면이고 예전 모양 그대로다.
+// 리포트(mode "library"): 인사이트(이번 주·이어서 이야기한 날·지금까지) · 한 달(표정 달력과 그달 숫자) · 하루하루.
+// 마음 점검·상담 같은 탭은 팀 결정 전이라 넣지 않는다.
 export type ReportMode = "insight" | "library";
-const LIBRARY_TABS = [
-  { id: "sky", label: "하늘" },
+const TABS = [
+  { id: "summary", label: "인사이트" },
+  { id: "month", label: "한 달" },
   { id: "days", label: "하루하루" },
-  { id: "talk", label: "숫자" },
 ] as const;
-type Tab = "sky" | "talk" | "days";
-const TITLE: Record<ReportMode, string> = { insight: "구름 정원", library: "리포트" };
+type TabId = (typeof TABS)[number]["id"];
 
 /** 하루 중 내가 가장 많이 말한 시각. 말한 시각이 없으면 null. */
 function busiestHour(hours: number[]) {
   const max = Math.max(0, ...hours);
   return max ? hours.indexOf(max) : null;
 }
-const AI_NOTE = "AI가 고른 하늘 · 진단이 아니에요 · 눌러서 바꿀 수 있어요";
+const AI_NOTE = "AI가 고른 표정 · 진단이 아니에요";
 
 export type ReportViewProps = {
   syncError?: string;
@@ -110,15 +125,44 @@ export type ReportViewProps = {
   onDecorate?: () => void;
 };
 
-/** 인사이트·라이브러리 화면(달·하루·하늘 바꾸기). 저장·요청은 하지 않아서 개발 미리보기에서도 그대로 쓴다. */
-export function ReportView({ syncError, mode, who, days, sessions, now, choice, skyState, onBack, onPickSky, onChoice, onSeed, onDecorate }: ReportViewProps) {
+/** 큰 숫자 하나와 단위. 다섯 글자가 넘으면 조금 줄인다. */
+function Big({ value, unit }: { value: number; unit: string }) {
+  const text = value.toLocaleString("ko-KR");
+  return <dd className="report-big" data-long={text.length >= 5 || undefined}>{text}<small>{unit}</small></dd>;
+}
+
+/** 리포트·구름 정원 화면. 저장·요청은 하지 않아서 개발 미리보기에서도 그대로 쓴다. */
+export function ReportView(props: ReportViewProps) {
+  if (props.mode === "insight") return <GardenScreen {...props} />;
+  return <LibraryView {...props} />;
+}
+
+function GardenScreen({ syncError, who, days, now, onBack, onSeed, onDecorate }: ReportViewProps) {
+  return (
+    <Shell color={who.color} bloom="soft">
+      {/* 정원은 화면 전체에 움직이는 하늘을 깔고, 카드를 반투명하게 띄운다. */}
+      <SkyBackdrop weather={gardenWeather(days, now)} color={who.color} />
+      <GardenHeader title="구름 정원" back="처음 화면으로" onBack={onBack} />
+      <div className="absolute inset-x-0 top-[calc(env(safe-area-inset-top)+80px)] bottom-0 overflow-y-auto px-gutter pb-10">
+        {syncError && <p role="status" className="mb-3 text-t2 text-ios-secondary">{syncError}</p>}
+        <div className={STAGGER}><Garden who={who} days={days} now={now} onSeed={onSeed} onDecorate={onDecorate} /></div>
+        <p className="mt-6 flex items-start justify-center gap-text text-t2 text-pretty text-ios-secondary">
+          <Icon name="lock" size={14} />
+          최근 30일 대화는 홈의 글 대화에서 볼 수 있어요. 날짜별 숫자와 하늘 기록은 계정에 최대 1년 남아요.
+        </p>
+      </div>
+    </Shell>
+  );
+}
+
+function LibraryView({ syncError, who, days, sessions, now, choice, skyState, onBack, onPickSky, onChoice }: ReportViewProps) {
   const months = reportMonths(days, now);
   const [monthIndex, setMonthIndex] = useState(months.length - 1);
-  const [tab, setTab] = useState<Tab>("sky");
+  const [tab, setTab] = useState<TabId>("summary");
   const tabId = useId();
   const scrollRef = useRef<HTMLDivElement>(null);
   // 탭을 바꾸면 새 탭의 맨 위부터 보여 준다.
-  function showTab(next: Tab) {
+  function showTab(next: TabId) {
     setTab(next);
     scrollRef.current?.scrollTo({ top: 0 });
   }
@@ -126,7 +170,6 @@ export function ReportView({ syncError, mode, who, days, sessions, now, choice, 
   const [sheet, setSheet] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const returnDate = useRef<string | null>(null);
-  const deep = COLORS.find((c) => c.id === who.color)?.deep ?? "#6A55E6";
 
   // 화면이 바뀌면 제목으로, 달 화면으로 돌아오면 누른 날짜로 포커스를 옮긴다.
   useEffect(() => {
@@ -136,6 +179,12 @@ export function ReportView({ syncError, mode, who, days, sessions, now, choice, 
     document.querySelector<HTMLButtonElement>(`[data-report-date="${date}"]`)?.focus({ preventScroll: true });
   }, [openDate]);
 
+  const today = localDate(now);
+  function openDay(date: string) {
+    returnDate.current = date;
+    setOpenDate(date);
+  }
+
   if (openDate) {
     const day = days.find((d) => d.date === openDate);
     return (
@@ -144,11 +193,10 @@ export function ReportView({ syncError, mode, who, days, sessions, now, choice, 
         date={openDate}
         day={day}
         sessions={sessions}
-        today={localDate(now)}
+        today={today}
         choice={choice}
         sheet={sheet}
         headingRef={headingRef}
-        deep={deep}
         onBack={() => { setSheet(false); setOpenDate(null); }}
         onSheet={setSheet}
         onPickSky={onPickSky}
@@ -156,37 +204,27 @@ export function ReportView({ syncError, mode, who, days, sessions, now, choice, 
     );
   }
 
-  const current = months[Math.min(Math.max(monthIndex, 0), months.length - 1)];
-  const view = monthView(days, current.year, current.month);
-  const enough = view.talked >= 3;
-  const first = new Date(current.year, current.month - 1, 1).getDay();
-  const length = new Date(current.year, current.month, 0).getDate();
-  const cells: (number | null)[] = [...Array(first).fill(null), ...Array.from({ length }, (_, i) => i + 1)];
-  while (cells.length % 7) cells.push(null);
-  const weeks = Array.from({ length: cells.length / 7 }, (_, i) => cells.slice(i * 7, i * 7 + 7));
-  const byDate = new Map(view.days.map((d) => [d.date, d]));
-  const today = localDate(now);
-  const maxSky = Math.max(1, ...view.skies.map((s) => s.count));
-  const maxBucket = Math.max(1, ...view.buckets.map((b) => b.count));
-  const peakBucket = view.buckets.reduce((a, b) => (b.count > a.count ? b : a), view.buckets[0]);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const weekdayRows = weekdaySkies(view.days);
-  const standout = standoutWeekday(weekdayRows);
-  const daysDesc = [...view.days].reverse();
+  const index = Math.min(Math.max(monthIndex, 0), months.length - 1);
+  const current = months[index];
+  const monthNav = (
+    <div className="report-month">
+      <h2 aria-live="polite">{current.year}년 {current.month}월</h2>
+      <div className="report-month-nav">
+        <Button variant="plain" onClick={() => setMonthIndex(Math.max(0, index - 1))} disabled={index <= 0} aria-label="이전 달" className="report-round ui-press">
+          <Icon name="back" size={18} />
+        </Button>
+        <Button variant="plain" onClick={() => setMonthIndex(Math.min(months.length - 1, index + 1))} disabled={index >= months.length - 1} aria-label="다음 달" className="report-round ui-press">
+          <span className="rotate-180"><Icon name="back" size={18} /></span>
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
-    <Shell color={who.color} bloom="soft">
-      {/* 인사이트(정원)는 화면 전체에 움직이는 하늘을 깔고, 카드를 반투명하게 띄운다. */}
-      {mode === "insight" && <SkyBackdrop weather={gardenWeather(days, now)} color={who.color} />}
-      <Header title={TITLE[mode]} back="처음 화면으로" onBack={onBack} headingRef={headingRef} />
-      {mode === "library" && <Segmented {...{ role: "tablist", "aria-label": "리포트 종류" }} className="here-segmented absolute inset-x-gutter top-[calc(env(safe-area-inset-top)+80px)] z-10 grid grid-cols-3 gap-1 rounded-r4 bg-white/70 p-1 backdrop-blur-md motion-safe:animate-screen-in">
-        {/* 고른 탭 뒤의 흰 칸이 탭 사이를 미끄러지듯 옮겨 간다 */}
-        <span
-          aria-hidden="true"
-          className="absolute inset-y-1 left-1 w-[calc((100%-1rem)/3)] rounded-r3 bg-white shadow-[0_2px_8px_rgba(28,38,80,.08)] transition-transform duration-[var(--seed-duration-d6)] ease-[var(--seed-timing-function-enter)]"
-          style={{ transform: `translateX(calc(${LIBRARY_TABS.findIndex((t) => t.id === tab)} * (100% + 0.25rem)))` }}
-        />
-        {LIBRARY_TABS.map((t, index) => (
+    <Page>
+      <TopBar title="리포트" back="처음 화면으로" onBack={onBack} headingRef={headingRef} />
+      <div role="tablist" aria-label="리포트 종류" className="report-tabs motion-safe:animate-screen-in">
+        {TABS.map((t, i) => (
           <Tab
             key={t.id}
             id={`${tabId}-${t.id}`}
@@ -197,355 +235,462 @@ export function ReportView({ syncError, mode, who, days, sessions, now, choice, 
             onKeyDown={(event) => {
               if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
               event.preventDefault();
-              const next = LIBRARY_TABS[(index + (event.key === "ArrowRight" ? 1 : LIBRARY_TABS.length - 1)) % LIBRARY_TABS.length];
+              const next = TABS[(i + (event.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length];
               showTab(next.id);
               document.getElementById(`${tabId}-${next.id}`)?.focus();
             }}
-            className="ui-press relative h-10 rounded-r3 text-t4 font-medium text-ios-secondary aria-selected:font-bold aria-selected:text-[#1F2A55]"
+            className="report-tab ui-press"
           >
             {t.label}
           </Tab>
         ))}
-      </Segmented>}
-      <div ref={scrollRef} className={`absolute inset-x-0 ${mode === "library" ? "top-[calc(env(safe-area-inset-top)+140px)]" : "top-[calc(env(safe-area-inset-top)+80px)]"} bottom-0 overflow-y-auto px-gutter pb-10`}>
-        {syncError && <p role="status" className="mb-3 text-t2 text-ios-secondary">{syncError}</p>}
-        {/* 인사이트는 쌓이는 정원을 먼저 보여 주고, 달마다 보는 숫자는 그 아래에 둔다. */}
-        {mode === "insight" && <div className={STAGGER}><Garden who={who} days={days} now={now} onSeed={onSeed} onDecorate={onDecorate} /></div>}
-        {mode === "library" && <>
-        <div className="flex items-center justify-center gap-2 motion-safe:animate-screen-in">
-          <Button variant="plain" onClick={() => setMonthIndex((i) => Math.max(0, i - 1))} disabled={monthIndex <= 0} aria-label="이전 달" className="ui-press grid size-11 place-items-center rounded-full text-[#1F2A55] disabled:opacity-30">
-            <Icon name="back" size={18} />
-          </Button>
-          <h2 aria-live="polite" className="min-w-32 text-center text-t5 font-bold tabular-nums">{current.year}년 {current.month}월</h2>
-          <Button variant="plain" onClick={() => setMonthIndex((i) => Math.min(months.length - 1, i + 1))} disabled={monthIndex >= months.length - 1} aria-label="다음 달" className="ui-press grid size-11 place-items-center rounded-full text-[#1F2A55] disabled:opacity-30">
-            <span className="rotate-180"><Icon name="back" size={18} /></span>
-          </Button>
+      </div>
+      <div ref={scrollRef} className="report-scroll">
+        {syncError && <p role="status" className="report-status">{syncError}</p>}
+        <div key={tab} id={`${tabId}-panel`} role="tabpanel" aria-labelledby={`${tabId}-${tab}`} className={`report-stack ${STAGGER}`}>
+          {tab === "summary" && <Summary view={insights(days, now)} choice={choice} skyState={skyState} onChoice={onChoice} onOpen={openDay} onTalk={onBack} />}
+          {tab === "month" && <>
+            {monthNav}
+            <MonthPanel days={days} year={current.year} month={current.month} today={today} choice={choice} skyState={skyState} onChoice={onChoice} onOpen={openDay} />
+          </>}
+          {tab === "days" && <>
+            {monthNav}
+            <DaysPanel days={days} year={current.year} month={current.month} today={today} onOpen={openDay} />
+          </>}
         </div>
-
-        <div key={tab} id={`${tabId}-panel`} role="tabpanel" aria-labelledby={`${tabId}-${tab}`} className={STAGGER}>
-        {tab === "sky" && <>
-
-        {choice === null && (
-          <section className={`${card} mt-4`} aria-labelledby="report-sky-choice">
-            <h3 id="report-sky-choice" className="text-t5 font-bold text-[#1F2A55]">그날 하늘을 AI가 골라 둘까요?</h3>
-            <p className="mt-2 text-t3 text-pretty text-[#3D4559]">
-              지난 날마다 그날 내가 한 말을 보고 맑음·포근·흐림·비·천둥·바람 중 하나를 골라요. 이때 그날 내가 한 말을 AI 서비스로 한 번 더 보내요. 진단이 아니고, 언제든 직접 고칠 수 있어요.
-            </p>
-            <div className="mt-4 flex gap-2">
-              <Button onClick={() => onChoice("on")} tone="neutral" size="medium" className="flex-1">괜찮아요</Button>
-              <Button onClick={() => onChoice("off")} tone="neutral" variant="tonal" size="medium" className="flex-1">AI로 고르지 않기</Button>
-            </div>
-          </section>
-        )}
-
-        <section className={`${card} mt-4`} aria-labelledby="report-calendar">
-          <div className="flex items-baseline justify-between">
-            <h3 id="report-calendar" className="text-t5 font-bold text-[#1F2A55]">하늘 달력</h3>
-            {skyState === "picking" && <span role="status" className="text-t2 text-ios-secondary">하늘을 고르는 중…</span>}
-            {skyState === "failed" && <span role="status" className="text-t2 text-ios-secondary">하늘을 다 고르지 못했어요</span>}
-          </div>
-          <table className="mt-3 w-full table-fixed border-separate border-spacing-y-1 text-center">
-            <caption className="sr-only">{current.year}년 {current.month}월 하늘 달력. 날짜를 누르면 그날을 볼 수 있어요.</caption>
-            <thead>
-              <tr>{WEEKDAY.map((w, i) => <th key={w} scope="col" abbr={WEEKDAY_FULL[i]} className="pb-1 text-t2 font-medium text-ios-secondary">{w}</th>)}</tr>
-            </thead>
-            <tbody>
-              {weeks.map((week, wi) => (
-                <tr key={wi}>
-                  {week.map((d, di) => {
-                    if (!d) return <td key={di} />;
-                    const date = `${current.year}-${pad(current.month)}-${pad(d)}`;
-                    const day = byDate.get(date);
-                    const sky = day && effectiveSky(day);
-                    // 모든 날은 숫자가 든 원 하나다. 하늘이 있으면 원을 그 색으로 칠하고 오른쪽 아래에 작은 하늘 배지를 단다.
-                    const ring = date === today ? " ring-2 ring-[#1F2A55] ring-offset-2 ring-offset-white" : "";
-                    if (!day) return <td key={di} className="h-12 align-top" aria-current={date === today ? "date" : undefined}><span className={`mx-auto grid size-9 place-items-center rounded-full text-t2 tabular-nums ${date === today ? "font-bold text-[#1F2A55]" : "text-[#A3AABB]"}${ring}`}>{d}</span></td>;
-                    const state = day.crisis ? "109 안내가 있었던 날" : sky ? `${skyLabel(sky)}, ${day.mine ? "내가 고친 하늘" : "AI가 고른 하늘"}` : "하늘을 아직 고르지 않음";
-                    const circle = day.crisis
-                      ? { background: "#FFE8E6", color: "#C42A23" }
-                      : sky ? { background: SKY_LOOK[sky].tint, color: SKY_LOOK[sky].ink } : undefined;
-                    return (
-                      <td key={di} className="h-12 align-top">
-                        <Button variant="plain"
-                          data-report-date={date}
-                          onClick={() => { returnDate.current = date; setOpenDate(date); }}
-                          aria-current={date === today ? "date" : undefined}
-                          aria-label={`${current.month}월 ${d}일 ${WEEKDAY_FULL[di]}, ${state}`}
-                          className="ui-press mx-auto grid size-11 place-items-center rounded-full"
-                        >
-                          <span className={`relative grid size-9 place-items-center rounded-full text-t2 font-bold tabular-nums ${!circle ? "border-[1.5px] border-dashed border-[#B8BFCC] text-[#3D4559]" : ""}${ring}`} style={circle}>
-                            {d}
-                            {day.crisis ? (
-                              <span aria-hidden="true" className="absolute -right-1.5 -bottom-1 rounded-full bg-white px-1 text-[9px] leading-4 font-bold text-[#C42A23] shadow-[0_1px_3px_rgba(28,38,80,.15)]">109</span>
-                            ) : sky ? (
-                              <span aria-hidden="true" className="absolute -right-1.5 -bottom-1 grid size-[18px] place-items-center rounded-full bg-white shadow-[0_1px_3px_rgba(28,38,80,.15)]"><SkyIcon id={sky} size={13} /></span>
-                            ) : null}
-                          </span>
-                        </Button>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="mt-2 text-t1 text-[#8A91A3]">
-            {AI_NOTE}
-            {choice === "off" && <> · <Button variant="plain" onClick={() => onChoice("on")} className="ui-press font-medium text-[#1F2A55] underline underline-offset-4">AI로 고르기 켜기</Button></>}
-          </p>
-        </section>
-
-        {view.skies.length > 0 && (
-          <section className={`${card} mt-4`} aria-labelledby="report-skies">
-            <h3 id="report-skies" className="text-t5 font-bold text-[#1F2A55]">하늘별 날 수</h3>
-            <ul className="mt-3 flex flex-col gap-2.5">
-              {view.skies.map((s) => (
-                <li key={s.id} className="flex items-center gap-3">
-                  <SkyDot id={s.id} size={26} />
-                  <span className="w-9 text-t3 font-medium text-[#1F2A55]">{s.label}</span>
-                  <span aria-hidden="true" className="h-2.5 flex-1 overflow-hidden rounded-full bg-ios-group">
-                    <span className="block h-full rounded-full" style={{ width: `${(s.count / maxSky) * 100}%`, background: SKY_LOOK[s.id].ink }} />
-                  </span>
-                  <span className="w-8 text-right text-t3 tabular-nums text-[#3D4559]">{s.count}일</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-        </>}
-
-        {tab === "talk" && <>
-        <p className="mt-2 flex items-center justify-center gap-2 text-t4 text-[#3D4559]">
-          <Buddy shape={who.shape} color={who.color} size={32} look={[0.2, 0.2]} />
-          {view.talked ? `${current.month}월엔 ${view.talked}일 이야기했어` : `${current.month}월엔 아직 이야기하지 않았어`}
-        </p>
-
-        <dl className="mt-4 grid grid-cols-2 gap-2">
-          {[
-            ["대화한 날", view.talked, "일"],
-            ["내가 한 말", view.said, "번"],
-          ].map(([label, value, unit]) => (
-            <div key={label} className="rounded-r5 bg-white px-3 py-4 text-center shadow-[0_4px_16px_rgba(28,38,80,.05)]">
-              <dt className="text-t2 text-ios-secondary">{label}</dt>
-              <dd className="mt-1 text-t8 font-bold tabular-nums text-[#1F2A55]">{value}<span className="ml-0.5 text-t3 font-medium">{unit}</span></dd>
-            </div>
-          ))}
-        </dl>
-
-        <section className={`${card} mt-4`} aria-labelledby="report-words">
-          <div className="flex items-baseline justify-between">
-            <h3 id="report-words" className="text-t5 font-bold text-[#1F2A55]">자주 한 말</h3>
-            <span className="text-t2 text-ios-secondary">계정의 대화에서 세요</span>
-          </div>
-          {enough && view.words.length > 0 ? (
-            <ul className="mt-3 flex flex-wrap gap-2">
-              {view.words.map((w) => (
-                <li key={w.word} className="rounded-full bg-ios-group px-3 py-2 text-t3 text-[#1F2A55]">
-                  {w.word} <span className="tabular-nums text-ios-secondary">{w.count}번</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-t3 text-ios-secondary">이야기가 더 쌓이면 자주 한 말을 보여 줄게요.</p>
-          )}
-          <p className="mt-3 text-t2 text-ios-secondary">AI에는 보내지 않아요. 단어만 세서 가끔 어색한 말이 나올 수 있어요.</p>
-        </section>
-
-        {enough && (
-          <section className={`${card} mt-4`} aria-labelledby="report-hours">
-            <h3 id="report-hours" className="text-t5 font-bold text-[#1F2A55]">이야기한 시간대</h3>
-            <p className="mt-1 text-t2 text-ios-secondary">내가 말한 때로 셌어요.</p>
-            <ul className="mt-4 grid grid-cols-4 items-end gap-3">
-              {view.buckets.map((b) => (
-                <li key={b.id} className="flex flex-col items-center gap-1.5">
-                  <span className="text-t2 tabular-nums text-[#3D4559]">{b.count}번</span>
-                  <span aria-hidden="true" className="flex h-20 w-full items-end overflow-hidden rounded-t-r3 bg-ios-group">
-                    <span className="block w-full rounded-t-r3" style={{ height: `${Math.max(6, (b.count / maxBucket) * 100)}%`, background: b.id === peakBucket.id && b.count ? deep : "#C9CFDB" }} />
-                  </span>
-                  <span className="text-t3 font-medium text-[#1F2A55]">{b.label}</span>
-                </li>
-              ))}
-            </ul>
-            {view.peak !== null && <p className="mt-3 text-t3 text-[#3D4559]">{peakText(view.peak)}</p>}
-          </section>
-        )}
-
-        <section className={`${card} mt-4`} aria-labelledby="report-weekdays">
-          <h3 id="report-weekdays" className="text-t5 font-bold text-[#1F2A55]">요일마다 다녀간 하늘</h3>
-          {weekdayRows.some((row) => row.skies.length) ? <>
-            <ul className="mt-4 grid grid-cols-7 items-end gap-1 text-center">
-              {weekdayRows.map((row) => (
-                <li key={row.weekday} className="flex flex-col items-center gap-1" aria-label={`${WEEKDAY_FULL[row.weekday]}: ${row.skies.length ? row.skies.map((s) => `${skyLabel(s.id)} ${s.count}번`).join(", ") : "없음"}`}>
-                  <span aria-hidden="true" className="flex min-h-7 flex-col-reverse items-center gap-1">
-                    {row.skies.flatMap((s) => Array.from({ length: s.count }, (_, i) => <SkyDot key={`${s.id}-${i}`} id={s.id} size={24} />))}
-                  </span>
-                  <span aria-hidden="true" className="text-t2 text-ios-secondary">{WEEKDAY[row.weekday]}</span>
-                </li>
-              ))}
-            </ul>
-            {standout && <p className="mt-3 text-t3 text-[#3D4559]">{WEEKDAY_FULL[standout.weekday]}에 {skyLabel(standout.sky)} 하늘이 {standout.count}번 다녀갔어요.</p>}
-          </> : <p className="mt-3 text-t3 text-ios-secondary">하늘이 있는 날이 생기면 요일마다 모아 보여 줄게요.</p>}
-          <p className="mt-3 text-t2 text-ios-secondary">하늘이 없는 날과 109 안내가 나왔던 날은 빼고 셌어요.</p>
-        </section>
-        </>}
-
-        {tab === "days" && <>
-          {daysDesc.length ? (
-            <ul className="mt-2 flex flex-col gap-2">
-              {daysDesc.map((day) => {
-                const { m, d, weekday } = dateParts(day.date);
-                const sky = day.crisis ? undefined : effectiveSky(day);
-                const hour = busiestHour(day.hours);
-                const when = hour === null ? "" : ` · ${hourLabel(hour).period} ${hourLabel(hour).text}쯤`;
-                return (
-                  <li key={day.date}>
-                    <Button variant="plain"
-                      data-report-date={day.date}
-                      onClick={() => { returnDate.current = day.date; setOpenDate(day.date); }}
-                      className="ui-press flex min-h-16 w-full items-center gap-3 rounded-r5 bg-white px-4 py-3 text-left shadow-[0_4px_16px_rgba(28,38,80,.05)]"
-                    >
-                      {day.crisis ? (
-                        <span className="grid h-7 shrink-0 place-items-center rounded-full bg-[#FFE8E6] px-1.5 text-t1 font-bold text-[#C42A23]">109</span>
-                      ) : sky ? (
-                        <SkyDot id={sky} />
-                      ) : (
-                        <span className="size-7 shrink-0 rounded-full border-[1.5px] border-dashed border-[#B8BFCC]" />
-                      )}
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-t4 font-bold text-[#1F2A55]">
-                          {m}월 {d}일 {WEEKDAY_FULL[weekday]}{day.date === today && <span className="ml-1.5 text-t2 font-medium text-ios-secondary">오늘</span>}
-                        </span>
-                        <span className="text-t2 tabular-nums text-ios-secondary">
-                          {day.crisis ? "109 안내가 나왔던 날" : sky ? skyLabel(sky) : "하늘 없음"} · 내가 한 말 {day.said}번{when}
-                        </span>
-                      </span>
-                      <span className="rotate-180 text-[#8A91A3]"><Icon name="back" size={16} /></span>
-                    </Button>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <p className="mt-6 text-center text-t3 text-ios-secondary">{current.month}월엔 이야기한 날이 없어요.</p>
-          )}
-
-
-        </>}
-        </div>
-        </>}
-
-        <p className="mt-6 flex items-start justify-center gap-text text-t2 text-pretty text-ios-secondary">
+        <p className="report-foot">
           <Icon name="lock" size={14} />
-          최근 30일 대화는 홈의 글 대화에서 볼 수 있어요. 날짜별 숫자와 하늘 기록은 계정에 최대 1년 남아요.
+          최근 30일 대화는 홈의 글 대화에서 볼 수 있어요. 날짜별 숫자와 표정 기록은 계정에 최대 1년 남아요.
         </p>
       </div>
-    </Shell>
+    </Page>
+  );
+}
+
+/** 표정을 AI가 골라 둘지 묻는 안내. 리포트를 처음 연 사람이 어느 탭에서든 보게 인사이트(이번 주 카드 안)와 한 달에 함께 둔다. */
+function SkyChoice({ onChoice, inset = false }: { onChoice: (choice: "on" | "off") => void; inset?: boolean }) {
+  const id = useId();
+  return (
+    <section className={inset ? "report-choice" : "report-card"} aria-labelledby={id}>
+      <h3 id={id} className={inset ? "report-choice-title" : "report-card-title"}>그날 표정을 AI가 골라 둘까요?</h3>
+      <p className="report-text mt-1.5">
+        지난 날마다 그날 내가 한 말을 보고 {SKY_IDS.map(skyLabel).join("·")} 중 하나를 골라요. 이때 그날 내가 한 말을 AI 서비스로 한 번 더 보내요. 진단이 아니고, 언제든 직접 고칠 수 있어요.
+      </p>
+      <div className="mt-3.5 flex gap-2">
+        <Button onClick={() => onChoice("on")} tone="ink" size="medium" className="flex-1">괜찮아요</Button>
+        <Button onClick={() => onChoice("off")} tone="ink" variant="tonal" size="medium" className="flex-1">AI로 고르지 않기</Button>
+      </div>
+    </section>
+  );
+}
+
+/** 표정 아래 한 줄: AI가 골랐다는 표시, 고르는 중·실패, 꺼 두었을 때 다시 켜기. */
+function SkyNote({ choice, skyState, onChoice, className = "" }: { choice: "on" | "off" | null; skyState: "idle" | "picking" | "failed"; onChoice: (choice: "on" | "off") => void; className?: string }) {
+  if (choice === "off") {
+    return <p className={`report-fine ${className}`}>날짜를 눌러 직접 고를 수 있어요 · <Button variant="plain" onClick={() => onChoice("on")} className="report-link ui-press">AI로 고르기 켜기</Button></p>;
+  }
+  return (
+    <p className={`report-fine ${className}`}>
+      {AI_NOTE} · 눌러서 바꿀 수 있어요
+      {skyState === "picking" && <span role="status"> · 표정을 고르는 중…</span>}
+      {skyState === "failed" && <span role="status"> · 표정을 다 고르지 못했어요</span>}
+    </p>
+  );
+}
+
+/** 인사이트: 이번 주 표정, 최근 30일에 많았던 표정·자주 한 말, 지금까지의 숫자. 날짜별 숫자에서만 세고 해석하지 않는다. */
+function Summary({ view, choice, skyState, onChoice, onOpen, onTalk }: {
+  view: Insights; choice: "on" | "off" | null; skyState: "idle" | "picking" | "failed";
+  onChoice: (choice: "on" | "off") => void; onOpen: (date: string) => void; onTalk: () => void;
+}) {
+  const first = dateParts(view.week[0].date);
+  const last = dateParts(view.week[6].date);
+  const range = `${first.m}월 ${first.d}일 – ${first.m === last.m ? "" : `${last.m}월 `}${last.d}일`;
+  const { current, record } = view.streak;
+  const since = view.since ? dateParts(view.since) : null;
+
+  return <>
+    <section className="report-card report-hero" aria-labelledby="report-week">
+      {/* eslint-disable-next-line @next/next/no-img-element -- 9KB짜리 꾸밈 그림이라 이미지 최적화를 거치지 않는다 */}
+      <img className="report-hero-cat" src="/characters/motion/purr.webp" alt="" width={428} height={281} draggable={false} />
+      <div className="report-hero-text">
+        <p className="report-eyebrow">{range}</p>
+        <h2 id="report-week" className="report-headline">
+          {view.weekTalked ? <>이번 주엔<br /><b>{view.weekTalked}</b>일 이야기했어요</>
+            : view.totalDays ? <>이번 주엔 아직<br />이야기하지 않았어요</>
+            : <>아직 이야기한<br />날이 없어요</>}
+        </h2>
+        {/* 이어서 이야기한 날은 한 줄로만. 쉬어서 0이 되면 아무 말도 하지 않는다(독촉·벌칙 없음). */}
+        {current >= 2 && <p className="report-hero-sub">{current}일째 이어서 이야기하고 있어요</p>}
+      </div>
+      {!view.totalDays && (
+        <div className="report-hero-cta">
+          <Button tone="ink" size="medium" onClick={onTalk}>이야기하러 가기</Button>
+        </div>
+      )}
+      <ol className="report-week" aria-label="이번 주 표정">
+        {view.week.map((cell) => {
+          const { m, d } = dateParts(cell.date);
+          const name = `${m}월 ${d}일 ${WEEKDAY_FULL[cell.weekday]}${cell.today ? ", 오늘" : ""}`;
+          const isToday = cell.today || undefined;
+          const sky = cell.day && !cell.day.crisis ? effectiveSky(cell.day) : undefined;
+          const label = <span aria-hidden="true" className="report-week-day" data-today={isToday}>{WEEKDAY[cell.weekday]}</span>;
+          if (!cell.day) {
+            return (
+              <li key={cell.date}>
+                <span role="img" aria-label={`${name}, ${cell.future ? "아직 오지 않은 날" : "이야기하지 않은 날"}`} className="report-week-cell">
+                  <span className="report-week-mark" data-kind={cell.future ? "future" : "rest"} data-today={isToday} />
+                </span>
+                {label}
+              </li>
+            );
+          }
+          const state = cell.day.crisis ? "109 안내가 있었던 날" : sky ? `${skyLabel(sky)}, ${cell.day.mine ? "내가 고친 표정" : "AI가 고른 표정"}` : "표정을 아직 고르지 않음, 눌러서 고를 수 있어요";
+          return (
+            <li key={cell.date}>
+              <Button variant="plain" data-report-date={cell.date} onClick={() => onOpen(cell.date)} aria-current={cell.today ? "date" : undefined} aria-label={`${name}, ${state}`} className="report-week-cell ui-press">
+                {cell.day.crisis ? <span className="report-week-mark" data-kind="crisis" data-today={isToday}>109</span>
+                  : sky ? <span className="report-week-mark" data-kind="mood" data-today={isToday}><MoodFace id={sky} size={36} /></span>
+                  : <span className="report-week-mark" data-kind="plus" data-today={isToday}><Icon name="add" size={15} /></span>}
+              </Button>
+              {label}
+            </li>
+          );
+        })}
+      </ol>
+      {/* 동의를 묻기 전에는 AI가 표정을 고르지 않는다. 처음 여는 탭이라 여기서 묻는다. */}
+      {view.totalDays > 0 && (choice === null
+        ? <SkyChoice onChoice={onChoice} inset />
+        : <SkyNote choice={choice} skyState={skyState} onChoice={onChoice} className="report-hero-note" />)}
+    </section>
+
+    {(view.moods.length > 0 || view.words.length > 0) && (
+      <section className="report-card" aria-labelledby="report-recent">
+        <h3 id="report-recent" className="report-card-title">최근 30일</h3>
+        {view.moods.length > 0 && <>
+          <p className="report-label mt-3.5">많았던 표정</p>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {view.moods.map((mood) => (
+              <li key={mood.id} className="report-chip report-chip-mood"><MoodFace id={mood.id} size={24} />{skyLabel(mood.id)} <span>{mood.count}일</span></li>
+            ))}
+          </ul>
+        </>}
+        {view.words.length > 0 && <>
+          <p className="report-label mt-4">자주 한 말</p>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {view.words.map((w) => <li key={w.word} className="report-chip">{w.word} <span>{w.count}번</span></li>)}
+          </ul>
+        </>}
+        <p className="report-fine mt-3.5">
+          {view.moods.length > 0 && "표정은 AI가 고른 것이고 진단이 아니에요. "}
+          {view.words.length > 0 && "자주 한 말은 AI에 보내지 않아요."}
+        </p>
+      </section>
+    )}
+
+    <div className="report-section">
+      <h3>지금까지</h3>
+      {since && <span>{view.capped ? "최근 1년 기록에서 세요" : `${since.m}월 ${since.d}일부터 ${view.sinceDays}일째`}</span>}
+    </div>
+    <dl className="report-grid">
+      <div className="report-stat">
+        <dt>대화한 날</dt>
+        <Big value={view.totalDays} unit="일" />
+        <dd className="report-stat-cap">지난 7일 {view.recentDays}일</dd>
+      </div>
+      <div className="report-stat">
+        <dt>내가 한 말</dt>
+        <Big value={view.totalSaid} unit="번" />
+        <dd className="report-stat-cap">지난 7일 {view.recentSaid.toLocaleString("ko-KR")}번</dd>
+      </div>
+      <div className="report-stat">
+        <dt>가장 길게 이어진 날</dt>
+        <Big value={record} unit="일" />
+        <dd className="report-stat-cap">{current >= 2 ? `지금 ${current}일째` : "쉬어 가도 줄지 않아요"}</dd>
+      </div>
+      <div className="report-stat">
+        <dt>자주 이야기한 때</dt>
+        <dd className="report-big" data-word data-empty={!view.busiest || undefined}>{view.busiest?.label ?? "—"}</dd>
+        <dd className="report-stat-cap">{view.busiest ? `최근 30일 · ${view.busiest.count.toLocaleString("ko-KR")}번` : "이야기가 쌓이면 보여요"}</dd>
+      </div>
+    </dl>
+  </>;
+}
+
+/** 한 달: 표정 달력과 그달의 숫자(표정별 날 수 · 자주 한 말 · 시간대). */
+function MonthPanel({ days, year, month, today, choice, skyState, onChoice, onOpen }: {
+  days: DayStat[]; year: number; month: number; today: string; choice: "on" | "off" | null; skyState: "idle" | "picking" | "failed";
+  onChoice: (choice: "on" | "off") => void; onOpen: (date: string) => void;
+}) {
+  const view = monthView(days, year, month);
+  const enough = view.talked >= 3;
+  const first = new Date(year, month - 1, 1).getDay();
+  const length = new Date(year, month, 0).getDate();
+  const cells: (number | null)[] = [...Array(first).fill(null), ...Array.from({ length }, (_, i) => i + 1)];
+  while (cells.length % 7) cells.push(null);
+  const weeks = Array.from({ length: cells.length / 7 }, (_, i) => cells.slice(i * 7, i * 7 + 7));
+  const byDate = new Map(view.days.map((d) => [d.date, d]));
+  const maxSky = Math.max(1, ...view.skies.map((s) => s.count));
+  const maxBucket = Math.max(1, ...view.buckets.map((b) => b.count));
+  const peakBucket = view.buckets.reduce((a, b) => (b.count > a.count ? b : a), view.buckets[0]);
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  return <>
+    {choice === null && <SkyChoice onChoice={onChoice} />}
+
+    <section className="report-card" aria-labelledby="report-calendar">
+      <h3 id="report-calendar" className="report-card-title">표정 달력</h3>
+      <table className="report-cal mt-3">
+        <caption className="sr-only">{year}년 {month}월 표정 달력. 이야기한 날을 누르면 그날을 볼 수 있어요.</caption>
+        <thead>
+          <tr>{WEEKDAY.map((w, i) => <th key={w} scope="col" abbr={WEEKDAY_FULL[i]}>{w}</th>)}</tr>
+        </thead>
+        <tbody>
+          {weeks.map((week, wi) => (
+            <tr key={wi}>
+              {week.map((d, di) => {
+                if (!d) return <td key={di} />;
+                const date = `${year}-${pad(month)}-${pad(d)}`;
+                const day = byDate.get(date);
+                const isToday = date === today || undefined;
+                // 날마다 위에 표정 자리, 아래에 작은 날짜. 이야기한 날만 누를 수 있다.
+                const num = <span className="report-cal-num" data-today={isToday} data-dim={!day || undefined}>{d}</span>;
+                if (!day) {
+                  return <td key={di} aria-current={isToday ? "date" : undefined}><span className="report-cal-cell"><span className="report-cal-slot" data-kind="none" />{num}</span></td>;
+                }
+                const sky = day.crisis ? undefined : effectiveSky(day);
+                const state = day.crisis ? "109 안내가 있었던 날" : sky ? `${skyLabel(sky)}, ${day.mine ? "내가 고친 표정" : "AI가 고른 표정"}` : "표정을 아직 고르지 않음";
+                return (
+                  <td key={di}>
+                    <Button variant="plain"
+                      data-report-date={date}
+                      onClick={() => onOpen(date)}
+                      aria-current={isToday ? "date" : undefined}
+                      aria-label={`${month}월 ${d}일 ${WEEKDAY_FULL[di]}, ${state}`}
+                      className="report-cal-cell ui-press"
+                    >
+                      {day.crisis ? <span className="report-cal-slot" data-kind="crisis">109</span>
+                        : sky ? <span className="report-cal-slot"><MoodFace id={sky} size={32} /></span>
+                        : <span className="report-cal-slot" data-kind="plus"><Icon name="add" size={13} /></span>}
+                      {num}
+                    </Button>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {choice !== null && <SkyNote choice={choice} skyState={skyState} onChoice={onChoice} className="mt-2" />}
+    </section>
+
+    <dl className="report-duo">
+      <div className="report-tile">
+        <dt>{month}월에 대화한 날</dt>
+        <Big value={view.talked} unit="일" />
+      </div>
+      <div className="report-tile">
+        <dt>{month}월에 내가 한 말</dt>
+        <Big value={view.said} unit="번" />
+      </div>
+    </dl>
+
+    {view.skies.length > 0 && (
+      <section className="report-card" aria-labelledby="report-skies">
+        <h3 id="report-skies" className="report-card-title">표정별 날 수</h3>
+        <ul className="mt-3 flex flex-col gap-2.5">
+          {view.skies.map((s) => (
+            <li key={s.id} className="flex items-center gap-3">
+              <MoodFace id={s.id} size={28} />
+              <span className="w-14 text-t3 font-semibold text-cat-ink">{skyLabel(s.id)}</span>
+              <span aria-hidden="true" className="h-2.5 flex-1 overflow-hidden rounded-full bg-cat-paper">
+                <span className="block h-full rounded-full" style={{ width: `${(s.count / maxSky) * 100}%`, background: MOOD_LOOK[s.id].bg }} />
+              </span>
+              <span className="w-8 text-right text-t3 tabular-nums text-[#4A4741]">{s.count}일</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    <section className="report-card" aria-labelledby="report-words">
+      <div className="report-card-head">
+        <h3 id="report-words" className="report-card-title">자주 한 말</h3>
+        <span className="report-card-side">계정의 대화에서 세요</span>
+      </div>
+      {enough && view.words.length > 0 ? (
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {view.words.map((w) => <li key={w.word} className="report-chip">{w.word} <span>{w.count}번</span></li>)}
+        </ul>
+      ) : (
+        <p className="report-text mt-3 text-cat-muted">이야기가 더 쌓이면 자주 한 말을 보여 줄게요.</p>
+      )}
+      <p className="report-fine mt-3">AI에는 보내지 않아요. 단어만 세서 가끔 어색한 말이 나올 수 있어요.</p>
+    </section>
+
+    {enough && (
+      <section className="report-card" aria-labelledby="report-hours">
+        <h3 id="report-hours" className="report-card-title">이야기한 시간대</h3>
+        <p className="report-fine mt-1">내가 말한 때로 셌어요.</p>
+        <ul className="mt-4 grid grid-cols-4 items-end gap-3">
+          {view.buckets.map((b) => (
+            <li key={b.id} className="flex flex-col items-center gap-1.5">
+              <span className="text-t2 tabular-nums text-[#4A4741]">{b.count}번</span>
+              <span aria-hidden="true" className="flex h-20 w-7 items-end overflow-hidden rounded-full bg-cat-paper">
+                <span className="block w-full rounded-full" style={{ height: `${Math.max(10, (b.count / maxBucket) * 100)}%`, background: b.id === peakBucket.id && b.count ? "var(--rp-ink)" : "var(--rp-line)" }} />
+              </span>
+              <span className="text-t3 font-semibold text-cat-ink">{b.label}</span>
+            </li>
+          ))}
+        </ul>
+        {view.peak !== null && <p className="report-text mt-3">{peakText(view.peak)}</p>}
+      </section>
+    )}
+  </>;
+}
+
+/** 하루하루: 그달에 이야기한 날을 최근 순으로. */
+function DaysPanel({ days, year, month, today, onOpen }: { days: DayStat[]; year: number; month: number; today: string; onOpen: (date: string) => void }) {
+  const list = [...monthView(days, year, month).days].reverse();
+  if (!list.length) return <p className="report-text py-8 text-center text-cat-muted">{month}월엔 이야기한 날이 없어요.</p>;
+  return (
+    <ul className="flex flex-col gap-2">
+      {list.map((day) => {
+        const { m, d, weekday } = dateParts(day.date);
+        const sky = day.crisis ? undefined : effectiveSky(day);
+        const hour = busiestHour(day.hours);
+        const when = hour === null ? "" : ` · ${hourLabel(hour).period} ${hourLabel(hour).text}쯤`;
+        return (
+          <li key={day.date}>
+            <Button variant="plain" data-report-date={day.date} onClick={() => onOpen(day.date)} className="report-row ui-press">
+              {day.crisis ? (
+                <span className="grid h-9 shrink-0 place-items-center rounded-full bg-[#FFE8E6] px-2 text-t1 font-bold text-[#C42A23]">109</span>
+              ) : sky ? (
+                <MoodFace id={sky} size={36} />
+              ) : (
+                <span className="size-9 shrink-0 rounded-full border-[1.5px] border-dashed border-[#B5AEA2]" />
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block text-t4 font-bold text-cat-ink">
+                  {m}월 {d}일 {WEEKDAY_FULL[weekday]}{day.date === today && <span className="ml-1.5 rounded-full bg-cat-ink px-1.5 py-0.5 text-t1 font-bold text-white">오늘</span>}
+                </span>
+                <span className="text-t2 tabular-nums text-cat-muted">
+                  {day.crisis ? "109 안내가 나왔던 날" : sky ? skyLabel(sky) : "표정 없음"} · 내가 한 말 {day.said}번{when}
+                </span>
+              </span>
+              <span className="rotate-180 text-cat-muted"><Icon name="back" size={16} /></span>
+            </Button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
 function DayView({
-  who, date, day, sessions, today, choice, sheet, headingRef, deep, onBack, onSheet, onPickSky,
+  who, date, day, sessions, today, choice, sheet, headingRef, onBack, onSheet, onPickSky,
 }: {
   who: Who; date: string; day?: DayStat; sessions: Session[]; today: string; choice: "on" | "off" | null; sheet: boolean;
-  headingRef: React.Ref<HTMLHeadingElement>; deep: string; onBack: () => void; onSheet: (open: boolean) => void; onPickSky: (date: string, sky: SkyId | undefined) => void;
+  headingRef: React.Ref<HTMLHeadingElement>; onBack: () => void; onSheet: (open: boolean) => void; onPickSky: (date: string, sky: SkyId | undefined) => void;
 }) {
   const { m, d, weekday } = dateParts(date);
   const sky = day && effectiveSky(day);
   const saidTimes = sessions.flatMap((s) => s.messages.filter((msg) => msg.role === "user").map((msg) => msgTime(msg, s))).filter((t) => localDate(t) === date);
   const started = saidTimes.length ? new Date(Math.min(...saidTimes)) : null;
   return (
-    <Shell color={who.color} bloom="soft">
-      <Header title={`${m}월 ${d}일 ${WEEKDAY_FULL[weekday]}`} back="리포트로" onBack={onBack} headingRef={headingRef} />
-      <div className="absolute inset-x-0 top-[calc(env(safe-area-inset-top)+80px)] bottom-0 overflow-y-auto px-gutter pb-10">
-        <section className={card} aria-label="그날의 하늘">
-          {day?.crisis ? (
-            <>
-              <Crisis109 className="w-full" />
-              <p className="mt-3 text-t3 text-pretty text-[#3D4559]">이날은 힘든 이야기가 있어서 하늘을 고르지 않았어요. 대화 내용도 AI에 보내지 않았어요.</p>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-4">
-                {sky ? <SkyDot id={sky} size={64} /> : <span className="size-16 shrink-0 rounded-full border-2 border-dashed border-[#B8BFCC]" />}
-                <div className="min-w-0 flex-1">
-                  <p className="text-t2 text-ios-secondary">그날의 하늘</p>
-                  <p className="mt-0.5 flex items-center gap-2 text-t7 font-bold text-[#1F2A55]">
-                    {sky ? skyLabel(sky) : "아직 없어요"}
-                    {sky && <span className="rounded-full bg-ios-group px-2 py-0.5 text-t1 font-bold text-ios-secondary">{day?.mine ? "내가 고침" : "AI가 고름"}</span>}
-                  </p>
+    <Page>
+      <TopBar title={`${m}월 ${d}일 ${WEEKDAY_FULL[weekday]}`} back="리포트로" onBack={onBack} headingRef={headingRef} />
+      <div className="report-scroll">
+        <div className={`report-stack ${STAGGER}`}>
+          <section className="report-card" aria-label="그날의 표정">
+            {day?.crisis ? (
+              <>
+                <Crisis109 className="w-full" />
+                <p className="report-text mt-3">이날은 힘든 이야기가 있어서 표정을 고르지 않았어요. 대화 내용도 AI에 보내지 않았어요.</p>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-4">
+                  {sky ? <MoodFace id={sky} size={64} /> : <span className="size-16 shrink-0 rounded-full border-2 border-dashed border-[#B5AEA2]" />}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-t2 font-semibold text-cat-muted">그날의 표정</p>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-t8 font-extrabold tracking-tight text-cat-ink">
+                      {sky ? skyLabel(sky) : "아직 없어요"}
+                      {sky && <span className="rounded-full bg-cat-paper px-2 py-0.5 text-t1 font-bold text-cat-muted">{day?.mine ? "내가 고침" : "AI가 고름"}</span>}
+                    </p>
+                  </div>
+                  <Button variant="plain" onClick={() => onSheet(true)} className="report-pill ui-press">
+                    {sky ? "바꾸기" : "직접 고르기"}
+                  </Button>
                 </div>
-                <Button variant="plain" onClick={() => onSheet(true)} className="ui-press h-11 shrink-0 rounded-full bg-ios-group px-4 text-t4 font-bold text-[#1F2A55]">
-                  {sky ? "바꾸기" : "직접 고르기"}
-                </Button>
-              </div>
-              <p className="mt-4 rounded-r3 bg-ios-group p-3 text-t2 text-pretty text-[#3D4559]">
-                {sky && day?.mine ? "내가 고친 하늘이에요. " : ""}
-                {sky && !day?.mine ? "AI가 그날 내가 한 말을 보고 고른 하늘이에요 · 진단이 아니에요. " : ""}
-                {!sky && date >= today && choice === "on" ? "오늘 하늘은 하루가 지나면 AI가 골라 둘게요. " : ""}
-                {!sky && day?.ai === "none" ? "이날은 하늘을 고르기 애매해서 비워 뒀어요. " : ""}
-                {!sky ? "AI가 고르는 하늘은 진단이 아니에요. " : ""}
-                {choice === "off" ? "AI로 고르기를 꺼 두어서 직접 고를 수 있어요." : "하늘을 고를 때 그날 내가 한 말을 AI 서비스로 한 번 더 보내요."}
-              </p>
-            </>
-          )}
-        </section>
+                <p className="report-fine mt-4 rounded-[14px] bg-cat-paper p-3 text-[#4A4741]">
+                  {sky && day?.mine ? "내가 고친 표정이에요. " : ""}
+                  {sky && !day?.mine ? "AI가 그날 내가 한 말을 보고 고른 표정이에요 · 진단이 아니에요. " : ""}
+                  {!sky && date >= today && choice === "on" ? "오늘 표정은 하루가 지나면 AI가 골라 둘게요. " : ""}
+                  {!sky && day?.ai === "none" ? "이날은 표정을 고르기 애매해서 비워 뒀어요. " : ""}
+                  {!sky ? "AI가 고르는 표정은 진단이 아니에요. " : ""}
+                  {choice === "off" ? "AI로 고르기를 꺼 두어서 직접 고를 수 있어요." : "표정을 고를 때 그날 내가 한 말을 AI 서비스로 한 번 더 보내요."}
+                </p>
+              </>
+            )}
+          </section>
 
-        <dl className="mt-4 grid grid-cols-2 gap-2">
-          <div className="rounded-r5 bg-white px-4 py-4 shadow-[0_4px_16px_rgba(28,38,80,.05)]">
-            <dt className="text-t2 text-ios-secondary">내가 한 말</dt>
-            <dd className="mt-1 text-t7 font-bold tabular-nums text-[#1F2A55]">{day?.said ?? 0}번</dd>
-          </div>
-          <div className="rounded-r5 bg-white px-4 py-4 shadow-[0_4px_16px_rgba(28,38,80,.05)]">
-            <dt className="text-t2 text-ios-secondary">대화 시작</dt>
-            <dd className="mt-1 text-t7 font-bold tabular-nums text-[#1F2A55]">{started ? started.toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" }) : "—"}</dd>
-          </div>
-        </dl>
+          <dl className="report-duo">
+            <div className="report-tile">
+              <dt>내가 한 말</dt>
+              <Big value={day?.said ?? 0} unit="번" />
+            </div>
+            <div className="report-tile">
+              <dt>대화 시작</dt>
+              <dd className="report-big" data-word data-empty={!started || undefined}>{started ? started.toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" }) : "—"}</dd>
+            </div>
+          </dl>
+        </div>
 
-
-        <p className="mt-6 text-center text-t1 text-ios-secondary">{josa(who.name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
+        <p className="report-foot">{josa(who.name, "은", "는")} AI예요 · 진단과 치료는 전문가가 해요</p>
       </div>
       {sheet && day && !day.crisis && (
-        <SkySheet date={date} day={day} deep={deep} onClose={() => onSheet(false)} onPick={(next) => { onPickSky(date, next); onSheet(false); }} />
+        <SkySheet date={date} day={day} onClose={() => onSheet(false)} onPick={(next) => { onPickSky(date, next); onSheet(false); }} />
       )}
-    </Shell>
+    </Page>
   );
 }
 
-function SkySheet({ date, day, deep, onClose, onPick }: { date: string; day: DayStat; deep: string; onClose: () => void; onPick: (sky: SkyId | undefined) => void }) {
+function SkySheet({ date, day, onClose, onPick }: { date: string; day: DayStat; onClose: () => void; onPick: (sky: SkyId | undefined) => void }) {
   const [picked, setPicked] = useState<SkyId | undefined>(effectiveSky(day));
   const name = useId();
   const { m, d, weekday } = dateParts(date);
   const ai = day.ai && day.ai !== "none" ? day.ai : undefined;
   return (
     <Sheet
-      title="하늘 바꾸기"
+      title="표정 바꾸기"
+      className="report-sheet"
       onClose={onClose}
       footer={(
         <div className="flex flex-col gap-2">
-          <Button onClick={() => onPick(picked)} disabled={!picked || picked === effectiveSky(day)} tone="neutral" fullWidth>이 하늘로 바꾸기</Button>
-          {day.mine && <Button variant="plain" onClick={() => onPick(undefined)} className="ui-press h-12 w-full rounded-full bg-ios-group text-t4 font-bold text-[#1F2A55]">{ai ? "AI가 고른 하늘로 되돌리기" : "고른 하늘 지우기"}</Button>}
+          <Button onClick={() => onPick(picked)} disabled={!picked || picked === effectiveSky(day)} tone="ink" fullWidth>이 표정으로 바꾸기</Button>
+          {day.mine && <Button variant="plain" onClick={() => onPick(undefined)} className="ui-press h-12 w-full rounded-full bg-cat-soft text-t4 font-bold text-cat-ink">{ai ? "AI가 고른 표정으로 되돌리기" : "고른 표정 지우기"}</Button>}
         </div>
       )}
     >
-      <p className="text-t3 text-pretty text-[#3D4559]">AI가 고른 하늘을 내가 고칠 수 있어요. 고친 하늘을 리포트에 써요. AI가 고른 하늘은 진단이 아니에요.</p>
+      <p className="text-t3 text-pretty text-[#4A4741]">AI가 고른 표정을 내가 고칠 수 있어요. 고친 표정을 리포트에 써요. AI가 고른 표정은 진단이 아니에요.</p>
       <fieldset className="mt-4">
-        <legend className="mb-2 text-t3 font-bold text-[#3D4559]">{m}월 {d}일 {WEEKDAY_FULL[weekday]}의 하늘</legend>
+        <legend className="mb-2 text-t3 font-bold text-[#4A4741]">{m}월 {d}일 {WEEKDAY_FULL[weekday]}의 표정</legend>
         <div className="grid grid-cols-3 gap-2">
-          {SKIES.map((s) => (
+          {SKY_IDS.map((id) => (
             <label
-              key={s.id}
-              className="ui-press relative flex min-h-24 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-r4 bg-[#F5F7FB] has-checked:bg-white has-focus-visible:ring-2 has-focus-visible:ring-[#1E4FE0]/40"
-              style={picked === s.id ? { boxShadow: `inset 0 0 0 2px ${deep}` } : undefined}
+              key={id}
+              className="ui-press relative flex min-h-24 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[18px] bg-cat-paper has-checked:bg-white has-checked:shadow-[inset_0_0_0_2px_var(--color-cat-ink)] has-focus-visible:ring-2 has-focus-visible:ring-cat-ink/40"
             >
-              <input type="radio" name={name} value={s.id} checked={picked === s.id} onChange={() => setPicked(s.id)} className="sr-only" />
-              <SkyDot id={s.id} size={44} />
-              <span className="text-t4 font-medium text-[#1F2A55]">{s.label}</span>
-              {ai === s.id && <span className="absolute top-1.5 right-1.5 rounded-full bg-white px-1.5 text-t1 font-bold text-ios-secondary shadow-[0_1px_4px_rgba(28,38,80,.1)]">AI가 고름</span>}
+              <input type="radio" name={name} value={id} checked={picked === id} onChange={() => setPicked(id)} className="sr-only" />
+              <MoodFace id={id} size={44} />
+              <span className="text-t4 font-semibold text-cat-ink">{skyLabel(id)}</span>
+              {ai === id && <span className="absolute top-1.5 right-1.5 rounded-full bg-white px-1.5 text-t1 font-bold text-cat-muted shadow-[0_1px_4px_rgba(41,41,39,.12)]">AI가 고름</span>}
             </label>
           ))}
         </div>
       </fieldset>
-      <p className="mt-3 text-t2 text-ios-secondary">바꾼 하늘은 계정에 저장돼 다른 기기에서도 이어져요.</p>
+      <p className="mt-3 text-t2 text-cat-muted">바꾼 표정은 계정에 저장돼 다른 기기에서도 이어져요.</p>
     </Sheet>
   );
 }

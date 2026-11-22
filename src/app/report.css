@@ -1,0 +1,252 @@
+/* 리포트(인사이트 · 한 달 · 하루하루 · 하루 화면).
+ * 메뉴·캐릭터 화면과 같은 기본 톤: 종이 바탕, 잉크 글자, 흰 카드, 검정 알약. 색면이나 별도 글꼴은 쓰지 않는다.
+ * 색은 표정(mood.tsx)과 109 안내에만 있다. */
+.report-page {
+  --rp-paper: var(--color-cat-paper);
+  --rp-surface: var(--color-cat-surface);
+  --rp-ink: var(--color-cat-ink);
+  --rp-body: #4A4741;
+  --rp-muted: var(--color-cat-muted);
+  --rp-soft: var(--color-cat-soft);
+  --rp-line: var(--color-cat-line);
+  --accent: var(--color-cat-ink);
+  display: flex;
+  flex-direction: column;
+  background: var(--rp-paper);
+  color: var(--rp-ink);
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  letter-spacing: -.01em;
+}
+
+/* ── 위 줄 · 탭 ── */
+.report-top {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  margin-top: calc(env(safe-area-inset-top) + 8px);
+  padding-inline: 64px;
+}
+.report-back {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  translate: 0 -50%;
+  display: grid;
+  place-items: center;
+  width: 44px; /* Framework7이 button에 주는 width:100%를 되돌린다 */
+  height: 44px;
+  border-radius: 50%;
+  color: var(--rp-ink);
+}
+.report-back:active { background: rgb(41 41 39 / 7%); }
+.report-title { font-size: 17px; font-weight: 700; letter-spacing: -.02em; outline: none; text-align: center; }
+
+.report-tabs { position: relative; z-index: 1; flex: none; display: flex; gap: 8px; padding: 4px 20px 10px; }
+/* 스크롤되는 내용이 탭 아래에서 뚝 끊기지 않게 살짝 흐려진다. */
+.report-tabs::after { content: ""; position: absolute; inset-inline: 0; top: 100%; height: 12px; background: linear-gradient(var(--rp-paper), transparent); pointer-events: none; }
+.report-tab.here-tab {
+  width: auto;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: var(--rp-surface);
+  box-shadow: inset 0 0 0 1px var(--rp-line);
+  color: var(--rp-muted);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.report-tab.here-tab[aria-selected="true"] { background: var(--rp-ink); box-shadow: none; color: #fff; font-weight: 700; }
+
+.report-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 20px max(40px, env(safe-area-inset-bottom));
+}
+.report-stack { display: flex; flex-direction: column; gap: 12px; }
+.report-status { margin-bottom: 12px; font-size: 13px; color: var(--rp-muted); }
+
+/* ── 카드 · 타일 · 숫자 ── */
+.report-card { position: relative; padding: 20px; border-radius: 24px; background: var(--rp-surface); box-shadow: 0 0 0 1px var(--rp-soft); }
+.report-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.report-card-title { font-size: 17px; font-weight: 800; letter-spacing: -.025em; color: var(--rp-ink); text-wrap: balance; }
+.report-card-side { flex: none; font-size: 12px; color: var(--rp-muted); }
+.report-text { font-size: 14px; line-height: 1.5; color: var(--rp-body); text-wrap: pretty; }
+.report-fine { font-size: 12px; line-height: 1.45; color: var(--rp-muted); text-wrap: pretty; }
+
+/* ── 이번 주 ── */
+.report-hero { overflow: hidden; padding: 22px 16px 16px; }
+/* 고양이가 앉은 자리 */
+.report-hero::before {
+  content: "";
+  position: absolute;
+  top: -40px;
+  right: -36px;
+  width: 176px;
+  height: 176px;
+  border-radius: 50%;
+  background: var(--rp-paper);
+}
+.report-hero-cat { position: absolute; top: 30px; right: 12px; width: 124px; height: auto; pointer-events: none; user-select: none; }
+.report-hero-text { position: relative; min-height: 104px; padding-left: 4px; padding-right: 132px; }
+.report-eyebrow { font-size: 13px; font-weight: 600; color: var(--rp-muted); font-variant-numeric: tabular-nums; }
+.report-headline { margin-top: 6px; font-size: 24px; line-height: 1.3; font-weight: 800; letter-spacing: -.035em; text-wrap: balance; }
+.report-headline b { font-size: 1.3em; line-height: 1; font-variant-numeric: tabular-nums; }
+.report-hero-sub { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--rp-body); }
+.report-hero-cta { position: relative; margin-top: 14px; padding-inline: 4px; }
+
+.report-week {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin-top: 16px;
+  padding: 12px 4px 10px;
+  border-radius: 20px;
+  background: var(--rp-paper);
+}
+.report-week li { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.report-week-cell { display: grid; place-items: center; width: 100%; height: 44px; border-radius: 16px; }
+button.report-week-cell:active { background: rgb(41 41 39 / 6%); }
+.report-week-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--rp-muted);
+}
+.report-week-mark[data-kind="rest"]::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #BDB6AA; }
+.report-week-mark[data-kind="future"]::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--rp-line); }
+.report-week-mark[data-kind="plus"] { border: 1.5px dashed #A8A195; color: var(--rp-body); }
+.report-week-mark[data-kind="crisis"] { background: #FFE8E6; color: #C42A23; font-size: 11px; font-weight: 800; }
+.report-week-mark[data-today] { box-shadow: 0 0 0 2px var(--rp-paper), 0 0 0 4px var(--rp-ink); }
+.report-week-mark[data-kind="rest"][data-today] { background: var(--rp-ink); }
+.report-week-mark[data-kind="rest"][data-today]::before { background: #fff; }
+.report-week-day { font-size: 12px; font-weight: 600; color: var(--rp-muted); }
+.report-week-day[data-today] { color: var(--rp-ink); font-weight: 800; }
+.report-hero-note { position: relative; margin-top: 10px; padding-inline: 4px; }
+/* 이번 주 카드 안의 표정 고르기 동의 */
+.report-choice { position: relative; margin-top: 16px; padding: 16px 4px 0; border-top: 1px solid var(--rp-soft); }
+.report-choice-title { font-size: 15px; font-weight: 800; letter-spacing: -.02em; color: var(--rp-ink); }
+
+/* 타일: 카드 안에서는 종이색, 화면 바탕에 바로 놓일 때는 흰 카드처럼 보인다. */
+.report-duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.report-tile { display: flex; flex-direction: column-reverse; gap: 6px; padding: 16px 16px 14px; border-radius: 20px; background: var(--rp-surface); box-shadow: 0 0 0 1px var(--rp-soft); }
+.report-card .report-tile { border-radius: 18px; background: var(--rp-paper); box-shadow: none; }
+.report-tile dt { font-size: 13px; font-weight: 600; color: var(--rp-muted); }
+.report-big {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  font-size: 38px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  font-variant-numeric: tabular-nums;
+}
+.report-big small { font-size: 15px; font-weight: 700; letter-spacing: -.02em; }
+.report-big[data-word] { font-size: 28px; letter-spacing: -.035em; }
+.report-big[data-long] { font-size: 30px; }
+.report-big[data-empty] { font-weight: 500; opacity: .4; }
+
+.report-section { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 10px 4px 0; }
+.report-section h2, .report-section h3 { font-size: 17px; font-weight: 800; letter-spacing: -.025em; }
+.report-section span { font-size: 12px; color: var(--rp-muted); }
+
+.report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.report-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 148px;
+  padding: 18px 12px 16px;
+  border-radius: 24px;
+  background: var(--rp-surface);
+  box-shadow: 0 0 0 1px var(--rp-soft);
+  text-align: center;
+}
+.report-stat dt { font-size: 13px; font-weight: 600; color: var(--rp-muted); }
+.report-stat .report-big { font-size: 42px; }
+.report-stat .report-big[data-word] { font-size: 30px; }
+.report-stat .report-big[data-long] { font-size: 34px; }
+.report-stat-cap { font-size: 12px; color: var(--rp-muted); font-variant-numeric: tabular-nums; }
+
+/* ── 표정 달력: 날마다 위에 표정 자리, 아래에 작은 날짜 ── */
+.report-cal { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0 4px; text-align: center; }
+.report-cal th { padding-bottom: 4px; font-size: 12px; font-weight: 600; color: var(--rp-muted); }
+.report-cal-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 100%; padding: 3px 0; border-radius: 14px; }
+button.report-cal-cell:active { background: rgb(41 41 39 / 6%); }
+.report-cal-slot { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; color: var(--rp-body); }
+.report-cal-slot[data-kind="none"] { background: var(--rp-paper); }
+.report-cal-slot[data-kind="plus"] { border: 1.5px dashed #A8A195; }
+.report-cal-slot[data-kind="crisis"] { background: #FFE8E6; color: #C42A23; font-size: 10px; font-weight: 800; }
+.report-cal-num { min-width: 22px; padding: 0 5px; border-radius: 999px; font-size: 11px; line-height: 16px; font-weight: 700; color: var(--rp-body); font-variant-numeric: tabular-nums; }
+.report-cal-num[data-dim] { color: #A8A297; font-weight: 500; }
+.report-cal-num[data-today] { background: var(--rp-ink); color: #fff; font-weight: 700; }
+
+/* ── 달 고르기 ── */
+.report-month { display: flex; align-items: center; justify-content: space-between; margin: 2px 4px 0; }
+.report-month h2 { font-size: 22px; font-weight: 800; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+.report-month-nav { display: flex; gap: 6px; }
+.report-round {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--rp-surface);
+  box-shadow: 0 0 0 1px var(--rp-soft);
+  color: var(--rp-ink);
+}
+.report-round:disabled { opacity: .35; }
+.report-round:not(:disabled):active { background: var(--rp-soft); }
+
+/* ── 하루하루 목록 ── */
+.report-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 68px;
+  padding: 12px 14px 12px 16px;
+  border-radius: 20px;
+  background: var(--rp-surface);
+  box-shadow: 0 0 0 1px var(--rp-soft);
+  text-align: left;
+}
+.report-row:active { background: color-mix(in srgb, var(--rp-surface), #000 4%); }
+.report-chip { padding: 8px 12px; border-radius: 999px; background: var(--rp-paper); font-size: 14px; font-weight: 600; color: var(--rp-ink); }
+.report-chip-mood { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px 5px 5px; }
+.report-label { font-size: 13px; font-weight: 700; color: var(--rp-muted); }
+.report-chip span { margin-left: 2px; font-weight: 500; color: var(--rp-muted); font-variant-numeric: tabular-nums; }
+.report-pill {
+  flex: none;
+  width: auto;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--rp-ink);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+/* 카드 위의 보조 버튼: 흰 카드에서도 보이게 종이색으로 채운다. */
+.report-page .here-button.button-tonal[data-tone="ink"] { --f7-button-tonal-bg-color: var(--rp-soft); --f7-button-tonal-pressed-bg-color: var(--rp-line); }
+.report-link { width: auto; font-weight: 700; color: var(--rp-ink); text-decoration: underline; text-underline-offset: 4px; }
+.report-foot { display: flex; align-items: flex-start; justify-content: center; gap: 6px; margin-top: 24px; padding-inline: 8px; font-size: 12px; line-height: 1.5; color: var(--rp-muted); text-wrap: pretty; }
+.report-foot i { flex: none; margin-top: 2px; }
+
+.report-page :is(button, a):focus-visible { outline: 2px solid var(--rp-ink); outline-offset: 2px; }
+
+/* 표정 바꾸기 시트: 뒤 화면이 비치지 않게 유리 대신 불투명한 종이 면을 쓴다. */
+.here-sheet.report-sheet { background: var(--color-cat-surface); backdrop-filter: none; }
