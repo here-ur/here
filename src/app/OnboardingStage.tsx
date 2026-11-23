@@ -6,6 +6,7 @@ import {
   DEFAULT_COMPANION,
   QUESTIONS,
   REPLIES,
+  STAGE_MEET_EYEBROW,
   STAGE_NOTICE,
   STAGE_OPEN,
   STAGE_SCENES,
@@ -13,6 +14,7 @@ import {
   type StageScene,
   meetLine,
   nameReply,
+  namingLine,
   summaryLine,
 } from "@/lib/onboarding";
 import { isUnderAge, seoulToday } from "@/lib/member-basics";
@@ -27,7 +29,7 @@ import "./onboarding-stage.css";
 // 무대는 390×844 기준으로 그려지고, 이 칸의 크기에 맞게 한 비율로 줄거나 늘어난다(둘레에 남는 띠는 장면의 바탕색).
 // 무대 파일을 고치면 STAGE_VERSION을 올린다(브라우저가 옛 파일을 붙잡지 않게).
 const STAGE_BASE = "/onboarding/";
-const STAGE_VERSION = "2026-11-19d";
+const STAGE_VERSION = "2026-11-23g";
 const SCRIPTS = ["copy.js", "cat.js", "sound.js", "phone.js", "scenes/promise.js", "scenes/birthday.js", "scenes/gender.js", "scenes/q2.js", "scenes/q4.js", "scenes/meet.js"];
 const STYLES = ["phone.css", "scenes/promise.css", "scenes/birthday.css", "scenes/gender.css", "scenes/q2.css", "scenes/q4.css", "scenes/meet.css"];
 const CAT_ART = "/characters/motion/"; // 고양이 그림은 홈과 같은 파일을 쓴다(앉은 그림·걷는 그림만 더했다)
@@ -59,10 +61,10 @@ type StageCopy = {
   notice?: unknown;
   Q: unknown;
   REPLIES: unknown;
-  meet: { line: (answers: Answers) => string };
+  meet: { line: (answers: Answers) => string; eyebrow: string };
   summary: (nickname: string, answers: Answers) => string;
   name: { reply: (nickname: string) => string };
-  naming: { defaultName: string };
+  naming: { defaultName: string; line: (name: string) => string };
   about: { age: (year: number, month: number, day: number) => number };
   consent: { note: string };
   consentDetails?: unknown;
@@ -117,9 +119,11 @@ function applyCopy(copy: StageCopy) {
   copy.Q = Object.fromEntries(QUESTIONS.map((q) => [q.id, { id: q.id, text: q.text, options: [...q.options] }]));
   copy.REPLIES = REPLIES;
   copy.meet.line = (answers) => meetLine(answers).line;
+  copy.meet.eyebrow = STAGE_MEET_EYEBROW;
   copy.summary = (nickname, answers) => summaryLine(nickname, answers);
   copy.name.reply = (nickname) => nameReply(nickname);
   copy.naming.defaultName = DEFAULT_COMPANION;
+  copy.naming.line = (name) => namingLine(name);
   copy.consent.note = MEMORY_CONSENT_NOTE;
   copy.consentDetails = MEMORY_CONSENT_DETAILS;
   // 나이는 서버와 같은 기준(한국 날짜)으로 잰다. 무대는 14 미만인지만 본다.

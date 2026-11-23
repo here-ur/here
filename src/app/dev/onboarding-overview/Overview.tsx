@@ -31,9 +31,9 @@ export default function Overview() {
       <p>시트(로그인 → 기억 동의)가 끝난 뒤 이어지는 화면이에요. 칸마다 그 장면부터 눌러 볼 수 있어요.</p>
     </header>
     <div className="ob-overview-grid">
-      {/* 맨 처음: 자는 고양이에게 다가가면 AI라고 밝힌다. */}
+      {/* 맨 처음: 자는 고양이에게 다가가면 깨서 인사한다. AI라는 것은 아래 작은 글씨가 알린다. */}
       <figure className="ob-overview-item">
-        <figcaption><b>0. 만남</b><span>다가가면 깨서 AI라고 밝히고, 버튼이 내 대답이 된다</span></figcaption>
+        <figcaption><b>0. 만남</b><span>다가가면 깨서 인사하고(AI 안내는 작은 글씨), 버튼이 내 대답이 된다</span></figcaption>
         <div className="ob-overview-frame"><OnboardingStage scene="open" onFinish={() => {}} /></div>
       </figure>
       {ONBOARDING_STEPS.map((step, index) => <figure key={step} className="ob-overview-item">
