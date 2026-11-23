@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>here — 나와 가장 가까운 친구</title>
+<meta name="description" content="무심한 듯 곁에 있는 고양이와, 글과 목소리로 나누는 이야기">
+<meta name="theme-color" content="#F5F2EB">
+<meta property="og:title" content="here — 나와 가장 가까운 친구">
+<meta property="og:description" content="무심한 듯 곁에 있는 고양이와, 글과 목소리로 나누는 이야기">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;500;600;700&family=Outfit:wght@500;600&display=swap">
+<style>
+/* VOICE  occasion: a wry, warm site for a cynical black cat who listens
+   IDEA   the app's own first meeting, told as a walk from the alley to the sunlit room
+   PICTURE the team's black cat sitting in window light, then coming closer step by step
+   COLOUR sunlit apricot wall + paper #F5F2EB, ink #131111, the onboarding fields yellow #FDE249 and lilac #DDC1FF, brown #775035 to close
+   TYPE   Outfit for the wordmark + Gothic A1 for Korean; each section is one title and one line
+   LAYOUT laptop: copy on the wall's quiet side, cat large on the right; phone: title, cat, words, buttons */
+:root,:root[data-theme=light],:root[data-theme=dark]{color-scheme:light}
+:root{--paper:#F5F2EB;--surface:#FFFDFA;--ink:#131111;--text:#292927;--muted:#5C5952;--line:#D9D4CA;--yellow:#FDE249;--lilac:#DDC1FF;--brown:#775035;--danger:#B8322A;--sans:"Gothic A1","Pretendard Variable","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;--latin:"Outfit","Gothic A1",system-ui,sans-serif;--pad:max(5vw,16px)}
+*{box-sizing:border-box;min-width:0}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{margin:0;background:var(--paper);color:var(--text);font:17px/1.7 var(--sans);word-break:keep-all;overflow-wrap:break-word;-webkit-font-smoothing:antialiased;overflow-x:clip}
+img{max-width:100%;height:auto;display:block}
+h1,h2,h3,p,ol,ul,figure{margin:0}
+ul,ol{padding:0;list-style:none}
+h2{font-size:clamp(30px,3.8vw,46px);line-height:1.24;letter-spacing:-.045em;font-weight:700;color:var(--ink);text-wrap:balance}
+h3{font-size:20px;line-height:1.45;letter-spacing:-.03em;font-weight:700;color:var(--ink)}
+.small{font-size:14px;line-height:1.6}
+.sub{color:var(--muted);margin-top:12px;max-width:30em}
+.wrap{max-width:1180px;margin:0 auto}
+.band{padding:clamp(64px,8vw,112px) var(--pad)}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px;border-radius:14px}
+.skip{position:absolute;left:12px;top:-80px;z-index:50;background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;text-decoration:none}
+.skip:focus{top:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:54px;padding:0 26px;border:0;border-radius:999px;font:700 17px/1.2 var(--sans);letter-spacing:-.02em;text-decoration:none;text-align:center;cursor:pointer;transition:transform .18s}
+.btn:active{transform:scale(.97)}
+.btn-ink{background:var(--ink);color:#fff}
+.btn-white{background:#fff;color:var(--ink)}
+.btn-red{background:var(--danger);color:#fff;white-space:nowrap}
+.nav{position:sticky;top:0;z-index:30;background:var(--paper);border-bottom:1px solid var(--line)}
+.nav-in{max-width:1180px;margin:0 auto;padding:10px var(--pad);display:flex;align-items:center;justify-content:space-between;gap:20px}
+.mark{font:600 30px/1 var(--latin);letter-spacing:-.06em;color:var(--ink);text-decoration:none;padding:4px 2px}
+.nav-right{display:flex;align-items:center;gap:26px}
+.nav-links{display:flex;gap:22px;font-size:15px;font-weight:500}
+.nav-links a{text-decoration:none;padding:12px 0}
+.nav-links a:hover{text-decoration:underline;text-underline-offset:6px}
+.nav .btn{min-height:44px;padding:0 18px;font-size:15px}
+.hero{background:#E3A262 url(img/sun-wide.webp) center/cover no-repeat;color:var(--ink);overflow:hidden}
+.hero-in{max-width:1180px;margin:0 auto;padding:clamp(36px,5vw,64px) var(--pad) 0;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:24px;min-height:min(calc(100svh - 65px),800px)}
+.hero-copy{align-self:center;display:grid;gap:24px;padding-bottom:clamp(36px,5vw,72px)}
+h1{display:grid;gap:4px;color:var(--ink);font-weight:700}
+.h1-line{font-size:clamp(24px,2.6vw,32px);line-height:1.3;letter-spacing:-.035em}
+.wordmark{font-family:var(--latin);font-weight:600;font-size:clamp(108px,15vw,208px);line-height:.84;letter-spacing:-.07em;margin-left:-.05em}
+.lede{font-size:clamp(18px,1.6vw,20px);font-weight:500;color:#2A1E14;max-width:24em}
+.cta-row{display:flex;flex-wrap:wrap;gap:10px}
+.hero-note{color:#2A1E14}
+.hero-cat{align-self:end;justify-self:center;display:flex;flex-direction:column;align-items:center;gap:4px;width:min(100%,430px)}
+.hero-cat img{width:100%}
+.bubble{position:relative;background:#fff;color:var(--ink);font-weight:500;font-size:17px;line-height:1.5;padding:13px 20px;border-radius:24px;max-width:17em}
+.bubble::after{content:"";position:absolute;left:50%;bottom:-9px;width:18px;height:18px;background:inherit;transform:translateX(-50%) rotate(45deg);border-radius:3px}
+.mood-grid{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:clamp(28px,5vw,72px);align-items:center}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.opt{min-height:56px;padding:10px 18px;border:0;border-radius:28px;background:#fff;color:var(--ink);font:500 17px/1.4 var(--sans);letter-spacing:-.02em;cursor:pointer;transition:background-color .12s,color .12s}
+.opt:hover{background:#ECE8DF}
+.opt[aria-pressed=true]{background:var(--ink);color:#fff}
+.reply{display:flex;align-items:flex-end;gap:14px;margin-top:22px}
+.reply img{width:96px;flex:none}
+.reply .bubble{margin-bottom:28px;border-radius:24px 24px 24px 6px}
+.reply .bubble::after{display:none}
+.sos{margin-top:16px;padding:20px 22px;border-radius:28px;background:#fff;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 20px}
+.sos[hidden]{display:none}
+.sos-title{font-weight:700;color:var(--ink);font-size:19px}
+.sos p+p{color:var(--muted);font-size:15px}
+.meet{background:var(--yellow);color:var(--ink)}
+.meet .sub{color:#3A3628}
+.meet-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(24px,5vw,72px);margin-top:28px}
+.steps{counter-reset:s}
+.step{counter-increment:s;padding:28px 0;border-top:2px solid var(--ink);display:grid;gap:14px;align-content:center}
+.step:last-child{border-bottom:2px solid var(--ink)}
+.step h3{display:flex;align-items:center;gap:12px;font-size:22px}
+.step h3::before{content:counter(s);flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--ink);color:var(--yellow);font:600 17px/1 var(--latin)}
+.say{justify-self:start;background:#fff;color:var(--ink);font-weight:500;padding:10px 18px;border-radius:22px 22px 22px 6px}
+.step-cat{display:none}
+.stage{position:sticky;top:96px;height:min(70vh,600px);align-self:start}
+.stage img{position:absolute;left:50%;width:auto;max-width:none;opacity:0;transform:translateX(-50%) scale(.92);transform-origin:50% 100%;transition:opacity .45s ease,transform .6s cubic-bezier(.2,1.15,.35,1)}
+.stage img.on{opacity:1;transform:translateX(-50%) scale(1)}
+.stage img[data-i="0"]{height:20%;bottom:44%}
+.stage img[data-i="1"]{height:27%;bottom:33%}
+.stage img[data-i="2"]{height:50%;bottom:20%}
+.stage img[data-i="3"]{height:72%;bottom:6%}
+.stage img[data-i="4"]{height:50%;bottom:3%}
+.stage::after{content:"";position:absolute;left:4%;right:4%;bottom:0;height:2px;background:var(--ink)}
+@media (min-width:901px){.step{min-height:30vh}}
+.feat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:40px}
+.feat{border-radius:32px;padding:30px;display:grid;gap:10px;align-content:start;background:var(--surface);border:1px solid var(--line)}
+.feat p{color:var(--muted)}
+.f-talk{background:var(--ink);border-color:var(--ink)}
+.f-talk h3{color:#fff}
+.f-talk p{color:#D9D6CF}
+.talk-btns{display:flex;gap:12px;margin-bottom:12px}
+.rb{width:60px;height:60px;border-radius:50%;display:grid;place-items:center;background:#2C2A27;color:#fff}
+.rb svg{width:26px;height:26px}
+.moods{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 6px;margin-bottom:12px}
+.moods li{display:grid;justify-items:center;gap:4px;font-size:14px;color:var(--ink)}
+.moods svg{width:40px;height:40px}
+.f-mine img{width:104px;margin-bottom:6px}
+.tone{background:var(--lilac);color:var(--ink)}
+.tone .sub{color:#2F2840}
+.tone-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(28px,5vw,72px);align-items:center}
+.tone-cat{width:min(230px,52%);margin-top:28px}
+.chat{display:grid;gap:10px;background:#fff;border-radius:32px;padding:28px}
+.chat p{max-width:84%;padding:12px 18px;line-height:1.55}
+.me{justify-self:end;background:var(--ink);color:#fff;border-radius:22px 22px 6px 22px}
+.cat{justify-self:start;background:#F1EAFB;color:var(--ink);border-radius:22px 22px 22px 6px;font-weight:500}
+.chat .note{max-width:none;padding:6px 0 0;color:var(--muted)}
+.rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(20px,3vw,40px);margin-top:40px}
+.rules li{display:grid;gap:8px;align-content:start;padding-top:22px;border-top:2px solid var(--ink)}
+.rules svg{width:40px;height:40px;margin-bottom:4px}
+.rules p{color:var(--muted)}
+.faq-list{margin-top:36px;max-width:860px;border-top:2px solid var(--ink)}
+.faq-list details{border-bottom:1px solid var(--line)}
+.faq-list summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 4px;font-size:19px;font-weight:700;color:var(--ink);letter-spacing:-.03em}
+.faq-list summary::-webkit-details-marker{display:none}
+.faq-list summary::after{content:"";flex:none;width:14px;height:14px;background:linear-gradient(var(--ink),var(--ink)) center/100% 2px no-repeat,linear-gradient(var(--ink),var(--ink)) center/2px 100% no-repeat;transition:transform .2s}
+.faq-list details[open] summary::after{transform:rotate(45deg)}
+.faq-list details p{padding:0 4px 24px;color:var(--muted);max-width:42em}
+.end{background:var(--brown);color:#FFFDFE}
+.end-in{max-width:1180px;margin:0 auto;padding:clamp(56px,7vw,96px) var(--pad);display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(28px,5vw,72px);align-items:center}
+.end-pic img{width:100%;max-height:600px;object-fit:cover;border-radius:32px}
+.end-copy{display:grid;gap:18px;justify-items:start}
+.end h2{color:#fff;font-size:clamp(34px,5vw,60px)}
+.end p{color:#F4E9DF}
+.foot{background:var(--paper);border-top:1px solid var(--line)}
+.foot-in{padding:40px var(--pad) 48px;display:grid;gap:14px}
+.foot-in p{max-width:44em;color:var(--muted)}
+.foot-in strong{color:var(--ink)}
+@media (max-width:900px){
+.meet-grid{grid-template-columns:minmax(0,1fr)}
+.stage{display:none}
+.step{grid-template-columns:minmax(0,1fr) auto;column-gap:16px}
+.step>*{grid-column:1}
+.step-cat{display:block;grid-column:2;grid-row:1/span 2;align-self:center;width:var(--w)}
+.mood-grid,.tone-grid,.end-in{grid-template-columns:minmax(0,1fr)}
+.feat-grid,.rules{grid-template-columns:minmax(0,1fr)}
+.end-pic img{max-height:none;aspect-ratio:4/3;object-position:50% 72%}
+}
+@media (max-width:760px){
+.nav-links{display:none}
+.hero{background-image:url(img/sun-tall.webp)}
+.hero-in{grid-template-columns:minmax(0,1fr);gap:18px;min-height:0}
+.hero-copy{display:contents}
+h1{order:1}
+.hero-cat{order:2;width:auto}
+.hero-cat img{width:auto;max-height:min(40svh,360px)}
+.lede{order:3}
+.cta-row{order:4}
+.hero-note{order:5;padding-bottom:36px}
+}
+@media (max-width:480px){
+.opts{grid-template-columns:minmax(0,1fr)}
+.btn{width:100%}
+.nav .btn{width:auto}
+.feat,.chat{padding:24px 20px}
+}
+@media (prefers-reduced-motion:reduce){
+html{scroll-behavior:auto}
+*,*::before,*::after{transition:none !important}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+<defs>
+<symbol id="m-sunny" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#FFD86B"/><path d="M5.6 4.6L10.1 8.5Q12 7.9 13.9 8.5L18.4 4.6L18.7 11.6A7.4 6.2 0 1 1 5.3 11.6Z" fill="#2B2A28" stroke="#2B2A28" stroke-width="1" stroke-linejoin="round"/><g fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 14.7Q9.2 12.5 10.5 14.7M13.5 14.7Q14.8 12.5 16.1 14.7" stroke="#F4B544"/></g></symbol>
+<symbol id="m-cozy" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#FFC3A1"/><path d="M5.6 4.6L10.1 8.5Q12 7.9 13.9 8.5L18.4 4.6L18.7 11.6A7.4 6.2 0 1 1 5.3 11.6Z" fill="#2B2A28" stroke="#2B2A28" stroke-width="1" stroke-linejoin="round"/><g fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 13.7Q9.2 15.6 10.5 13.7M13.5 13.7Q14.8 15.6 16.1 13.7" stroke="#F4B544"/></g></symbol>
+<symbol id="m-cloudy" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#CDD3DE"/><path d="M5.6 4.6L10.1 8.5Q12 7.9 13.9 8.5L18.4 4.6L18.7 11.6A7.4 6.2 0 1 1 5.3 11.6Z" fill="#2B2A28" stroke="#2B2A28" stroke-width="1" stroke-linejoin="round"/><g fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.8 13.9h2.8M13.4 13.9h2.8M8.4 13.9q.8 1.5 1.6 0M14 13.9q.8 1.5 1.6 0" stroke="#F4B544"/></g></symbol>
+<symbol id="m-rain" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#B3CBF4"/><path d="M5.6 4.6L10.1 8.5Q12 7.9 13.9 8.5L18.4 4.6L18.7 11.6A7.4 6.2 0 1 1 5.3 11.6Z" fill="#2B2A28" stroke="#2B2A28" stroke-width="1" stroke-linejoin="round"/><g fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12.2l2.2-.8M16 12.2l-2.2-.8" stroke="#F4B544"/><circle cx="9.2" cy="14.4" r="1.15" fill="#F4B544"/><circle cx="14.8" cy="14.4" r="1.15" fill="#F4B544"/><path d="M16.3 15.6q1.2 1.7 0 2.4q-1.2-.7 0-2.4Z" fill="#A9CCFF"/></g></symbol>
+<symbol id="m-thunder" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#CFC1F6"/><path d="M5.6 4.6L10.1 8.5Q12 7.9 13.9 8.5L18.4 4.6L18.7 11.6A7.4 6.2 0 1 1 5.3 11.6Z" fill="#2B2A28" stroke="#2B2A28" stroke-width="1" stroke-linejoin="round"/><g fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.6 13l3.1 1.1q-.2 1.8-1.7 1.7q-1.5-.2-1.4-2.8ZM16.4 13l-3.1 1.1q.2 1.8 1.7 1.7q1.5-.2 1.4-2.8Z" fill="#F4B544"/></g></symbol>
+<symbol id="m-wind" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#A9DECF"/><path d="M5.6 4.6L10.1 8.5Q12 7.9 13.9 8.5L18.4 4.6L18.7 11.6A7.4 6.2 0 1 1 5.3 11.6Z" fill="#2B2A28" stroke="#2B2A28" stroke-width="1" stroke-linejoin="round"/><g fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.2" cy="14.2" r="1.6" stroke="#F4B544"/><circle cx="14.8" cy="14.2" r="1.6" stroke="#F4B544"/></g></symbol>
+</defs>
+</svg>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="nav" id="top">
+<div class="nav-in">
+<a class="mark" href="#top" aria-label="here 처음으로">here</a>
+<div class="nav-right">
+<nav class="nav-links" aria-label="페이지 안 이동">
+<a href="#meet">처음 만나는 법</a>
+<a href="#features">할 수 있는 것</a>
+<a href="#faq">자주 묻는 질문</a>
+</nav>
+<a class="btn btn-ink" href="https://here-prod.vercel.app/">시작하기</a>
+</div>
+</div>
+</header>
+<main id="main">
+<section class="hero" aria-labelledby="hero-title">
+<div class="hero-in">
+<div class="hero-copy">
+<h1 id="hero-title"><span class="h1-line">나와 가장 가까운 친구</span><span class="wordmark">here</span></h1>
+<p class="lede">무심한 듯 곁에 있는 고양이와, 글과 목소리로 나누는 이야기</p>
+<div class="cta-row">
+<a class="btn btn-ink" href="https://here-prod.vercel.app/">here 시작하기</a>
+<a class="btn btn-white" href="#meet">처음 만나는 법 보기</a>
+</div>
+<p class="small hero-note">이 고양이는 AI예요. 진단과 치료는 사람 전문가가 해요.</p>
+</div>
+<figure class="hero-cat">
+<p class="bubble">…뭐야. 나 AI야. 얘기하러 왔어?</p>
+<img src="img/cat-sit.webp" width="734" height="1000" alt="반쯤 감긴 호박색 눈으로 앞을 보며 앉아 있는 둥근 검은 고양이">
+</figure>
+</div>
+</section>
+
+<section class="band" id="mood" aria-labelledby="mood-title">
+<div class="wrap mood-grid">
+<div>
+<h2 id="mood-title">요즘 마음은 어때요?</h2>
+<p class="sub">처음 만나면 고양이가 묻는 질문이에요. 골라 보세요.</p>
+</div>
+<div>
+<div class="opts" role="group" aria-label="요즘 마음 고르기">
+<button type="button" class="opt" id="mood-0" aria-pressed="false" data-k="0">그럭저럭 괜찮아요</button>
+<button type="button" class="opt" id="mood-1" aria-pressed="false" data-k="1">조금 지쳤어요</button>
+<button type="button" class="opt" id="mood-2" aria-pressed="false" data-k="2">많이 힘들어요</button>
+<button type="button" class="opt" id="mood-3" aria-pressed="false" data-k="3">잘 모르겠어요</button>
+</div>
+<div class="reply">
+<img src="img/cat-round.webp" width="524" height="706" alt="동그란 눈으로 쳐다보는 검은 고양이">
+<p class="bubble" id="reply" aria-live="polite">…뭘 봐.</p>
+</div>
+<div class="sos" id="sos" hidden>
+<div>
+<p class="sos-title">지금 이야기하고 싶다면 109</p>
+<p>24시간 사람과 이야기할 수 있어요. 문자 109나 카카오톡 ‘마들랜’도 있어요.</p>
+</div>
+<a class="btn btn-red" href="tel:109">109 전화하기</a>
+</div>
+</div>
+</div>
+</section>
+
+<section class="band meet" id="meet" aria-labelledby="meet-title">
+<div class="wrap">
+<h2 id="meet-title">골목 끝에서, 바로 옆까지</h2>
+<p class="sub">대답할 때마다 고양이가 한 발짝씩 다가와요.</p>
+<div class="meet-grid">
+<ol class="steps">
+<li class="step" style="--w:96px">
+<img class="step-cat" src="img/cat-purr.webp" width="418" height="272" alt="">
+<h3>골목 끝에 누가 웅크리고 있어요</h3>
+<p class="say">…뭐야. 나 AI야. 얘기하러 왔어?</p>
+</li>
+<li class="step" style="--w:104px">
+<img class="step-cat" src="img/cat-glare.webp" width="388" height="276" alt="">
+<h3>시작 전에, 약속부터</h3>
+<p class="say">다 읽었어? …읽었겠지 뭐.</p>
+</li>
+<li class="step" style="--w:84px">
+<img class="step-cat" src="img/cat-round.webp" width="524" height="706" alt="">
+<h3>대답할 때마다 한 발짝씩</h3>
+<p class="say">듣는 건 잘해. 고양이니까.</p>
+</li>
+<li class="step" style="--w:96px">
+<img class="step-cat" src="img/cat-sit.webp" width="734" height="1000" alt="">
+<h3>꾹 눌러서 데려가기</h3>
+<p class="say">…맞아? 틀렸으면 말해. 고양이도 틀릴 때 있어.</p>
+</li>
+<li class="step" style="--w:128px">
+<img class="step-cat" src="img/cat-sleep.webp" width="334" height="212" alt="">
+<h3>이름을 지어 주면, 바로 옆에</h3>
+<p class="say">…촌스럽네. 근데 뭐, 싫진 않아.</p>
+</li>
+</ol>
+<div class="stage" aria-hidden="true">
+<img class="on" data-i="0" src="img/cat-purr.webp" width="418" height="272" alt="">
+<img data-i="1" src="img/cat-glare.webp" width="388" height="276" alt="">
+<img data-i="2" src="img/cat-round.webp" width="524" height="706" alt="">
+<img data-i="3" src="img/cat-sit.webp" width="734" height="1000" alt="">
+<img data-i="4" src="img/cat-sleep.webp" width="334" height="212" alt="">
+</div>
+</div>
+</div>
+</section>
+
+<section class="band" id="features" aria-labelledby="feat-title">
+<div class="wrap">
+<h2 id="feat-title">here에서 할 수 있는 것</h2>
+<div class="feat-grid">
+<article class="feat f-talk">
+<div class="talk-btns" aria-hidden="true">
+<span class="rb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17a2 2 0 0 1-2 2H6.83a2 2 0 0 0-1.42.59l-2.2 2.2A.71.71 0 0 1 2 21.29V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></svg></span>
+<span class="rb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg></span>
+</div>
+<h3>글로도, 목소리로도</h3>
+<p>말풍선을 누르면 글로, 마이크를 누르면 목소리로 이야기해요.</p>
+</article>
+<article class="feat">
+<ul class="moods" aria-label="표정 여섯 가지">
+<li><svg aria-hidden="true"><use href="#m-sunny"/></svg>즐거움</li>
+<li><svg aria-hidden="true"><use href="#m-cozy"/></svg>편안함</li>
+<li><svg aria-hidden="true"><use href="#m-cloudy"/></svg>지침</li>
+<li><svg aria-hidden="true"><use href="#m-rain"/></svg>속상함</li>
+<li><svg aria-hidden="true"><use href="#m-thunder"/></svg>화남</li>
+<li><svg aria-hidden="true"><use href="#m-wind"/></svg>정신없음</li>
+</ul>
+<h3>그날의 표정</h3>
+<p>하루가 지나면 AI가 그날의 표정을 골라 달력에 남겨요. 진단이 아니라서 직접 바꿀 수 있어요.</p>
+</article>
+<article class="feat f-mine">
+<img src="img/cat-yawn.webp" width="214" height="308" alt="입을 크게 벌리고 하품하는 검은 고양이">
+<h3>내 고양이로 만들기</h3>
+<p>이름은 언제든 바꾸고, 목소리는 여섯 가지 중에서 골라요.</p>
+</article>
+</div>
+</div>
+</section>
+
+<section class="band tone" id="tone" aria-labelledby="tone-title">
+<div class="wrap tone-grid">
+<div>
+<h2 id="tone-title">무조건 네 편은 아니야</h2>
+<p class="sub">말은 무심해도, 사람을 깎아내리지는 않아요.</p>
+<img class="tone-cat" src="img/cat-grumble.webp" width="379" height="406" alt="입을 벌리고 투덜대는 검은 고양이">
+</div>
+<div class="chat" role="group" aria-label="말투 예시">
+<p class="me">그냥 내 말이 맞다고 해 줘.</p>
+<p class="cat">무슨 일인지도 모르는데 맞다고 해 달라고? 얘기부터 해 봐.</p>
+<p class="me">드디어 다 끝냈어!</p>
+<p class="cat">오. 끝냈네. 고생했다, 진짜.</p>
+<p class="small note">말투 예시예요.</p>
+</div>
+</div>
+</section>
+
+<section class="band" id="promise" aria-labelledby="pr-title">
+<div class="wrap">
+<h2 id="pr-title">이야기하기 전에, 알아 두세요</h2>
+<ul class="rules">
+<li>
+<svg viewBox="0 0 40 40" aria-hidden="true"><rect x="3" y="7" width="34" height="24" rx="12" fill="#FDE249" stroke="#131111" stroke-width="2"/><path d="M14 37l4-6" stroke="#131111" stroke-width="2" stroke-linecap="round"/><text x="20" y="24" text-anchor="middle" font-family="Outfit, sans-serif" font-weight="600" font-size="12" fill="#131111">AI</text></svg>
+<h3>이 고양이는 AI예요</h3>
+<p>진단과 치료는 사람 전문가가 해요.</p>
+</li>
+<li>
+<svg viewBox="0 0 40 40" aria-hidden="true"><rect x="8" y="4" width="24" height="32" rx="5" fill="#DDC1FF" stroke="#131111" stroke-width="2"/><path d="M14 14h12M14 20h12M14 26h7" stroke="#131111" stroke-width="2" stroke-linecap="round"/></svg>
+<h3>기록은 먼저 알려 드려요</h3>
+<p>어디에 얼마나 두는지 시작하기 전에 보여 드려요.</p>
+</li>
+<li>
+<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="16" fill="#fff" stroke="#131111" stroke-width="2"/><text x="20" y="25" text-anchor="middle" font-family="Outfit, sans-serif" font-weight="600" font-size="13" fill="#B8322A">109</text></svg>
+<h3>위험한 말이 나오면 109부터</h3>
+<p>답보다 109 안내를 먼저 보여 줘요.</p>
+</li>
+</ul>
+</div>
+</section>
+
+<section class="band" id="faq" aria-labelledby="faq-title">
+<div class="wrap">
+<h2 id="faq-title">자주 묻는 질문</h2>
+<div class="faq-list">
+<details>
+<summary>상담 앱이랑 뭐가 달라요?</summary>
+<p>상담 앱은 상담을 받기로 마음먹은 뒤에 쓰는 곳이에요. here는 그 전에, 오늘 있었던 일을 편하게 꺼내 놓는 곳이에요. 사람 상담사와 이어지는 기능은 준비하고 있어요.</p>
+</details>
+<details>
+<summary>말투가 세다던데, 괜찮을까요?</summary>
+<p>말은 무심해도 사람을 깎아내리지는 않아요. 힘든 이야기가 나오면 장난을 멈추고, 불편하다고 하면 바로 그만둬요.</p>
+</details>
+<details>
+<summary>대화 기록은 어떻게 돼요?</summary>
+<p>지난 대화는 홈에서 위로 올려 다시 볼 수 있어요. 어디에 얼마나 두는지는 시작하기 전에 화면으로 먼저 알려 드려요. 답변을 만들 때는 대화가 외부 AI 서비스로 전달돼요.</p>
+</details>
+<details>
+<summary>누가, 어디서 쓸 수 있어요?</summary>
+<p>만 14세 이상이면 쓸 수 있어요. 휴대폰 브라우저에서 바로 열리고, 카카오나 구글 계정으로 시작해요.</p>
+</details>
+</div>
+</div>
+</section>
+
+<section class="end" id="start" aria-labelledby="end-title">
+<div class="end-in">
+<figure class="end-pic"><img src="img/bedroom.webp" width="720" height="1560" alt="노을빛이 드는 침실, 침대 위에서 몸을 말고 잠든 검은 고양이"></figure>
+<div class="end-copy">
+<h2 id="end-title">…따라올 거면 오든가.</h2>
+<p>골목 끝에서 기다리고 있어요.</p>
+<a class="btn btn-white" href="https://here-prod.vercel.app/">이야기하러 왔어요</a>
+<p class="small">만 14세 이상부터 쓸 수 있어요.</p>
+</div>
+</div>
+</section>
+</main>
+
+<footer class="foot">
+<div class="wrap foot-in">
+<a class="mark" href="#top">here</a>
+<p>지금 많이 힘들다면 혼자 견디지 마세요. <strong>자살예방상담전화 109</strong>(전화·문자, 카카오톡 ‘마들랜’)와 <strong>정신건강 위기상담전화 1577-0199</strong>에서 24시간 사람과 이야기할 수 있어요.</p>
+<p class="small">이 고양이는 AI예요. 진단과 치료는 사람 전문가가 해요. © 2026 here</p>
+</div>
+</footer>
+
+<script>
+{
+  const replies = ["…그럭저럭이면 됐지 뭐. 왔으니까 앉아.", "지쳤구나. …뭐, 여기까지 버틴 건 인정.", "…그래. 많이 힘들구나. 말해 줘서 고마워.", "모를 수도 있지. 나도 내 기분 잘 몰라."];
+  const opts = Array.from(document.querySelectorAll(".opt"));
+  const reply = document.getElementById("reply");
+  const sos = document.getElementById("sos");
+  for (const btn of opts) {
+    btn.addEventListener("click", () => {
+      const k = Number(btn.dataset.k);
+      for (const o of opts) o.setAttribute("aria-pressed", String(o === btn));
+      reply.textContent = replies[k];
+      sos.hidden = k !== 2;
+    });
+  }
+
+  const stageImgs = Array.from(document.querySelectorAll(".stage img"));
+  const steps = Array.from(document.querySelectorAll(".step"));
+  const show = (i) => { for (const img of stageImgs) img.classList.toggle("on", img.dataset.i === String(i)); };
+  if ("IntersectionObserver" in window) {
+    const stepWatch = new IntersectionObserver((entries) => {
+      for (const e of entries) if (e.isIntersecting) show(steps.indexOf(e.target));
+    }, { rootMargin: "-45% 0px -45% 0px" });
+    for (const s of steps) stepWatch.observe(s);
+  }
+}
+</script>
+</body>
+</html>
