@@ -213,7 +213,7 @@
       return h;
     },
 
-    /** 적히는 줄(본문 크기). ui.typed("…뭘 봐.", "hp-body") → .play() / .finish() / .wrap()(붙인 뒤 부르면 문장 끝에서 줄을 나눈다) */
+    /** 적히는 줄(본문 크기). ui.typed("…가자고?", "hp-body") → .play() / .finish() / .wrap()(붙인 뒤 부르면 문장 끝에서 줄을 나눈다) */
     typed(parts, cls = "", tag = "p") {
       const p = el(tag, cls);
       fillTyped(p, parts);
@@ -1095,7 +1095,8 @@
       const [a1, a2, a3] = lines(C.open.eyebrow, [2, 1, 2]);
       const hA = ui.headline([a1, [a2 + " ", ui.pill({ wave: true, dot: { text: "z" } })], a3], { size: 46 });
       const [b1, b2, b3] = lines(C.open.line || C.open.catLine, [1, 2, 2]);
-      const hB = ui.headline([b1, swap(b2, "AI", ui.pill({ text: "AI", dot: "star" })), b3], { typed: true });
+      // 첫마디가 두 줄이면 셋째 줄은 없다. 줄에 "AI"가 있을 때만 알약으로 바꾼다
+      const hB = ui.headline([b1, b2 && swap(b2, "AI", ui.pill({ text: "AI", dot: "star" })), b3].filter(Boolean), { typed: true });
       const desc = el("p", "hp-body", C.open.note || C.open.desc);
       head.append(hA);
       root.append(head);
@@ -1263,7 +1264,7 @@
         clearTimeout(calm);
         field.input.value = name; field.fit();
         ctx.set({ nickname: name });
-        // "[지우]." / "…흥, 외워는 둘게." — 마침표와 말줄임표가 한 줄에 몰리지 않고, 한 글자만 남는 줄도 없다
+        // "[지우]." / "흠, 알았어." — 마침표와 말줄임표가 한 줄에 몰리지 않고, 한 글자만 남는 줄도 없다
         // 긴 이름은 알약과 마침표가 고양이의 앞발에 닿지 않게 좁은 너비 안에서 16px까지 줄인다
         const made = ui.nameLine(C.name.reply, [1, 3], name, () => edit(), { max: 186, min: 16 });
         const mine = made.h; hReply = mine; reply.replaceChildren(mine); made.fit();
@@ -1609,7 +1610,7 @@
       const PEEK = { x: 195, ground: 1012, h: 476 }, LOAF = { x: 195, ground: 610, h: 240 };
       const FORM_TOP = 198;
       let mode = "ask", rolling = false, calm = 0, hLine = null, extras = [];
-      const talk = ui.speech(), intro = ui.speech();      // intro = 처음의 한마디("이름? …없어. 네 맘대로 해.")를 지키는 문지기
+      const talk = ui.speech(), intro = ui.speech();      // intro = 처음의 한마디("내 이름? 없어. 네가 지어 봐.")를 지키는 문지기
 
       root.append(ui.topbar(ctx, { back: (b) => (mode === "done" ? edit() : ctx.back(b)), pages: true }));      // 아래에는 고양이 얼굴이 있으므로 쪽 표시는 위 줄에
       // 고양이 뒤의 주황 덩어리(참고 이미지의 라일락 화면): 올려다보는 얼굴 뒤에 둥근 언덕으로 솟아 있다가, 이름을 정하면 위로 모여 다섯 갈래 별이 되어 식빵 굽는 자리가 된다

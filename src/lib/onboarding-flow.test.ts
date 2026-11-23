@@ -17,8 +17,8 @@ const loaded = (list: string) => [...(stage.match(new RegExp(`const ${list} = \\
 test("캐릭터 만나기는 만남에서 AI라고 밝히고, 시작 전 약속(AI·기록·109)을 보여 준 뒤, 이름 짓기에서만 끝난다", () => {
   assert.deepEqual([...STAGE_SCENES], ["open", "promise", "name", "birthday", "gender", "q1", "q2", "q3", "q4", "meet", "naming"]);
   assert.deepEqual([...ONBOARDING_STEPS], ["promise", "name", "birthday", "gender", "q1", "q2", "q3", "q4", "meet", "summary", "naming"]);
-  // 첫 화면: 고양이가 AI라고 밝히고, 서비스가 풀어서 한 번 더 알린다.
-  assert.match(STAGE_OPEN.line, /나 AI야/);
+  // 첫 화면: 고양이는 인사만 하고, AI라는 것은 서비스의 작은 글씨가 알린다.
+  assert.doesNotMatch(STAGE_OPEN.line, /…/);
   assert.match(STAGE_OPEN.note, /사람이 아니라 AI와 이야기/);
   // 시작 전 약속: AI · 기록 · 109. 카드는 서비스 말투이고, 고양이 말투는 '알겠어요' 뒤의 한마디뿐이다.
   const notice = STAGE_NOTICE.items.map((item) => `${item.title} ${item.desc}`).join("\n");
@@ -89,7 +89,9 @@ test("마지막 버튼 뒤에는 그 화면에 머물며 저장 중·실패·다
   assert.match(finish, /if \(saving\) return;\s*if \(saveError\) \{ onRetry\?\.\(\); return; \}\s*if \(finished\.current\) return;/);
   // 고양이 이름은 무대의 기본 이름으로 시작하고, 지은 뒤의 첫마디가 다르다.
   assert.match(stage, /copy\.naming\.defaultName = DEFAULT_COMPANION;/);
-  assert.match(engine("copy.js"), /"이름\? …없어\. 네 맘대로 해\."/);
+  assert.match(stage, /copy\.naming\.line = \(name\) => namingLine\(name\);/);
+  assert.match(stage, /copy\.meet\.eyebrow = STAGE_MEET_EYEBROW;/);
+  assert.match(engine("copy.js"), /"내 이름\? 없어\. 네가 지어 봐\."/);
 });
 
 test("하던 자리를 이 탭에 남기고 되살리며, 미리보기(initialStep)에서는 쓰지 않는다", () => {

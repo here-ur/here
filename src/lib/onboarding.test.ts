@@ -4,7 +4,10 @@ import {
   QUESTIONS,
   REPLIES,
   concernId,
+  PROMISE_REPLY,
+  STAGE_OPEN,
   nameReply,
+  namingLine,
   parseProfile,
   replyLine,
   summaryLine,
@@ -119,12 +122,14 @@ test("다른 계정의 프로필은 보이지 않는다", () => {
   assert.equal(loadProfile()?.companion, "구름");
 });
 
-test("첫 대면 첫마디는 요즘 상태에 맞춰 세기를 낮추고, 많이 힘들 때만 109를 바로 보여 준다", () => {
-  assert.deepEqual(meetLine({ lately: "그럭저럭 괜찮아요" }), { line: "…뭘 봐.", tough: false });
-  assert.deepEqual(meetLine({ lately: "조금 지쳤어요" }), { line: "…따라올 거면 오든가.", tough: false });
-  assert.deepEqual(meetLine({ lately: "많이 힘들어요" }), { line: "…오늘은 좀 쉬어. 대신 이건 알아 둬.", tough: true });
-  assert.deepEqual(meetLine({ lately: "잘 모르겠어요" }), { line: "…그런 날도 있지.", tough: false });
-  assert.deepEqual(meetLine({}), { line: "…뭘 봐.", tough: false });
+test("데려가기 첫마디는 요즘 상태에 맞춰 고르고, 많이 힘들 때만 109를 바로 보여 준다", () => {
+  assert.deepEqual(meetLine({ lately: "그럭저럭 괜찮아요" }), { line: "…가자고? 이번만이야.", tough: false });
+  assert.deepEqual(meetLine({ lately: "조금 지쳤어요" }), { line: "…천천히 가. 따라갈 테니까.", tough: false });
+  assert.deepEqual(meetLine({ lately: "많이 힘들어요" }), { line: "…오늘은 좀 쉬자. 이것만 알아 둬.", tough: true });
+  assert.deepEqual(meetLine({ lately: "잘 모르겠어요" }), { line: "…글쎄. 일단 가 볼까.", tough: false });
+  assert.deepEqual(meetLine({}), { line: "…가자고? 이번만이야.", tough: false });
+  // 맨 앞의 "…"는 무대에서 꾹 누르기 진행을 보여 주는 점 알약이 된다.
+  for (const option of QUESTIONS[0].options) assert.ok(meetLine({ lately: option }).line.startsWith("…"), option);
   // 질문 1의 모든 선택지에 첫마디가 있다(선택지를 바꾸면 여기서 알린다).
   for (const option of QUESTIONS[0].options) assert.notEqual(meetLine({ lately: option }).line, "", option);
   assert.equal(QUESTIONS[0].options.filter((option) => meetLine({ lately: option }).tough).length, 1);
@@ -192,29 +197,36 @@ test("질문은 상담 접수 순서(요즘 마음 → 마음이 가는 것 → 
   assert.equal(replyLine("lately", "없는 답"), "");
 });
 
-test("고양이 반응은 시니컬해도 사용자를 평가·단정·충고하지 않고, 자기한테만 말하라고 하지 않는다", () => {
-  const lines = [...QUESTIONS.flatMap((q) => q.options.map((o) => replyLine(q.id, o))), nameReply("하늘")];
+test("고양이 말은 처음 만난 길고양이처럼 짧고 경계하는 반말이되 시니컬하지 않고, 사용자를 평가·단정·충고하지 않고, 자기한테만 말하라고 하지 않는다", () => {
+  const lines = [
+    ...QUESTIONS.flatMap((q) => q.options.map((o) => replyLine(q.id, o))),
+    ...QUESTIONS[0].options.map((o) => meetLine({ lately: o }).line),
+    nameReply("하늘"), namingLine(""), namingLine("호야"), summaryLine("하늘", {}), PROMISE_REPLY, STAGE_OPEN.line,
+  ];
   for (const line of lines) {
     // 상담자 기본 원칙 [2] 단정 · [3] 평가·충고 · [5] 의존 유도
     assert.doesNotMatch(line, /흔하지|보이네|다 쓰여|잠은 좀 자|해야 해|하지 마|나한테 (해|만)|나머지는 여기서|나만 있으면/, line);
     // 진단처럼 들리는 말을 하지 않는다.
     assert.doesNotMatch(line, /우울|불안장애|증상|진단|약|처방/, line);
+    // 예전 시니컬 고양이 말투(퉁명·무심한 척)는 쓰지 않는다(2026-11-23 채팅 톤 변경). 존댓말로 바꾸지도 않는다.
+    assert.doesNotMatch(line, /흥|뭐,|든가|뭘 봐|딱히|촌스럽|궁금한 건 아니|맘대로|읽었겠지|하악/, line);
+    assert.doesNotMatch(line, /요[.?!]?$/, line);
   }
-  // 많이 힘들다고 하면 시니컬을 빼고 짧고 따뜻하게 받는다.
-  assert.doesNotMatch(replyLine("lately", "많이 힘들어요"), /흥|뭐,|든가/);
+  // 말줄임표는 데려가기 첫마디의 맨 앞(무대에서 꾹 누르기 진행을 보여 주는 점 알약)에만 쓴다.
+  for (const line of lines) assert.doesNotMatch(line.replace(/^…/, ""), /…/, line);
   // 곁에 사람이 없다고 하면 사람과 이야기하는 쪽을 지지한다.
   assert.match(replyLine("support", "지금은 없어요"), /사람한테/);
 });
 
 test("들은 것 정리는 고른 답만 되짚고 맞는지 묻는다", () => {
   const line = summaryLine("하늘", { lately: "조금 지쳤어요", concern: "사람·관계", want: "털어놓고, 들어 주면 좋겠어요", support: "있어요" });
-  assert.equal(line, "하늘은 요즘 조금 지쳐 있고, 사람 사이 일에 마음이 많이 가 있고, 여기선 들어 주길 바라는 거지. …맞아? 틀렸으면 말해. 고양이도 틀릴 때 있어.");
+  assert.equal(line, "하늘은 요즘 조금 지쳐 있고, 사람 사이 일에 마음이 많이 가 있고, 여기선 들어 주길 바라는 거지. 맞게 들었지? 아니면 다시 말해 줘.");
   assert.match(summaryLine("민기", { lately: "그럭저럭 괜찮아요" }), /^민기는 요즘 그럭저럭 괜찮고\./);
   for (const q of QUESTIONS.filter((x) => x.id !== "support")) {
     for (const option of q.options) assert.doesNotMatch(summaryLine("하늘", { [q.id]: option }), /undefined/, option);
   }
   assert.doesNotMatch(summaryLine("하늘", { lately: "많이 힘들어요" }), /우울|진단|증상/);
-  assert.equal(summaryLine("하늘", {}), "…맞아? 틀렸으면 말해. 고양이도 틀릴 때 있어.");
+  assert.equal(summaryLine("하늘", {}), "맞게 들었지? 아니면 다시 말해 줘.");
 });
 
 test("마음이 가는 것·곁에 있는 사람은 짧은 값으로 프로필에 남기고, 모르는 값은 버린다", () => {
