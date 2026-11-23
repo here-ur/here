@@ -10,6 +10,7 @@ test("회원 검사 실패는 캐시·비밀 노출 없이 차단하고 인증 �
     [{ status: 500, message: "private" }, null, null, 503],
     [null, null, null, 403], [null, { user_id: "other" }, null, 403],
     [null, null, { message: "private" }, 503], [null, { user_id: "owner" }, null, 200],
+    [null, { user_id: "owner", withdrawn_at: "2026-11-23T00:00:00Z" }, null, 403], [null, { user_id: "owner", withdrawn_at: null }, null, 200],
   ] as const) {
     const query = { select: () => query, eq: () => query, abortSignal: () => query, maybeSingle: async () => ({ data: member, error: memberError }) };
     const client = { auth: { getUser: async () => ({ data: { user: { id: "owner" } }, error: authError }) }, from: () => query } as unknown as SupabaseClient;

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { browserSupabase } from "@/lib/supabase";
 import { createOAuthCompletion, type OAuthCompletion } from "@/lib/oauth-callback";
+import { WITHDRAWN_MESSAGE } from "@/lib/social-auth";
 import AuthScreen from "../../AuthScreen";
 import { Button } from "../../ui/Button";
 
@@ -25,7 +26,7 @@ export default function AuthCallback() {
   if (!result) return <AuthScreen loading />;
   return <AuthScreen>
     <div className="here-auth-welcome"><div className="here-auth-welcomeBottom here-auth-retry">
-      <p role="alert" className="here-auth-unavailable">{result === "cancelled" ? <>로그인을 취소했어요.<br />원할 때 다시 시작할 수 있어요.</> : <>로그인을 완료하지 못했어요.<br />시작한 브라우저에서 다시 시도해 주세요.</>}</p>
+      <p role="alert" className="here-auth-unavailable">{result === "withdrawn" ? WITHDRAWN_MESSAGE : result === "cancelled" ? <>로그인을 취소했어요.<br />원할 때 다시 시작할 수 있어요.</> : <>로그인을 완료하지 못했어요.<br />시작한 브라우저에서 다시 시도해 주세요.</>}</p>
       <Button tone="ink" fullWidth onClick={() => location.replace("/")}>로그인 화면으로</Button>
     </div></div>
   </AuthScreen>;

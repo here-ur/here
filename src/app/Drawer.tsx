@@ -1,6 +1,6 @@
 "use client";
 
-import { Switch } from "./ui/Controls";
+import { Checkbox, Switch } from "./ui/Controls";
 import { Button } from "./ui/Button";
 import List from "framework7-react/components/list.js";
 import ListItem from "framework7-react/components/list-item.js";
@@ -73,6 +73,45 @@ export function CalendarIcon({ size = 20 }: { size?: number }) {
 
 const stroke = { fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 
+type View = "menu" | "settings" | "withdraw";
+const DEPTH: Record<View, number> = { menu: 0, settings: 1, withdraw: 2 };
+
+/** 설정 → 회원탈퇴. 무엇이 언제 지워지는지 보여 주고, 확인 칸을 고른 뒤에만 탈퇴할 수 있다.
+ * onWithdraw는 성공하면 true(곧 로그아웃되어 환영 화면으로 간다), 실패하면 false. */
+function WithdrawView({ name, onBack, onWithdraw }: { name: string; onBack: () => void; onWithdraw: () => Promise<boolean> }) {
+  const [checked, setChecked] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function submit() {
+    if (!checked || busy) return;
+    setBusy(true); setError("");
+    const ok = await onWithdraw().catch(() => false);
+    // 성공하면 로그아웃이 이 화면을 닫으므로 버튼을 그대로 진행 중으로 둔다.
+    if (!ok) { setBusy(false); setError("탈퇴를 완료하지 못했어요. 연결을 확인하고 다시 시도해 주세요."); }
+  }
+  return <>
+    <div className="here-settings-header flex items-center gap-2">
+      <Button variant="plain" onClick={onBack} disabled={busy} aria-label="설정으로 돌아가기" className="ui-press grid size-10 shrink-0 place-items-center rounded-full text-cat-ink hover:bg-cat-soft">
+        <Icon name="back" size={20} />
+      </Button>
+      <h2 className="text-t5 font-bold text-cat-ink">회원탈퇴</h2>
+    </div>
+    <div className="here-withdraw">
+      <p className="here-withdraw-lead">탈퇴하기 전에 확인해 주세요</p>
+      <ul className="here-withdraw-list">
+        <li>탈퇴하면 모든 기기에서 바로 로그아웃돼요.</li>
+        <li>탈퇴하고 1년 동안은 같은 카카오·구글·이메일 계정으로 다시 로그인하거나 가입할 수 없어요.</li>
+        <li>서버에 있는 기억·대화 기록 같은 계정 정보는 1년 동안 보관한 뒤 모두 파기해요. 보관하는 동안 {josa(name, "과", "와")}의 대화에 쓰지 않아요.</li>
+        <li>이 기기에 있는 대화 기록과 리포트는 바로 지워요.</li>
+        <li>탈퇴는 취소하거나 되돌릴 수 없어요.</li>
+      </ul>
+      <Checkbox label="위 내용을 확인했어요" checked={checked} disabled={busy} onChange={(e) => setChecked(e.target.checked)} className="here-withdraw-check" />
+      {error && <p role="alert" className="here-withdraw-error">{error}</p>}
+      <Button tone="ink" fullWidth disabled={!checked} loading={busy} onClick={() => { void submit(); }} className="here-withdraw-submit">탈퇴하기</Button>
+    </div>
+  </>;
+}
+
 function MenuIcon({ name }: { name: "library" | "friends" | "help" | "character" | "settings" }) {
   return <Image src={`/menu/${name}.svg`} alt="" width={24} height={24} />;
 }
@@ -87,6 +126,7 @@ export default function Drawer({
   onFriends,
   onSignOut,
   onReset,
+  onWithdraw,
   loadQuota,
 }: {
   open: boolean;
@@ -98,13 +138,14 @@ export default function Drawer({
   onFriends: () => void;
   onSignOut: () => void;
   onReset: () => void;
+  onWithdraw: () => Promise<boolean>;
   loadQuota?: (signal: AbortSignal) => Promise<QuotaStatus | null>;
 }) {
   const panelRef = useRef<HTMLElement>(null);
-  const [view, setViewState] = useState<"menu" | "settings">("menu");
-  // 메뉴 ↔ 설정 전환 방향: 설정은 오른쪽에서 들어오고, 돌아가면 메뉴가 왼쪽에서 들어온다.
+  const [view, setViewState] = useState<View>("menu");
+  // 메뉴 → 설정 → 회원탈퇴: 안으로 들어가면 오른쪽에서 들어오고, 돌아가면 왼쪽에서 들어온다.
   const [viewDir, setViewDir] = useState<"forward" | "back" | null>(null);
-  const setView = (next: "menu" | "settings") => { setViewDir(next === "settings" ? "forward" : "back"); setViewState(next); };
+  const setView = (next: View) => { setViewDir(DEPTH[next] > DEPTH[view] ? "forward" : "back"); setViewState(next); };
   const [wasOpen, setWasOpen] = useState(false);
   const [quota, setQuota] = useState<QuotaStatus | null>(null);
   if (open !== wasOpen) {
@@ -229,7 +270,7 @@ export default function Drawer({
       <div onClick={onClose} className="here-menu-dismiss absolute inset-0" aria-hidden="true" />
       <nav
         ref={panelRef}
-        aria-label={view === "settings" ? "설정" : "메뉴"}
+        aria-label={view === "withdraw" ? "회원탈퇴" : view === "settings" ? "설정" : "메뉴"}
         role="dialog"
         aria-modal="true"
         inert={!open}
@@ -266,7 +307,7 @@ export default function Drawer({
             </List>
             {quota ? <QuotaLine status={quota} /> : <div className="here-menu-quota" aria-hidden="true" />}
           </div>
-        </> : <>
+        </> : view === "withdraw" ? <WithdrawView name={name} onBack={() => setView("settings")} onWithdraw={onWithdraw} /> : <>
           <div className="here-settings-header flex items-center gap-2">
             <Button variant="plain" onClick={() => setView("menu")} aria-label="메뉴로 돌아가기" className="ui-press grid size-10 shrink-0 place-items-center rounded-full text-cat-ink hover:bg-cat-soft">
               <Icon name="back" size={20} />
@@ -293,6 +334,12 @@ export default function Drawer({
             <ul>
               <MenuItem onClick={onSignOut} title="로그아웃" chevron={false} />
               <MenuItem onClick={onReset} title={`${name} 처음부터 다시 만들기`} danger chevron={false} />
+            </ul>
+          </List>
+
+          <List strong inset className="mt-3">
+            <ul>
+              <MenuItem onClick={() => setView("withdraw")} title="회원탈퇴" />
             </ul>
           </List>
 

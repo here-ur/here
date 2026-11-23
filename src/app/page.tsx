@@ -25,7 +25,9 @@ import { requestQuotaStatus } from "@/lib/quota-status";
 import { syncReport } from "@/lib/report";
 import { browserSupabase } from "@/lib/supabase";
 import type { SearchSource } from "@/lib/web-search-protocol";
-import AuthGate from "./AuthGate";
+import AuthGate, { type SignOut } from "./AuthGate";
+import { WITHDRAW_DONE_MESSAGE, withdrawMember } from "@/lib/member-withdrawal";
+import { clearAccountStorage, setLocalOwner } from "@/lib/local-scope";
 import { useMicrophoneAsk } from "./MicrophoneAsk";
 import HomeHint from "./HomeHint";
 import { homeHintSeen, markHomeHintSeen } from "@/lib/home-hint";
@@ -62,7 +64,7 @@ export default function Page() {
 /** 로그인한 계정의 화면. 캐릭터를 처음부터 다시 만들면(이 기기에서든 다른 기기에서든) 페이지를 새로 고치지 않고 홈만 새로 열어
  * 캐릭터 만나기부터 시작한다. 새로 고치면 앱을 처음 여는 것처럼 로그인 확인 화면(환영 그림)이 잠깐 보였다가 넘어갔다.
  * 새로 연 홈은 계정에 캐릭터가 없다는 걸 이미 알고 시작해서 '설정을 불러오는 중' 화면도 거치지 않는다(계정 확인은 뒤에서 그대로 한다). */
-function Account({ userId, signOut }: { userId: string; signOut: () => Promise<void> }) {
+function Account({ userId, signOut }: { userId: string; signOut: SignOut }) {
   const [run, setRun] = useState(0);
   const restart = useCallback(() => setRun((n) => n + 1), []);
   const fromConsent = useContext(StageHandoff);
@@ -76,7 +78,7 @@ function ProfileLoading({ error, onRetry, onSignOut }: { error: string; onRetry:
   return <CatLoading scene="groom" label="캐릭터 설정을 불러오고 있어요" error={error || undefined} onRetry={onRetry} onSignOut={onSignOut} />;
 }
 
-function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId: string; signOut: () => Promise<void>; startEmpty: boolean; afterConsent: boolean; onRestart: () => void }) {
+function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId: string; signOut: SignOut; startEmpty: boolean; afterConsent: boolean; onRestart: () => void }) {
   const account = useAccountProfile(userId, { startEmpty, onRemoteReset: onRestart });
   const basics = useContext(MemberBasicsContext);
   const activity = useAccountActivity(userId);
@@ -574,6 +576,22 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
           onSignOut={() => { void signOut(); }}
           loadQuota={async (signal) => requestQuotaStatus(await accessToken(), signal)}
           onReset={() => setConfirmReset(true)}
+          onWithdraw={async () => {
+            const client = browserSupabase();
+            if (!client) return false;
+            try {
+              if (await withdrawMember(client, AbortSignal.timeout(10000)) !== "ok") return false;
+            } catch { return false; }
+            // 서버 세션은 이미 지워졌다. 음성·글 대화를 닫고, 이 기기의 계정 기록을 지운 뒤 로그아웃한다.
+            // 기록을 지우기 전에 계정 소유자를 비워 남은 작업이 다시 쓰지 못하게 한다.
+            connectionAttempt.current += 1; voiceRequest.current?.abort(); rt.current?.close(); rt.current = null;
+            chatRequest.current?.abort(); chatQueue.current?.cancel();
+            setLocalOwner(null);
+            const storage = (name: "localStorage" | "sessionStorage") => { try { return window[name]; } catch { return undefined; } };
+            clearAccountStorage(userId, [storage("localStorage"), storage("sessionStorage")]);
+            void signOut(WITHDRAW_DONE_MESSAGE);
+            return true;
+          }}
         />
         {confirmReset && (
           <ConfirmDialog

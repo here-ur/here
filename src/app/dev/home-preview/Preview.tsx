@@ -75,7 +75,8 @@ export default function Preview() {
       { role: "assistant", content: "가장 좋아하는 보드게임은 **아줄**, 음료는 **따뜻한 보리차**였어.\n\n- 타일 한 장\n- 이야기 한 조각\n\n| 게임 | 음료 |\n| --- | --- |\n| 아줄 | 따뜻한 보리차 |\n\n`테스트 코드`도 읽기 쉽게 보여." },
     ] : [] }}
   >
-    <Drawer open={menu} profile={profile} onClose={() => setMenu(false)} onCustomize={() => { setMenu(false); setCustomize(true); }} onLibrary={() => openScreen("library")} onHelp={() => { setMenu(false); setSoon({ feature: "help", n: Date.now() }); }} onFriends={() => { setMenu(false); setSoon({ feature: "friends", n: Date.now() }); }} onSignOut={() => setMenu(false)} onReset={() => setMenu(false)}
+    <Drawer open={menu} profile={profile} onClose={() => setMenu(false)} onCustomize={() => { setMenu(false); setCustomize(true); }} onLibrary={() => openScreen("library")} onHelp={() => { setMenu(false); setSoon({ feature: "help", n: Date.now() }); }} onFriends={() => { setMenu(false); setSoon({ feature: "friends", n: Date.now() }); }} onSignOut={() => setMenu(false)} onWithdraw={async () => false}
+      onReset={() => setMenu(false)}
       loadQuota={async () => SAMPLE_QUOTA} />
     <ComingSoon soon={soon} onDone={() => setSoon(null)} />
     {customize && <Customize profile={profile} onClose={() => setCustomize(false)} onSave={(next) => { setProfile(next); return true; }} onChat={() => { setCustomize(false); setOpen(true); }} onGarden={() => setSoon({ feature: "garden", n: Date.now() })} />}

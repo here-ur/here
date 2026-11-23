@@ -5,7 +5,7 @@ import { checkEntry } from "./session-entry.ts";
 
 const user = { id: "member-a", phone: "test-phone" };
 const known = { data: { user }, error: null };
-type Result = { data: { user_id: string } | null; error: unknown };
+type Result = { data: { user_id: string; withdrawn_at?: string | null } | null; error: unknown };
 const row = { data: { user_id: user.id }, error: null };
 function mock(auth = async (): Promise<unknown> => known, member = async (): Promise<Result> => row, refresh = async (): Promise<unknown> => ({ data: {}, error: null })) {
   const query = {
@@ -82,4 +82,9 @@ test("이메일 OTP만 완료한 신규 계정은 새로고침해도 비밀번�
   Object.assign(client, { rpc: () => ({ abortSignal: async () => ({ data: false, error: null }) }) });
   assert.deepEqual(await checkEntry(client, user), { kind: "email-signup", id: user.id, email: user.email });
   assert.deepEqual(await checkEntry(client), { kind: "email-signup", id: user.id, email: user.email });
+});
+test("탈퇴한 계정은 남은 세션이 있어도 들이지 않는다", async () => {
+  assert.deepEqual(await checkEntry(mock(undefined, async () => ({ data: { user_id: user.id, withdrawn_at: "2026-11-23T00:00:00Z" }, error: null }))), { kind: "withdrawn" });
+  assert.deepEqual(await checkEntry(mock(async () => ({ data: { user: null }, error: { status: 403, code: "user_banned" } }))), { kind: "withdrawn" });
+  assert.deepEqual(await checkEntry(mock(undefined, async () => ({ data: { user_id: user.id, withdrawn_at: null }, error: null }))), { kind: "member", id: user.id });
 });

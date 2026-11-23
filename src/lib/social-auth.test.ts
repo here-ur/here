@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { normalizeEmail, emailAuthError, socialSignInUrl } from "./social-auth.ts";
+import { normalizeEmail, emailAuthError, socialSignInUrl, WITHDRAWN_MESSAGE } from "./social-auth.ts";
 
 const config = { url: "https://auth.example", key: "publishable-test-key" };
 test("이메일 주소의 바깥 공백만 제거하고 비정상 주소는 거절한다", () => {
@@ -33,6 +33,8 @@ test("설정 조회 장애를 공급자 비활성으로 오인하지 않는다",
 test("이메일 인증 오류는 만료, 전송 설정, 요청 제한을 구분한다", () => {
   assert.match(emailAuthError({ code: "otp_expired" }, "verify"), /만료/);
   assert.match(emailAuthError({ status: 429 }, "send"), /요청이 많아요/);
+  assert.equal(emailAuthError({ status: 403, code: "user_banned" }, "send"), WITHDRAWN_MESSAGE);
+  assert.equal(emailAuthError({ status: 403, code: "user_banned" }, "verify"), WITHDRAWN_MESSAGE);
   assert.match(emailAuthError({ code: "email_address_not_authorized" }, "send"), /준비 중/);
   assert.match(emailAuthError({ status: 0 }, "verify"), /연결 상태/);
 });
