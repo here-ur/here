@@ -26,8 +26,10 @@ import { syncReport } from "@/lib/report";
 import { browserSupabase } from "@/lib/supabase";
 import type { SearchSource } from "@/lib/web-search-protocol";
 import AuthGate, { type SignOut } from "./AuthGate";
+import { acceptMemoryConsent, memoryConsentAvailable } from "./MemoryConsentGate";
 import { WITHDRAW_DONE_MESSAGE, withdrawMember } from "@/lib/member-withdrawal";
 import { clearAccountStorage, setLocalOwner } from "@/lib/local-scope";
+import { devToolsVisible } from "@/lib/deploy-env";
 import { useMicrophoneAsk } from "./MicrophoneAsk";
 import HomeHint from "./HomeHint";
 import { homeHintSeen, markHomeHintSeen } from "@/lib/home-hint";
@@ -68,7 +70,8 @@ function Account({ userId, signOut }: { userId: string; signOut: SignOut }) {
   const [run, setRun] = useState(0);
   const restart = useCallback(() => setRun((n) => n + 1), []);
   const fromConsent = useContext(StageHandoff);
-  return <Home key={run} userId={userId} signOut={signOut} startEmpty={run > 0 || fromConsent?.newMember === true} afterConsent={run === 0 && fromConsent?.consented === true} onRestart={restart} />;
+  // run > 0: 개발용 '처음부터 다시 만들기'로 다시 연 온보딩. 생일·성별까지 처음과 같은 전체 흐름을 보여 준다.
+  return <Home key={run} userId={userId} signOut={signOut} startEmpty={run > 0 || fromConsent?.newMember === true} afterConsent={run === 0 && fromConsent?.consented === true} replay={run > 0} onRestart={restart} />;
 }
 
 /** 이 기기에 남은 설정이 없어 계정의 캐릭터 설정을 처음 불러오는 동안(새로 가입했거나 이 기기에서 처음 로그인).
@@ -78,8 +81,16 @@ function ProfileLoading({ error, onRetry, onSignOut }: { error: string; onRetry:
   return <CatLoading scene="groom" label="캐릭터 설정을 불러오고 있어요" error={error || undefined} onRetry={onRetry} onSignOut={onSignOut} />;
 }
 
-function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId: string; signOut: SignOut; startEmpty: boolean; afterConsent: boolean; onRestart: () => void }) {
+function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRestart }: { userId: string; signOut: SignOut; startEmpty: boolean; afterConsent: boolean; replay?: boolean; onRestart: () => void }) {
   const account = useAccountProfile(userId, { startEmpty, onRemoteReset: onRestart });
+  // 개발용 다시 만들기: 기억 기능이 켜진 서버면 약속 장면에서 동의 칸까지 다시 보여 준다. 무대는 시작할 때 정하므로 먼저 확인한다.
+  const [replayConsent, setReplayConsent] = useState<boolean | undefined>(replay ? undefined : false);
+  useEffect(() => {
+    if (!replay) return;
+    let active = true;
+    memoryConsentAvailable().then((on) => { if (active) setReplayConsent(on); }, () => { if (active) setReplayConsent(false); });
+    return () => { active = false; };
+  }, [replay]);
   const basics = useContext(MemberBasicsContext);
   const activity = useAccountActivity(userId);
   const profile = account.profile === null ? DEV_PROFILE : account.profile;
@@ -466,12 +477,16 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
 
   if (profile === undefined) return <ProfileLoading error={account.loadError} onRetry={account.retry} onSignOut={() => { void signOut(); }} />;
 
+  if (profile === null && replayConsent === undefined) return <ProfileLoading error="" onRetry={account.retry} onSignOut={() => { void signOut(); }} />;
+
   if (profile === null) {
     // 마지막 '알겠어요' 뒤 저장하는 동안에도 같은 화면을 두고, 버튼에 진행·실패·다시 저장을 보여 준다.
     // 저장이 끝나면 홈이 온보딩의 빛이 걷히는 모션(greet)으로 바로 이어진다.
     return (
       <Onboarding
         basics={basics}
+        askBasics={replay || undefined}
+        consent={replayConsent ? acceptMemoryConsent : undefined}
         afterConsent={afterConsent}
         onSignOut={() => { void signOut(); }}
         saving={pendingProfile !== null && account.saving}
@@ -575,7 +590,8 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
           }}
           onSignOut={() => { void signOut(); }}
           loadQuota={async (signal) => requestQuotaStatus(await accessToken(), signal)}
-          onReset={() => setConfirmReset(true)}
+          onReset={devToolsVisible() ? () => setConfirmReset(true) : undefined}
+          onSaveNickname={(nickname) => account.save({ ...profile, nickname })}
           onWithdraw={async () => {
             const client = browserSupabase();
             if (!client) return false;
@@ -620,7 +636,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, onRestart }: { userId
             error={account.saveError}
             onSave={(p) => account.save(p)}
             onClose={() => setCustomizing(false)}
-            onChat={() => { setCustomizing(false); openText(); }}
             onGarden={() => showSoon("garden")}
           />
         )}

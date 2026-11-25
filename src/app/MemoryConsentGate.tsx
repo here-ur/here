@@ -52,6 +52,20 @@ async function consentRequest(method: "GET" | "POST") {
   })()]); } finally { clearTimeout(timer!); }
 }
 
+/** 기억 기능이 켜진 서버인지(동의를 받을 수 있는지). 켜져 있으면 GET이 동의 문구 버전을 함께 돌려준다. 실패하면 던진다. */
+export async function memoryConsentAvailable(): Promise<boolean> {
+  const body = await consentRequest("GET");
+  return typeof body.version === "string";
+}
+
+/** 약속 장면에서 동의를 저장한다. 성공하면 null, 실패하면 장면에 보여 줄 글. 이미 같은 버전에 동의했으면 서버는 그대로 둔다. */
+export async function acceptMemoryConsent(): Promise<string | null> {
+  try {
+    const body = await consentRequest("POST");
+    return body.ok === true ? null : "동의를 저장하지 못했어요. 다시 시도해 주세요.";
+  } catch (error) { return error instanceof ConsentVersionError ? error.message : "동의를 저장하지 못했어요. 다시 시도해 주세요."; }
+}
+
 /** 기억 동의. 캐릭터 만나기 무대(1번 톤)의 약속 장면에서 받는다: 새 회원은 만남 → 약속, 다시 동의해야 하는 기존 회원은 약속 장면만 본다.
  * 동의하기 전에는 이 뒤의 화면(홈·대화 기록 등)을 띄우지 않는다. 확인 중·연결 오류만 시트로 보여 준다.
  * 동의를 마치면(또는 로그인 시트에서 이어 왔는데 이미 동의한 회원이면) 화면이 살짝 작아지며 다음 화면(캐릭터 만나기·홈)으로 넘어간다.

@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import List from "framework7-react/components/list.js";
-import ListItem from "framework7-react/components/list-item.js";
 import { ACCESSORIES, buildGarden, loadSeeds, unlockedAccessories, type AccessoryId } from "@/lib/garden";
-import { VOICES, type Profile, cleanName } from "@/lib/onboarding";
-import { COMPANION_BACKGROUNDS, companionBackground } from "@/lib/companion-theme";
+import { type Profile, cleanName } from "@/lib/onboarding";
+import { companionBackground } from "@/lib/companion-theme";
 import { loadReport } from "@/lib/report";
 import * as sfx from "@/lib/sound";
 import type { CatExpression } from "@/lib/cat-expression";
@@ -16,18 +14,11 @@ import { Dialog } from "./ui/Dialog";
 import { Icon } from "./art";
 import AccessoryArt from "./AccessoryArt";
 import Buddy, { type BuddyState } from "./Buddy";
-import { useVoicePreview } from "./use-voice-preview";
 import "./character-page.css";
 
 // Framework7 강조색(목록 체크·지우기 버튼·기본 버튼)을 파랑 대신 고양이와 같은 검정으로 맞춘다.
 const INK_THEME = { "--f7-theme-color": "var(--color-cat-ink)", "--f7-theme-color-rgb": "41, 41, 39" } as CSSProperties;
 
-type Tab = "accessory" | "background" | "voice";
-const TABS: { id: Tab; label: string; icon: "sparkles" | "paintbrush" | "soundOn" }[] = [
-  { id: "accessory", label: "꾸미기", icon: "sparkles" },
-  { id: "background", label: "배경", icon: "paintbrush" },
-  { id: "voice", label: "목소리", icon: "soundOn" },
-];
 // 꾸미기 부위. 아이콘은 그 부위의 대표 아이템 그림을 쓴다.
 const PARTS: { id: string; label: string; icon: AccessoryId; items: AccessoryId[] }[] = [
   { id: "head", label: "머리", icon: "hat", items: ["hat", "flowers", "crown"] },
@@ -35,15 +26,15 @@ const PARTS: { id: string; label: string; icon: AccessoryId; items: AccessoryId[
   { id: "deco", label: "장식", icon: "sprout", items: ["sprout", "rainbow"] },
 ];
 
-/** 캐릭터 페이지: 온보딩에서 고른 꾸미기·배경·목소리·이름을 언제든 다시 고른다(B안: 정원 장면 + 하단 서랍).
- * 메뉴에서 열면 오른쪽에서 밀려 들어오는 전체 페이지다. 바꾼 것은 나갈 때(뒤로·대화하기) 한 번에 저장하고,
- * 저장에 실패하면 페이지에 남아 오류를 보여 준다. 무언가 바꿀 때마다 호야가 반응한다: 배경은 고개를 들고, 꾸미기는 눈웃음,
- * 목소리는 미리듣기에 맞춰 말하고, 이름을 바꾸면 눈웃음. 모두 고른 항목으로만 움직이고 대화 내용과는 상관없다. */
-export default function Customize({ profile, onSave, onClose, onChat, onGarden, saving = false, error = "" }: {
+/** 캐릭터 페이지: 꾸미기와 고양이 이름을 언제든 다시 고른다(정원 장면 + 하단 서랍).
+ * 메뉴에서 열면 오른쪽에서 밀려 들어오는 전체 페이지다. 바꾼 것은 뒤로 나갈 때 한 번에 저장하고,
+ * 저장에 실패하면 페이지에 남아 오류를 보여 준다. 꾸미기·이름을 바꾸면 고양이가 눈웃음으로 반응한다(대화 내용과는 상관없다).
+ * 2026-11-25 사용자 결정: 대화하기 버튼(뒤로 가면 바로 대화할 수 있다), 목소리 탭(음성은 서버가 정한 목소리 하나만 쓴다),
+ * 배경 색 탭, 구름 정원 레벨 표기(정원 보류)는 뺐다. profile의 color·voice 값은 그대로 둔다. */
+export default function Customize({ profile, onSave, onClose, onGarden, saving = false, error = "" }: {
   profile: Profile;
   onSave: (p: Profile) => Promise<boolean> | boolean;
   onClose: () => void;
-  onChat?: () => void;
   onGarden?: () => void;
   saving?: boolean;
   error?: string;
@@ -58,11 +49,9 @@ export default function Customize({ profile, onSave, onClose, onChat, onGarden, 
     return () => window.removeEventListener(ACTIVITY_CHANGED, update);
   }, []);
   const unlocked = useMemo(() => unlockedAccessories(garden), [garden]);
-  const [tab, setTab] = useState<Tab>("accessory");
   const [part, setPart] = useState(PARTS[0].id);
   const [naming, setNaming] = useState<string | null>(null);
   const [phase, setPhase] = useState<"enter" | "in" | "leave">("enter");
-  const voice = useVoicePreview();
   const pageRef = useRef<HTMLElement>(null);
   const backRef = useRef<HTMLButtonElement>(null);
 
@@ -94,7 +83,6 @@ export default function Customize({ profile, onSave, onClose, onChat, onGarden, 
       if (!ok) return;
     }
     leaving.current = true;
-    voice.stop();
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { then(); return; }
     setPhase("leave");
     setTimeout(then, 340);
@@ -116,23 +104,14 @@ export default function Customize({ profile, onSave, onClose, onChat, onGarden, 
     return () => document.removeEventListener("keydown", onKey);
   });
 
-  const pickVoice = (id: Profile["voice"]) => {
-    set({ voice: id });
-    react("idle", "neutral", 0);
-    void voice.play(id);
-  };
   const toggleAccessory = (id: AccessoryId, index: number) => {
     if (draft.accessory === id) { set({ accessory: undefined }); react("idle", "neutral", 0); return; }
     sfx.pick(index);
     set({ accessory: id });
     react("idle", "warm", 1400);
   };
-  const lockLabel = (id: AccessoryId) => {
-    const unlock = ACCESSORIES.find((a) => a.id === id)!.unlock;
-    return unlock.level ? `Lv.${unlock.level}` : `도감 ${unlock.collected}`;
-  };
   const activePart = PARTS.find((p) => p.id === part)!;
-  const catState: BuddyState = voice.playing ? "speaking" : reaction.state;
+  const catState: BuddyState = reaction.state;
 
   return (
     <section
@@ -148,37 +127,28 @@ export default function Customize({ profile, onSave, onClose, onChat, onGarden, 
         <Button ref={backRef} variant="tonal" tone="neutral" size="medium" onClick={back} aria-label="뒤로" aria-busy={saving} className="size-11 min-h-11 shrink-0 !p-0">
           <Icon name="back" size={20} />
         </Button>
-        <div role="tablist" aria-label="바꿀 것" className="character-tabs character-glass">
-          <span aria-hidden="true" className="character-bubble">{TABS.find((t) => t.id === tab)!.label}</span>
-          {TABS.map((t) => (
-            <button key={t.id} type="button" role="tab" id={`character-tab-${t.id}`} aria-controls="character-panel" aria-selected={tab === t.id} aria-label={t.label} onClick={() => setTab(t.id)}>
-              <Icon name={t.icon} size={20} />
-            </button>
-          ))}
-        </div>
-        <Button size="medium" onClick={() => void leave(onChat ?? onClose)} disabled={saving} className="character-talk w-auto shrink-0">대화하기</Button>
+        <h1 className="character-heading">캐릭터 꾸미기</h1>
       </header>
 
       <div className="character-scene">
         <div aria-hidden="true" className="character-island" />
         <div className="character-cat">
           <Buddy key={reaction.n} size={210} accessory={draft.accessory} className="motion-safe:animate-pop"
-            state={catState} expression={voice.playing ? "neutral" : reaction.expression} outputLevel={voice.level} outputShape={voice.shape} />
+            state={catState} expression={reaction.expression} />
         </div>
-        <button type="button" className="character-name" onClick={() => { voice.stop(); setNaming(draft.companion); }} aria-label={`이름 ${draft.companion}, 바꾸기`}>
+        <button type="button" className="character-name" onClick={() => setNaming(draft.companion)} aria-label={`이름 ${draft.companion}, 바꾸기`}>
           {draft.companion}<Icon name="pencil" size={14} />
         </button>
         <div className="character-bar">
-          <span className="character-chip"><AccessoryArt id="sprout" size={24} />구름 정원 Lv.{garden.level.level}</span>
           {/* 구름 정원은 보류: 페이지를 떠나지 않고 '준비 중' 안내만 띄운다(onGarden). */}
           {onGarden && <button type="button" className="character-go" onClick={onGarden} disabled={saving}>정원 가꾸러 가기</button>}
         </div>
       </div>
 
-      <div id="character-panel" role="tabpanel" aria-labelledby={`character-tab-${tab}`} className="character-drawer here-list-compact">
+      <div className="character-drawer here-list-compact">
         {error && <p role="alert" className="mb-3 rounded-r3 bg-[#FDECEA] px-3 py-2 text-t3 text-[#C42A23]">{error}</p>}
 
-        {tab === "accessory" && <>
+        <>
           <div className="character-parts" role="group" aria-label="꾸미기 부위">
             {PARTS.map((p) => (
               <button key={p.id} type="button" aria-pressed={part === p.id} aria-label={p.label} onClick={() => setPart(p.id)}>
@@ -194,52 +164,20 @@ export default function Customize({ profile, onSave, onClose, onChat, onGarden, 
               const worn = draft.accessory === id;
               return (
                 <button key={id} type="button" className="character-item" aria-pressed={worn} aria-disabled={!open}
-                  aria-label={open ? `${item.label}${worn ? ", 착용 중. 누르면 벗어요" : ""}` : `${item.label}, 잠김. ${item.hint}`}
+                  aria-label={open ? `${item.label}${worn ? ", 착용 중. 누르면 벗어요" : ""}` : `${item.label}, 준비 중`}
                   onClick={() => { if (open) toggleAccessory(id, ACCESSORIES.indexOf(item)); }}>
                   <span aria-hidden="true" className="character-item-name">{item.label}</span>
                   <AccessoryArt id={id} size={56} />
                   <span aria-hidden="true" className="character-badge" data-kind={worn ? "worn" : open ? "open" : "locked"}>
-                    {worn ? "착용 중" : open ? "입기" : <><Icon name="lock" size={11} />{lockLabel(id)}</>}
+                    {worn ? "착용 중" : open ? "입기" : <><Icon name="lock" size={11} />준비 중</>}
                   </span>
                 </button>
               );
             })}
           </div>
-          <p className="character-hint">구름 정원이 자라면 하나씩 열려요. {ACCESSORIES.find((a) => !unlocked.has(a.id))?.hint ?? "모두 열었어요!"}</p>
-        </>}
+          {ACCESSORIES.some((a) => !unlocked.has(a.id)) && <p className="character-hint">다른 꾸미기는 준비 중이에요.</p>}
+        </>
 
-        {tab === "background" && <>
-          <h2 className="character-title">배경</h2>
-          <div className="character-swatches" role="radiogroup" aria-label="배경 색">
-            {COMPANION_BACKGROUNDS.map((c, i) => (
-              <button key={c.id} type="button" role="radio" aria-checked={draft.color === c.id} onClick={() => { sfx.pick(i); set({ color: c.id }); react("attentive", "neutral", 900); }}>
-                <span style={{ background: c.surface }} />{c.label}
-              </button>
-            ))}
-          </div>
-        </>}
-
-        {tab === "voice" && <>
-          <h2 className="character-title">목소리</h2>
-          <List strong inset dividersIos className="mx-0 my-0">
-            {VOICES.map((v) => (
-              <ListItem
-                key={v.id}
-                radio
-                radioIcon="end"
-                name="companion-voice"
-                value={v.id}
-                title={v.label}
-                footer={v.desc}
-                checked={draft.voice === v.id}
-                // 고르면 그 목소리로 한 문장을 들려준다. 이미 고른 목소리를 다시 누르면 다시 들려준다.
-                onChange={() => pickVoice(v.id)}
-                onClick={() => { if (draft.voice === v.id) void voice.play(v.id); }}
-              />
-            ))}
-          </List>
-          <p className="character-hint">고르면 한 문장 들려줘요 · 다음 대화부터 바뀌어요</p>
-        </>}
       </div>
 
       {naming !== null && (
