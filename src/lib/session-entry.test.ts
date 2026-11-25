@@ -83,8 +83,12 @@ test("이메일 OTP만 완료한 신규 계정은 새로고침해도 비밀번�
   assert.deepEqual(await checkEntry(client, user), { kind: "email-signup", id: user.id, email: user.email });
   assert.deepEqual(await checkEntry(client), { kind: "email-signup", id: user.id, email: user.email });
 });
-test("탈퇴한 계정은 남은 세션이 있어도 들이지 않는다", async () => {
-  assert.deepEqual(await checkEntry(mock(undefined, async () => ({ data: { user_id: user.id, withdrawn_at: "2026-11-23T00:00:00Z" }, error: null }))), { kind: "withdrawn" });
+test("탈퇴한 계정은 남은 세션이 있어도 들이지 않고, 7일 안이면 취소할지 묻는다", async () => {
+  const withdrawn = (at: string) => mock(undefined, async () => ({ data: { user_id: user.id, withdrawn_at: at }, error: null }));
+  const now = () => Date.parse("2026-11-26T00:00:00Z");
+  assert.deepEqual(await checkEntry(withdrawn("2026-11-20T00:00:00Z"), undefined, 1000, now), { kind: "withdrawal-pending", id: user.id, until: "2026-11-27T00:00:00.000Z" });
+  assert.deepEqual(await checkEntry(withdrawn("2026-11-19T00:00:00Z"), undefined, 1000, now), { kind: "withdrawn" }, "7일이 지나면 차단 작업 전이라도 탈퇴로 본다");
+  assert.deepEqual(await checkEntry(withdrawn("not a date"), undefined, 1000, now), { kind: "withdrawn" });
   assert.deepEqual(await checkEntry(mock(async () => ({ data: { user: null }, error: { status: 403, code: "user_banned" } }))), { kind: "withdrawn" });
   assert.deepEqual(await checkEntry(mock(undefined, async () => ({ data: { user_id: user.id, withdrawn_at: null }, error: null }))), { kind: "member", id: user.id });
 });

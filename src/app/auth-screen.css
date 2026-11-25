@@ -93,6 +93,9 @@
 .here-auth-unavailable { padding: 20px; border-radius: 24px; background: rgb(57 58 60 / 75%); text-align: center; }
 /* 로그인 상태 확인 실패: 환영 화면과 같은 자리에 안내와 검정 알약 버튼 */
 .here-auth-retry { display: grid; gap: 12px; }
+/* 탈퇴 유예기간 안에 다시 로그인했을 때: 제목 한 줄과 취소할 수 있는 때. */
+.here-auth-withdraw-title { font-size: 17px; font-weight: 700; letter-spacing: -.3px; }
+.here-auth-withdraw-desc { margin-top: 6px; font-size: 14px; line-height: 1.5; opacity: .85; }
 
 /* 로그인·가입 시트: 공통 Sheet 안에 설명 → 입력칸, 맨 아래 검정 버튼. 시트는 화면 아래에서 끝까지 밀려 올라오고,
  * 올라오고 내려가는 움직임은 Sheet의 slide가 맡고, 단계가 바뀌면 새 내용이 옆에서 들어온다. */

@@ -1,12 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { withdrawalDeadline } from "./member-withdrawal.ts";
 
 type Identity = { id: string; phone?: string; email?: string; email_confirmed_at?: string; app_metadata?: { providers?: string[] } };
-export type Entry = { kind: "login" } | { kind: "retry" } | { kind: "withdrawn" } |
+export type Entry = { kind: "login" } | { kind: "retry" } | { kind: "withdrawn" } | { kind: "withdrawal-pending"; id: string; until: string } |
   { kind: "member"; id: string } | { kind: "signup"; phone: string } | { kind: "email-signup"; id: string; email: string };
 
 // getUser restores/refreshes the SDK session and verifies its identity.
 // A timeout or failed lookup cannot establish that a session or membership is missing.
-export async function checkEntry(client: SupabaseClient, verified?: Identity, timeoutMs = 10000): Promise<Entry> {
+export async function checkEntry(client: SupabaseClient, verified?: Identity, timeoutMs = 10000, now = Date.now): Promise<Entry> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<Entry>(resolve => {
@@ -40,8 +41,11 @@ export async function checkEntry(client: SupabaseClient, verified?: Identity, ti
     const { data, error } = await client.from("members").select("*").eq("user_id", user.id)
       .abortSignal(controller.signal).maybeSingle();
     if (error) return { kind: "retry" };
-    // 탈퇴하면 Auth가 로그인을 막지만, 그 전에 받아 둔 세션이 남아 있어도 앱에 들이지 않는다.
-    if (data?.user_id === user.id && data.withdrawn_at) return { kind: "withdrawn" };
+    // 탈퇴한 회원은 앱에 들이지 않는다. 유예기간(7일) 안이면 취소할지 묻고, 지났으면(차단 작업이 돌기 전이라도) 탈퇴로 본다.
+    if (data?.user_id === user.id && data.withdrawn_at) {
+      const deadline = withdrawalDeadline(data.withdrawn_at);
+      return deadline && deadline.getTime() > now() ? { kind: "withdrawal-pending", id: user.id, until: deadline.toISOString() } : { kind: "withdrawn" };
+    }
     if (data?.user_id === user.id) return { kind: "member", id: user.id };
     if (data === null && (user.email || user.app_metadata?.providers?.some(p => p === "google" || p === "kakao"))) {
       // DB가 auth.uid()와 검증된 Auth identity를 재확인한다. 사용자 metadata로 권한을 만들지 않는다.

@@ -9,6 +9,7 @@ import Image from "next/image";
 import "./drawer-menu.css";
 import { type Profile, cleanNickname, josa } from "@/lib/onboarding";
 import { TextField } from "./ui/TextField";
+import { WITHDRAWAL_GRACE_DAYS } from "@/lib/member-withdrawal";
 import { type QuotaStatus, quotaSummary } from "@/lib/quota-status";
 import { Icon } from "./art";
 import { getSfxEnabled, setSfxEnabled, subscribeSfx } from "@/lib/sfx";
@@ -135,10 +136,10 @@ function WithdrawView({ name, onBack, onWithdraw }: { name: string; onBack: () =
       <p className="here-withdraw-lead">탈퇴하기 전에 확인해 주세요</p>
       <ul className="here-withdraw-list">
         <li>탈퇴하면 모든 기기에서 바로 로그아웃돼요.</li>
-        <li>탈퇴하고 1년 동안은 같은 카카오·구글·이메일 계정으로 다시 로그인하거나 가입할 수 없어요.</li>
-        <li>서버에 있는 기억·대화 기록 같은 계정 정보는 1년 동안 보관한 뒤 모두 파기해요. 보관하는 동안 {josa(name, "과", "와")}의 대화에 쓰지 않아요.</li>
-        <li>이 기기에 있는 대화 기록과 리포트는 바로 지워요.</li>
-        <li>탈퇴는 취소하거나 되돌릴 수 없어요.</li>
+        <li>{WITHDRAWAL_GRACE_DAYS}일 안에 다시 로그인하면 탈퇴를 취소할 수 있어요.</li>
+        <li>{WITHDRAWAL_GRACE_DAYS}일이 지나면 탈퇴가 확정되고, 그 뒤 1년 동안은 같은 카카오·구글·이메일 계정으로 다시 로그인하거나 가입할 수 없어요.</li>
+        <li>서버에 있는 기억·대화 기록 같은 계정 정보는 탈퇴가 확정된 뒤 1년 동안 보관하고 모두 파기해요. 보관하는 동안 {josa(name, "과", "와")}의 대화에 쓰지 않아요.</li>
+        <li>이 기기에 있는 대화 기록과 리포트는 바로 지워요. 탈퇴를 취소해도 돌아오지 않아요.</li>
       </ul>
       <Checkbox label="위 내용을 확인했어요" checked={checked} disabled={busy} onChange={(e) => setChecked(e.target.checked)} className="here-withdraw-check" />
       {error && <p role="alert" className="here-withdraw-error">{error}</p>}

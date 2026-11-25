@@ -6,6 +6,8 @@ import { browserSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { checkEntry, clearPasswordReset, isPasswordResetPending, markPasswordReset, resetStorage, shouldRecheckAuth, type Entry } from "@/lib/session-entry";
 import { consentDisplayStorage, hasConsentDisplayHint } from "@/lib/consent-display-cache";
 import { hasBasicsDisplayHint } from "@/lib/member-basics";
+import { cancelWithdrawal } from "@/lib/member-withdrawal";
+import WithdrawalPending from "./WithdrawalPending";
 import { emailAuthError, isWithdrawnAuthError, normalizeEmail, socialSignInUrl, WITHDRAWN_MESSAGE, type SocialProvider } from "@/lib/social-auth";
 import { Button } from "./ui/Button";
 import { TextField } from "./ui/TextField";
@@ -48,6 +50,9 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   const [notice, setNotice] = useState("");
   // 환영 화면에 남기는 한 줄(탈퇴를 마쳤거나 탈퇴한 계정으로 들어오려 할 때). 로그인 확인이 다시 돌아도 지우지 않고, 시작 버튼을 누르면 지운다.
   const [farewell, setFarewell] = useState("");
+  // 탈퇴 유예기간(7일) 안에 다시 로그인한 회원: 앱에 들이지 않고 탈퇴를 취소할지 묻는다.
+  const [pendingWithdrawal, setPendingWithdrawal] = useState<{ id: string; until: string } | null>(null);
+  const [cancelError, setCancelError] = useState("");
   const [resendAt, setResendAt] = useState(0);
   const [resendWait, setResendWait] = useState(0);
   const [direction, setDirection] = useState<"open" | "forward" | "back">("open");
@@ -63,6 +68,8 @@ export default function AuthGate({ children }: { children: (userId: string, sign
       setFarewell(WITHDRAWN_MESSAGE);
       void client?.auth.signOut({ scope: "local" });
     }
+    setPendingWithdrawal(entry.kind === "withdrawal-pending" ? { id: entry.id, until: entry.until } : null);
+    setCancelError("");
     const result: Exclude<Entry, { kind: "withdrawn" }> = entry.kind === "withdrawn" ? { kind: "login" } : entry;
     const resetting = result.kind === "member" && isPasswordResetPending(resetStorage(), result.id);
     const memberId = result.kind === "member" && !resetting ? result.id : null;
@@ -144,6 +151,20 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     // 성공하면 SIGNED_OUT 이벤트가 화면 넘김과 함께 환영 화면으로 바꾼다(여기서 또 바꾸면 넘김이 끊긴다). 실패하면 다시 확인 화면.
     if (!client || result?.error) enter({ kind: result?.error ? "retry" : "login" });
   }, [client, enter]);
+
+  /** 유예기간 안의 탈퇴 취소: 성공하면 다시 확인해서 그대로 앱에 들어간다. 그사이 기간이 끝났으면 탈퇴한 계정으로 돌려보낸다. */
+  async function undoWithdrawal() {
+    if (!client || busyRef.current) return;
+    setWorking(true); setCancelError("");
+    try {
+      const result = await cancelWithdrawal(client, AbortSignal.timeout(10000));
+      if (result === "expired") { await signOut(WITHDRAWN_MESSAGE); return; }
+      if (result === "not_member") { setCancelError("회원 정보를 찾지 못했어요. 로그아웃한 뒤 다시 시도해 주세요."); return; }
+      checkGeneration.current++;
+      setAttempt(n => n + 1);
+    } catch { setCancelError("탈퇴를 취소하지 못했어요. 연결을 확인하고 다시 시도해 주세요."); }
+    finally { setWorking(false); }
+  }
 
   function fail(message: string, field: Field | null = null) {
     setErrorField(field); setError(message); setNotice("");
@@ -259,6 +280,8 @@ export default function AuthGate({ children }: { children: (userId: string, sign
       <Button variant="tonal" tone="ink" fullWidth onClick={() => { void signOut(); }}>로그아웃</Button>
     </div></div>
   </AuthScreen>;
+  if (pendingWithdrawal) return <WithdrawalPending until={pendingWithdrawal.until} busy={busy} error={cancelError}
+    onCancel={() => { void undoWithdrawal(); }} onSignOut={() => { void signOut(); }} />;
   // 로그인 뒤 시트 단계: 기억 동의 → 성별·생년월일(새 회원만) → 캐릭터 만나기·홈. 화면 넘김은 마지막 시트 단계가 맡는다.
   if (userId) return <MemoryConsentGate key={userId} userId={userId} signOut={signOut} continueSheet={continueSheet} handoff>
     <MemberBasicsGate userId={userId} signOut={signOut}>{children(userId, signOut)}</MemberBasicsGate>
