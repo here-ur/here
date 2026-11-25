@@ -131,6 +131,7 @@ AI와 말로 이야기하고, 필요할 때 도움받기에서 실제 사람인 
 - `dev`: 팀 공용 개발 배포 브랜치. 작업 브랜치는 `dev`에서 만들고 PR도 `dev`로 보낸다. 개발 검증 후 `dev` → `main` PR로 운영 반영한다.
 - Vercel Production은 기존 서울 `here-prod` DB, Preview와 로컬 개발은 서울 `here-dev` DB를 사용한다. 운영 주소는 `here-prod.vercel.app`, 개발 주소는 `here-dev.vercel.app`이다. 개발 회원·초대코드를 운영으로 복사하지 않는다. DB 구조 변경은 개발 검증 후 별도로 운영 적용한다.
 - 작업 브랜치 이름: `feat/...`, `fix/...`
+- 저장소 룰셋(2026-11-23, 정의는 `.github/rulesets/`): `dev`·`main`은 PR로만 병합하고 승인 2명과 `test`·`build` 체크가 필요하며 force push·삭제를 막는다. `main`은 `dev`에서 온 PR만(`source-is-dev` 체크), merge commit으로만 병합한다. `dev`로 가는 PR은 `dev-auto-merge` 워크플로가 자동 머지를 켜서 조건이 채워지면 바로 병합된다(초안·포크 제외, 멈추려면 Disable auto-merge). `main`은 자동 머지하지 않는다.
 
 ## 명령어
 
