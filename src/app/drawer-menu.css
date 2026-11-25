@@ -56,7 +56,13 @@
 .here-settings-header h2 { font-size: 17px; letter-spacing: -.3px; }
 .here-settings-note { padding-inline: 28px; }
 /* 회원탈퇴 진입: 안내 글 아래 작은 회색 글자. 누르기 쉽게 높이만 확보하고 밑줄·배경은 두지 않는다. */
-.here-drawer .here-settings-withdraw { align-self: flex-start; min-height: 32px; margin-top: 4px; padding-inline: 28px; font-size: 12px; font-weight: 400; color: var(--color-cat-muted); opacity: .75; }
+.here-drawer .here-settings-withdraw { align-self: flex-start; min-height: 32px; margin-top: 4px; padding-inline: 28px; font-size: 12px; font-weight: 400; color: var(--color-cat-muted); opacity: .75; text-decoration: underline transparent; text-underline-offset: 3px; transition: color 120ms ease, opacity 120ms ease, text-decoration-color 120ms ease; }
+/* 눈에 띄지 않게 두되 누를 수 있는 글자라는 건 알 수 있게: 올리면 진해지며 밑줄, 누르면 살짝 흐려진다. */
+@media (hover: hover) {
+  .here-drawer .here-settings-withdraw:hover { color: var(--color-cat-ink); opacity: 1; text-decoration-color: currentColor; }
+}
+.here-drawer .here-settings-withdraw:active { color: var(--color-cat-ink); opacity: .55; }
+.here-drawer .here-settings-withdraw:focus-visible { opacity: 1; color: var(--color-cat-ink); outline: 2px solid var(--color-cat-ink); outline-offset: 2px; border-radius: 6px; }
 @media (prefers-reduced-motion: no-preference) {
   .here-drawer-view[data-dir="forward"] { animation: here-drawer-in-right 300ms cubic-bezier(.2, .8, .2, 1) both; }
   .here-drawer-view[data-dir="back"] { animation: here-drawer-in-left 300ms cubic-bezier(.2, .8, .2, 1) both; }
