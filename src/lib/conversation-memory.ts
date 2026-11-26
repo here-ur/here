@@ -2,6 +2,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { embed, readProvider, DEFAULT_SUMMARY_MODEL, type MemoryConfig, type MemoryMessage } from './memory.ts';
 import { memoryRetryFetch } from './ai-operations.ts';
 import { processContextMaintenance } from './context-maintenance.ts';
+import { userCipher, type UserCipher } from './conversation-cipher.ts';
+
+type StoredMessage = { role: 'user' | 'assistant'; content: string; content_key_version?: number };
+/** 작업 데이터의 대화를 복호화한다. AI 요약 입력에는 role·content만 넘긴다. */
+export function decryptJobMessages(messages: StoredMessage[], cipher: UserCipher): MemoryMessage[] {
+  return messages.map(m => ({ role: m.role, content: cipher.decryptContent(m.content, m.content_key_version ?? 0) }));
+}
 
 export async function summarizeConversation(messages: MemoryMessage[], config: MemoryConfig, signal: AbortSignal, context: MemoryMessage[] = []): Promise<string> {
   const input = JSON.stringify({context, messages});
@@ -34,9 +41,11 @@ export async function processConversationMemories(client: SupabaseClient, config
     if(claimError || !job) continue;
     try {
       const retry={...config,fetch:memoryRetryFetch(config.fetch)};
-      const summary=await summarizeConversation(job.messages,retry,signal,job.context);
+      const cipher=userCipher(job.user_id);
+      const summary=await summarizeConversation(decryptJobMessages(job.messages,cipher),retry,signal,decryptJobMessages(job.context,cipher));
       const vector=await embed(summary,retry,signal);
-      const {data:ok,error:saveError}=await client.rpc('finish_memory',{p_id:job.id,p_lease:job.lease,p_summary:summary,p_embedding:JSON.stringify(vector),p_summary_model:config.summaryModel||DEFAULT_SUMMARY_MODEL,p_prompt_version:'conversation-v1'}).abortSignal(signal);
+      const encrypted=cipher.encryptSummary('conversation_memories',summary);
+      const {data:ok,error:saveError}=await client.rpc('finish_memory',{p_id:job.id,p_lease:job.lease,p_summary:encrypted.value,p_embedding:JSON.stringify(vector),p_summary_model:config.summaryModel||DEFAULT_SUMMARY_MODEL,p_prompt_version:'conversation-v1',p_summary_key_version:encrypted.keyVersion}).abortSignal(signal);
       if(saveError || !ok) throw new Error('summary_save_failed');
     } catch {
       await client.rpc('fail_memory',{p_id:job.id,p_lease:job.lease}).abortSignal(AbortSignal.timeout(3000));

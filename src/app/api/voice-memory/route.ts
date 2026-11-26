@@ -7,6 +7,7 @@ import { voiceMemoryResponse } from "@/lib/voice-memory-server";
 import { requireApiQuota } from "@/lib/api-quota";
 import { contextConfig } from '@/lib/conversation-context';
 import { processContextMaintenance } from '@/lib/context-maintenance';
+import { requireCipher } from '@/lib/conversation-cipher';
 
 export const maxDuration = 120;
 
@@ -18,7 +19,9 @@ export async function POST(request: Request) {
   if (consentError) return consentError;
   const quotaError = await requireApiQuota(access.supabase, "voice_memory");
   if (quotaError) return quotaError;
-  const memory = createMemoryService(supabaseMemoryStore(access.supabase), {
+  const guard = requireCipher(access.userId);
+  if (guard.response) return guard.response;
+  const memory = createMemoryService(supabaseMemoryStore(access.supabase, guard.cipher), {
     openaiKey: process.env.OPENAI_API_KEY || "", summaryKey: process.env.RUNYOUR_API_KEY || "",
     summaryBaseUrl: process.env.RUNYOUR_BASE_URL, summaryModel: process.env.MEMORY_SUMMARY_MODEL,
   });
