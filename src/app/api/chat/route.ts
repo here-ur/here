@@ -12,6 +12,7 @@ import { requireApiQuota } from "@/lib/api-quota";
 import { contextStore, createConversationContext } from '@/lib/conversation-context';
 import { processContextMaintenance } from '@/lib/context-maintenance';
 import { requireCipher } from '@/lib/conversation-cipher';
+import { reportError, isServerFailure, reportingFailures } from '@/lib/error-report';
 
 export const maxDuration = 120;
 
@@ -32,11 +33,13 @@ export async function POST(request: Request) {
   let cipher: import('@/lib/conversation-cipher').UserCipher | undefined;
   if (memoryEnabled(process.env)) {
     const guard = requireCipher(access.userId);
-    if (guard.response) return guard.response;
+    if (guard.response) { after(() => reportError(access.supabase, 'cipher.keys', guard.error)); return guard.response; }
     cipher = guard.cipher;
   }
   const memory = cipher ? createMemoryService(supabaseMemoryStore(access.supabase, cipher), memoryConfig) : null;
-  const prepareContext = cipher ? createConversationContext(contextStore(access.supabase, cipher), memoryConfig, 4500, true) : undefined;
+  // 맥락 준비 실패는 진짜 원인(임베딩 429 등)과 함께 기록한다. 응답은 chat.reply 503으로 따로 남는다.
+  const prepareContext = cipher ? reportingFailures(createConversationContext(contextStore(access.supabase, cipher), memoryConfig, 4500, true),
+    e => after(() => reportError(access.supabase, 'chat.context', e))) : undefined;
   let history: {batchId:string;userMessageId:string;assistantMessageId:string;userAt:number;assistantAt:number}|undefined;
   const historyVersion = request.headers.get("x-here-history");
   if(memory && (historyVersion === "v1" || historyVersion === "v2")) {
@@ -47,7 +50,7 @@ export async function POST(request: Request) {
         && Number.isFinite(h.userAt) && Number.isFinite(h.assistantAt)) history=h;
     } catch { /* Main request validation returns the user-facing error. */ }
   }
-  return chatResponse(request, {
+  const response = await chatResponse(request, {
     onboardingAnswers: access.onboardingAnswers,
     hereName: access.hereName,
     prepareContext,
@@ -63,8 +66,9 @@ export async function POST(request: Request) {
       ]);
       const {error}=await access.supabase.rpc('save_conversation_batch',{p_id:h.batchId,p_messages:batch.messages,p_fingerprint:batch.fingerprint})
         .abortSignal(AbortSignal.timeout(8000));
-      if (!error) after(async()=>{await Promise.allSettled([refreshActivityDays(access.supabase,cipher!),processConversationMemories(access.supabase,memoryConfig)]);});
-      } catch { /* The durable outbox retries without changing the reply timestamp. */ }
+      if (error) after(() => reportError(access.supabase, 'chat.save', error));
+      else after(async()=>{await Promise.allSettled([refreshActivityDays(access.supabase,cipher!).catch(e=>reportError(access.supabase,'activity.refresh',e)),processConversationMemories(access.supabase,memoryConfig)]);});
+      } catch (e) { after(() => reportError(access.supabase, 'chat.save', e)); /* The durable outbox retries without changing the reply timestamp. */ }
       // Return the exact timestamp even if the durable client outbox must retry this save.
       return { assistantAt };
     } : undefined,
@@ -73,4 +77,7 @@ export async function POST(request: Request) {
     model: process.env.CHAT_MODEL,
     memory: memory ? { recall: memory.recall, schedule: messages => { if (historyVersion !== "v1" && historyVersion !== "v2") after(async () => { await memory.remember(messages); await processContextMaintenance(access.supabase, memoryConfig); }); } } : undefined,
   });
+  // 우리 쪽 문제(5xx·AI 한도 429)만 기록한다. 형식 오류·로그인 만료 같은 4xx와 499는 정상 동작.
+  if (isServerFailure(response.status)) after(() => reportError(access.supabase, 'chat.reply', { status: response.status }));
+  return response;
 }

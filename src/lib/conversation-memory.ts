@@ -3,6 +3,7 @@ import { embed, readProvider, DEFAULT_SUMMARY_MODEL, type MemoryConfig, type Mem
 import { memoryRetryFetch } from './ai-operations.ts';
 import { processContextMaintenance } from './context-maintenance.ts';
 import { userCipher, type UserCipher } from './conversation-cipher.ts';
+import { reportError } from './error-report.ts';
 
 type StoredMessage = { role: 'user' | 'assistant'; content: string; content_key_version?: number };
 /** 작업 데이터의 대화를 복호화한다. AI 요약 입력에는 role·content만 넘긴다. */
@@ -33,7 +34,7 @@ export async function summarizeConversation(messages: MemoryMessage[], config: M
 export async function processConversationMemories(client: SupabaseClient, config: MemoryConfig) {
   const deadline = Date.now() + 60000;
   const {data: pending,error}=await client.rpc('pending_conversation_batches').abortSignal(AbortSignal.timeout(5000));
-  if(error || !Array.isArray(pending)) return;
+  if(error || !Array.isArray(pending)) { if(error) await reportError(client,'memory.summary',error); return; }
   for(const batch of pending) {
     if (Date.now() >= deadline) break;
     const signal=AbortSignal.timeout(Math.min(45000, Math.max(1, deadline - Date.now())));
@@ -47,7 +48,8 @@ export async function processConversationMemories(client: SupabaseClient, config
       const encrypted=cipher.encryptSummary('conversation_memories',summary);
       const {data:ok,error:saveError}=await client.rpc('finish_memory',{p_id:job.id,p_lease:job.lease,p_summary:encrypted.value,p_embedding:JSON.stringify(vector),p_summary_model:config.summaryModel||DEFAULT_SUMMARY_MODEL,p_prompt_version:'conversation-v1',p_summary_key_version:encrypted.keyVersion}).abortSignal(signal);
       if(saveError || !ok) throw new Error('summary_save_failed');
-    } catch {
+    } catch (e) {
+      await reportError(client,'memory.summary',e);
       await client.rpc('fail_memory',{p_id:job.id,p_lease:job.lease}).abortSignal(AbortSignal.timeout(3000));
     }
   }

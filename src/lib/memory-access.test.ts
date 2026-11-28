@@ -49,7 +49,7 @@ test("경로 구성 검사: 텍스트·음성 모두 모델 호출보다 먼저 
     assert.match(source, /await requireMember\((?:request|req)\)/);
     assert.ok(source.includes("await requireMemoryConsent(access.supabase)"));
     assert.ok(source.includes("if (consentError) return consentError"));
-    const provider = route === "chat" ? "return chatResponse(request" : route === "report-sky" ? "return reportSkyResponse(request" : "await openai(";
+    const provider = route === "chat" ? "await chatResponse(request" : route === "report-sky" ? "await reportSkyResponse(request" : "await openai(";
     assert.ok(source.indexOf(provider) >= 0);
     assert.ok(source.indexOf("if (consentError)") < source.indexOf(provider));
   }

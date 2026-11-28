@@ -11,7 +11,8 @@ export type ConversationContext = {
 };
 export const emptyContext = (): ConversationContext => ({ tone_guidance: '', retrieved_memories: [], chat_summary: '' });
 export class ContextUnavailableError extends Error {
-  constructor() { super('context_unavailable'); }
+  // cause: 맥락을 못 만든 진짜 원인(임베딩 429 등). 에러 기록에서 'context_unavailable:http_429'처럼 함께 보인다.
+  constructor(cause?: unknown) { super('context_unavailable', cause === undefined ? undefined : { cause }); }
 }
 type ContextStore = {
   enabled(signal: AbortSignal): Promise<boolean>;
@@ -65,7 +66,7 @@ export function createConversationContext(store: ContextStore, config: MemoryCon
         try {
           const found = await store.search(await embed(query.slice(0, 1500), config, signal), signal);
           return found.filter(h => typeof h.id === 'string' && typeof h.summary === 'string' && h.summary.length <= 902 && Number.isFinite(Date.parse(h.created_at)));
-        } catch { if (required) throw new ContextUnavailableError(); return []; }
+        } catch (e) { if (required) throw new ContextUnavailableError(e); return []; }
       }
       // Start the direct query and summary read while tone/search questions are being generated.
       const [direct, followups] = await Promise.all([
@@ -78,14 +79,14 @@ export function createConversationContext(store: ContextStore, config: MemoryCon
             return await Promise.all(analysis.follow_up_questions.map(q => search(q).catch(() => [])));
           } catch { return []; }
         })(),
-        store.summary(signal).then(summary => { context.chat_summary = summary; }).catch(() => { if (required) throw new ContextUnavailableError(); }),
+        store.summary(signal).then(summary => { context.chat_summary = summary; }).catch(e => { if (required) throw new ContextUnavailableError(e); }),
       ]);
       for (const hit of [...direct, ...followups.flat()]) if (!hits.has(hit.id)) hits.set(hit.id, hit);
       context.retrieved_memories = [...hits.values()].slice(0, 5).map(h => ({ summary: h.summary, at: h.created_at }));
       // Withdrawal while the providers were running must also suppress their results.
       if (requestSignal.aborted || !await store.enabled(AbortSignal.any([requestSignal, AbortSignal.timeout(1000)]))) throw new ContextUnavailableError();
       return context;
-    } catch { if (required) throw new ContextUnavailableError(); return emptyContext(); }
+    } catch (e) { if (required) throw e instanceof ContextUnavailableError ? e : new ContextUnavailableError(e); return emptyContext(); }
   };
 }
 

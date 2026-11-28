@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { contextJson, objectSchema, stringSchema } from './context-model.ts';
 import { embed, DEFAULT_SUMMARY_MODEL, type MemoryConfig, type MemoryMessage } from './memory.ts';
 import { userCipher, type UserCipher } from './conversation-cipher.ts';
+import { reportError } from './error-report.ts';
 
 type Candidate = { id: string; summary: string; created_at: string; updated_at: string };
 export type MaintenanceJob = { token?: string; nightly: boolean; memories: Candidate[]; messages: MemoryMessage[]; chat_summary: string };
@@ -85,7 +86,9 @@ export async function finishMaintenance(client: SupabaseClient, token: string, s
     }).abortSignal(signal);
     if (error) throw Error('maintenance_save_failed');
     return data === true;
-  } catch {
+  } catch (e) {
+    // 로그인 사용자(대화 직후)와 크론 작업자 모두 이 경로를 쓴다. 작업자는 worker.* 로만 기록되므로 이름을 맞춘다.
+    await reportError(client, 'worker.context', e, { nightly: stored.nightly === true });
     try { await client.rpc('finish_context_work', { p_token: token, p_summary: null, p_groups: [], p_discard: [], p_model: null }).abortSignal(AbortSignal.timeout(3000)); } catch { /* Lease expiry permits a later retry. */ }
     return false;
   }
@@ -94,7 +97,8 @@ export async function finishMaintenance(client: SupabaseClient, token: string, s
 export async function processContextMaintenance(client: SupabaseClient, config: MemoryConfig) {
   try {
     const { data: job, error } = await client.rpc('start_context_work').abortSignal(AbortSignal.timeout(3000));
-    if (error || !job || typeof job.token !== 'string') return;
+    if (error) { await reportError(client, 'worker.context', error); return; }
+    if (!job || typeof job.token !== 'string') return;
     await finishMaintenance(client, job.token, job, config);
-  } catch { /* Failure does not affect an already delivered answer. */ }
+  } catch (e) { await reportError(client, 'worker.context', e); /* Failure does not affect an already delivered answer. */ }
 }

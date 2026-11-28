@@ -5,6 +5,8 @@ import { requireApiQuota } from "@/lib/api-quota";
 import { readSmallJson, JsonRequestError } from "@/lib/request-json";
 import { parseSearchQuery } from "@/lib/web-search-protocol";
 import { searchWeb } from "@/lib/web-search";
+import { reportError } from "@/lib/error-report";
+import { after } from "next/server";
 
 export const maxDuration = 30;
 const json = (body: object, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -21,8 +23,10 @@ export async function POST(request: Request) {
     const quotaError = await requireApiQuota(access.supabase, "chat");
     if (quotaError) return quotaError;
     const result = await searchWeb(query, { apiKey: process.env.RUNYOUR_API_KEY }, request.signal);
+    if (!result.available) after(() => reportError(access.supabase, "web.search", { code: "unavailable" }));
     return json(result, result.available ? 200 : 503);
   } catch (error) {
+    if (!(error instanceof JsonRequestError)) after(() => reportError(access.supabase, "web.search", error));
     return json({ error: error instanceof JsonRequestError ? error.message : "검색하지 못했어요." }, error instanceof JsonRequestError ? error.status : 503);
   }
 }

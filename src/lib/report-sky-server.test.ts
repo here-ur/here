@@ -69,10 +69,11 @@ test("하늘은 Runyour Responses에 json_schema로 한 번만 묻고, 정해진
 
 test("하늘 경로는 같은 Runyour 설정과 chat 할당량만 쓰고 기억은 쓰지 않는다", () => {
   const route = readFileSync(new URL("../app/api/report-sky/route.ts", import.meta.url), "utf8");
-  const config = route.slice(route.indexOf("return reportSkyResponse"));
+  const config = route.slice(route.indexOf("await reportSkyResponse("));
   assert.deepEqual([...config.matchAll(/process\.env\.([A-Z_]+)/g)].map((m) => m[1]), ["RUNYOUR_API_KEY", "RUNYOUR_BASE_URL", "CHAT_MODEL"]);
   assert.match(route, /requireApiQuota\(access\.supabase, "chat"\)/);
-  assert.doesNotMatch(route, /"@\/lib\/memory"|createMemoryService|recall|remember|after\(/);
+  // 응답 뒤 작업은 에러 기록만 허용한다(기억 저장·회상 같은 백그라운드 작업은 하지 않는다).
+  assert.doesNotMatch(route.replaceAll("after(() => reportError(", ""), /"@\/lib\/memory"|createMemoryService|recall|remember|after\(/);
 });
 
 test("위기 표현이 있는 날은 AI에 보내지 않고, 모두 위기면 요청하지 않는다", async () => {

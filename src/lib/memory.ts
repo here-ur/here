@@ -37,7 +37,7 @@ export function memoryKey(messages: MemoryMessage[]): string {
 export async function readProvider(response: Response, signal: AbortSignal): Promise<unknown> {
   if (!response.ok || !response.body) {
     void response.body?.cancel();
-    throw new Error("memory_provider_failed");
+    throw Object.assign(new Error("memory_provider_failed"), { status: response.status }); // status는 에러 기록용(429 크레딧 소진 등)
   }
   const reader = response.body.getReader();
   const abort = () => { void reader.cancel().catch(() => {}); };

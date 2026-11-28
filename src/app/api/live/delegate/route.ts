@@ -5,6 +5,8 @@ import { requireApiQuota } from "@/lib/api-quota";
 import { contextConfig, contextStore, createConversationContext } from '@/lib/conversation-context';
 import { memoryEnabled } from '@/lib/memory';
 import { requireCipher } from '@/lib/conversation-cipher';
+import { reportError, isServerFailure, reportingFailures } from '@/lib/error-report';
+import { after } from 'next/server';
 
 export const maxDuration = 120;
 
@@ -18,10 +20,11 @@ export async function POST(request: Request) {
   let prepareContext;
   if (memoryEnabled(process.env)) {
     const guard = requireCipher(access.userId);
-    if (guard.response) return guard.response;
-    prepareContext = createConversationContext(contextStore(access.supabase, guard.cipher), contextConfig(process.env), 4500, true);
+    if (guard.response) { after(() => reportError(access.supabase, 'cipher.keys', guard.error)); return guard.response; }
+    prepareContext = reportingFailures(createConversationContext(contextStore(access.supabase, guard.cipher), contextConfig(process.env), 4500, true),
+      e => after(() => reportError(access.supabase, 'live.context', e)));
   }
-  return chatResponse(request, {
+  const response = await chatResponse(request, {
     onboardingAnswers: access.onboardingAnswers,
     hereName: access.hereName,
     prepareContext,
@@ -31,4 +34,6 @@ export async function POST(request: Request) {
     baseUrl: process.env.RUNYOUR_BASE_URL,
     model: process.env.CHAT_MODEL,
   });
+  if (isServerFailure(response.status)) after(() => reportError(access.supabase, 'live.delegate', { status: response.status }));
+  return response;
 }

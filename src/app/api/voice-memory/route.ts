@@ -8,6 +8,7 @@ import { requireApiQuota } from "@/lib/api-quota";
 import { contextConfig } from '@/lib/conversation-context';
 import { processContextMaintenance } from '@/lib/context-maintenance';
 import { requireCipher } from '@/lib/conversation-cipher';
+import { reportError, isServerFailure } from '@/lib/error-report';
 
 export const maxDuration = 120;
 
@@ -20,14 +21,16 @@ export async function POST(request: Request) {
   const quotaError = await requireApiQuota(access.supabase, "voice_memory");
   if (quotaError) return quotaError;
   const guard = requireCipher(access.userId);
-  if (guard.response) return guard.response;
+  if (guard.response) { after(() => reportError(access.supabase, 'cipher.keys', guard.error)); return guard.response; }
   const memory = createMemoryService(supabaseMemoryStore(access.supabase, guard.cipher), {
     openaiKey: process.env.OPENAI_API_KEY || "", summaryKey: process.env.RUNYOUR_API_KEY || "",
     summaryBaseUrl: process.env.RUNYOUR_BASE_URL, summaryModel: process.env.MEMORY_SUMMARY_MODEL,
   });
-  return voiceMemoryResponse(request, {
+  const response = await voiceMemoryResponse(request, {
     recall: memory.recall,
     schedule: (messages, sourceId) => after(async () => { await memory.remember(messages, sourceId); await processContextMaintenance(access.supabase, contextConfig(process.env)); }),
     checkConsent: () => requireMemoryConsent(access.supabase),
   });
+  if (isServerFailure(response.status)) after(() => reportError(access.supabase, 'voice.memory', { status: response.status }));
+  return response;
 }

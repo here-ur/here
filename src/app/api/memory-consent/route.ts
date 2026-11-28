@@ -2,6 +2,8 @@ import { requireMember } from "@/lib/member-auth";
 import { memoryEnabled } from "@/lib/memory";
 import { MEMORY_CONSENT_VERSION, validMemoryConsent } from "@/lib/memory-consent";
 import { JsonRequestError, readSmallJson } from "@/lib/request-json";
+import { reportError } from "@/lib/error-report";
+import { after } from "next/server";
 
 const json = (body: object, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
@@ -11,9 +13,9 @@ export async function GET(request: Request) {
   if (!memoryEnabled(process.env)) return json({ required: false });
   try {
     const { data, error } = await access.supabase.rpc("conversation_is_enabled").abortSignal(AbortSignal.timeout(5000));
-    if (error) throw new Error("consent_unavailable");
+    if (error) throw error;
     return json({ required: data !== true, version: MEMORY_CONSENT_VERSION });
-  } catch { return json({ error: "동의 상태를 확인하지 못했어요." }, 503); }
+  } catch (e) { after(() => reportError(access.supabase, "consent.check", e)); return json({ error: "동의 상태를 확인하지 못했어요." }, 503); }
 }
 
 export async function POST(request: Request) {
@@ -27,10 +29,11 @@ export async function POST(request: Request) {
     const { data, error } = await access.supabase.rpc("accept_memory_consent", {
       p_version: MEMORY_CONSENT_VERSION, p_privacy: true, p_sensitive: true,
     }).abortSignal(AbortSignal.timeout(5000));
-    if (error || data !== true) return json({ error: "동의를 저장하지 못했어요." }, 503);
+    if (error || data !== true) { after(() => reportError(access.supabase, "consent.save", error ?? { code: "rejected" })); return json({ error: "동의를 저장하지 못했어요." }, 503); }
     return json({ ok: true });
   } catch (error) {
-    return error instanceof JsonRequestError ? json({ error: error.message }, error.status)
-      : json({ error: "동의를 저장하지 못했어요." }, 503);
+    if (error instanceof JsonRequestError) return json({ error: error.message }, error.status);
+    after(() => reportError(access.supabase, "consent.save", error));
+    return json({ error: "동의를 저장하지 못했어요." }, 503);
   }
 }

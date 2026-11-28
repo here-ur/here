@@ -43,7 +43,11 @@ test('worker: summary and embedding saved under the capability, not a supplied a
 test('worker: provider failure marks the lease failed without logging private data',async()=>{
  const f=fake({user_id:USER,messages:[{role:'user',content:'PRIVATE TEXT'}],context:[]});const logs:unknown[]=[];
  const res=await handleConversationWorker(req(),env,{client:f.client,metric:x=>logs.push(x),fetch:async()=>Response.json({error:'PRIVATE PROVIDER'}, {status:401})});
- assert.equal(res.status,503);assert.equal(f.calls[1].args.p_summary,null);
+ assert.equal(res.status,503);
+ const finish=f.calls.find(c=>c.name==='finish_conversation_work')!;assert.equal(finish.args.p_summary,null);
+ // 실패는 코드만 기록하고 원문·제공자 응답은 넣지 않는다
+ const report=f.calls.find(c=>c.name==='report_app_error')!;assert.equal(report.args.p_source,'worker.conversation');
+ assert.doesNotMatch(JSON.stringify(report.args),/PRIVATE/);
  assert.doesNotMatch(JSON.stringify(logs)+JSON.stringify(await res.json()),/PRIVATE|aaaa/);
 });
 test('worker: deleted/withdrawn lease is skipped after generation',async()=>{

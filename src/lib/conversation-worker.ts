@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { decryptJobMessages, summarizeConversation } from './conversation-memory.ts';
 import { serverCipherKeys, userCipher } from './conversation-cipher.ts';
+import { reportError } from './error-report.ts';
 import { embed, memoryEnabled, DEFAULT_SUMMARY_MODEL, type MemoryConfig } from './memory.ts';
 import { memoryRetryFetch, operationMetric } from './ai-operations.ts';
 
@@ -27,7 +28,7 @@ export async function handleConversationWorker(request:Request,env:Env,deps:Work
  let claimed=false;
  try {
   const {data:job,error}=await client.rpc('claim_conversation_work',{p_token:token}).abortSignal(AbortSignal.timeout(5000));
-  if(error) return json({error:'unavailable'},503);
+  if(error) {await reportError(client,'worker.conversation',error,{claimed:false}); return json({error:'unavailable'},503);}
   // Replayed, expired or no-longer-eligible capabilities never cause provider calls.
   if(!job) return json({processed:false},200);
   claimed=true;
@@ -47,7 +48,8 @@ export async function handleConversationWorker(request:Request,env:Env,deps:Work
   if(saveError) throw Error('worker_save_failed');
   metric({operation:'memory_save',outcome:saved?'ok':'skipped',durationMs:Date.now()-started});
   return json({processed:saved===true});
- } catch {
+ } catch(e) {
+  await reportError(client,'worker.conversation',e,{claimed});
   if(claimed) {
    try {await client.rpc('finish_conversation_work',{p_token:token,p_summary:null,p_embedding:null,p_model:null}).abortSignal(AbortSignal.timeout(3000));} catch { /* An expired lease is retried by the next schedule. */ }
   }

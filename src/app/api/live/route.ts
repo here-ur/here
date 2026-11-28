@@ -7,6 +7,8 @@ import { liveSessionRequest } from "@/lib/live-session";
 import { memoryEnabled } from "@/lib/memory";
 import { liveStartContext } from '@/lib/live-start-context';
 import { requireCipher } from '@/lib/conversation-cipher';
+import { reportError } from '@/lib/error-report';
+import { after } from 'next/server';
 
 export async function POST(request: Request) {
   const timings: string[] = [];
@@ -25,10 +27,11 @@ export async function POST(request: Request) {
     const [quota, snapshot] = await Promise.all([
       requireApiQuota(access.supabase, "realtime"),
       memoryEnabled(process.env)
-        ? Promise.resolve(requireCipher(access.userId)).then(guard => { if (!guard.cipher) throw Error('cipher_unavailable'); return liveStartContext(access.supabase, request.signal, guard.cipher); }).then(value => ({ value, failed: false })).catch(() => ({ value: undefined, failed: true }))
-        : Promise.resolve({ value: undefined, failed: false }),
+        ? Promise.resolve(requireCipher(access.userId)).then(guard => { if (!guard.cipher) { after(() => reportError(access.supabase, 'cipher.keys', guard.error)); throw guard.error; } return liveStartContext(access.supabase, request.signal, guard.cipher); }).then(value => ({ value, failed: false, error: undefined as unknown })).catch((error: unknown) => ({ value: undefined, failed: true, error }))
+        : Promise.resolve({ value: undefined, failed: false, error: undefined as unknown }),
     ]);
     if (quota) return quota;
+    if (snapshot.failed) after(() => reportError(access.supabase, 'live.context', snapshot.error));
     if (snapshot.failed) return Response.json({ error: '대화 맥락을 불러오지 못했어요. 잠시 뒤 다시 연결해 주세요.', code: 'context_unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
     const startup = snapshot.value;
     timed('context_quota');
@@ -45,6 +48,7 @@ export async function POST(request: Request) {
       voice: body.session.audio.output.voice, memory: memoryEnabled(process.env) }, { headers: { "Cache-Control": "no-store", "Server-Timing": timings.join(', ') } });
   } catch (error) {
     if (error instanceof JsonRequestError) return Response.json({ error: error.message }, { status: error.status });
+    after(() => reportError(access.supabase, 'live.session', error));
     return failed(error);
   }
 }

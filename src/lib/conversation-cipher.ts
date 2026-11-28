@@ -53,7 +53,7 @@ export function userCipher(userId: string, keys: CipherKeys = serverCipherKeys()
 export type UserCipher = ReturnType<typeof userCipher>;
 
 /** API용. 키 설정이 잘못됐으면 내부 정보 없이 503을 돌려준다(평문으로 저장하지 않음). */
-export function requireCipher(userId: string): { cipher: UserCipher; response?: never } | { cipher?: never; response: Response } {
+export function requireCipher(userId: string): { cipher: UserCipher; response?: never; error?: never } | { cipher?: never; response: Response; error: unknown } {
   try { return { cipher: userCipher(userId) }; }
-  catch { return { response: Response.json({ error: "대화 보호 설정을 확인하지 못했어요. 잠시 뒤 다시 시도해 주세요." }, { status: 503, headers: { "Cache-Control": "no-store" } }) }; }
+  catch (error) { return { error, response: Response.json({ error: "대화 보호 설정을 확인하지 못했어요. 잠시 뒤 다시 시도해 주세요." }, { status: 503, headers: { "Cache-Control": "no-store" } }) }; }
 }

@@ -2,6 +2,7 @@ import { accountOnboardingAnswers, accountCompanionName } from "./account-profil
 import type { Answers } from "./onboarding.ts";
 import { requestSupabase } from "./supabase.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { reportError } from "./error-report.ts";
 
 type Allowed = { hereName?: string; onboardingAnswers: Answers; userId: string; supabase: SupabaseClient; response?: never };
 type Denied = { userId?: never; response: Response };
@@ -12,12 +13,14 @@ export async function requireMember(request: Request, clientForToken = requestSu
   const token = /^Bearer (\S+)$/i.exec(header)?.[1];
   if (!token || token.length > 8192) return deny("로그인이 필요해요.", 401);
 
+  let client: SupabaseClient | null | undefined;
   try {
     const supabase = clientForToken(token);
+    client = supabase;
     if (!supabase) return deny("로그인 설정이 아직 준비되지 않았어요.", 503);
 
     const { data: auth, error: authError } = await supabase.auth.getUser(token);
-    if (authError && (!authError.status || authError.status === 429 || authError.status >= 500)) return deny("로그인 상태를 확인하지 못했어요. 잠시 뒤 다시 시도해 주세요.", 503);
+    if (authError && (!authError.status || authError.status === 429 || authError.status >= 500)) { await reportError(supabase, "auth.member", authError); return deny("로그인 상태를 확인하지 못했어요. 잠시 뒤 다시 시도해 주세요.", 503); }
     if (authError || !auth.user) return deny("로그인이 만료됐어요. 다시 로그인해 주세요.", 401);
 
     const { data: member, error: memberError } = await supabase
@@ -26,8 +29,8 @@ export async function requireMember(request: Request, clientForToken = requestSu
       .eq("user_id", auth.user.id)
       .abortSignal(AbortSignal.any([request.signal, AbortSignal.timeout(5000)]))
       .maybeSingle();
-    if (memberError) return deny("계정 상태를 확인하지 못했어요.", 503);
+    if (memberError) { await reportError(supabase, "auth.member", memberError); return deny("계정 상태를 확인하지 못했어요.", 503); }
     if (!member || member.user_id !== auth.user.id) return deny("회원가입을 완료한 뒤 이용해 주세요.", 403);
     return { userId: auth.user.id, supabase, onboardingAnswers: accountOnboardingAnswers(auth.user.user_metadata), hereName: accountCompanionName(auth.user.user_metadata) };
-  } catch { return deny("계정 상태를 확인하지 못했어요. 잠시 뒤 다시 시도해 주세요.", 503); }
+  } catch (e) { await reportError(client, "auth.member", e); return deny("계정 상태를 확인하지 못했어요. 잠시 뒤 다시 시도해 주세요.", 503); }
 }
