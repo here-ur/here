@@ -6,7 +6,9 @@ import { browserSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { checkEntry, clearPasswordReset, isPasswordResetPending, markPasswordReset, resetStorage, shouldRecheckAuth, type Entry } from "@/lib/session-entry";
 import { consentDisplayStorage, hasConsentDisplayHint } from "@/lib/consent-display-cache";
 import { hasBasicsDisplayHint } from "@/lib/member-basics";
-import { emailAuthError, normalizeEmail, socialSignInUrl, type SocialProvider } from "@/lib/social-auth";
+import { cancelWithdrawal } from "@/lib/member-withdrawal";
+import WithdrawalPending from "./WithdrawalPending";
+import { emailAuthError, isWithdrawnAuthError, normalizeEmail, socialSignInUrl, WITHDRAWN_MESSAGE, type SocialProvider } from "@/lib/social-auth";
 import { Button } from "./ui/Button";
 import { TextField } from "./ui/TextField";
 import AuthScreen from "./AuthScreen";
@@ -24,7 +26,10 @@ type Step = "login" | "signup" | "signup-code" | "recovery" | "recovery-code" | 
 type Field = "email" | "password" | "confirmation" | "code";
 const RESEND_SECONDS = 60;
 
-export default function AuthGate({ children }: { children: (userId: string, signOut: () => Promise<void>) => React.ReactNode }) {
+/** signOut(farewell): 환영 화면으로 돌아가며 farewell 한 줄을 보여 준다(탈퇴를 마쳤을 때). */
+export type SignOut = (farewell?: string) => Promise<void>;
+
+export default function AuthGate({ children }: { children: (userId: string, signOut: SignOut) => React.ReactNode }) {
   const client = browserSupabase();
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(isSupabaseConfigured);
@@ -43,6 +48,11 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   const [error, setError] = useState("");
   const [errorField, setErrorField] = useState<Field | null>(null);
   const [notice, setNotice] = useState("");
+  // 환영 화면에 남기는 한 줄(탈퇴를 마쳤거나 탈퇴한 계정으로 들어오려 할 때). 로그인 확인이 다시 돌아도 지우지 않고, 시작 버튼을 누르면 지운다.
+  const [farewell, setFarewell] = useState("");
+  // 탈퇴 유예기간(7일) 안에 다시 로그인한 회원: 앱에 들이지 않고 탈퇴를 취소할지 묻는다.
+  const [pendingWithdrawal, setPendingWithdrawal] = useState<{ id: string; until: string } | null>(null);
+  const [cancelError, setCancelError] = useState("");
   const [resendAt, setResendAt] = useState(0);
   const [resendWait, setResendWait] = useState(0);
   const [direction, setDirection] = useState<"open" | "forward" | "back">("open");
@@ -52,7 +62,15 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const checkGeneration = useRef(0);
 
-  const enter = useCallback((result: Entry) => {
+  const enter = useCallback((entry: Entry) => {
+    if (entry.kind === "withdrawn") {
+      // 탈퇴한 계정의 남은 세션은 이 기기에서 지우고 환영 화면에 이유를 알린다.
+      setFarewell(WITHDRAWN_MESSAGE);
+      void client?.auth.signOut({ scope: "local" });
+    }
+    setPendingWithdrawal(entry.kind === "withdrawal-pending" ? { id: entry.id, until: entry.until } : null);
+    setCancelError("");
+    const result: Exclude<Entry, { kind: "withdrawn" }> = entry.kind === "withdrawn" ? { kind: "login" } : entry;
     const resetting = result.kind === "member" && isPasswordResetPending(resetStorage(), result.id);
     const memberId = result.kind === "member" && !resetting ? result.id : null;
     setLoading(false);
@@ -72,7 +90,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     } else if (result.kind === "login") {
       setShowWelcome(true); setStep("login"); setCode(""); setError("");
     }
-  }, []);
+  }, [client]);
 
   useEffect(() => {
     if (!client) return;
@@ -125,12 +143,28 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     return () => window.clearInterval(timer);
   }, [resendAt]);
 
-  const signOut = useCallback(async () => {
+  const signOut = useCallback<SignOut>(async (message) => {
+    // 버튼 onClick에 바로 넘겨도 이벤트를 문구로 보지 않는다.
+    if (typeof message === "string" && message) setFarewell(message);
     const result = await client?.auth.signOut({ scope: "local" });
     if (!result?.error) clearPasswordReset(resetStorage());
     // 성공하면 SIGNED_OUT 이벤트가 화면 넘김과 함께 환영 화면으로 바꾼다(여기서 또 바꾸면 넘김이 끊긴다). 실패하면 다시 확인 화면.
     if (!client || result?.error) enter({ kind: result?.error ? "retry" : "login" });
   }, [client, enter]);
+
+  /** 유예기간 안의 탈퇴 취소: 성공하면 다시 확인해서 그대로 앱에 들어간다. 그사이 기간이 끝났으면 탈퇴한 계정으로 돌려보낸다. */
+  async function undoWithdrawal() {
+    if (!client || busyRef.current) return;
+    setWorking(true); setCancelError("");
+    try {
+      const result = await cancelWithdrawal(client, AbortSignal.timeout(10000));
+      if (result === "expired") { await signOut(WITHDRAWN_MESSAGE); return; }
+      if (result === "not_member") { setCancelError("회원 정보를 찾지 못했어요. 로그아웃한 뒤 다시 시도해 주세요."); return; }
+      checkGeneration.current++;
+      setAttempt(n => n + 1);
+    } catch { setCancelError("탈퇴를 취소하지 못했어요. 연결을 확인하고 다시 시도해 주세요."); }
+    finally { setWorking(false); }
+  }
 
   function fail(message: string, field: Field | null = null) {
     setErrorField(field); setError(message); setNotice("");
@@ -140,7 +174,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
   function openForm(next: Step, back = false) {
     if (busyRef.current) return;
     setDirection(showWelcome ? "open" : back ? "back" : "forward");
-    setStep(next); setShowWelcome(false);
+    setStep(next); setShowWelcome(false); setFarewell("");
     setPassword(""); setCode(""); setError(""); setNotice("");
   }
   function closeSheet() {
@@ -166,7 +200,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
 
   async function startSocial(provider: SocialProvider) {
     if (!client || busyRef.current) return;
-    setProvider(provider); setWorking(true); setError("");
+    setProvider(provider); setWorking(true); setError(""); setFarewell("");
     try {
       const url = await socialSignInUrl(client, provider, location.origin, {
         url: process.env.NEXT_PUBLIC_SUPABASE_URL!, key: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -194,6 +228,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
           setVerifiedEmail(target); setPassword(""); setStep("signup-code"); setDirection("forward");
           setNotice("아직 이메일 인증이 끝나지 않았어요. 가입 메일을 확인하거나 인증번호를 다시 받아 주세요."); return;
         }
+        if (isWithdrawnAuthError(error)) { fail(WITHDRAWN_MESSAGE); return; }
         if (error || !data.user) { fail(error?.code === "invalid_credentials" ? "이메일과 비밀번호를 확인해 주세요." : "로그인하지 못했어요. 잠시 후 다시 시도해 주세요.", "password"); return; }
         clearPasswordReset(resetStorage());
         await finishInSheet(await checkEntry(client, data.user));
@@ -242,9 +277,11 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     <div className="here-auth-welcome">{brand}<div className="here-auth-welcomeBottom here-auth-retry">
       <p role="alert" className="here-auth-unavailable">연결하지 못했어요</p>
       <Button tone="ink" fullWidth onClick={() => { setLoading(true); setAttempt(n => n + 1); }}>다시 확인</Button>
-      <Button variant="tonal" tone="ink" fullWidth onClick={signOut}>로그아웃</Button>
+      <Button variant="tonal" tone="ink" fullWidth onClick={() => { void signOut(); }}>로그아웃</Button>
     </div></div>
   </AuthScreen>;
+  if (pendingWithdrawal) return <WithdrawalPending until={pendingWithdrawal.until} busy={busy} error={cancelError}
+    onCancel={() => { void undoWithdrawal(); }} onSignOut={() => { void signOut(); }} />;
   // 로그인 뒤 시트 단계: 기억 동의 → 성별·생년월일(새 회원만) → 캐릭터 만나기·홈. 화면 넘김은 마지막 시트 단계가 맡는다.
   if (userId) return <MemoryConsentGate key={userId} userId={userId} signOut={signOut} continueSheet={continueSheet} handoff>
     <MemberBasicsGate userId={userId} signOut={signOut}>{children(userId, signOut)}</MemberBasicsGate>
@@ -300,6 +337,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     <div className="here-auth-welcome">{brand}
       <div className="here-auth-welcomeBottom">
         {showWelcome && error && <p role="alert" className="here-auth-unavailable auth-provider-error">{error}</p>}
+        {showWelcome && !error && farewell && <p role="status" className="here-auth-unavailable auth-provider-error">{farewell}</p>}
         {client ? <div className="here-auth-actions">
           <Button className="auth-provider-button auth-provider-kakao" tone="ink" fullWidth loading={busy && provider === "kakao"} disabled={busy} onClick={() => { void startSocial("kakao"); }}><AuthProviderIcon provider="kakao" />카카오로 시작하기</Button>
           <Button className="auth-provider-button auth-provider-google" tone="ink" fullWidth loading={busy && provider === "google"} disabled={busy} onClick={() => { void startSocial("google"); }}><AuthProviderIcon provider="google" />구글로 시작하기</Button>

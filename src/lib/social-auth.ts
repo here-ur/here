@@ -9,7 +9,14 @@ export function normalizeEmail(value: string): string | null {
 }
 
 type AuthFailure = { code?: string; status?: number } | null;
+
+/** 탈퇴하면 Auth가 계정을 막는다(user_banned). 파기 전 1년 동안은 같은 계정으로 다시 들어오거나 가입할 수 없다. */
+export const WITHDRAWN_MESSAGE = "탈퇴한 계정이에요. 탈퇴하고 1년 동안은 같은 계정으로 다시 로그인하거나 가입할 수 없어요.";
+export function isWithdrawnAuthError(error: AuthFailure | undefined): boolean {
+  return error?.code === "user_banned";
+}
 export function emailAuthError(error: AuthFailure, phase: "send" | "verify"): string {
+  if (isWithdrawnAuthError(error)) return WITHDRAWN_MESSAGE;
   if (error?.status === 429 || error?.code?.startsWith("over_")) return "요청이 많아요. 잠시 후 다시 시도해 주세요.";
   if (error?.code === "email_address_not_authorized" || error?.code === "email_provider_disabled") {
     return "이메일 인증을 준비 중이에요. 잠시 후 다시 시도해 주세요.";

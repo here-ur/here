@@ -29,3 +29,9 @@ test("만료된 code·연결 실패·세션 없는 응답은 성공으로 처리
     () => new Promise(() => {}),
   ]) assert.equal(await createOAuthCompletion(client(exchange), 5)("https://here.example/auth/callback?code=test"), "failed");
 });
+test("탈퇴해 막힌 계정은 취소나 일반 실패가 아니라 탈퇴로 알린다", async () => {
+  const never = createOAuthCompletion(client(() => { throw new Error("must not call"); }));
+  assert.equal(await never("https://here.example/auth/callback?error=access_denied&error_code=user_banned"), "withdrawn");
+  const banned = createOAuthCompletion(client(async () => ({ data: { session: null }, error: { code: "user_banned" } })));
+  assert.equal(await banned("https://here.example/auth/callback?code=test"), "withdrawn");
+});

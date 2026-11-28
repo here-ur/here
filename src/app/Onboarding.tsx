@@ -46,16 +46,18 @@ const START_VOICE: VoiceId = "marin";
  * saving·saveError·onRetry: 마지막 '대화 시작하기' 뒤 프로필을 저장하는 동안 그 화면을 그대로 두고, 버튼에 진행·실패를 보여 준다.
  * onDone은 '대화 시작하기'를 눌렀을 때 한 번만 부르고, 실패한 뒤 다시 저장은 onRetry로 한다.
  */
-export default function Onboarding({ onDone, initialStep, initialAnswers = {}, saving = false, saveError, onRetry, basics, onSignOut, afterConsent = false }: {
+export default function Onboarding({ onDone, initialStep, initialAnswers = {}, saving = false, saveError, onRetry, basics, askBasics: forceBasics, consent, onSignOut, afterConsent = false }: {
   onDone: (p: Profile) => void; initialStep?: OnboardingStep; initialAnswers?: Answers;
   saving?: boolean; saveError?: string; onRetry?: () => void;
   basics?: MemberBasics; onSignOut?: () => void;
+  askBasics?: boolean; // 값이 이미 있어도 생일·성별 장면을 연다(개발용 '처음부터 다시 만들기'의 전체 흐름)
+  consent?: () => Promise<string | null>; // 있으면 약속 장면에서 기억 동의 칸을 다시 보여 주고 '다음'에서 저장한다(같은 흐름)
   afterConsent?: boolean; // 방금 약속 장면에서 동의했으면 내 이름부터 잇는다
 }) {
   const preview = initialStep !== undefined;
   // 새로 고침·탭이 내려간 뒤에도 하던 장면부터 이어 간다(이 탭에만 잠깐 둔다).
   const [draft] = useState(() => (preview ? null : loadOnboardingDraft()));
-  const [askBasics] = useState(() => basics?.needed === true); // 시작할 때 정한다(저장한 뒤 뒤로 돌아와 고칠 수 있게 장면은 그대로 둔다)
+  const [askBasics] = useState(() => forceBasics === true || basics?.needed === true); // 시작할 때 정한다(저장한 뒤 뒤로 돌아와 고칠 수 있게 장면은 그대로 둔다)
   const [start] = useState(() => ({
     ...sceneOfStep(initialStep ?? resumeStep(afterConsent && (draft?.step ?? "promise") === "promise" ? "name" : draft?.step ?? "promise", askBasics), preview),
     initial: { nickname: draft?.nickname ?? "", companion: draft?.companion ?? "", answers: draft?.answers ?? initialAnswers },
@@ -73,8 +75,9 @@ export default function Onboarding({ onDone, initialStep, initialAnswers = {}, s
     saveOnboardingDraft({ step: stepOfScene(snapshot.scene), nickname: snapshot.nickname, answers: pickOnboardingAnswers(snapshot.answers), companion: snapshot.companion });
   }
 
-  // 성별의 '다음': 생일·성별을 저장한 뒤에 넘어간다. 실패하면 그 글을 돌려주고 이 장면에 머문다.
+  // 약속의 '다음'(동의를 다시 받을 때)·성별의 '다음': 저장한 뒤에 넘어간다. 실패하면 그 글을 돌려주고 이 장면에 머문다.
   function beforeNext(snapshot: StageSnapshot) {
+    if (snapshot.scene === "promise" && consent) return consent();
     if (snapshot.scene !== "gender" || !basics) return null;
     const values = basicsFromAnswers(snapshot.answers);
     if (!values) return Promise.resolve(basicsSaveError("invalid"));
@@ -100,5 +103,5 @@ export default function Onboarding({ onDone, initialStep, initialAnswers = {}, s
   }
 
   return <OnboardingStage scene={start.scene} state={start.state} initial={start.initial} saving={saving} saveError={saveError} onChange={remember} onFinish={finish}
-    scenes={STAGE_SCENES.filter((id) => askBasics || !(BASICS_SCENES as readonly string[]).includes(id))} beforeNext={beforeNext} onSignOut={onSignOut} />;
+    scenes={STAGE_SCENES.filter((id) => askBasics || !(BASICS_SCENES as readonly string[]).includes(id))} beforeNext={beforeNext} onSignOut={onSignOut} consent={Boolean(consent)} />;
 }
