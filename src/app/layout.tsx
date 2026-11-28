@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bagel_Fat_One } from "next/font/google";
+import Script from "next/script";
 import "./ui/framework7.css";
 import "framework7-icons/css/framework7-icons.css";
 import "./globals.css";
@@ -35,7 +36,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         />
       </head>
-      <body className="min-h-full flex flex-col"><FrameworkShell>{children}<SoundEffects /></FrameworkShell></body>
+      <body className="min-h-full flex flex-col"><FrameworkShell>{children}<SoundEffects /></FrameworkShell>
+        {/* UT 전용 브랜치: Useberry 스니펫. 프록시 방식은 Supabase 요청까지 중계해 회원 확인이 실패해서, 원래 주소 그대로 띄우는 스니펫 방식을 쓴다. 운영 빌드에는 넣지 않는다. */}
+        {process.env.HERE_DEPLOY_ENV !== "production" && <Script src="https://api.useberry.com/integrations/liveUrl/scripts/useberryScript.js" strategy="afterInteractive" />}
+      </body>
     </html>
   );
 }
