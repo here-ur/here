@@ -1,5 +1,5 @@
 import { ChatRequestError } from "./chat.ts";
-import { HISTORY_DAYS, isUuid, mergeHistory, type HistoryMessage } from "./conversation-history.ts";
+import { HISTORY_DAYS, isHistoryDisabled, isUuid, mergeHistory, type HistoryMessage } from "./conversation-history.ts";
 import type { Msg } from "./log.ts";
 
 /** Restore account history before answering, even while the UI history is loading.
@@ -10,7 +10,11 @@ export async function loadRecentChatHistory(accessToken: string, signal: AbortSi
       headers: { Authorization: `Bearer ${accessToken}` }, credentials: "same-origin", cache: "no-store",
       signal: AbortSignal.any([signal, AbortSignal.timeout(12000)]),
     });
-    if (!response.ok) throw new Error("history_unavailable");
+    if (!response.ok) {
+      // Account history is optional when explicitly disabled; keep the local conversation.
+      if (isHistoryDisabled(response.status, await response.json().catch(() => null))) return [];
+      throw new Error("history_unavailable");
+    }
     const body = await response.json();
     if (!Array.isArray(body.messages) || body.messages.length > 30) throw new Error("invalid_history");
     const now = Date.now();

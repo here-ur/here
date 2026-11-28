@@ -26,8 +26,8 @@
 | --- | --- |
 | 답변 | Runyour Responses, `CHAT_MODEL`, 추론 medium |
 | 요약 | Runyour Responses, `MEMORY_SUMMARY_MODEL` → `openai/gpt-5.6-luna`, 추론 low, `store:false`. 채팅 모델과 독립 |
-| 임베딩 | OpenAI `text-embedding-3-large`, float, 1536차원 |
-| 키 | 요약 `RUNYOUR_API_KEY`, 임베딩 기존 `OPENAI_API_KEY`, 서버에서만 사용 |
+| 임베딩 | Runyour AI `/embeddings`로 OpenAI `text-embedding-3-large` 호출, float, 1536차원. 요청 ID는 `openai/text-embedding-3-large`, DB 모델명은 기존 `text-embedding-3-large` 유지 |
+| 키 | 요약·임베딩 모두 `RUNYOUR_API_KEY`·`RUNYOUR_BASE_URL`, 서버에서만 사용. `OPENAI_API_KEY`는 음성용 |
 | 검색 | 본인 ready 행만 cosine 유사도 > 0.30, 최대 5개. 임계값은 파일럿 값이며 품질 튜닝 전 |
 
 단순히 데이터가 쌓인다고 모델이 학습되지는 않는다. 공용 모델 학습 데이터셋·학습·배포는 구현하지 않았다.
@@ -147,7 +147,7 @@
 | 리포트 날짜별 숫자 | 브라우저 `here.report.v1`(계정별) | 말한 횟수·시간대·하늘·자주 한 단어 상위 20개. 최대 1년, 서버 저장 없음 |
 | 음성·전사 | 브라우저 ↔ OpenAI 실시간 API, 확정 전사만 Here 서버 임시 처리 | 음성 대화·개인 기억 요약. Here 음성 파일 저장 없음 |
 | 개인 기억 요약 | Supabase conversation_memories | 동의 사용자 본인의 이후 대화에만 사용 |
-| 1,536차원 벡터 | OpenAI 임베딩 API → 같은 Supabase 행 | 본인 기억 의미 검색. 익명화나 모델 학습을 의미하지 않음 |
+| 1,536차원 벡터 | Runyour AI 경유 OpenAI 임베딩 → 같은 Supabase 행 | 본인 기억 의미 검색. 익명화나 모델 학습을 의미하지 않음 |
 | 동의·호출량 메타데이터 | Supabase 이벤트·카운터 테이블 | 동의 증빙·호출 제한. 학습 대상 제외 |
 | 공용 학습 데이터·모델 | 현재 없음 | 개인 기억 동의를 학습 동의로 대체하지 않음 |
 
