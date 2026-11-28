@@ -24,6 +24,14 @@ test("막대와 부족 상태는 표시된 글 대화 잔여량 기준이며 음
   assert.deepEqual(quotaSummary(status(230, 60)), { chatLeft: 0, voiceLeft: 0, ratio: 0, state: "out" });
 });
 
+test('40회 상품 한도는 생성 중 예약도 반영하고 잘못된 예약 값은 숨긴다', () => {
+  const raw = { chat: { limit: 40, used: 38, reserved: 1 }, realtime: { limit: 60, used: 0 }, reset_at: 1_800_000_000 };
+  const parsed = parseQuotaStatus(raw);
+  assert.ok(parsed);
+  assert.equal(quotaSummary(parsed).chatLeft, 1);
+  assert.equal(parseQuotaStatus({ ...raw, chat: { ...raw.chat, reserved: -1 } }), null);
+});
+
 test("PostgreSQL: 본인 하루 사용량만 읽고, 읽어도 한도를 쓰지 않으며, 한도 값은 소비와 같다", async () => {
   const db = new PGlite();
   const a = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", b = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";

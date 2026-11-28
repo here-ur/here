@@ -6,8 +6,12 @@ export async function GET(request: Request) {
   const access = await requireMember(request);
   if (access.response) return access.response;
   try {
-    const { data, error } = await access.supabase.rpc("api_quota_status").abortSignal(AbortSignal.timeout(3000));
-    if (error || !parseQuotaStatus(data)) return Response.json({ error: "남은 대화량을 확인하지 못했어요." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    const [legacy, text] = await Promise.all([
+      access.supabase.rpc("api_quota_status").abortSignal(AbortSignal.timeout(3000)),
+      access.supabase.rpc("text_usage_status").abortSignal(AbortSignal.timeout(3000)),
+    ]);
+    const data = text.data && legacy.data ? { ...legacy.data, chat: text.data, reset_at: text.data.reset_at } : null;
+    if (legacy.error || text.error || !parseQuotaStatus(data)) return Response.json({ error: "남은 대화량을 확인하지 못했어요." }, { status: 503, headers: { "Cache-Control": "no-store" } });
     return Response.json(data, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return Response.json({ error: "남은 대화량을 확인하지 못했어요." }, { status: 503, headers: { "Cache-Control": "no-store" } });

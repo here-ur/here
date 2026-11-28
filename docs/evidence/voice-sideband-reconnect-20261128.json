@@ -1,0 +1,79 @@
+{
+  "scenario": "sideband handoff and server-owned close; synthetic silence",
+  "events": [
+    {
+      "type": "session_created",
+      "at": "2026-11-28T08:27:55.834Z"
+    },
+    {
+      "type": "observer_attached",
+      "at": "2026-11-28T08:27:56.335Z",
+      "observer": 1
+    },
+    {
+      "type": "server_observed_start",
+      "at": "2026-11-28T08:27:56.336Z"
+    },
+    {
+      "type": "observer_released",
+      "at": "2026-11-28T08:28:03.340Z",
+      "observer": 1
+    },
+    {
+      "type": "observer_socket_closed",
+      "at": "2026-11-28T08:28:03.509Z",
+      "observer": 1
+    },
+    {
+      "type": "observer_attached",
+      "at": "2026-11-28T08:28:04.851Z",
+      "observer": 2
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T08:28:10.824Z",
+      "observer": 2,
+      "seconds": 15
+    },
+    {
+      "type": "observer_released",
+      "at": "2026-11-28T08:28:11.338Z",
+      "observer": 2
+    },
+    {
+      "type": "observer_socket_closed",
+      "at": "2026-11-28T08:28:11.490Z",
+      "observer": 2
+    },
+    {
+      "type": "observer_attached",
+      "at": "2026-11-28T08:28:12.814Z",
+      "observer": 3
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T08:28:13.219Z",
+      "observer": 3,
+      "seconds": 15
+    },
+    {
+      "type": "server_close_sent",
+      "at": "2026-11-28T08:28:21.343Z",
+      "elapsedMs": 25007
+    },
+    {
+      "type": "session_closed",
+      "at": "2026-11-28T08:28:22.519Z",
+      "observer": 3,
+      "reason": "close_requested",
+      "usageSeconds": 23,
+      "elapsedMs": 26183
+    },
+    {
+      "type": "observer_socket_closed",
+      "at": "2026-11-28T08:28:22.665Z",
+      "observer": 3
+    }
+  ],
+  "result": "server_close_confirmed"
+}

@@ -11,7 +11,7 @@ import HomeHint from "../../HomeHint";
 import { DEFAULT_COMPANION, type Profile } from "@/lib/onboarding";
 
 // 메뉴 아래 "오늘 남은 대화" 막대를 보려는 예시 숫자. 실제 앱은 /api/quota에서 받아 온다.
-const SAMPLE_QUOTA = { chat: { limit: 200, used: 46 }, realtime: { limit: 60, used: 12 }, resetAt: Math.floor(Date.now() / 86400000 + 1) * 86400 };
+const SAMPLE_QUOTA = { chat: { limit: 40, used: 8, reserved: 1 }, realtime: { limit: 60, used: 12 }, resetAt: Math.floor((Date.now() + 9 * 3600000) / 86400000 + 1) * 86400 - 9 * 3600 };
 
 export default function Preview() {
   const [menu, setMenu] = useState(false);
