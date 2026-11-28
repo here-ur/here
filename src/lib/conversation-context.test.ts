@@ -21,7 +21,7 @@ function provider() {
 test('백엔드가 매 턴 톤·후속 질문을 만들고 최신 메시지와 각각 검색해 중복을 합친다', async () => {
   const { config, queries } = provider();
   let checks = 0, searches = 0;
-  const prepare = createConversationContext({ enabled: async () => { checks++; return true; }, summary: async () => '이전 대화 요약', search: async () => [hit('shared'), hit(String(++searches))] }, config);
+  const prepare = createConversationContext({ revision: async () => { checks++; return 0; }, summary: async () => '이전 대화 요약', search: async () => [hit('shared'), hit(String(++searches))] }, config);
   const result = await prepare(messages, new AbortController().signal);
   assert.equal(result.tone_guidance, '편안해진 흐름에 맞춘 톤');
   assert.equal(result.chat_summary, '이전 대화 요약');
@@ -33,10 +33,34 @@ test('미동의는 외부 호출을 막고 처리 중 철회하면 모든 결과
   for (const revokeAfterStart of [false, true]) {
     const { config, queries } = provider();
     let checks = 0;
-    const prepare = createConversationContext({ enabled: async () => revokeAfterStart && ++checks === 1, summary: async () => '비공개', search: async () => [hit('비공개')] }, config);
+    const prepare = createConversationContext({ revision: async () => (revokeAfterStart && ++checks === 1 ? 0 : null), summary: async () => '비공개', search: async () => [hit('비공개')] }, config);
     assert.deepEqual(await prepare(messages, new AbortController().signal), emptyContext());
     if (!revokeAfterStart) assert.equal(queries.length, 0);
   }
+});
+test('처리 중 이전 대화의 요약 정리가 끝나도(revision 증가) 필수 맥락 대화를 막지 않고, 지워졌을 수 있는 기억은 버리고 요약만 새로 읽는다', async () => {
+  const { config } = provider();
+  let revision = 7, reads = 0;
+  const prepare = createConversationContext({
+    revision: async () => revision,
+    summary: async () => (++reads === 1 ? '예전 요약' : '새 요약'),
+    // 검색이 끝날 즈음 다른 요청의 정리 작업이 revision을 올린다.
+    search: async () => { revision = 8; return [hit('지워졌을 수 있는 기억')]; },
+  }, config, 1000, true);
+  const result = await prepare(messages, new AbortController().signal);
+  assert.equal(result.chat_summary, '새 요약');
+  assert.deepEqual(result.retrieved_memories, []);
+  assert.equal(result.tone_guidance, '편안해진 흐름에 맞춘 톤');
+});
+test('요약을 다시 읽는 사이에도 revision이 바뀌면 요약 없이 답한다', async () => {
+  const { config } = provider();
+  let revision = 1;
+  const result = await createConversationContext({
+    revision: async () => revision,
+    summary: async () => { revision++; return '바뀌는 중인 요약'; },
+    search: async () => [],
+  }, config, 1000, true)(messages, new AbortController().signal);
+  assert.equal(result.chat_summary, '');
 });
 test('분석·검색이 타임아웃이면 빈 결과로 대화를 계속하고 요약 성공분은 유지한다', async () => {
   const config = { summaryKey: 'fake', fetch: (async (_url, init) => new Promise<Response>((_resolve, reject) => {
@@ -45,7 +69,7 @@ test('분석·검색이 타임아웃이면 빈 결과로 대화를 계속하고 
   })) as typeof fetch };
   const keepAlive = setTimeout(() => {}, 1000);
   try {
-    const result = await createConversationContext({ enabled: async () => true, summary: async () => '요약', search: async () => [] }, config, 10)(messages, new AbortController().signal);
+    const result = await createConversationContext({ revision: async () => 0, summary: async () => '요약', search: async () => [] }, config, 10)(messages, new AbortController().signal);
     assert.deepEqual(result, { ...emptyContext(), chat_summary: '요약' });
   } finally { clearTimeout(keepAlive); }
 });
@@ -84,11 +108,11 @@ test('Live 컨텍스트 요청은 사용자·답변 메시지만 받으며 양�
 test('필수 맥락 모드에서는 DB/검색 실패와 철회를 빈 기억으로 취급하지 않는다', async () => {
   const { config } = provider();
   for (const store of [
-    { enabled: async () => false, summary: async () => '', search: async () => [] },
-    { enabled: async () => true, summary: async () => { throw Error('db'); }, search: async () => [] },
-    { enabled: async () => true, summary: async () => '', search: async () => { throw Error('search'); } },
+    { revision: async () => null, summary: async () => '', search: async () => [] },
+    { revision: async () => 0, summary: async () => { throw Error('db'); }, search: async () => [] },
+    { revision: async () => 0, summary: async () => '', search: async () => { throw Error('search'); } },
   ]) await assert.rejects(createConversationContext(store, config, 1000, true)(messages, new AbortController().signal), /context_unavailable/);
-  const empty = await createConversationContext({ enabled: async () => true, summary: async () => '', search: async () => [] }, config, 1000, true)(messages, new AbortController().signal);
+  const empty = await createConversationContext({ revision: async () => 0, summary: async () => '', search: async () => [] }, config, 1000, true)(messages, new AbortController().signal);
   assert.deepEqual(empty.retrieved_memories, []);
 });
 test('맥락 조회 실패 시 글·음성 위임은 답변 모델을 호출하지 않는다', async () => {
