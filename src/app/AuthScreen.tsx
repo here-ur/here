@@ -46,6 +46,14 @@ export default function AuthScreen({ children, welcome = false, loading = false,
   onSignOut?: () => void;
 }) {
   const reduced = useSyncExternalStore(subscribeReduce, () => matchMedia(REDUCE).matches, () => false);
+  const canEscape = loading && Boolean(onRetry || onSignOut);
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!canEscape) return;
+    const timer = window.setTimeout(() => setSlow(true), LOADING_SLOW_AFTER_MS);
+    return () => window.clearTimeout(timer);
+  }, [canEscape]);
+
   return <main className="app-frame here-auth-screen" data-welcome={welcome || undefined}
     aria-busy={loading || undefined} aria-label={loading ? "로그인 상태 확인 중" : undefined}>
     <div className="here-auth-artwork" aria-hidden="true">
@@ -57,19 +65,12 @@ export default function AuthScreen({ children, welcome = false, loading = false,
       <div className="here-auth-topShade" />
       <div className="here-auth-bottomShade" />
     </div>
-    {loading && <AuthLoading onRetry={onRetry} onSignOut={onSignOut} />}
+    {loading && <AuthLoading slow={slow} onRetry={onRetry} onSignOut={onSignOut} />}
     {children}
   </main>;
 }
 
-function AuthLoading({ onRetry, onSignOut }: { onRetry?: () => void; onSignOut?: () => void }) {
-  const canEscape = Boolean(onRetry || onSignOut);
-  const [slow, setSlow] = useState(false);
-  useEffect(() => {
-    if (!canEscape) return;
-    const timer = window.setTimeout(() => setSlow(true), LOADING_SLOW_AFTER_MS);
-    return () => window.clearTimeout(timer);
-  }, [canEscape]);
+function AuthLoading({ slow, onRetry, onSignOut }: { slow: boolean; onRetry?: () => void; onSignOut?: () => void }) {
   return <div className="here-auth-welcome here-auth-loading">
     <div className="here-auth-welcomeBottom here-auth-retry">
       {slow ? <>

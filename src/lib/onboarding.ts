@@ -53,7 +53,7 @@ export const QUESTIONS = [
   {
     id: "concern",
     text: "요즘 마음이 가장 많이 가는 건 뭐예요?",
-    options: ["일·학업", "사람·관계", "나 자신", "몸·생활", "그냥 이야기하고 싶어요"],
+    options: ["일·학업", "사람·관계", "나 자신", "건강·라이프스타일", "그냥 이야기하고 싶어요"],
   },
   {
     id: "want",
@@ -99,7 +99,7 @@ export const REPLIES: Record<QuestionId, Record<string, string>> = {
     "일·학업": "일이랑 공부. 흠, 계속 말해 봐.",
     "사람·관계": "사람 사이 일이구나. 그거 복잡하지.",
     "나 자신": "나에 대한 거. 흠, 궁금하네.",
-    "몸·생활": "몸이랑 생활 쪽이구나. 잠이라면 나도 좀 알지.",
+    "건강·라이프스타일": "몸이랑 생활 쪽이구나. 잠이라면 나도 좀 알지.",
     "그냥 이야기하고 싶어요": "그냥 이야기? 그것도 괜찮지.",
   },
   want: {
@@ -119,10 +119,8 @@ export function replyLine(id: QuestionId, option: string) {
   return REPLIES[id][option] ?? "";
 }
 
-// 장면 사이의 고양이 한마디(이름을 알려 줬을 때·약속을 읽었을 때·요약이 맞다/다르다고 했을 때).
+// 장면 사이의 고양이 한마디(이름을 알려 줬을 때·약속을 읽었을 때).
 export const PROMISE_REPLY = "다 읽었어? 그럼 시작해 봐.";
-export const SUMMARY_YES_REPLY = "좋아, 알겠어.";
-export const SUMMARY_FIX_REPLY = "그럼 다시 말해 줘.";
 // 무대는 [이름] / 나머지로 줄을 나눈다(phone.js의 nameLine, 줄마다 낱말 1·3개).
 export function nameReply(nickname: string) {
   return `${nickname}. 흠, 알았어.`;
@@ -130,12 +128,12 @@ export function nameReply(nickname: string) {
 
 // 이름 짓기 장면의 고양이 말. 이름이 없을 때는 [2, 3], 정한 뒤에는 [이름] / [한 낱말] / 나머지로 줄을 나눈다(phone.js).
 export function namingLine(name: string) {
-  return name ? `${name}? 흠. 나쁘지 않네.` : "내 이름? 없어. 네가 지어 봐.";
+  return name ? `${name}? 흠. 나쁘지 않네.` : "내 이름? 없어. 네가 지어줘";
 }
 
 // 캐릭터 만나기의 장면 순서. 상담 접수처럼 안내(AI·기록·109)를 맨 앞(promise)에 두고 시작한다.
-// 질문 4개 → 데려가기(많이 힘들면 109) → 들은 것 정리·확인 → 이름 짓기에서 끝난다.
-export const ONBOARDING_STEPS = ["promise", "name", "birthday", "gender", "q1", "q2", "q3", "q4", "meet", "summary", "naming"] as const;
+// 질문 4개 → 데려가기 → 이름 짓기에서 끝난다.
+export const ONBOARDING_STEPS = ["promise", "name", "birthday", "gender", "q1", "q2", "q3", "q4", "meet", "naming"] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
 // 캐릭터 만나기(1번 톤 무대)의 첫 화면. 자는 고양이에게 다가가면 고양이가 인사하며 뭘 하러 왔는지 묻고, 버튼이 내 대답이 된다.
@@ -163,7 +161,7 @@ export const STAGE_NOTICE = {
   reply: PROMISE_REPLY,
 } as const;
 
-// 무대의 장면(차례대로). 만남(open)에서 시작하고, 들은 것 정리는 데려가기(meet) 장면 안에 있다. 생일·성별은 물어야 하는 회원에게만 연다.
+// 무대의 장면(차례대로). 만남(open)에서 시작한다. 생일·성별은 물어야 하는 회원에게만 연다.
 export const STAGE_SCENES = ["open", "promise", "name", "birthday", "gender", "q1", "q2", "q3", "q4", "meet", "naming"] as const;
 export type StageScene = (typeof STAGE_SCENES)[number];
 export const BASICS_SCENES = ["birthday", "gender"] as const;
@@ -177,10 +175,9 @@ export function resumeStep(step: OnboardingStep, askBasics: boolean): Onboarding
 export function stepOfScene(scene: string): OnboardingStep {
   return scene === "open" ? "promise" : (ONBOARDING_STEPS as readonly string[]).includes(scene) ? (scene as OnboardingStep) : "promise";
 }
-// 하던 자리 → 무대에서 열 장면. 처음(promise)이면 만남부터, 들은 것 정리(summary)는 데려가기의 끝 상태로 연다.
+// 하던 자리 → 무대에서 열 장면. 처음(promise)이면 만남부터 연다.
 export function sceneOfStep(step: OnboardingStep, preview = false): { scene: StageScene; state?: string } {
   if (step === "promise") return { scene: preview ? "promise" : "open" };
-  if (step === "summary") return { scene: "meet", state: "heard" };
   return { scene: step };
 }
 // 질문 장면과 질문의 짝
@@ -188,7 +185,7 @@ export const QUESTION_STEPS = { q1: "lately", q2: "concern", q3: "want", q4: "su
 
 // 계정 프로필에는 화면 문구 대신 짧은 값으로 남긴다(문구를 고쳐도 저장 값은 그대로).
 // 네 질문의 원래 선택은 onboardingAnswers에 별도로 보관한다. 아래 ID는 기존 화면과의 호환용이다.
-export const CONCERN_IDS = { "일·학업": "work", "사람·관계": "relationship", "나 자신": "self", "몸·생활": "life", "그냥 이야기하고 싶어요": "just_talk" } as const;
+export const CONCERN_IDS = { "일·학업": "work", "사람·관계": "relationship", "나 자신": "self", "건강·라이프스타일": "life", "그냥 이야기하고 싶어요": "just_talk" } as const;
 export const SUPPORT_IDS = { "있어요": "has", "가끔 있어요": "sometimes", "지금은 없어요": "none" } as const;
 export type ConcernId = (typeof CONCERN_IDS)[keyof typeof CONCERN_IDS];
 export type SupportId = (typeof SUPPORT_IDS)[keyof typeof SUPPORT_IDS];
@@ -199,38 +196,6 @@ export function concernId(answer?: string): ConcernId | undefined {
 }
 export function supportId(answer?: string): SupportId | undefined {
   return answer ? (SUPPORT_IDS as Record<string, SupportId>)[answer] : undefined;
-}
-
-// 들은 것 정리(요약·확인): 고른 답을 되짚기만 하고 해석·진단을 덧붙이지 않는다(원칙 [2] 요약하고 빠진 것 묻기).
-const SUMMARY_LATELY: Record<string, string> = {
-  "그럭저럭 괜찮아요": "그럭저럭 괜찮고",
-  "조금 지쳤어요": "조금 지쳐 있고",
-  "많이 힘들어요": "많이 힘들고",
-  "잘 모르겠어요": "마음이 어떤지 잘 모르겠고",
-};
-const SUMMARY_CONCERN: Record<string, string> = {
-  "일·학업": "일이나 공부에 마음이 많이 가 있고",
-  "사람·관계": "사람 사이 일에 마음이 많이 가 있고",
-  "나 자신": "너 자신에 대한 생각이 많고",
-  "몸·생활": "몸이랑 생활 쪽이 신경 쓰이고",
-  "그냥 이야기하고 싶어요": "딱히 뭐가 있다기보다 그냥 얘기하고 싶고",
-};
-const SUMMARY_WANT: Record<string, string> = {
-  "털어놓고, 들어 주면 좋겠어요": "들어 주길 바라는 거지",
-  "엉킨 생각을 같이 정리하고 싶어요": "엉킨 생각을 같이 정리하고 싶은 거지",
-  "가볍게 이야기 나누고 싶어요": "가볍게 얘기하고 싶은 거지",
-  "아직 모르겠어요": "뭘 바라는지는 아직 모르는 거지",
-};
-
-export function summaryLine(nickname: string, answers: Answers) {
-  const parts = [
-    answers.lately && SUMMARY_LATELY[answers.lately],
-    answers.concern && SUMMARY_CONCERN[answers.concern],
-  ].filter(Boolean);
-  const want = answers.want && SUMMARY_WANT[answers.want];
-  const who = nickname ? `${josa(nickname, "은", "는")} ` : "";
-  const heard = [parts.length ? `요즘 ${parts.join(", ")}` : "", want ? `여기선 ${want}` : ""].filter(Boolean).join(", ");
-  return `${heard ? `${who}${heard}. ` : ""}맞게 들었지? 아니면 다시 말해 줘.`;
 }
 
 // tell: 첫 만남 화면에서 캐릭터의 첫마디 아래 서비스가 조용히 덧붙이는 한 줄(고른 대화 방식).
@@ -258,12 +223,12 @@ const LATELY_LINE: Record<string, string> = {
 
 // 데려가기 장면에서 고양이의 첫마디. 질문 1(요즘 마음은 어때요?) 답에 맞춰 말을 고른다.
 // 사용자의 상태를 단정하는 말("피곤해 보이네")은 쓰지 않는다(상담자 기본 원칙 [2]).
-// 데려가 준다니 못 이기는 척 따라나선다("이번만이야"). 매달리지도 깎아내리지도 않는다. "많이 힘들어요"면 쉬자고 말하고(tough), 화면은 109 안내를 그 자리에서 바로 보여 준다.
-// 맨 앞의 "…"는 무대에서 꾹 누르기 진행을 보여 주는 점 세 개 알약이 되므로 남겨 둔다(scenes/meet.js). 문구는 팀 확인 전이다.
+// 데려가 준다니 못 이기는 척 따라나선다("이번만이야"). 매달리지도 깎아내리지도 않는다. "많이 힘들어요"면 쉬자고 말한다(tough).
+// 맨 앞의 "…"는 무대에서 점 세 개가 담긴 알약이 되므로 남겨 둔다(scenes/meet.js). 문구는 팀 확인 전이다.
 const MEET_LINE: Record<string, string> = {
   "그럭저럭 괜찮아요": "…가자고? 이번만이야.",
   "조금 지쳤어요": "…천천히 가. 따라갈 테니까.",
-  "많이 힘들어요": "…오늘은 좀 쉬자. 이것만 알아 둬.",
+  "많이 힘들어요": "…오늘은 좀 쉬자.",
   "잘 모르겠어요": "…글쎄. 일단 가 볼까.",
 };
 const MEET_DEFAULT = "…가자고? 이번만이야.";
@@ -395,7 +360,9 @@ export type OnboardingDraft = { step: OnboardingStep; nickname: string; answers:
 export function parseOnboardingDraft(raw: string | null): OnboardingDraft | null {
   try {
     const d = JSON.parse(raw ?? "null");
-    if (!d || typeof d !== "object" || !(ONBOARDING_STEPS as readonly unknown[]).includes(d.step)) return null;
+    if (!d || typeof d !== "object") return null;
+    const savedStep = d.step === "summary" ? "naming" : d.step;
+    if (!(ONBOARDING_STEPS as readonly unknown[]).includes(savedStep)) return null;
     const nickname = typeof d.nickname === "string" ? d.nickname.slice(0, 12) : "";
     // 고양이 이름은 마지막 장면에서 처음 짓는다(기본값을 미리 채우지 않는다).
     const companion = typeof d.companion === "string" ? d.companion.slice(0, 10) : "";
@@ -406,7 +373,7 @@ export function parseOnboardingDraft(raw: string | null): OnboardingDraft | null
       if (typeof value === "string" && (q.options as readonly string[]).includes(value)) answers[q.id] = value;
     }
     // 앞 장면에서 정한 것이 비어 있으면 그 장면으로 돌아간다.
-    let step: OnboardingStep = d.step;
+    let step: OnboardingStep = savedStep;
     const at = (s: OnboardingStep) => ONBOARDING_STEPS.indexOf(s);
     const i = at(step);
     if (i > at("name") && !cleanNickname(nickname)) step = "name";

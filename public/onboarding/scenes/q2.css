@@ -1,59 +1,28 @@
-/* ═════════════════════════ 장면: q2 (라일락) ═════════════════════════
- * 돌리는 바퀴: 1번 톤의 다섯 갈래 덩어리(노랑)가 다이얼이 된다. 보기는 갈래 사이의 골마다 하나씩, 맨 위 골의 검정 알약이 창이다.
- * 색은 라일락 색면 위의 노랑 · 주황 · 잉크 · 흰색뿐이다(흰색은 검정 알약 속의 글자와 아이콘에만). 모든 선택자는 .hp 로 시작한다. */
-
-/* 제목: 줄 안의 검정 알약 "마음 ♥". 정하고 나면 알약이 풀려 그냥 낱말이 되고(너비가 줄며 뒤의 글자가 따라온다) "뭐예요?" 자리에 고른 말이 들어선다 */
-.hp .hp-q2-head { pointer-events: none; }
-.hp .hp-q2-head .hp-pill { pointer-events: auto; }
-.hp .hp-q2-word { position: relative; display: inline-block; white-space: nowrap; transition: width 460ms var(--hp-spring-soft); }
-.hp .hp-q2-word.is-snap { transition: none; }
-.hp .hp-q2-word-plain { opacity: 0; transition: opacity 120ms linear; }
-.hp .hp-q2-word > .hp-pill { position: absolute; left: 0; top: 50%; margin: 0 1px; transform: translate3d(0, calc(-50% + 3.3px), 0); transform-origin: 18% 50%; transition: opacity 120ms linear 60ms, transform 420ms var(--hp-spring); }
-.hp .hp-scene[data-state="chosen"] .hp-q2-word-plain { opacity: 1; transition: opacity 140ms linear 60ms; }
-.hp .hp-scene[data-state="chosen"] .hp-q2-word > .hp-pill { opacity: 0; transform: translate3d(0, calc(-50% + 3.3px), 0) scale(.62); transition: opacity 100ms linear, transform 200ms var(--hp-inout); }
-.hp .hp-q2-sub { transition: opacity 140ms linear; }
-.hp .hp-scene[data-state="chosen"] .hp-q2-sub { opacity: 0; }
-.hp .hp-q2-answer { position: absolute; left: 0; top: 104px; margin: 0; white-space: nowrap; }
-
-/* 바퀴 너머로 내다보는 고양이(바퀴보다 뒤) · 별 위에 앉은 고양이(별 색이 조금 어두워진 납작한 그림자) */
-.hp .hp-catlayer.hp-q2-peek { inset: 0 0 172px 0; overflow: hidden; z-index: 1; --hc-shadow-o: 0; }      /* 바퀴 가운데 아래로는 보이지 않는다(바퀴 아래 귀퉁이로 몸이 비치지 않게) */
-.hp .hp-q2-look { position: absolute; left: 0; top: 0; width: 390px; height: 844px; will-change: transform; }
-.hp .hp-q2-cat { --hc-shadow-o: 1; --hc-shadow-bg: rgb(19 17 17 / 17%); }
-
-/* 바퀴 */
-.hp .hp-q2-dial { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
-.hp .hp-q2-disc { position: absolute; left: 0; top: 0; width: 200px; height: 200px; overflow: visible; will-change: transform; }
+/* 원래의 노란 회전판과 둘레 선택지. 제목·하단 버튼은 공통 위치를 유지한다. */
+.hp .hp-q2-dial { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.hp .hp-q2-disc { position: absolute; overflow: visible; pointer-events: auto; touch-action: none; cursor: grab; }
 .hp .hp-q2-disc path { fill: var(--hp-yellow); }
-.hp .hp-q2-grab { position: absolute; left: 0; top: 0; border-radius: 50%; pointer-events: auto; touch-action: none; cursor: grab; }
-.hp .hp-q2-dial.is-dragging .hp-q2-grab, .hp .hp-q2-dial.is-dragging .hp-q2-opt, .hp .hp-q2-dial.is-dragging .hp-q2-lens { cursor: grabbing; }
-.hp .hp-q2-dial.is-seat .hp-q2-grab { cursor: default; }
-/* 보기: 바퀴 위의 테두리 알약(바퀴 색 + 2px 잉크 선). 맨 위에 온 보기는 창(검정 알약)에 크게 적히므로 여기서는 흐려진다.
- * 테두리(아직 아닌 것) → 검정(지금 창에 온 것. 누르면 그대로 제목으로 날아가 고른 말이 된다) */
-.hp .hp-q2-opts { position: absolute; inset: 0; transition: opacity 160ms linear; }
-.hp .hp-q2-opt { position: absolute; left: 0; top: 0; min-width: 92px; min-height: 60px; padding: 8px 4px; display: grid; place-items: center; border-radius: 30px; color: var(--hp-ink); pointer-events: auto; touch-action: none; will-change: transform; }
-.hp .hp-q2-opt:focus-visible { outline: none; }
-.hp .hp-q2-opt-label { display: block; padding: 10px 16px 11px; border-radius: 26px; box-shadow: inset 0 0 0 2px var(--hp-ink); font-size: 18px; font-weight: 600; line-height: 1.24; letter-spacing: -0.035em; text-align: center; white-space: nowrap; transition: transform 420ms var(--hp-spring), background-color 80ms linear, color 80ms linear; }
+.hp .hp-q2-opts { position: absolute; inset: 0; pointer-events: none; }
+.hp .hp-q2-opt { position: absolute; left: 0; top: 0; pointer-events: auto; touch-action: none; padding: 8px 4px; border-radius: 28px; }
+.hp .hp-q2-opt-label { display: block; padding: 10px 15px; border-radius: 26px; box-shadow: inset 0 0 0 2px var(--hp-ink); background: var(--hp-yellow); color: var(--hp-ink); font-size: 18px; font-weight: 600; line-height: 1.24; text-align: center; white-space: nowrap; }
 .hp .hp-q2-opt-label span { display: block; }
-.hp .hp-q2-opt.is-press .hp-q2-opt-label { transform: scale(.93); background-color: var(--hp-ink); color: #fff; transition-duration: 80ms; }
-.hp .hp-q2-dial.is-seat .hp-q2-opts { opacity: 0; }
-.hp .hp-q2-dial.is-seat .hp-q2-opt { pointer-events: none; }
-.hp .hp-q2-opts.hp-q2-fade { animation: hp-q2-fade 420ms linear 360ms backwards; }
-@keyframes hp-q2-fade { from { opacity: 0; } }
-/* 창: 맨 위에 온 보기가 크게 적히는 검정 알약 + 끝의 주황 화살표(참고 이미지의 "Languages →"). 누르면 정한다: 그대로 제목으로 날아가 고른 말이 된다 */
-.hp .hp-q2-lens-wrap { position: absolute; left: 0; right: 0; top: 0; height: 56px; display: flex; align-items: center; justify-content: center; pointer-events: none; will-change: transform; transition: opacity 100ms linear; }
-.hp .hp-q2-lens-wrap.is-gone { opacity: 0; visibility: hidden; }
-.hp .hp-pill.hp-q2-lens { margin: 0; top: 0; pointer-events: auto; touch-action: none; cursor: pointer; transition: transform 420ms var(--hp-spring); }
-.hp .hp-q2-lens.is-press { transform: scale(.95); transition-duration: 80ms; }
-.hp .hp-q2-lens.is-focus { outline: 3px solid var(--hp-ink); outline-offset: 3px; }
-.hp .hp-q2-lens-text { position: relative; display: block; height: 38px; transition: width 380ms var(--hp-spring-soft); }
-.hp .hp-q2-lens-text > span { position: absolute; left: 0; top: 0; height: 38px; line-height: 38px; white-space: nowrap; }
-.hp .hp-q2-lens-text > span.is-out { animation: hp-q2-out 110ms ease-in both; }
-.hp .hp-q2-lens-text > span.is-in { animation: hp-q2-in 300ms var(--hp-out) 70ms both; }
-@keyframes hp-q2-out { to { opacity: 0; transform: translate3d(calc(var(--dir, 1) * 26px), 0, 0); } }
-@keyframes hp-q2-in { from { opacity: 0; transform: translate3d(calc(var(--dir, 1) * -26px), 0, 0); } }
+.hp .hp-q2-opt[aria-checked="true"] .hp-q2-opt-label { background: var(--hp-ink); color: #fff; }
+.hp .hp-q2-lens { position: absolute; left: 20px; right: 20px; top: 426px; height: 56px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.hp .hp-q2-lens .hp-pill { margin: 0; top: 0; pointer-events: auto; }
+.hp .hp-q2-lens .hp-pill.is-unselected { padding-inline: 16px; }
+.hp .hp-q2-lens .hp-pill-text { max-width: 254px; height: 38px; display: flex; align-items: center; padding-top: 0; top: 2px; font-size: 24px; line-height: 1; white-space: nowrap; }
+/* 동의 타이틀의 Iconsax Bold 체크와 같은 채움·컷아웃 처리. */
+.hp .hp-q2-lens .hp-pill-dot.is-complete { position: relative; color: var(--dot); }
+.hp .hp-q2-lens .hp-pill-dot.is-complete::before { content: ""; position: absolute; width: 20px; height: 20px; border-radius: 50%; background: #fff; }
+.hp .hp-q2-lens .hp-pill-dot.is-complete svg { position: relative; z-index: 1; width: 38px; height: 38px; }
 
-/* 아래 패널(q1의 검정 알약 패널 그대로): 정한 뒤에 아래에서 올라온다 */
-.hp .hp-q2-panel { transition: transform 620ms var(--hp-spring-soft), opacity 140ms linear, visibility 0s; }
-.hp .hp-q2-panel.is-hidden { transform: translate3d(0, 150px, 0); opacity: 0; visibility: hidden; pointer-events: none; transition: transform 280ms var(--hp-inout), opacity 180ms linear, visibility 0s linear 280ms; }
-/* 장면을 처음 그리는 동안에는 움직이지 않는다(바로 보여 주는 상태 · 돌아왔을 때 골랐던 답). 그 뒤의 움직임은 평소대로다 */
-.hp .hp-scene.hp-q2-snap * { transition: none !important; }
+.hp .hp-q2-dial.is-dragging .hp-q2-disc { cursor: grabbing; }
+
+.hp .hp-catlayer.hp-q2-peek { z-index: 2; --hc-shadow-o: 0; }
+.hp .hp-q2-peek .hc-body { animation: none !important; }
+.hp .hp-q2-peek .hc-img { transform: rotate(var(--peek-tilt, 0deg)); transform-origin: 50% 90%; transition: transform 280ms ease-out; }
+@media (prefers-reduced-motion: no-preference) {
+  .hp .hp-q2-opt-label { animation: hp-q2-label-float var(--float-period, 4.8s) ease-in-out var(--float-delay, 0s) infinite; }
+  .hp .hp-q2-dial:is(.is-dragging, .is-rotating) .hp-q2-opt-label { animation-play-state: paused; }
+}
+@keyframes hp-q2-label-float { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translate(2px, -5px) rotate(var(--float-tilt, .6deg)); } }

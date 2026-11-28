@@ -15,7 +15,6 @@ import {
   meetLine,
   nameReply,
   namingLine,
-  summaryLine,
 } from "@/lib/onboarding";
 import { isUnderAge, seoulToday } from "@/lib/member-basics";
 import { MEMORY_CONSENT_DETAILS, MEMORY_CONSENT_NOTE } from "@/lib/memory-consent";
@@ -29,7 +28,7 @@ import "./onboarding-stage.css";
 // 무대는 390×844 기준으로 그려지고, 이 칸의 크기에 맞게 한 비율로 줄거나 늘어난다(둘레에 남는 띠는 장면의 바탕색).
 // 무대 파일을 고치면 STAGE_VERSION을 올린다(브라우저가 옛 파일을 붙잡지 않게).
 const STAGE_BASE = "/onboarding/";
-const STAGE_VERSION = "2026-11-28cd";
+const STAGE_VERSION = "2026-11-29s";
 const SCRIPTS = ["copy.js", "cat.js", "sound.js", "phone.js", "scenes/promise.js", "scenes/birthday.js", "scenes/gender.js", "scenes/q2.js", "scenes/q4.js", "scenes/meet.js"];
 const STYLES = ["phone.css", "scenes/promise.css", "scenes/birthday.css", "scenes/gender.css", "scenes/q2.css", "scenes/q4.css", "scenes/meet.css"];
 const CAT_ART = "/characters/motion/"; // 고양이 그림은 홈과 같은 파일을 쓴다(앉은 그림·걷는 그림만 더했다)
@@ -62,7 +61,6 @@ type StageCopy = {
   Q: unknown;
   REPLIES: unknown;
   meet: { line: (answers: Answers) => string; eyebrow: string };
-  summary: (nickname: string, answers: Answers) => string;
   name: { reply: (nickname: string) => string };
   naming: { defaultName: string; line: (name: string) => string };
   about: { age: (year: number, month: number, day: number) => number };
@@ -113,7 +111,7 @@ function loadEngine(): Promise<void> {
   return engine;
 }
 
-/** 무대의 문구를 앱의 문구(lib/onboarding.ts)로 덮어쓴다. 질문·대답·요약은 앱이 한곳에서 관리하고 테스트한다. */
+/** 무대의 문구를 앱의 문구(lib/onboarding.ts)로 덮어쓴다. 질문·대답은 앱이 한곳에서 관리하고 테스트한다. */
 function applyCopy(copy: StageCopy) {
   Object.assign(copy.open, STAGE_OPEN);
   copy.notice = { ...STAGE_NOTICE, breaks: [...STAGE_NOTICE.breaks], items: STAGE_NOTICE.items.map((item) => ({ ...item })) };
@@ -121,7 +119,6 @@ function applyCopy(copy: StageCopy) {
   copy.REPLIES = REPLIES;
   copy.meet.line = (answers) => meetLine(answers).line;
   copy.meet.eyebrow = STAGE_MEET_EYEBROW;
-  copy.summary = (nickname, answers) => summaryLine(nickname, answers);
   copy.name.reply = (nickname) => nameReply(nickname);
   copy.naming.defaultName = DEFAULT_COMPANION;
   copy.naming.line = (name) => namingLine(name);

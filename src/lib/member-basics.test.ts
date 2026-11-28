@@ -51,6 +51,7 @@ test("새 회원이고 값이 비어 있을 때만 묻는다", async () => {
   assert.deepEqual(await ask({ gender: null, birth_date: null, basics_required: true }), { needed: true, known: true });
   assert.deepEqual(await ask({ gender: "female", birth_date: null, basics_required: true }), { needed: true, known: true });
   assert.deepEqual(await ask({ gender: "male", birth_date: "1990-01-01", basics_required: true }), { needed: false, known: true });
+  assert.deepEqual(await ask({ gender: "undisclosed", birth_date: "1990-01-01", basics_required: true }), { needed: false, known: true });
   assert.deepEqual(await ask({ gender: null, birth_date: null, basics_required: false }), { needed: false, known: true }, "기존 회원");
 });
 
@@ -85,6 +86,7 @@ test("무대가 넘긴 답을 저장할 값으로 바꾼다", async () => {
   const { basicsFromAnswers } = await import("./member-basics.ts");
   assert.deepEqual(basicsFromAnswers({ gender: "여성", birth: "1999년 1월 1일" }, "2026-11-19"), { gender: "female", birthDate: "1999-01-01" });
   assert.deepEqual(basicsFromAnswers({ gender: "남성", birth: "2000년 12월 31일" }, "2026-11-19"), { gender: "male", birthDate: "2000-12-31" });
+  assert.deepEqual(basicsFromAnswers({ gender: "선택하고 싶지 않아요", birth: "1999년 1월 1일" }, "2026-11-19"), { gender: "undisclosed", birthDate: "1999-01-01" });
   assert.equal(basicsFromAnswers({ gender: "고르지 않을래요", birth: "1999년 1월 1일" }, "2026-11-19"), null);
   assert.equal(basicsFromAnswers({ gender: "여성", birth: "2001년 2월 30일" }, "2026-11-19"), null);
   assert.equal(basicsFromAnswers({ gender: "여성" }, "2026-11-19"), null);

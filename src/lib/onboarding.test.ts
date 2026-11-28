@@ -10,7 +10,6 @@ import {
   namingLine,
   parseProfile,
   replyLine,
-  summaryLine,
   supportId,
   clearOnboardingDraft,
   clearProfile,
@@ -122,13 +121,13 @@ test("다른 계정의 프로필은 보이지 않는다", () => {
   assert.equal(loadProfile()?.companion, "구름");
 });
 
-test("데려가기 첫마디는 요즘 상태에 맞춰 고르고, 많이 힘들 때만 109를 바로 보여 준다", () => {
+test("데려가기 첫마디는 요즘 상태에 맞춰 고르고, 많이 힘들 때는 쉬자고 말한다", () => {
   assert.deepEqual(meetLine({ lately: "그럭저럭 괜찮아요" }), { line: "…가자고? 이번만이야.", tough: false });
   assert.deepEqual(meetLine({ lately: "조금 지쳤어요" }), { line: "…천천히 가. 따라갈 테니까.", tough: false });
-  assert.deepEqual(meetLine({ lately: "많이 힘들어요" }), { line: "…오늘은 좀 쉬자. 이것만 알아 둬.", tough: true });
+  assert.deepEqual(meetLine({ lately: "많이 힘들어요" }), { line: "…오늘은 좀 쉬자.", tough: true });
   assert.deepEqual(meetLine({ lately: "잘 모르겠어요" }), { line: "…글쎄. 일단 가 볼까.", tough: false });
   assert.deepEqual(meetLine({}), { line: "…가자고? 이번만이야.", tough: false });
-  // 맨 앞의 "…"는 무대에서 꾹 누르기 진행을 보여 주는 점 알약이 된다.
+  // 맨 앞의 "…"는 무대에서 점 세 개가 담긴 알약이 된다.
   for (const option of QUESTIONS[0].options) assert.ok(meetLine({ lately: option }).line.startsWith("…"), option);
   // 질문 1의 모든 선택지에 첫마디가 있다(선택지를 바꾸면 여기서 알린다).
   for (const option of QUESTIONS[0].options) assert.notEqual(meetLine({ lately: option }).line, "", option);
@@ -170,6 +169,8 @@ test("되살린 자리는 지금 선택지와 앞 장면 값을 확인하고, �
   assert.equal(draft({ step: "meet", nickname: "하늘", answers: { ...full, concern: undefined } })?.step, "q2");
   assert.equal(draft({ step: "summary", nickname: "하늘", answers: { ...full, want: undefined } })?.step, "q3");
   assert.equal(draft({ step: "naming", nickname: "하늘", answers: { ...full, support: undefined } })?.step, "q4");
+  assert.deepEqual(draft({ step: "summary", nickname: "하늘", answers: full, companion: "숯" }),
+    { step: "naming", nickname: "하늘", answers: full, companion: "숯" });
   assert.equal(draft({ step: "naming", nickname: "하늘", answers: full })?.step, "naming");
   // 입력칸 길이만큼만, 고양이 이름은 마지막 장면에서 처음 지으므로 미리 채우지 않는다.
   const long = draft({ step: "naming", nickname: "가".repeat(30), answers: full });
@@ -201,7 +202,7 @@ test("고양이 말은 처음 만난 길고양이처럼 짧고 경계하는 반�
   const lines = [
     ...QUESTIONS.flatMap((q) => q.options.map((o) => replyLine(q.id, o))),
     ...QUESTIONS[0].options.map((o) => meetLine({ lately: o }).line),
-    nameReply("하늘"), namingLine(""), namingLine("호야"), summaryLine("하늘", {}), PROMISE_REPLY, STAGE_OPEN.line,
+    nameReply("하늘"), namingLine(""), namingLine("호야"), PROMISE_REPLY, STAGE_OPEN.line,
   ];
   for (const line of lines) {
     // 상담자 기본 원칙 [2] 단정 · [3] 평가·충고 · [5] 의존 유도
@@ -212,21 +213,10 @@ test("고양이 말은 처음 만난 길고양이처럼 짧고 경계하는 반�
     assert.doesNotMatch(line, /흥|뭐,|든가|뭘 봐|딱히|촌스럽|궁금한 건 아니|맘대로|읽었겠지|하악/, line);
     assert.doesNotMatch(line, /요[.?!]?$/, line);
   }
-  // 말줄임표는 데려가기 첫마디의 맨 앞(무대에서 꾹 누르기 진행을 보여 주는 점 알약)에만 쓴다.
+  // 말줄임표는 데려가기 첫마디의 맨 앞(무대에서 점 세 개가 담긴 알약)에만 쓴다.
   for (const line of lines) assert.doesNotMatch(line.replace(/^…/, ""), /…/, line);
   // 곁에 사람이 없다고 하면 사람과 이야기하는 쪽을 지지한다.
   assert.match(replyLine("support", "지금은 없어요"), /사람한테/);
-});
-
-test("들은 것 정리는 고른 답만 되짚고 맞는지 묻는다", () => {
-  const line = summaryLine("하늘", { lately: "조금 지쳤어요", concern: "사람·관계", want: "털어놓고, 들어 주면 좋겠어요", support: "있어요" });
-  assert.equal(line, "하늘은 요즘 조금 지쳐 있고, 사람 사이 일에 마음이 많이 가 있고, 여기선 들어 주길 바라는 거지. 맞게 들었지? 아니면 다시 말해 줘.");
-  assert.match(summaryLine("민기", { lately: "그럭저럭 괜찮아요" }), /^민기는 요즘 그럭저럭 괜찮고\./);
-  for (const q of QUESTIONS.filter((x) => x.id !== "support")) {
-    for (const option of q.options) assert.doesNotMatch(summaryLine("하늘", { [q.id]: option }), /undefined/, option);
-  }
-  assert.doesNotMatch(summaryLine("하늘", { lately: "많이 힘들어요" }), /우울|진단|증상/);
-  assert.equal(summaryLine("하늘", {}), "맞게 들었지? 아니면 다시 말해 줘.");
 });
 
 test("마음이 가는 것·곁에 있는 사람은 짧은 값으로 프로필에 남기고, 모르는 값은 버린다", () => {

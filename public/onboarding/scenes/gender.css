@@ -1,56 +1,13 @@
-/* ═════════════════════════ 장면: gender (주황) ═════════════════════════
- * 세 가지 답은 똑같은 흰 동전이다(색으로 성별을 나누지 않는다). 고르면 톡 튀어 올라 뒤집히며 검정 + 체크가 되고,
- * 고른 말은 제목 줄의 검정 알약으로 날아가 담긴다. 고양이는 라일락 동그라미 앞에서 동전들 위에 누워 있다가 일어나 앉는다. */
-
-/* 제목 아래 본문 한 줄: 가운뎃점 양옆을 조금 띄운다 */
-.hp .hp-gd-why i { font-style: normal; margin: 0 .34em; }
-
-/* 제목 줄의 알약: 고르기 전에는 빈 동그라미 셋(동전 셋의 축소판)이 차례로 톡톡 뛴다. 고르면 그 말 + 체크로 바뀐다 */
-.hp .hp-gd-slot { display: inline; }
-.hp .hp-gd-wait i { display: block; flex: none; width: 13px; height: 13px; border-radius: 50%; box-shadow: inset 0 0 0 2px #fff; --up: -5px; animation: hp-gd-hop 3.6s var(--hp-out) 1.6s infinite; }
-.hp .hp-gd-wait i:nth-child(2) { animation-delay: 1.75s; }
-.hp .hp-gd-wait i:nth-child(3) { animation-delay: 1.9s; }
-/* 톡 뛰었다 내려앉는 한 번(3.6초마다. 알약의 동그라미 셋과 아래 동전 셋이 같은 박자로 차례차례 뛴다) */
-@keyframes hp-gd-hop { 0%, 24%, 100% { transform: none; } 8% { transform: translate3d(0, var(--up), 0); animation-timing-function: cubic-bezier(.5, 0, .8, .5); } 16% { transform: translate3d(0, calc(var(--up) * -.18), 0); animation-timing-function: var(--hp-out); } }
-.hp .hp-still .hp-gd-wait i { animation: none; }
-/* 고양이는 동전보다 앞에 있다(누운 채 동전 위에 걸쳐 있다). 누워 있을 때는 납작한 그림자를 두지 않는다(동전이 바닥이다) */
-.hp .hp-catlayer.hp-gd-cat { z-index: 7; }
-/* 동전이 뛰면 그 위의 고양이도 살짝 들썩인다(배 밑의 가운데 동전 → 뒷발 밑의 오른쪽 동전 차례로) */
-.hp .hp-gd-bob { position: absolute; inset: 0; transform-origin: 195px 560px; }
-.hp .hp-scene[data-state="idle"]:not(.hp-still) .hp-gd-bob { animation: hp-gd-bob 3.6s linear 1.6s infinite; }
-@keyframes hp-gd-bob { 0%, 7%, 27%, 100% { transform: none; } 12.5% { transform: translate3d(0, -3px, 0) rotate(.3deg); animation-timing-function: ease-in-out; } 17% { transform: translate3d(0, -2.5px, 0) rotate(-.7deg); animation-timing-function: cubic-bezier(.5, 0, .8, .5); } 22.5% { transform: translate3d(0, .8px, 0); animation-timing-function: var(--hp-out); } }
-.hp .hp-gd-cat .hc[data-pose="glare"] .hc-shadow { opacity: 0; }
-/* 누운 자세는 영상 대신 캔버스에 그린다(gender.js의 lounge). 프레임을 풀어 움직일 수 없을 때는 첫 프레임 그대로 숨 쉬듯 아주 조금 부푼다 */
-.hp .hp-gd-frame { position: absolute; display: block; pointer-events: none; }
-.hp .hp-gd-cat .hc[data-pose="glare"] .hc-img { visibility: hidden; }
-.hp .hp-scene:not(.hp-still) .hp-gd-cat .hc[data-pose="glare"]:not([data-alive]) .hc-body { animation: hp-gd-breathe 3.8s ease-in-out infinite; }
-@keyframes hp-gd-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.006, 1.022); } }
-/* 들어올 때: 동전이 놓인 뒤에 그 위로 털썩 내려앉는다 */
-.hp .hp-catlayer.hp-gd-drop { animation: hp-gd-drop 700ms var(--hp-spring) 430ms backwards; }
-@keyframes hp-gd-drop { from { opacity: 0; transform: translate3d(0, -46px, 0); } 28% { opacity: 1; } to { opacity: 1; transform: none; } }
-/* 앉은 뒤에는 고른 동전 쪽으로 몸만 살짝 기운다(발을 축으로. 납작한 그림자는 그대로 있다) */
-.hp .hp-gd-cat .hc-img { transform-origin: 50% 100%; transition: transform 620ms var(--hp-spring-soft); }
-.hp .hp-scene[data-state="chosen"] .hp-gd-cat .hc[data-pose="sit"] .hc-img { transform: rotate(var(--lean, 0deg)); }
-.hp .hp-gd-mark { transition: transform 900ms var(--hp-spring-soft); }
-.hp .hp-still .hp-gd-mark { transition: none; }
-
-/* 동전 셋: 큰 버튼과 같은 너비(좌우 20px)에 꽉 차게 놓인다 */
-.hp .hp-gd-coins { position: absolute; left: 20px; right: 20px; top: 576px; height: 128px; z-index: 6; display: flex; justify-content: center; gap: 22px; }
-.hp .hp-gd-coin { position: relative; flex: none; width: 128px; height: 128px; border-radius: 50%; color: var(--hp-ink); transition: transform 460ms var(--hp-spring); }
-.hp .hp-gd-coin:active { transform: scale(.94); transition-duration: 80ms; }
-.hp .hp-gd-coin:focus-visible { outline-offset: 2px; }
-.hp .hp-gd-hop { position: absolute; inset: 0; display: block; --up: -7px; }
-.hp .hp-scene[data-state="idle"]:not(.hp-still) .hp-gd-hop { animation: hp-gd-hop 3.6s var(--hp-out) calc(1.6s + var(--n) * 150ms) infinite; }
-.hp .hp-gd-disc { position: absolute; inset: 0; border-radius: 50%; background: var(--hp-white); color: var(--hp-ink); display: grid; place-items: center; will-change: transform; }
-/* 동전의 안쪽 테(가는 선) */
-.hp .hp-gd-disc::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; border: 1.5px solid currentColor; }
-.hp .hp-gd-coin.is-on .hp-gd-disc { background: var(--hp-ink); color: #fff; }
-.hp .hp-gd-label { display: block; font-size: 19px; font-weight: 600; line-height: 1.24; letter-spacing: -0.035em; text-align: center; }
-.hp .hp-gd-label span { display: block; white-space: nowrap; }
-/* 체크: 동전 가장자리에 걸린 노란 동그라미(잉크색 테를 둘러서 색면 위에서도 라일락 덩어리 위에서도 동전에 붙은 한 덩어리로 보인다) */
-.hp .hp-gd-tick { position: absolute; right: 2px; top: 2px; width: 30px; height: 30px; border-radius: 50%; background: var(--dot); color: var(--dot-fg); display: grid; place-items: center; box-shadow: 0 0 0 3px var(--hp-ink); transform: scale(0); pointer-events: none; }
-.hp .hp-gd-tick svg { width: 17px; height: 17px; }
-.hp .hp-gd-coin.is-on .hp-gd-tick { transform: scale(1); }
-
-/* 성별: 저장 실패 알림이 동전과 쪽 표시를 가리지 않게 제목 아래에 띄운다 */
-.hp .hp-scene[data-scene="gender"] .hp-fail { top: 196px; bottom: auto; }
+/* 성별 선택만 세로 카드로 정리하고 기존 주황·흰색·검정 팔레트를 유지한다. */
+.hp .hp-block.hp-gd-content {
+  left: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.hp .hp-gd-title { position: relative; margin: 0 8px; }
+.hp .hp-scene[data-scene="gender"] .hp-fail { top: 718px; bottom: auto; }
+@media (prefers-reduced-motion: reduce) {
+  .hp .hp-choice-option { transition: none; }
+}

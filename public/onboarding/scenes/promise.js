@@ -52,7 +52,7 @@
       const tally = el("span", "hp-promise-count", dots); tally.setAttribute("aria-hidden", "true");
       pill.append(tally);
       const [l1, l2, l3] = lines(K.title, [2, 3, 1]);
-      const title = N ? ui.headline(lines(K.title, N.breaks || [2, 2]), { size: 38 })
+      const title = N ? ui.badgedHeadline(lines(K.title, N.breaks || [2, 2]), { token: "이야기", size: 38 })
         : ui.headline(l2 && l2.includes(TOKEN) ? [l1, swap(l2, TOKEN, pill), l3] : [l1, l2, [(l3 || "") + " ", pill]], { size: 38 });
       title.id = uid + "-title";
       const tick = () => { const t = el("span", "hp-promise-tick", icon("checkFilled")); t.setAttribute("aria-hidden", "true"); return t; };
@@ -182,7 +182,7 @@
       const spot = N ? ui.shape(ctx, { color: "var(--hp-lilac)", shape: [[5, 0.12, -90]], ...DISC }) : null;
       const stage = el("div", N ? "hp-catlayer hp-promise-stage" : "hp-promise-peek-reveal");
       if (N) den.append(spot.el, stage);
-      if (N) root.append(head, list, den, ...(say ? [say] : []), cta);
+      if (N) { root.append(head, list, den, ...(say ? [say] : []), cta); ui.afterTitle(ctx, title, top => { list.style.top = top + "px"; }); }
       else {
         head.style.removeProperty("top");
         list.style.removeProperty("top");

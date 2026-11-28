@@ -16,7 +16,7 @@ const loaded = (list: string) => [...(stage.match(new RegExp(`const ${list} = \\
 
 test("캐릭터 만나기는 만남에서 AI라고 밝히고, 시작 전 약속(AI·기록·109)을 보여 준 뒤, 이름 짓기에서만 끝난다", () => {
   assert.deepEqual([...STAGE_SCENES], ["open", "promise", "name", "birthday", "gender", "q1", "q2", "q3", "q4", "meet", "naming"]);
-  assert.deepEqual([...ONBOARDING_STEPS], ["promise", "name", "birthday", "gender", "q1", "q2", "q3", "q4", "meet", "summary", "naming"]);
+  assert.deepEqual([...ONBOARDING_STEPS], ["promise", "name", "birthday", "gender", "q1", "q2", "q3", "q4", "meet", "naming"]);
   // 첫 화면: 고양이는 인사만 하고, AI라는 것은 서비스의 작은 글씨가 알린다.
   assert.doesNotMatch(STAGE_OPEN.line, /…/);
   assert.match(STAGE_OPEN.note, /사람이 아니라 AI와 이야기/);
@@ -45,9 +45,9 @@ test("캐릭터 만나기는 만남에서 AI라고 밝히고, 시작 전 약속(
   assert.match(block(component, "function finish(", "return <OnboardingStage"), /color: START_COLOR, voice: START_VOICE/);
 });
 
-test("생일·성별은 물어야 하는 회원에게만 열고, 성별은 여성·남성 둘이며, 저장한 뒤에 넘어간다", () => {
-  assert.match(engine("copy.js"), /genders: \["여성", "남성"\]/);
-  assert.ok(!engine("copy.js").includes("고르지 않을래요"));
+test("생일·성별은 필요한 회원에게만 묻고, 성별 응답을 선택한 뒤 저장하고 넘어간다", () => {
+  assert.match(engine("copy.js"), /genders: \["여성", "남성", "선택하고 싶지 않아요"\]/);
+  assert.match(engine("scenes/gender.js"), /cta\.disabled = choice < 0;/);
   assert.match(component, /askBasics \|\| !\(BASICS_SCENES as readonly string\[\]\)\.includes\(id\)/);
   assert.match(component, /snapshot\.scene !== "gender"/);
   const birthday = engine("scenes/birthday.js");
@@ -63,23 +63,18 @@ test("생일·성별은 물어야 하는 회원에게만 열고, 성별은 여�
   assert.equal(resumeStep("q3", false), "q3");
 });
 
-test("많이 힘들다고 고르면 그 자리에서, 그리고 데려가기 장면에서 109를 바로 보여 준다", () => {
+test("많이 힘들어요는 고양이의 반응을 바꾸고 전화 안내를 띄우지 않는다", () => {
   assert.match(engine("copy.js"), /TOUGH: "많이 힘들어요"/);
-  assert.match(engine("copy.js"), /toughDesc: "많이 힘든 날엔 사람과 바로 이야기할 수도 있어요\."/);
-  // 질문 1(phone.js)과 데려가기(meet.js) 모두 진짜 전화 링크를 쓴다.
-  assert.match(engine("phone.js"), /tel:109/);
-  assert.match(engine("phone.js"), /C\.TOUGH/);
-  assert.match(engine("scenes/meet.js"), /tel:109/);
-  assert.match(engine("scenes/meet.js"), /C\.TOUGH/);
-  assert.match(engine("scenes/meet.js"), /toughDesc/);
+  for (const file of ["phone.js", "scenes/meet.js"]) {
+    assert.match(engine(file), /C\.TOUGH/);
+    assert.doesNotMatch(engine(file), /tel:109/);
+  }
 });
 
-test("들은 것 정리에서 '맞아요'면 이름 짓기로, '조금 달라요'면 질문 1부터 다시 고른다", () => {
-  assert.match(stage, /copy\.summary = \(nickname, answers\) => summaryLine\(nickname, answers\);/);
-  const meet = engine("scenes/meet.js");
-  assert.match(meet, /C\.summary\(nickname, answers\)/);
-  assert.match(meet, /ctx\.go\("q1", undefined, no\)/);
-  assert.match(meet, /ctx\.next\(/);
+test("첫 만남의 냥줍하기 버튼으로 이름 짓기에 들어간다", () => {
+  assert.equal(STAGE_SCENES[STAGE_SCENES.indexOf("meet") + 1], "naming");
+  assert.match(engine("copy.js"), /cta: "냥줍하기"/);
+  assert.match(engine("scenes/meet.js"), /onPress: \(\) => ctx\.next\(pickup\)/);
 });
 
 test("마지막 버튼 뒤에는 그 화면에 머물며 저장 중·실패·다시 저장을 버튼에서 보여 준다", () => {
@@ -94,7 +89,7 @@ test("마지막 버튼 뒤에는 그 화면에 머물며 저장 중·실패·다
   assert.match(stage, /copy\.naming\.defaultName = DEFAULT_COMPANION;/);
   assert.match(stage, /copy\.naming\.line = \(name\) => namingLine\(name\);/);
   assert.match(stage, /copy\.meet\.eyebrow = STAGE_MEET_EYEBROW;/);
-  assert.match(engine("copy.js"), /"내 이름\? 없어\. 네가 지어 봐\."/);
+  assert.match(engine("copy.js"), /"내 이름\? 없어\. 네가 지어줘"/);
 });
 
 test("하던 자리를 이 탭에 남기고 되살리며, 미리보기(initialStep)에서는 쓰지 않는다", () => {
@@ -102,10 +97,10 @@ test("하던 자리를 이 탭에 남기고 되살리며, 미리보기(initialSt
   assert.match(component, /sceneOfStep\(initialStep \?\? resumeStep\(afterConsent && \(draft\?\.step \?\? "promise"\) === "promise" \? "name" : draft\?\.step \?\? "promise", askBasics\), preview\)/);
   assert.match(component, /if \(preview \|\| finished\.current \|\| snapshot\.scene === "done"\) return;\s*saveOnboardingDraft\(/);
   assert.match(block(component, "function finish(", "return <OnboardingStage"), /if \(!preview\) clearOnboardingDraft\(\);/);
-  // 처음이면 만남부터, 미리보기에서는 약속 장면을 바로, 들은 것 정리는 데려가기의 끝 상태로 연다.
+  // 처음이면 만남부터, 미리보기에서는 약속 장면을 바로 연다.
   assert.deepEqual(sceneOfStep("promise"), { scene: "open" });
   assert.deepEqual(sceneOfStep("promise", true), { scene: "promise" });
-  assert.deepEqual(sceneOfStep("summary"), { scene: "meet", state: "heard" });
+  assert.deepEqual(sceneOfStep("naming"), { scene: "naming" });
   for (const step of ONBOARDING_STEPS) assert.ok((STAGE_SCENES as readonly string[]).includes(sceneOfStep(step).scene), step);
   // 무대의 장면은 모두 하던 자리로 바뀌고, 모르는 장면은 처음으로 돌아간다.
   assert.equal(stepOfScene("open"), "promise");
@@ -118,7 +113,10 @@ test("하던 자리를 이 탭에 남기고 되살리며, 미리보기(initialSt
 test("고양이의 말은 건너뛸 수 없고, 화면 낭독기도 읽는다", () => {
   // 줄이 적히는 중에 버튼을 누르면 그 줄만 끝까지 보이고, 잠깐은 넘어가지 않는다.
   assert.match(engine("phone.js"), /speech\(hold = 420\)/);
-  for (const name of ["scenes/promise.js", "scenes/q2.js", "scenes/q4.js", "scenes/meet.js"]) assert.match(engine(name), /ui\.speech\(\)/, name);
+  assert.match(engine("scenes/promise.js"), /ui\.speech\(\)/);
+  // 회전판은 선택값을 라디오 상태로, 슬라이더는 선택에 대한 답변을 라이브 영역으로 읽어 준다.
+  assert.match(engine("scenes/q2.js"), /button\.setAttribute\("aria-checked", String\(i === choice\)\)/);
+  assert.match(engine("scenes/q4.js"), /say\.setAttribute\("aria-live", "polite"\)/);
   assert.match(engine("phone.js"), /live\.setAttribute\("role", "status"\); live\.setAttribute\("aria-live", "polite"\);/);
 });
 

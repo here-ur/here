@@ -586,5 +586,77 @@
     },
     "scale": 1,
     "stroke": null
+  },
+  {
+    "id": "heartCircle",
+    "keyline": "circle",
+    "bounds": {
+      "width": 20,
+      "height": 20,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 1,
+    "stroke": null
+  },
+  {
+    "id": "badgeEdit",
+    "keyline": "vertical",
+    "bounds": {
+      "width": 16,
+      "height": 16.425,
+      "cx": 12,
+      "cy": 12.0125
+    },
+    "scale": 0.8205128205128205,
+    "stroke": null
+  },
+  {
+    "id": "badgeClock",
+    "keyline": "circle",
+    "bounds": {
+      "width": 20,
+      "height": 20,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 1,
+    "stroke": null
+  },
+  {
+    "id": "badgeChat",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 16.75,
+      "height": 16,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.8355091383812011,
+    "stroke": null
+  },
+  {
+    "id": "badgeProfile",
+    "keyline": "vertical",
+    "bounds": {
+      "width": 14.1,
+      "height": 20,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 1,
+    "stroke": null
+  },
+  {
+    "id": "badgePhone",
+    "keyline": "square",
+    "bounds": {
+      "width": 18,
+      "height": 18,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.9,
+    "stroke": null
   }
 ]

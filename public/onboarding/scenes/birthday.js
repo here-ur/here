@@ -66,8 +66,8 @@
         if (cell.idx !== i) { cell.el.textContent = valueAt(i); cell.idx = i; }
         cell.el.style.opacity = k === 0 ? "1" : "0.5";
         let a = Math.min(1, Math.abs(d)); a = a * a * (3 - 2 * a);
-        const s = lerp(1, 0.56, a);      // 가운데에서 멀어질수록 작아지고(0.56배), 원통을 따라 위아래로 눌린다
-        cell.el.style.transform = `translate3d(0, ${(R * Math.sin(th)).toFixed(2)}px, 0) scale(${s.toFixed(4)}, ${(s * Math.cos(th)).toFixed(4)})`;
+        const s = lerp(1, 0.56, a);      // 가운데에서 멀어지면 비율을 유지하며 작아진다(0.56배).
+        cell.el.style.transform = `translate3d(0, ${(R * Math.sin(th)).toFixed(2)}px, 0) scale(${s.toFixed(4)})`;
         if (cell.on !== true) { cell.el.style.visibility = ""; cell.on = true; }
       }
     }
@@ -364,6 +364,7 @@
       });
       const [ry, rm, rd] = reels;
       root.append(group);
+      ui.afterTitle(ctx, head, top => { group.style.top = top + "px"; root.style.setProperty("--bd-content-shift", (top - REELS_TOP) + "px"); });
 
       /** 구르던 릴을 그 자리에서 멈추고, 그 날짜로 상태를 맞춘다(장면을 떠나기 직전) */
       const commit = () => { reels.forEach((r) => r.settle()); rd.setLimit(daysIn(ry.landing, rm.landing), true); evaluate(true); };
