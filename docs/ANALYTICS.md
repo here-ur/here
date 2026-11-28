@@ -41,6 +41,7 @@
 
 ## PostHog 프로젝트 설정
 
-- 프로젝트: Here (US Cloud, 무료 플랜이라 프로젝트 하나). "Discard client IP data" 켬, GeoIP 변환 일시정지.
+- 프로젝트: Here (US Cloud, 무료 플랜이라 프로젝트 하나, 시간대 Asia/Seoul). "Discard client IP data" 켬, GeoIP 변환 일시정지.
+- 대시보드: [Here 기본 지표](https://us.posthog.com/project/773744/dashboard/2424560) — 온보딩 장면별 퍼널, 온보딩 완료 → 첫 글, 재방문, 하루 사용자, 글 vs 음성, 글 답변 실패율, 음성 길이·실패 이유, 리포트·메뉴·준비 중 안내. 모두 `app_env = local`을 뺀다. 이벤트 원본은 [Activity](https://us.posthog.com/project/773744/activity/explore).
 - 키는 Vercel의 **Preview**(dev 브랜치 → here-dev, 작업 브랜치 미리보기)에만 넣는다. Production·Development에는 넣지 않는다(Development에 넣으면 `vercel env pull`로 팀원 로컬에서 분석이 켜진다).
 - 로컬은 기본으로 꺼 둔다. 분석을 손볼 때만 그 사람이 `.env.local`에 `NEXT_PUBLIC_POSTHOG_KEY`를 잠깐 넣고(이벤트에 `app_env: local`이 붙는다), 끝나면 지운다. 키는 PostHog → Settings → General의 Project token.
