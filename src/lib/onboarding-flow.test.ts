@@ -50,8 +50,11 @@ test("생일·성별은 물어야 하는 회원에게만 열고, 성별은 여�
   assert.ok(!engine("copy.js").includes("고르지 않을래요"));
   assert.match(component, /askBasics \|\| !\(BASICS_SCENES as readonly string\[\]\)\.includes\(id\)/);
   assert.match(component, /snapshot\.scene !== "gender"/);
-  assert.match(engine("scenes/birthday.js"), /tel:109/);
-  assert.match(engine("scenes/birthday.js"), /ctx\.actions\.signOut/);
+  const birthday = engine("scenes/birthday.js");
+  assert.match(birthday, /modal\.showModal\(\)/);
+  assert.match(birthday, /ctx\.on\(close, "click", \(\) => unnotice\(\)\)/);
+  assert.doesNotMatch(birthday, /tel:109|ctx\.actions\.signOut/);
+  assert.match(engine("copy.js"), /under14: \{ title: "만 14세 이상부터 사용할 수 있어요\.", close: "닫기" \}/);
   // 생일·성별 값은 이 탭에 남기지 않으므로 저장 전이면 생일부터 다시 묻고, 저장을 마쳤으면 건너뛴다.
   assert.equal(resumeStep("gender", true), "birthday");
   assert.equal(resumeStep("q3", true), "birthday");
@@ -136,9 +139,9 @@ test("무대는 앱의 스타일과 섞이지 않게 섀도 루트 안에 서고
   assert.match(stage, /api\?\.destroy\(\);/);
   assert.match(engine("phone.js"), /prefers-reduced-motion/);
   assert.match(engine("phone.css"), /prefers-reduced-motion: reduce/);
-  // 무대의 스타일은 모두 .hp 아래에만 닿는다(화면 고정·뷰포트 단위를 쓰지 않는다).
+  // 일반 장면은 무대 안에 둔다. 네이티브 모달만 top layer의 뷰포트 기준 배치를 허용한다.
   for (const name of loaded("STYLES")) {
-    const sheet = engine(name);
+    const sheet = engine(name).replace(/\.hp \.hp-bd-modal\s*\{[^}]*\}/g, "");
     assert.doesNotMatch(sheet, /position:\s*fixed/, name);
     assert.doesNotMatch(sheet, /\d(vw|vh|dvh|svh)\b/, name);
   }

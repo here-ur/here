@@ -125,8 +125,8 @@
 .fr-req { margin-right: 6px; font-size: 12.5px; font-weight: 700; color: var(--fr-muted); }
 :is(.first-run, .fr-scope) .fr-more { position: absolute; top: 0; right: 0; height: var(--f7-list-item-min-height); display: flex; align-items: center; gap: 3px; padding: 0 18px 0 12px; list-style: none; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--fr-muted); }
 .fr-more::-webkit-details-marker { display: none; }
-.fr-more .f7-icons { transition: rotate 200ms ease; }
-details[open] > .fr-more .f7-icons { rotate: 180deg; }
+.fr-more .here-icon { transition: rotate 200ms ease; }
+details[open] > .fr-more .here-icon { rotate: 180deg; }
 :is(.first-run, .fr-scope) .fr-more:focus-visible { outline: 2px solid var(--fr-ink); outline-offset: -8px; border-radius: 14px; }
 .fr-detail { margin: 0 10px 10px; padding: 12px 14px; border-radius: 14px; background: #fff; font-size: 12px; line-height: 1.6; color: var(--fr-muted); }
 .fr-detail dt { font-weight: 700; color: var(--fr-ink); }
@@ -134,7 +134,7 @@ details[open] > .fr-more .f7-icons { rotate: 180deg; }
 .fr-detail dd:last-child { margin-bottom: 0; }
 .fr-fineprint { position: relative; z-index: 10; display: grid; gap: 4px; margin: 16px 24px 0; font-size: 12px; line-height: 1.5; color: var(--fr-muted); text-align: center; }
 .fr-fineprint p { display: flex; align-items: center; justify-content: center; gap: 4px; }
-.fr-fineprint .f7-icons { flex: none; }
+.fr-fineprint .here-icon { flex: none; }
 .fr-fineprint [data-tone="dev"] { color: #5F584E; font-weight: 600; }
 :is(.first-run, .fr-scope) .fr-ready { transition: background-color 220ms ease, color 220ms ease; }
 
@@ -187,7 +187,7 @@ details[open] > .fr-more .f7-icons { rotate: 180deg; }
 .fr-sos--meet { margin-top: 16px; }
 .first-run .fr-hold-button { position: relative; display: grid; place-items: center; width: 96px; height: 96px; border-radius: 50%; color: var(--fr-ink); touch-action: none; user-select: none; -webkit-user-select: none; }
 .first-run .fr-hold-button > svg { position: absolute; inset: 0; }
-.first-run .fr-hold-button > .f7-icons { position: relative; }
+.first-run .fr-hold-button > .here-icon { position: relative; }
 .first-run .fr-hold-button:focus-visible { outline: 2px solid var(--fr-ink); outline-offset: 4px; }
 .fr-hold-ring { transition: stroke-dashoffset 250ms linear; }
 .fr-hold-ring[data-holding] { transition-duration: var(--fr-hold-ms, 1400ms); }

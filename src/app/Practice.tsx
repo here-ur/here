@@ -17,16 +17,8 @@ import "./practice.css";
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 
 function KindIcon({ kind, size = 22 }: { kind: PracticeKind; size?: number }) {
-  const body = (() => {
-    switch (kind) {
-      case "breath": return <><path d="M4 9.5h9a2.5 2.5 0 1 0-2.5-2.5" /><path d="M4 14h12a2.8 2.8 0 1 1-2.8 2.8" /><path d="M4 18.5h5" /></>;
-      case "write": return <><path d="m14.5 5 4.5 4.5L9 19.5H4.5V15Z" /><path d="m12.5 7 4.5 4.5" /></>;
-      case "body": return <><path d="M12 3.5s6 6.3 6 10.4a6 6 0 0 1-12 0C6 9.8 12 3.5 12 3.5Z" /></>;
-      case "rest": return <><rect x="4" y="4.5" width="16" height="15" rx="2.5" /><path d="M4 12h16M12 4.5v15" /></>;
-      default: return <><path d="M12 20s-7-4.4-7-9.6A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.4C19 15.6 12 20 12 20Z" /></>;
-    }
-  })();
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{body}</svg>;
+  const name = kind === "breath" ? "wind" : kind === "write" ? "pencil" : kind === "body" ? "drop" : kind === "rest" ? "grid" : "heart";
+  return <Icon name={name} size={size} />;
 }
 
 /** 홈 기본 상태에서 작게 보이는 형태. 오늘 것 몇 장을 옆으로 넘겨 보고, 한 것은 체크로 표시한다. */
@@ -57,7 +49,7 @@ export function PracticeMini({ practices, doneIds, onOpen }: { practices: Practi
 }
 
 function Check({ size = 16 }: { size?: number }) {
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5.5 12.5 4 4 9-9" /></svg>;
+  return <Icon name="check" size={size} />;
 }
 
 /** 대화를 마친 뒤 홈에 한 장 보여 주는 카드. 하기·나중에·닫기. */
@@ -145,7 +137,7 @@ export function WeekChecks({ who, checks, total, cheer, className = "" }: { who:
 }
 
 function Flame({ size = 20 }: { size?: number }) {
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="#F0735A" aria-hidden="true"><path d="M12.6 2.5c.3 3.2 2.3 4.9 3.9 6.6 1.6 1.7 2.5 3.4 2.5 5.4a7 7 0 0 1-14 0c0-2.3 1-4 2.3-5.3.3 1.3 1 2.1 2 2.5-.3-2.8.6-6.3 3.3-9.2Zm-.6 9.7c-1.6 1.6-2.4 3-2.4 4.2a2.4 2.4 0 0 0 4.8 0c0-1.2-.6-2.3-2.4-4.2Z" /></svg>;
+  return <Icon name="flame" size={size} className="text-[#F0735A]" />;
 }
 
 /** 시안 미리보기에서 카드→시트→체크 흐름을 묶는 작은 상태. 실제 저장은 lib/practice의 markDone 등이 맡는다. */

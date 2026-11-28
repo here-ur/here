@@ -18,10 +18,7 @@ function ProfilePlaceholder({ counselor, large = false }: { counselor: Counselor
       className={`grid shrink-0 place-items-center rounded-full ${large ? "size-20" : "size-14"}`}
       style={{ background: palette.light, color: palette.deep }}
     >
-      <svg width={large ? 42 : 30} height={large ? 42 : 30} viewBox="0 0 32 32" fill="none">
-        <circle cx="16" cy="10" r="5" fill="currentColor" opacity=".65" />
-        <path d="M6 28v-2a10 10 0 0 1 20 0v2" fill="currentColor" opacity=".4" />
-      </svg>
+      <Icon name="profile" size={large ? 42 : 30} />
     </span>
   );
 }

@@ -6,11 +6,11 @@ import { vector } from "@electric-sql/pglite-pgvector";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 
 const V1 = "2026-10-31-dev-v1";
-const V2 = "2026-11-16-dev-v2";
+const CURRENT = "2026-11-28-dev-v3";
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const dir = new URL("../../supabase/migrations/", import.meta.url);
 
-// Applies every migration up to 0024. Cron files need pg_cron, which PGlite does not have.
+// Applies all local migrations. Cron files need pg_cron, which PGlite does not have.
 async function migrated() {
   const db = new PGlite({ extensions: { vector, pgcrypto } });
   await db.exec(`
@@ -54,8 +54,9 @@ test("0024 동의 버전: 옛 버전으로는 새로 동의할 수 없고, 현�
     // when / then: user 1
     await user(1);
     assert.equal(await val("select public.accept_memory_consent($1,true,true) v", [V1]), false, "v1 is no longer accepted");
+    assert.equal(await val("select public.accept_memory_consent($1,true,true) v", ["2026-11-16-dev-v2"]), false, "the superseded notice cannot be submitted as current consent");
     assert.equal(await val("select public.conversation_is_enabled() v"), false);
-    assert.equal(await val("select public.accept_memory_consent($1,true,true) v", [V2]), true);
+    assert.equal(await val("select public.accept_memory_consent($1,true,true) v", [CURRENT]), true);
     assert.equal(await val("select public.memory_is_enabled() v"), true);
     assert.equal(await val("select public.conversation_is_enabled() v"), true);
 
@@ -68,7 +69,7 @@ test("0024 동의 버전: 옛 버전으로는 새로 동의할 수 없고, 현�
     await admin();
     const events = (await db.query<{ event_type: string; version: string }>(
       "select event_type, version from public.privacy_consent_events where user_id=$1", [id(1)])).rows;
-    assert.deepEqual(events, [{ event_type: "accepted", version: V2 }]);
+    assert.deepEqual(events, [{ event_type: "accepted", version: CURRENT }]);
   } finally {
     await db.close();
   }
@@ -79,7 +80,7 @@ test("0024 컬럼 변경: 이름은 nickname에 저장되고 대화 메시지에
   try {
     // given
     await user(1);
-    await val("select public.accept_memory_consent($1,true,true) v", [V2]);
+    await val("select public.accept_memory_consent($1,true,true) v", [CURRENT]);
 
     // when
     assert.equal(await val("select public.set_display_name('테스트') v"), true);

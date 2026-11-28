@@ -62,26 +62,27 @@
 .hp .hp-scene[data-field="lilac"] { --field: var(--hp-lilac); --fg2: rgb(19 17 17 / 74%); }
 /* 주황 위에서는 주황 동그라미가 보이지 않으므로 노랑 + 잉크 아이콘 */
 .hp .hp-scene[data-field="orange"] { --field: var(--hp-orange); --fg2: rgb(19 17 17 / 86%); --fg3: rgb(19 17 17 / 28%); --dot: var(--hp-yellow); --dot-fg: var(--hp-ink); }
+/* The oversized opening arch must not create a focus-scrollable container. */
+.hp .hp-scene[data-scene="open"] { overflow: clip; }
 .hp .hp-scene:focus-visible { outline: none; }
 .hp .hp-scene.is-frozen, .hp .hp-scene.is-entering { pointer-events: none; }
-.hp .hp-ink { position: absolute; inset: 0; background: var(--hp-ink); pointer-events: none; }
 /* 시험용 키보드의 자리 표시(진짜 키보드가 올라올 때는 보이지 않는다) */
 .hp .hp-kbd { position: absolute; left: 0; right: 0; bottom: 0; height: 0; z-index: 60; display: none; place-items: center; background: rgb(19 17 17 / 12%); border-top: 1.5px dashed rgb(19 17 17 / 34%); color: rgb(19 17 17 / 74%); font-size: 13px; font-weight: 500; letter-spacing: -0.01em; pointer-events: none; }
 .hp.has-fake-kb .hp-kbd { display: grid; }
 .hp .hp-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* ───────────────────────── 위 줄(뒤로 · 건너뛰기) ─────────────────────────
- * 참고 이미지에는 위 줄이 없다. 그래서 테두리 없는 뒤로 화살표와 글자뿐인 '건너뛰기'만 둔다(진행 막대 없음). */
+ * 설정 장면에서는 뒤로가기 옆에 진행률을 표시한다. */
 .hp .hp-top { position: absolute; left: 0; right: 0; top: 10px; height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px 0 12px; z-index: 30; pointer-events: none; }
 .hp .hp-top > * { pointer-events: auto; }
 .hp .hp-back { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: var(--fg); transition: transform 420ms var(--hp-spring), background-color 160ms; }
-.hp .hp-back svg { width: 26px; height: 26px; }
+.hp .hp-back svg { width: 24px; height: 24px; }
 .hp .hp-back:active { transform: scale(.86); transition-duration: 80ms; background-color: var(--fg3); }
 .hp .hp-skip { flex: none; height: 44px; margin-left: auto; padding: 0 14px; white-space: nowrap; font-size: 15px; font-weight: 600; letter-spacing: -0.02em; color: var(--fg2); border-radius: 22px; transition: transform 420ms var(--hp-spring), opacity 160ms linear; }
 .hp .hp-skip:active { transform: scale(.94); transition-duration: 80ms; }
 /* 소리 켜고 끄기: 테두리 없는 작은 아이콘 버튼. 늘 위 줄의 오른쪽 끝에 있고, 건너뛰기는 그 왼쪽에 붙는다 */
 .hp .hp-sound { flex: none; width: 40px; height: 44px; margin-left: auto; display: grid; place-items: center; border-radius: 50%; color: var(--fg); transition: transform 420ms var(--hp-spring), background-color 160ms; }
-.hp .hp-sound svg { width: 23px; height: 23px; }
+.hp .hp-sound svg { width: 24px; height: 24px; }
 .hp .hp-sound:active { transform: scale(.86); transition-duration: 80ms; background-color: var(--fg3); }
 .hp .hp-sound[aria-pressed="true"] { color: var(--fg2); }
 .hp .hp-skip + .hp-sound { margin-left: 0; }
@@ -91,15 +92,10 @@
 .hp .hp-skip.is-off { opacity: 0; pointer-events: none; visibility: hidden; transition: transform 420ms var(--hp-spring), opacity 160ms linear, visibility 0s linear 160ms; }
 .hp .hp-still .hp-skip { transition: none; }
 
-/* ───────────────────────── 쪽 표시(짧은 줄 하나 + 점) ─────────────────────────
- * 참고 이미지처럼 아래 검정 버튼 바로 위 가운데에 붙는다. 지금 장면은 잉크색 짧은 줄, 나머지는 바탕보다 조금 어두운 점. */
-.hp .hp-pages { display: flex; align-items: center; justify-content: center; gap: 4px; height: 6px; pointer-events: none; }
-.hp .hp-pages i { display: block; flex: none; width: 6px; height: 6px; border-radius: 3px; background: rgb(19 17 17 / 18%); transition: width 520ms var(--hp-spring-soft), background-color 220ms linear; }
-.hp .hp-pages i.is-on { width: 15px; background: var(--hp-ink); }
-.hp .hp-cta > .hp-pages { position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: 15px; transition: opacity 160ms linear; }
-/* 아래 큰 버튼 위에 고양이가 있는 장면(q1 · q3 · naming)에서는 위 줄 가운데에 둔다(뒤로 화살표와 같은 높이) */
-.hp .hp-top > .hp-pages { position: absolute; left: 0; right: 0; top: 21px; pointer-events: none; }
-.hp .hp-still .hp-pages i { transition: none; }
+/* 이름 입력 이후의 진행률. 뒤로가기와 우측 조작 사이에 둔다. */
+.hp .hp-progress { display: flex; flex: 1; align-items: center; justify-content: center; gap: 4px; min-width: 0; height: 8px; margin: 0 12px; pointer-events: none; }
+.hp .hp-progress-step { display: block; flex: 0 0 8px; width: 8px; height: 8px; border-radius: 999px; background: rgb(19 17 17 / 14%); }
+.hp .hp-progress-step.is-current { flex-basis: 24px; width: 24px; background: var(--hp-ink); }
 
 /* ───────────────────────── 자리 잡기 ───────────────────────── */
 /* 장면 안의 덩어리. top / bottom 은 ui.block 이 정한다 */
@@ -125,6 +121,18 @@
 .hp .hp-still .hp-rise, .hp .hp-still .hp-drop, .hp .hp-still .hp-popin { animation: none; }
 .hp .hp-still .hp-leave { animation-duration: 1ms; animation-delay: 0ms; }
 
+/* 다음 장면의 내용도 큰 이동이나 확대 없이 나타난다. */
+.hp .hp-scene:not([data-scene="open"]):not(.hp-still) :is(.hp-rise, .hp-drop, .hp-popin) {
+  animation-name: hp-scene-content;
+  animation-duration: 560ms;
+  animation-timing-function: cubic-bezier(.4,0,.2,1);
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+@keyframes hp-scene-content {
+  from { opacity: 0; transform: translate3d(0, 6px, 0); }
+  to { opacity: 1; transform: none; }
+}
+
 /* 한 글자씩 적히는 줄 */
 .hp .hp-w { display: inline-block; white-space: nowrap; }
 .hp .hp-c { display: inline-block; white-space: pre; opacity: 0; transform: translate3d(0, .16em, 0); }
@@ -147,10 +155,16 @@
 .hp button.hp-pill.hp-c.is-on { transition: opacity 120ms linear, transform 420ms var(--hp-spring); }
 .hp button.hp-pill:active { transform: scale(.94); transition-duration: 80ms; }
 .hp .hp-pill-name { max-width: 236px; overflow: hidden; text-overflow: ellipsis; font-size: 26px; letter-spacing: -0.03em; padding: 3px 0; }
-/* 숨소리 막대(자는 중) */
-.hp .hp-wave { display: flex; align-items: center; gap: 3px; height: 26px; }
-.hp .hp-wave i { width: 2px; height: calc(var(--h) * 1px); border-radius: 1px; background: rgb(255 255 255 / 48%); animation: hp-breathe 3.6s ease-in-out infinite; animation-delay: calc(var(--n) * -90ms); }
-@keyframes hp-breathe { 0%, 100% { transform: scaleY(.36); } 45% { transform: scaleY(1); } }
+/* 제목 배지: 동의 · 생일 · 이름이 같은 크기와 타이포그래피를 공유한다. */
+.hp .hp-pill.hp-pill-headline { height: 56px; padding: 5px 9px 5px 16px; gap: 12px; margin: -2px 1px; border-radius: 99px; background: #000; font-family: var(--font-gothic-a1, "Gothic A1"), sans-serif; font-size: 32px; font-weight: 500; line-height: 1; letter-spacing: -.64px; }
+.hp .hp-pill-headline .hp-pill-text { flex: none; height: 38px; display: flex; align-items: center; }
+.hp .hp-pill-headline .hp-pill-name { font-size: inherit; font-weight: inherit; letter-spacing: inherit; line-height: 38px; padding: 0; }
+.hp .hp-pill-headline .hp-pill-dot { width: 38px; height: 38px; }
+/* 자는 중 표시 — Figma 500:356, 117×48. SVG의 원래 크기는 변경하지 않는다. */
+.hp .hp-pill.hp-pill-sleep { flex: none; width: 117px; height: 48px; gap: 16px; padding: 5px 5px 5px 16px; border-radius: 99px; background: #000; }
+.hp .hp-sleep-wave { position: relative; flex: none; width: 42px; height: 20px; }
+.hp .hp-sleep-wave img { display: block; max-width: none; }
+.hp .hp-sleep-badge { display: block; flex: none; max-width: none; }
 /* 색 점 네 개 */
 .hp .hp-pill.is-swatch { padding: 0 10px; gap: 0; }
 .hp .hp-pill.is-swatch i { width: 26px; height: 26px; border-radius: 50%; background: var(--c); margin-left: -8px; box-shadow: 0 0 0 2.5px var(--hp-ink); }
@@ -190,14 +204,14 @@
 .hp .hp-fail { position: absolute; left: 20px; right: 20px; bottom: 104px; z-index: 12; margin: 0; padding: 13px 18px; border-radius: 20px; background: var(--hp-white); color: var(--hp-ink); font-size: 15px; font-weight: 500; line-height: 1.45; letter-spacing: -0.02em; text-wrap: pretty; }
 .hp .hp-scene.is-failed .hp-ready, .hp .hp-scene.is-saving .hp-ready { opacity: 0; transition: opacity 120ms linear; }
 @media (prefers-reduced-motion: reduce) { .hp .hp-cta.is-busy .hp-i::after { animation: none; opacity: 1; } }
-.hp .hp-cta .hp-i svg { width: 22px; height: 22px; }
+.hp .hp-cta .hp-i svg { width: 24px; height: 24px; }
 .hp .hp-cta:not([disabled]):hover .hp-i { transform: translateX(3px); }
 .hp .hp-cta:not([disabled]):active .hp-i { transform: translateX(7px); transition-duration: 90ms; }
 .hp .hp-cta.is-hidden { opacity: 0; transform: translate3d(0, 110px, 0); pointer-events: none; transition: transform 300ms var(--hp-inout), opacity 200ms linear; }
 
 /* 둥근 버튼 */
 .hp .hp-round { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: var(--hp-white); color: var(--hp-ink); transition: transform 460ms var(--hp-spring); flex: none; }
-.hp .hp-round svg { width: 26px; height: 26px; }
+.hp .hp-round svg { width: 24px; height: 24px; }
 .hp .hp-round:active { transform: scale(.88); transition-duration: 80ms; }
 
 /* 고르는 알약(고르면 곧바로 검정 + 동그란 체크 + 안에 대답) */
@@ -238,17 +252,22 @@
 .hp .hp-mark { position: absolute; left: 0; top: 0; width: calc(var(--s, 28) * 1px); height: calc(var(--s, 28) * 1px); margin: calc(var(--s, 28) * -.5px) 0 0 calc(var(--s, 28) * -.5px); transform: translate3d(calc(var(--x) * 1px), calc(var(--y) * 1px), 0) rotate(calc(var(--r, 0) * 1deg)); color: var(--fg); pointer-events: none; z-index: 3; }
 .hp .hp-mark svg { width: 100%; height: 100%; overflow: visible; }
 .hp .hp-mark > span { display: block; width: 100%; height: 100%; }
+.hp .hp-mark.hp-mark-asset > span { display: flex; align-items: center; justify-content: center; }
+.hp .hp-mark-asset img { display: block; max-width: none; scale: calc(var(--s, 24) / 24); }
+.hp .hp-scene[data-scene="open"] .hp-mark-asset img { filter: brightness(0); }
 .hp .hp-mark.is-pop > span { animation: hp-mark-pop 640ms var(--hp-spring) backwards; animation-delay: calc(var(--d, 0) * 1ms); }
 @keyframes hp-mark-pop { from { transform: scale(0) rotate(-40deg); opacity: 0; } 20% { opacity: 1; } to { transform: none; opacity: 1; } }
 .hp .hp-mark.is-float > span > svg { animation: hp-mark-float 4.2s ease-in-out infinite; animation-delay: calc(var(--d, 0) * -1ms - 600ms); }
 @keyframes hp-mark-float { 0%, 100% { transform: translate3d(0, 0, 0) rotate(0); } 50% { transform: translate3d(0, -6px, 0) rotate(8deg); } }
-.hp .hp-mark.is-twinkle > span > svg { animation: hp-mark-twinkle 2.8s ease-in-out infinite; animation-delay: calc(var(--d, 0) * -1ms); }
+.hp .hp-mark.is-twinkle > span > svg, .hp .hp-mark.is-twinkle > span > img { animation: hp-mark-twinkle 2.8s ease-in-out infinite; animation-delay: calc(var(--d, 0) * -1ms); }
 /* 물러나는 표시 */
 .hp .hp-mark.is-out > span { animation: none; transform: scale(0) rotate(-30deg); opacity: 0; transition: transform 220ms var(--hp-inout), opacity 180ms linear; }
 @keyframes hp-mark-twinkle { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(.7) rotate(20deg); } }
 /* 터지고 사라지는 조각 · 퍼지는 테두리 */
 .hp .hp-bit { position: absolute; left: 0; top: 0; width: calc(var(--s, 22) * 1px); height: calc(var(--s, 22) * 1px); margin: calc(var(--s, 22) * -.5px) 0 0 calc(var(--s, 22) * -.5px); color: var(--fg); pointer-events: none; z-index: 12; will-change: transform, opacity; }
 .hp .hp-bit svg { width: 100%; height: 100%; overflow: visible; }
+.hp .hp-bit-asset { display: grid; place-items: center; }
+.hp .hp-bit-asset img { display: block; max-width: none; scale: calc(var(--s, 24) / 24); filter: brightness(0); }
 .hp .hp-ring { position: absolute; left: 0; top: 0; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 2px solid var(--fg); pointer-events: none; z-index: 1; }
 
 /* 고양이의 자리가 되는 납작한 색 덩어리(ui.shape) */
@@ -262,11 +281,12 @@
 /* 기울인 무대 위에서 똑바로 앉아 있는 동안(name에서 대답할 때)에는 발밑의 납작한 그림자가 보인다 */
 .hp .hp-catlayer.hp-tilt.is-sitting { --hc-shadow-o: 1; }
 .hp .hc-shadow { transition: transform 300ms var(--hp-out), opacity 200ms linear; }
-.hp .hc[data-pose="sleep"] .hc-shadow { transform: translate3d(12px, 0, 0) scaleX(1.5); }
+.hp .hc[data-pose="sleep"] .hc-shadow, .hp .hp-scene[data-scene="open"] .hc-shadow { display: none; }
 .hp .hc[data-pose="purr"] .hc-shadow { transform: translate3d(4px, -2px, 0) scaleX(1.38); }
 .hp .hc[data-pose="grumble"] .hc-shadow { transform: translate3d(8px, -6px, 0) scaleX(1.14); }
 /* 자세가 바뀔 때 그림이 흐려졌다 나타나지 않게(걷기 → 앉기에서 고양이가 비쳐 보이지 않는다) */
 .hp .hc-img { transition: none; }
+.hp .hc[data-pose="sleep"] .hc-img[data-breathing="true"] { clip-path: none; }
 /* 그림 맨 아래에 구워진 회색 그림자·밝은 테를 뺀다: 열마다 털의 아래 윤곽을 따라 오린 다각형(발끝이 일자로 잘리지 않는다). 영상은 모든 프레임의 합집합 기준. */
 .hp .hc[data-pose="sit"] .hc-img { clip-path: polygon(0% 0%, 100% 0%, 100% 96.8%, 99.93% 96.8%, 94.89% 96.8%, 94.35% 97.23%, 93.8% 97.33%, 93.53% 97.53%, 92.98% 97.53%, 92.57% 97.73%, 91.62% 97.83%, 91.21% 98.03%, 90.67% 98.03%, 90.12% 98.23%, 89.03% 98.33%, 88.9% 98.43%, 88.49% 98.43%, 88.35% 98.53%, 87.53% 98.53%, 87.4% 98.63%, 86.99% 98.63%, 86.85% 98.73%, 86.04% 98.73%, 85.9% 98.83%, 85.08% 98.83%, 84.95% 98.93%, 83.86% 98.93%, 83.72% 99.03%, 82.36% 99.03%, 82.22% 99.13%, 80.18% 99.13%, 80.04% 99.23%, 74.32% 99.23%, 74.18% 99.13%, 72.96% 99.13%, 72.82% 99.03%, 71.73% 99.03%, 71.59% 98.93%, 70.78% 98.93%, 70.64% 98.83%, 70.1% 98.83%, 69.14% 98.43%, 67.92% 98.33%, 67.78% 98.43%, 67.1% 98.43%, 66.96% 98.53%, 65.6% 98.53%, 65.46% 98.63%, 64.65% 98.63%, 64.51% 98.83%, 64.24% 98.83%, 63.83% 99.13%, 63.28% 99.33%, 62.74% 99.33%, 62.33% 99.53%, 60.97% 99.53%, 60.83% 99.63%, 59.06% 99.63%, 58.92% 99.73%, 57.56% 99.73%, 57.43% 99.83%, 55.38% 99.83%, 55.25% 99.73%, 52.93% 99.73%, 52.79% 99.63%, 50.48% 99.63%, 50.34% 99.53%, 49.52% 99.53%, 49.39% 99.43%, 48.84% 99.43%, 48.71% 99.33%, 47.62% 99.23%, 46.8% 98.93%, 45.03% 98.93%, 43.94% 99.33%, 43.26% 99.33%, 42.71% 99.53%, 41.35% 99.53%, 41.21% 99.63%, 38.62% 99.63%, 38.49% 99.73%, 33.99% 99.73%, 33.86% 99.63%, 32.36% 99.63%, 32.22% 99.53%, 30.45% 99.53%, 30.31% 99.43%, 29.63% 99.33%, 28.81% 99.03%, 27.72% 98.23%, 27.59% 98.03%, 26.91% 98.03%, 26.36% 97.83%, 26.09% 97.83%, 25.95% 97.93%, 24.86% 97.93%, 24.73% 98.03%, 16.28% 98.03%, 16.14% 97.93%, 15.05% 97.93%, 14.92% 97.83%, 14.24% 97.83%, 14.1% 97.73%, 13.56% 97.73%, 13.42% 97.63%, 12.47% 97.53%, 11.51% 97.13%, 11.1% 96.8%, 0.07% 96.8%, 0% 96.8%); }
 .hp .hc[data-pose="round"] .hc-img { clip-path: polygon(0% 0%, 100% 0%, 100% 96.37%, 99.91% 96.37%, 93.35% 96.37%, 92.98% 96.69%, 92.6% 96.69%, 92.42% 96.83%, 92.04% 96.83%, 91.85% 96.97%, 91.48% 96.97%, 91.29% 97.11%, 90.73% 97.11%, 90.54% 97.25%, 90.17% 97.25%, 89.98% 97.39%, 89.42% 97.39%, 89.23% 97.53%, 88.48% 97.53%, 88.3% 97.67%, 87.73% 97.67%, 87.55% 97.81%, 86.8% 97.81%, 86.61% 97.95%, 86.05% 97.95%, 85.86% 98.09%, 84.74% 98.09%, 84.55% 98.23%, 83.43% 98.23%, 83.24% 98.37%, 81.55% 98.37%, 81.37% 98.51%, 74.06% 98.51%, 73.88% 98.37%, 72.57% 98.37%, 72.38% 98.23%, 71.25% 98.23%, 71.07% 98.09%, 70.51% 98.09%, 70.32% 97.95%, 69.19% 97.95%, 69.01% 97.81%, 67.88% 97.81%, 67.7% 97.67%, 66.01% 97.67%, 65.45% 97.95%, 64.7% 97.95%, 63.76% 98.51%, 63.39% 98.51%, 63.2% 98.65%, 62.83% 98.65%, 62.64% 98.79%, 61.7% 98.79%, 61.52% 98.93%, 58.71% 98.93%, 58.52% 99.07%, 54.21% 99.07%, 54.03% 98.93%, 50.84% 98.93%, 50.66% 98.79%, 49.72% 98.79%, 49.53% 98.65%, 48.97% 98.65%, 48.78% 98.51%, 48.22% 98.51%, 47.85% 98.23%, 45.79% 98.23%, 45.6% 98.37%, 45.22% 98.37%, 45.04% 98.51%, 44.48% 98.51%, 43.91% 98.79%, 42.79% 98.79%, 42.6% 98.93%, 39.42% 98.93%, 39.23% 99.07%, 35.49% 99.07%, 35.3% 98.93%, 32.3% 98.93%, 32.12% 98.79%, 31.18% 98.79%, 30.99% 98.65%, 30.43% 98.51%, 29.68% 97.95%, 29.49% 97.67%, 29.31% 97.67%, 28.56% 97.25%, 27.81% 97.25%, 27.62% 97.39%, 17.88% 97.39%, 17.7% 97.25%, 16.01% 97.25%, 15.82% 97.11%, 14.89% 97.11%, 14.7% 96.97%, 14.33% 96.97%, 13.58% 96.37%, 0.09% 96.37%, 0% 96.37%); }
@@ -278,38 +298,36 @@
 
 /* ═════════════════════════ 장면: open (노랑) ═════════════════════════ */
 .hp .hp-head .hp-h + .hp-body { margin-top: 14px; }
-.hp .hp-zz { position: absolute; left: 0; top: 0; z-index: 6; pointer-events: none; color: var(--fg); }
-.hp .hp-zz b { position: absolute; font-size: calc(var(--s) * 1px); line-height: 1; font-weight: 600; transform-origin: 50% 80%; animation: hp-z 3.6s ease-in-out infinite both; animation-delay: calc(var(--n) * .42s - 3.6s); }
-@keyframes hp-z { 0%, 100% { transform: translate3d(0, 6px, 0) scale(.55) rotate(-12deg); opacity: 0; } 30%, 62% { transform: translate3d(0, 0, 0) scale(1) rotate(6deg); opacity: 1; } 86% { transform: translate3d(6px, -10px, 0) scale(1.06) rotate(12deg); opacity: 0; } }
+.hp .hp-open-leave { animation: hp-open-leave 400ms ease-in-out both; animation-delay: calc(var(--i, 0) * 35ms); }
+@keyframes hp-open-leave { to { opacity: 0; transform: translate3d(0, -6px, 0); } }
+.hp .hp-zz { position: absolute; z-index: 6; display: flex; align-items: center; justify-content: center; gap: 6px; width: 96px; height: 58px; border-radius: 32px; background: var(--fg); color: #fff; pointer-events: none; }
+.hp .hp-zz::before, .hp .hp-zz::after { content: ""; position: absolute; border-radius: 50%; background: var(--fg); }
+.hp .hp-zz::before { width: 21px; height: 21px; left: -3px; bottom: -1px; }
+.hp .hp-zz::after { width: 10px; height: 10px; left: -12px; bottom: -11px; }
+.hp .hp-zz b { position: relative; top: -3px; font-size: 24px; line-height: 1; font-weight: 500; opacity: .28; animation: hp-zzz-opacity 2.4s ease-in-out infinite; animation-delay: calc(var(--n) * .4s - 2.4s); }
+@keyframes hp-zzz-opacity {
+  0%, 54%, 100% { opacity: .28; }
+  22%, 30% { opacity: 1; }
+}
 
 /* ═════════════════════════ 장면: name (라일락) ═════════════════════════ */
-.hp .hp-name-ask { transition: transform 560ms var(--hp-spring-soft); }
+.hp .hp-name-ask { transition: transform 360ms cubic-bezier(.22,1,.36,1); }
 .hp .hp-name-ask .hp-field { margin-top: 20px; }
 .hp .hp-name-ask .hp-note { margin-top: 2px; transition: opacity 160ms linear; }
 .hp .hp-name-ask .hp-note span { display: block; }
-.hp .hp-name-ask.is-leaving .hp-l, .hp .hp-name-ask.is-leaving .hp-field-label, .hp .hp-name-ask.is-leaving .hp-note { animation: hp-leave 240ms var(--hp-inout) both; }
-.hp .hp-name-ask.is-leaving .hp-bigin { opacity: 0; }
-.hp .hp-name-ask.is-leaving .hp-caret { display: none; }
-.hp .hp-name-ask.is-gone { display: none; }
 /* 화면 키보드가 올라왔을 때: 묻는 덩어리는 키보드 위로, '다음'은 오른쪽 작은 알약이 되어 키보드 바로 위에 붙는다(layout-4) */
 .hp .hp-name-cta { transition: transform 460ms var(--hp-spring), opacity 200ms linear, background-color 220ms linear, color 220ms linear, left 520ms var(--hp-spring-soft), bottom 520ms var(--hp-spring-soft), padding 520ms var(--hp-spring-soft); }
 .hp .hp-scene.is-typing .hp-name-cta { left: 246px; padding: 0 16px 0 24px; }
 .hp .hp-scene.is-typing .hp-name-ask .hp-note { opacity: 0; }
-.hp .hp-scene.is-typing .hp-name-cta .hp-pages { opacity: 0; }
-/* 하트·반짝이: 고양이가 대답하면 자리를 옮긴다. 키보드가 올라오면 묻는 글에 자리를 내준다 */
-.hp .hp-name-mark { transition: transform 900ms var(--hp-spring-soft), opacity 160ms linear; }
-.hp .hp-scene.is-typing .hp-name-mark { opacity: 0; }
-.hp .hp-still .hp-name-mark { transition: none; }
 .hp .hp-still .hp-name-ask, .hp .hp-still .hp-name-cta { transition: none; }
+@media (prefers-reduced-motion: reduce) { .hp .hp-name-ask, .hp .hp-name-cta { transition: none; } }
 
 /* ═════════════════════════ 장면: q1 (노랑) ═════════════════════════ */
 .hp .hp-q1-head { pointer-events: none; }
 .hp .hp-q1-head .hp-pill { pointer-events: auto; }
 /* 고른 답: 질문이 있던 자리에 "요즘 나는 / [고른 말 ✎]" — 고른 말은 큰 검정 알약에 담긴다(누르면 다시 고른다) */
 .hp .hp-q1-say { position: absolute; left: 0; top: 0; }
-.hp .hp-pill.hp-pill-big { height: 60px; padding: 0 6px 0 22px; gap: 12px; margin: 7px 0 0 -1px; top: 0; border-radius: 30px; font-size: 30px; letter-spacing: -0.045em; }
-.hp .hp-pill-big .hp-pill-dot { width: 48px; height: 48px; }
-.hp .hp-pill-big .hp-pill-dot svg { width: 23px; height: 23px; }
+.hp .hp-pill.hp-pill-answer { margin: 7px 0 0 -1px; top: 0; }
 /* 덩어리 위의 고양이: 덩어리 색보다 조금 어두운 납작한 그림자 */
 .hp .hp-q1-cat { --hc-shadow-o: 1; --hc-shadow-bg: rgb(19 17 17 / 17%); }
 /* 아래 패널 너머로 얼굴을 내민 고양이. 패널이 담이 된다(패널 가운데에서 잘라 아래로는 보이지 않는다) */
@@ -337,7 +355,7 @@
 .hp .hp-panel-slot { flex: 1; min-width: 0; }
 .hp .hp-panel-line { margin: 0; font-size: 18px; line-height: 1.42; font-weight: 500; letter-spacing: -0.025em; color: #fff; }
 .hp .hp-panel-go { width: 64px; height: 64px; background: var(--hp-orange); color: #fff; transition: transform 460ms var(--hp-spring), background-color 180ms linear, color 180ms linear, box-shadow 180ms linear; }
-.hp .hp-panel-go svg { width: 28px; height: 28px; stroke-width: 2.3px; }
+.hp .hp-panel-go svg { width: 24px; height: 24px; }
 /* 고르기 전: 흰 테두리의 화살표(검정 알약 위에는 흰색만 쓴다. 회색으로 흐리게 하지 않는다) */
 .hp .hp-panel-go[disabled] { background: transparent; box-shadow: inset 0 0 0 2px #fff; color: #fff; cursor: default; }
 .hp .hp-panel-go[disabled]:active { transform: none; }
@@ -423,3 +441,21 @@
 
 /* 바깥 페이지의 낱말 간격이 섀도 루트 안으로 새어 들어오지 않게 */
 .hp { word-spacing: normal; }
+
+/* 이름 입력의 전용 옆 빼꼼 포즈: 정면 캐릭터를 돌리지 않는다. */
+.hp .hp-catlayer.hp-name-peek { inset: auto; left: 0; top: 0; width: var(--peek-size, 350px); height: var(--peek-size, 350px); transform: translate3d(var(--sx, 89px), var(--sy, 64px), 0); transition: transform 650ms cubic-bezier(.4,0,.2,1), width 650ms cubic-bezier(.4,0,.2,1), height 650ms cubic-bezier(.4,0,.2,1); }
+.hp .hp-name-peek img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.hp .hp-still .hp-name-peek { transition: none; }
+@media (prefers-reduced-motion: reduce) { .hp .hp-catlayer.hp-name-peek { transition: none; } }
+
+.hp .hp-name-peek-circle { position: absolute; left: 0; top: 0; width: var(--circle-size, 385px); height: var(--circle-size, 385px); transform: translate3d(var(--circle-x, 106.5px), var(--circle-y, 8px), 0); border-radius: 50%; overflow: hidden; isolation: isolate; background: var(--hp-yellow); z-index: 4; pointer-events: none; transition: transform 650ms cubic-bezier(.4,0,.2,1), width 650ms cubic-bezier(.4,0,.2,1), height 650ms cubic-bezier(.4,0,.2,1); }
+.hp .hp-still .hp-name-peek-circle { transition: none; }
+@media (prefers-reduced-motion: reduce) { .hp .hp-name-peek-circle { transition: none; } }
+
+/* 라인 타입 별만 제외한다. Figma 채움 별 이미지는 그대로 표시한다. */
+.hp .hp-mark:has(use[href$="#sparkle"]),
+.hp .hp-bit:has(use[href$="#sparkle"]),
+.hp .hp-bub-dot:has(use[href$="#sparkle"]) { display: none !important; }
+.hp .hp-mark-solid-star img { filter: brightness(0); }
+.hp .hp-bub-solid-star { display: grid; place-items: center; }
+.hp .hp-bub-solid-star img { display: block; max-width: none; scale: calc(var(--s, 24) / 24); filter: brightness(0); transform: rotate(var(--rot, 0deg)); }

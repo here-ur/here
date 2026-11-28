@@ -74,9 +74,7 @@ export default function Log({ who, onBack, title = "대화 기록", back = "리�
                   <details className="group mt-3">
                     <summary className="ui-press flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-r2 text-t4 font-bold text-[#1F2A55] [&::-webkit-details-marker]:hidden">
                       대화 보기 · {said.length}번 말함
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="ui-transition group-open:rotate-180">
-                        <path d="M6 9.5l6 6 6-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      <Icon name="down" size={16} className="ui-transition group-open:rotate-180" />
                     </summary>
                     <div className="mt-3 rounded-r4 bg-[#F5F7FB] p-3 motion-safe:animate-fade">
                       <Bubbles who={who} messages={s.messages} follow={false} />

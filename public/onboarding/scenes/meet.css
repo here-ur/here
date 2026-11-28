@@ -6,7 +6,7 @@
 
 /* ── 첫마디: 맨 앞의 말줄임표 = 줄 안의 검정 알약 속 점 세 개 ── */
 .hp .hp-meet-head.is-gone { visibility: hidden; }
-.hp .hp-pill.hp-meet-dots { gap: 6px; padding: 0 15px; margin: 0 7px 0 0; }
+.hp .hp-pill.hp-meet-dots { margin-right: 7px; }
 .hp .hp-meet-dots i { display: block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: #fff; transition: background-color 140ms linear, transform 460ms var(--hp-spring); }
 /* 말을 고르는 중: 점이 차례로 들썩인다 */
 .hp .hp-meet-dots.is-thinking i { animation: hp-meet-think 1.05s ease-in-out infinite; animation-delay: calc(var(--n) * 150ms); }
@@ -29,8 +29,6 @@
 .hp .hp-h.hp-meet-sum { font-size: 26px; line-height: 1.36; letter-spacing: -0.045em; }
 .hp .hp-meet-sum .hp-l { display: inline-block; max-width: 100%; margin-right: .26em; white-space: normal; text-wrap: balance; vertical-align: top; }
 /* 이름 알약(글자 크기를 따라 줄어든다) */
-.hp .hp-pill.hp-meet-name { height: 1.62em; padding: 0 .6em; margin: 0 2px 0 0; border-radius: .81em; font-size: .85em; top: -.05em; }
-.hp .hp-meet-name .hp-pill-name { max-width: 11.6em; padding: 0; font-size: 1em; letter-spacing: -0.03em; }
 
 /* ── 고양이의 자리 · 길 위의 점(멀수록 작다. 덩어리와 같은 색이라 부풀어 오는 덩어리에 스며든다) ── */
 .hp .hp-scene:not(.hp-still):not(.is-tough) .hp-meet-spot { animation: hp-meet-spot 760ms var(--hp-spring) backwards; animation-delay: 180ms; }

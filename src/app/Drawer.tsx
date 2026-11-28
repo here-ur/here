@@ -69,15 +69,8 @@ function QuotaLine({ status }: { status: QuotaStatus }) {
 
 /** 리포트(라이브러리) 아이콘. 리포트가 하늘 달력을 담아서 홈 헤더와 메뉴에서 같은 달력 모양을 쓴다. */
 export function CalendarIcon({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
-      <rect x="4" y="5.5" width="16" height="14.5" rx="3" />
-      <path d="M8 3.5v4M16 3.5v4M4 10h16" />
-    </svg>
-  );
+  return <Icon name="calendar" size={size} />;
 }
-
-const stroke = { fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 
 type View = "menu" | "settings" | "name" | "withdraw";
 const DEPTH: Record<View, number> = { menu: 0, settings: 1, name: 2, withdraw: 2 };

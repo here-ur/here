@@ -11,7 +11,7 @@ const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")
 const dir = new URL("../../supabase/migrations/", import.meta.url);
 const at = () => new Date().toISOString();
 
-// 0001~0030(크론 제외)을 올리고, 회원 한 명이 대화 저장 동의까지 한 상태를 만든다.
+// 전체 마이그레이션(크론 제외)을 올리고, 회원 한 명이 대화 저장 동의까지 한 상태를 만든다.
 async function migrated() {
   const db = new PGlite({ extensions: { vector, pgcrypto } });
   await db.exec(`
@@ -33,7 +33,8 @@ async function migrated() {
   await db.query("insert into public.members(user_id) values($1)", [USER]);
   await db.exec("set role authenticated");
   await db.query("select set_config('request.jwt.claim.sub',$1,false)", [USER]);
-  await db.query("select public.accept_memory_consent('2026-11-16-dev-v2',true,true)");
+  const consent = await db.query<{ accepted: boolean }>("select public.accept_memory_consent('2026-11-28-dev-v3',true,true) as accepted");
+  assert.equal(consent.rows[0]?.accepted, true, "암호화 검증 전 현재 동의 버전을 수락한다");
   const val = async (sql: string, args: unknown[] = []) => (await db.query<{ v: unknown }>(sql, args)).rows[0]?.v;
   const save = (batch: string, messages: unknown[], fingerprint?: string) => fingerprint
     ? val("select public.save_conversation_batch($1,$2::jsonb,$3) v", [batch, JSON.stringify(messages), fingerprint])

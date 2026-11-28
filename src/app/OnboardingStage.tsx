@@ -29,7 +29,7 @@ import "./onboarding-stage.css";
 // 무대는 390×844 기준으로 그려지고, 이 칸의 크기에 맞게 한 비율로 줄거나 늘어난다(둘레에 남는 띠는 장면의 바탕색).
 // 무대 파일을 고치면 STAGE_VERSION을 올린다(브라우저가 옛 파일을 붙잡지 않게).
 const STAGE_BASE = "/onboarding/";
-const STAGE_VERSION = "2026-11-23g";
+const STAGE_VERSION = "2026-11-28cd";
 const SCRIPTS = ["copy.js", "cat.js", "sound.js", "phone.js", "scenes/promise.js", "scenes/birthday.js", "scenes/gender.js", "scenes/q2.js", "scenes/q4.js", "scenes/meet.js"];
 const STYLES = ["phone.css", "scenes/promise.css", "scenes/birthday.css", "scenes/gender.css", "scenes/q2.css", "scenes/q4.css", "scenes/meet.css"];
 const CAT_ART = "/characters/motion/"; // 고양이 그림은 홈과 같은 파일을 쓴다(앉은 그림·걷는 그림만 더했다)
@@ -42,7 +42,7 @@ export type StageSnapshot = { scene: StageScene | "done"; field: StageField | nu
 export type StageStart = { nickname?: string; companion?: string; answers?: Answers };
 const FIELD: Record<StageField, string> = { yellow: "#FDE249", lilac: "#DDC1FF", orange: "#FE6F42" };
 // 장면의 바탕색. 무대가 뜨기 전에도 그 장면의 색으로 칸을 채운다.
-const SCENE_FIELD: Record<StageScene, StageField> = { open: "yellow", promise: "orange", name: "lilac", birthday: "yellow", gender: "orange", q1: "yellow", q2: "lilac", q3: "orange", q4: "yellow", meet: "orange", naming: "lilac" };
+const SCENE_FIELD: Record<StageScene, StageField> = { open: "yellow", promise: "yellow", name: "lilac", birthday: "yellow", gender: "orange", q1: "yellow", q2: "lilac", q3: "orange", q4: "yellow", meet: "orange", naming: "lilac" };
 
 /** 마지막 버튼의 진행·실패 표시(무대가 넘겨준다). */
 type FinishControl = { busy(on: boolean): void; fail(message: string, retryLabel?: string): void };
@@ -87,6 +87,7 @@ declare global {
 const STAGE_CSS = `
 :host { display: block; }
 .stage { position: absolute; left: 50%; top: 50%; width: ${STAGE_W}px; height: ${STAGE_H}px; margin: ${-STAGE_H / 2}px 0 0 ${-STAGE_W / 2}px; overflow: hidden; transform: scale(var(--stage-k, 1)); transform-origin: 50% 50%; }
+.stage:has(.hp-scene[data-scene="birthday"]) { overflow: visible; }
 .hp { --hp-font: var(--font-outfit), var(--font-gothic-a1), "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; }
 `;
 
@@ -154,6 +155,7 @@ export default function OnboardingStage({ scene, state, initial, scenes, saving 
   const handlers = useRef({ onChange, onFinish, beforeNext, onSignOut });
   const finishing = useRef<FinishControl | null>(null);
   const [field, setField] = useState<StageField>(SCENE_FIELD[scene ?? "open"]);
+  const [activeScene, setActiveScene] = useState<string>(scene ?? "open");
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
 
@@ -168,7 +170,10 @@ export default function OnboardingStage({ scene, state, initial, scenes, saving 
       const width = node.clientWidth;
       const height = node.clientHeight;
       if (!width || !height) return;
-      node.style.setProperty("--stage-k", Math.min(width / STAGE_W, height / STAGE_H).toFixed(4));
+      const scale = Math.min(width / STAGE_W, height / STAGE_H).toFixed(4);
+      node.style.setProperty("--stage-k", scale);
+      node.style.setProperty("--stage-bottom-gap", `${Math.max(0, (height / Number(scale) - STAGE_H) / 2)}px`);
+      node.parentElement?.style.setProperty("--stage-k", scale);
     };
     fit();
     const watch = new ResizeObserver(fit);
@@ -220,6 +225,7 @@ export default function OnboardingStage({ scene, state, initial, scenes, saving 
         },
         onChange: (snapshot) => {
           if (snapshot.field) setField(snapshot.field);
+          setActiveScene(snapshot.scene);
           handlers.current.onChange?.(snapshot);
         },
         onFinish: (snapshot, control) => {
@@ -250,7 +256,7 @@ export default function OnboardingStage({ scene, state, initial, scenes, saving 
   }, [saving, saveError]);
 
   return (
-    <main className={`app-frame onboarding-stage ${outfit.variable} ${gothicA1.variable}`} style={{ "--stage-field": FIELD[field] } as CSSProperties}>
+    <main data-scene={activeScene} className={`app-frame onboarding-stage ${outfit.variable} ${gothicA1.variable}`} style={{ "--stage-field": FIELD[field] } as CSSProperties}>
       <div ref={host} className="onboarding-stage-host" />
       {error && (
         <div className="onboarding-stage-error" role="alert">
