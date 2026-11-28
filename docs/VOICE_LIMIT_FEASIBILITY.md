@@ -110,3 +110,6 @@
 명시적 배포 변수 적용 Preview `here-prhwp2gmm-here23.vercel.app`에서 임시 합성 회원의 `/api/live` 연결 성공, 본인 callId 바인딩·서버 기한 반환 확인, `/api/live/close` HTTP 200, WebRTC의 `session.closed`, DB closed 정산 확인. DB 관측 7.072초, 공급자 보고 15초. 공급자 보고와 DB 구간은 별개이며 청구 금액을 조회한 결과가 아니다. 증거: `evidence/voice-product-manual-close-20261128.jsonl`.
 
 실제 브라우저 마이크를 이용한 시험은 아니며 네이티브 합성 WebRTC를 사용했다. 전체 자동 테스트 513개와 lint·production build 통과. 시험 종료 후 활성 통화 0을 확인한 뒤 발급/감시를 비활성화하고, 생성한 임시 회원만 삭제한다. dev 반영 전에는 검증 배포를 참조하도록 감시를 켜고 dev 전용 VOICE 변수 3개를 등록해야 한다.
+
+
+최종 준비 상태: 임시 회원 삭제, 활성 통화 0, idle dispatch 0 확인. 감시는 검증 배포 `here-prhwp2gmm`에 연결해 활성화해 두었다. 새 VOICE 변수 3개는 기능 브랜치 및 dev Preview에 등록했다. 기존 암호화 키와 production 환경변수는 수정하지 않았다. dev 병합 후에는 해당 배포의 감시 API로 endpoint를 전환해야 한다. 환경변수를 적용한 실제 제품 API의 생성·수동 종료는 위 결과대로 성공했다.

@@ -114,12 +114,12 @@
 - 호스팅 실측: 60초 기한은 60.695791초에 종료 확인, 300초 기한은 300.938576초에 종료 확인. 후자는 감시 작업 인계 10회. 서버만 종료 명령을 전송했고 공급자 종료와 DB 정산을 확인했다. [상세 증거](VOICE_LIMIT_FEASIBILITY.md).
 - 메뉴에 음성 오늘/이번 달 남은 시간을 표시한다. 실제 사용량 API에서 글 40회·음성 600/1800초와 활성 통화 조회를 확인했다. 브라우저 조작은 도구 연결 타임아웃으로 미검증이다.
 - 사전 연결 제거 PR #54는 dev에 병합됐다. 최신 암호화/Runyour 임베딩 변경까지 작업 브랜치에 병합해 보존했다.
-- [한도 PR #56](https://github.com/here-ur/here/pull/56). 기능 브랜치 Preview에만 VOICE_QUOTA_ENABLED·VOICE_WATCH_ENABLED·VOICE_CONTROL_SECRET을 등록했다. 기존 dev/production 환경변수와 암호화 키는 바꾸지 않았다. 운영 DB/main은 변경하지 않았다.
+- [한도 PR #56](https://github.com/here-ur/here/pull/56). 기능 브랜치와 dev Preview에 VOICE_QUOTA_ENABLED·VOICE_WATCH_ENABLED·VOICE_CONTROL_SECRET을 등록했다. 기존 암호화 키와 production 환경변수는 바꾸지 않았다. 현재 감시는 검증 배포 here-prhwp2gmm을 참조하며 dev 배포 후 endpoint를 전환한다. 운영 DB/main은 변경하지 않았다.
 
 ## 개발 반영 및 복구 순서
 
 1. PR의 테스트/리뷰 후 dev 배포 준비 시 새 음성 발급을 일시 중지한다. 활성 통화 0을 확인한다.
-2. 서버 authority 비밀값과 활성화 변수 2개를 dev Preview에 등록하고 새 코드를 배포한다. 기존 암호화 키는 교체하지 않는다.
+2. dev Preview에 등록한 서버 authority 비밀값과 활성화 변수 2개를 확인하고 새 코드를 배포한다. 기존 암호화 키는 교체하지 않는다.
 3. DB 감시 endpoint를 해당 dev 배포로 바꾸고, 공급자 연결·종료 확인과 사용량 조회를 확인한 뒤 발급을 켠다. 발급은 dispatch가 꺼져 있으면 유료 공급자 호출 전에 거절한다.
 4. 되돌릴 때는 새 발급 중지→기존 통화의 종료 확인→활성 레코드 0→감시 비활성화 순서다. 종료가 불확실한 레코드를 임의 해제하지 않는다.
 5. 운영 DB/main 적용은 별도 승인 대상이다. 브라우저 중단/백그라운드, 두 실제 기기 동시 연결, 일·월 잔여가 더 짧은 실제 통화는 후속 검증 항목이다. DB 테스트와 실제 공급자 시험 범위를 섞지 않는다.
