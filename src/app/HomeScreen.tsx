@@ -154,6 +154,11 @@ export default function HomeScreen({
     if (button) { button.removeAttribute("data-fly"); void button.offsetWidth; button.setAttribute("data-fly", ""); }
     chat.onSend();
   }
+  // UT 전용 브랜치: 홈에 도착하면 주소 끝에 #home을 붙여 Useberry 과제 1이 자동으로 완료되게 한다. 운영 빌드에서는 하지 않는다.
+  useEffect(() => {
+    if (process.env.HERE_DEPLOY_ENV === "production" || window.location.hash === "#home") return;
+    window.location.hash = "home";
+  }, []);
   // 대화 목록이 처음 그려진 뒤부터만 새 말풍선이 들어오는 움직임을 켠다(열 때 이미 있던 대화가 한꺼번에 움직이지 않게).
   useEffect(() => {
     if (!hasMessages) return;
