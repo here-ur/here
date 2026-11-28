@@ -137,3 +137,13 @@ test('missing startup closes at setup deadline without granting 5 minutes', asyn
  socket.open();await flush();t.mock.timers.tick(20000);await flush();assert.equal(socket.sent[0],'session.close');
  assert.equal(db.calls.some(c=>c.name==='confirm_voice_started'),false);socket.closed();assert.equal(await result,'closed');
 });
+
+test('fast provider close waits for pending start confirmation before settling usage', async () => {
+ const socket=new Socket();let resolveStart!: (v:unknown)=>void;const calls:string[]=[];
+ const rpc=async<T>(name:string):Promise<T>=>{calls.push(name);if(name==='confirm_voice_started')return new Promise(resolve=>{resolveStart=resolve;}) as Promise<T>;return (name==='voice_watch_heartbeat'?{closed:false,close_requested:false}:true) as T;};
+ const result=watchVoiceLease({...job,awaiting_start:true,deadline_at:1020},token,socket,rpc);
+ socket.open();await flush();socket.emit('message',JSON.stringify({type:'session.started'}));socket.closed();await flush();
+ assert.equal(calls.includes('confirm_voice_watch_closed'),false,'a pending start must not be refunded as an unstarted call');
+ resolveStart({server_now:1001,deadline_at:1301,close_requested:false});assert.equal(await result,'closed');
+ assert.ok(calls.indexOf('confirm_voice_started')<calls.indexOf('confirm_voice_watch_closed'));
+});
