@@ -4,6 +4,7 @@ import { requireMemoryConsent } from "@/lib/memory-access";
 import { requireApiQuota } from "@/lib/api-quota";
 import { contextConfig, contextStore, createConversationContext } from '@/lib/conversation-context';
 import { memoryEnabled } from '@/lib/memory';
+import { requireCipher } from '@/lib/conversation-cipher';
 
 export const maxDuration = 120;
 
@@ -14,7 +15,12 @@ export async function POST(request: Request) {
   if (consent) return consent;
   const quota = await requireApiQuota(access.supabase, "chat");
   if (quota) return quota;
-  const prepareContext = memoryEnabled(process.env) ? createConversationContext(contextStore(access.supabase), contextConfig(process.env), 4500, true) : undefined;
+  let prepareContext;
+  if (memoryEnabled(process.env)) {
+    const guard = requireCipher(access.userId);
+    if (guard.response) return guard.response;
+    prepareContext = createConversationContext(contextStore(access.supabase, guard.cipher), contextConfig(process.env), 4500, true);
+  }
   return chatResponse(request, {
     onboardingAnswers: access.onboardingAnswers,
     hereName: access.hereName,

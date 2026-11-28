@@ -48,7 +48,7 @@ test("음성 API는 서버 회원·개발 환경·동의를 강제하며 동일 
   const route = readFileSync(new URL("../app/api/voice-memory/route.ts", import.meta.url), "utf8");
   assert.match(route, /await requireMember\(request\)/);
   assert.match(route, /if \(!memoryEnabled\(process.env\)\)/);
-  assert.match(route, /supabaseMemoryStore\(access.supabase\)/);
+  assert.match(route, /supabaseMemoryStore\(access.supabase, guard.cipher\)/);
   assert.match(route, /requireMemoryConsent\(access.supabase\)/);
   assert.match(route, /after\(async \(\) => \{ await memory.remember\(messages, sourceId\); await processContextMaintenance/);
 });

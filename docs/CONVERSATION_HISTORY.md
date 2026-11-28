@@ -2,7 +2,7 @@
 
 - 배포: `feature/conversation-history` → `dev`, `here-dev.vercel.app`
 - DB: `here-dev` (`mwjwfumpxdlllikcdvkh`), 운영 변경 없음
-- 원문: `conversation_messages`, 계정별 사용자·캐릭터 텍스트와 음성 자막
+- 원문: `conversation_messages`, 계정별 사용자·캐릭터 텍스트와 음성 자막. 0030부터 서버에서 암호화해 저장([ENCRYPTION.md](ENCRYPTION.md))
 - 보관: 메시지 시각 기준 최근 30일만 조회. 만료 원문은 10분 주기로 물리 삭제. 음성 파일 저장 없음
 - 장기 기억: `conversation_memories`의 요약·1536차원 임베딩. 원문 만료 작업에서 삭제하지 않음. 기존 기억 삭제·동의 철회 기능 유지
 - 동의: `2026-11-16-dev-v2`. 서버 원문 저장·양쪽 대화 요약 안내 후 기존 사용자도 새 동의 필요

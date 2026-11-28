@@ -5,6 +5,7 @@ import { memoryEnabled } from '@/lib/memory';
 import { contextConfig, contextStore, createConversationContext } from '@/lib/conversation-context';
 import { readSmallJson } from '@/lib/request-json';
 import { parseContextMessages } from '@/lib/context-messages';
+import { requireCipher } from '@/lib/conversation-cipher';
 
 export async function POST(request: Request) {
   const json = (body: object, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -15,11 +16,13 @@ export async function POST(request: Request) {
   if (consent) return consent;
   const quota = await requireApiQuota(access.supabase, 'voice_memory');
   if (quota) return quota;
+  const guard = requireCipher(access.userId);
+  if (guard.response) return guard.response;
   let messages;
   try { messages = parseContextMessages(await readSmallJson(request, 5000, 256000)); }
   catch { return json({ error: 'invalid_messages' }, 400); }
   let context;
-  try { context = await createConversationContext(contextStore(access.supabase), contextConfig(process.env), 4500, true)(messages, request.signal); }
+  try { context = await createConversationContext(contextStore(access.supabase, guard.cipher), contextConfig(process.env), 4500, true)(messages, request.signal); }
   catch { return json({ error: 'context_unavailable' }, 503); }
   const revoked = await requireMemoryConsent(access.supabase);
   if (revoked) return revoked;
