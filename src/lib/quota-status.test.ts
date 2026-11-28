@@ -68,3 +68,11 @@ test("PostgreSQL: 본인 하루 사용량만 읽고, 읽어도 한도를 쓰지 
     await assert.rejects(read(), /permission denied/);
   } finally { await db.close(); }
 });
+
+test('음성 시간은 초 단위의 일·월 구간을 검증하고 남은 시간을 내림 표시한다', async () => {
+ const {parseVoiceUsage,voiceTimeLeft}=await import('./quota-status.ts');
+ const usage={call_limit_seconds:300,active_call:false,day:{limit_seconds:600,used_seconds:59.2,reset_at:1800000000},month:{limit_seconds:1800,used_seconds:1801,reset_at:1800000000}};
+ assert.ok(parseVoiceUsage(usage));assert.equal(voiceTimeLeft(usage.day),'9분 0초');assert.equal(voiceTimeLeft(usage.month),'0분 0초');
+ assert.equal(parseVoiceUsage({...usage,day:{...usage.day,used_seconds:NaN}}),null);
+ assert.equal(parseVoiceUsage({...usage,month:{...usage.month,used_seconds:-1}}),null);
+});

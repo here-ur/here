@@ -12,8 +12,9 @@ if (process.env.LIVE_PROBE_ENV_FILE) process.loadEnvFile(process.env.LIVE_PROBE_
 if (!process.env.OPENAI_API_KEY) throw Error('development_provider_key_required');
 const port = 3003;
 const overlap = process.argv.includes('--overlap');
+const hosted = process.argv.includes('--hosted');
 const key = process.env.OPENAI_API_KEY;
-const report = { scenario: overlap ? 'overlapping sideband handoff and server-owned close; synthetic silence' : 'sideband handoff and server-owned close; synthetic silence', events: [], result: 'not_started' };
+const report = { scenario: hosted ? 'hosted worker control; local observer is emergency cleanup only' : overlap ? 'overlapping sideband handoff and server-owned close; synthetic silence' : 'sideband handoff and server-owned close; synthetic silence', events: [], result: 'not_started' };
 const log = (type, extra = {}) => {
   report.events.push({ type, at: new Date().toISOString(), ...extra });
   writeFileSync('/tmp/here-live-server-control-probe.json', JSON.stringify(report, null, 2), {mode:0o600});
@@ -31,6 +32,10 @@ function startSchedule() {
   if (startAt) return;
   startAt=Date.now();
   log('server_observed_start');
+  if (hosted) {
+    timers.push(setTimeout(closeFromServer, process.argv.includes('--five-minutes') ? 330_000 : 100_000));
+    return;
+  }
   // Disconnect one observer completely, then attach another: primary audio stays alive.
   for (const [delay, number] of [[7000,2],[15000,3]]) timers.push(setTimeout(() => {
     if(completed)return;
@@ -61,7 +66,7 @@ async function attach(number) {
     if(event.type==='error') log('provider_event_error',{observer:number,code:event.error?.code});
     if(event.type==='session.closed') {
       completed=true;
-      report.result=requested?'server_close_confirmed':'ended_before_server_close';
+      report.result=requested?'server_close_confirmed':hosted?'closed_without_local_request':'ended_before_server_close';
       log('session_closed',{observer:number,reason:event.reason,usageSeconds:event.usage?.seconds,elapsedMs:startAt?Date.now()-startAt:null});
       timers.forEach(clearTimeout);ws.close();
     }
@@ -120,11 +125,13 @@ const server=createServer(async(req,res)=>{
     }
     const result=await response.json();sessionId=result.session?.id;
     if(typeof sessionId!=='string'||typeof result.transport?.sdp!=='string')throw Error('invalid_provider_response');
-    log('session_created');await attach(1);
+    log('session_created');
+    if(hosted)writeFileSync('/tmp/here-voice-hosted-session.json',JSON.stringify({sessionId}),{mode:0o600});
+    await attach(1);
     json(200,{sdp:result.transport.sdp});
     // Failsafe independent of browser. Also handles absence of session.started replay.
     timers.push(setTimeout(()=>{if(!startAt)startSchedule();},2000));
-    timers.push(setTimeout(()=>{if(!completed)closeFromServer();},45000));
+    if(!hosted)timers.push(setTimeout(()=>{if(!completed)closeFromServer();},45000));
   }catch{report.result='probe_failed';log('probe_failed');closeFromServer();json(502,{error:'검증 연결 실패'});}
 });
 server.listen(port,'127.0.0.1',()=>console.log(`Probe: http://localhost:${port}`));

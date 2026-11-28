@@ -104,3 +104,14 @@ test('claim network latency cannot extend the server deadline', async t => {
   t.mock.timers.tick(1); await flush(); assert.equal(socket.sent[0], 'session.close');
   socket.closed(); assert.equal(await result, 'closed');
 });
+
+test('deferred worker acknowledges before holding the socket and still commits only provider confirmation', async () => {
+ let work: (() => Promise<void>) | undefined; const socket=new Socket();const db=rpcFixture();
+ const client={rpc:(name:string,args:Record<string,unknown>)=>({abortSignal:async()=>({data:name==='claim_voice_watch'?job:await db.rpc(name,args),error:null})})} as unknown as SupabaseClient;
+ const response=await handleVoiceWatch(new Request('https://here.test/api/internal/voice-watch',{method:'POST',headers:{Authorization:`Bearer ${token}`}}),
+ {VOICE_WATCH_ENABLED:'true',OPENAI_API_KEY:' fixture\n',NEXT_PUBLIC_SUPABASE_URL:'https://db.test',NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'fixture'},
+ {client,defer:callback=>{work=callback;},connect:(_id,key)=>{assert.equal(key,'fixture');return socket;}});
+ assert.equal(response.status,202);assert.equal(db.calls.length,0);assert.ok(work);
+ const pending=work();socket.open();await flush();socket.closed();await pending;
+ assert.ok(db.calls.some(c=>c.name==='confirm_voice_watch_closed'));
+});

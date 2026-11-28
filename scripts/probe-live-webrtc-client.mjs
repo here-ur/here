@@ -16,7 +16,7 @@ const channel = peer.createDataChannel('live-events', { negotiated: true, id: 4 
 const frames = setInterval(() => source.onData({ samples: new Int16Array(480), sampleRate: 48000 }), 10);
 let finish;
 const done = new Promise(resolve => { finish = resolve; });
-const timeout = setTimeout(() => finish('emergency_cleanup_no_close_confirmation'), 60_000);
+const timeout = setTimeout(() => finish('emergency_cleanup_no_close_confirmation'), process.argv.includes('--five-minutes') ? 340_000 : process.argv.includes('--hosted') ? 110_000 : 60_000);
 channel.onmessage = event => {
   let data; try { data = JSON.parse(event.data); } catch { return; }
   if (data.type === 'session.started') console.log(JSON.stringify({ type: 'peer_session_started' }));

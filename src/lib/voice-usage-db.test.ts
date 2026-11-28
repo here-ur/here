@@ -29,6 +29,9 @@ async function fixture() {
       begin insert into public.fixture_http values(url,headers,body,timeout_milliseconds);return 1;end;$$;
     create function cron.schedule(text,text,text) returns bigint language sql as $$select 1::bigint$$;`);
   await db.exec(readFileSync(new URL('../../supabase/migrations/0033_voice_watch_dispatch_cron.sql', import.meta.url), 'utf8').replaceAll('clock_timestamp()', 'public.fixture_clock()'));
+  await db.exec('create schema vault;create table vault.decrypted_secrets(id uuid primary key,decrypted_secret text)');
+  await db.exec(readFileSync(new URL('../../supabase/migrations/0035_voice_watch_protection_cron.sql', import.meta.url), 'utf8'));
+  await db.exec(readFileSync(new URL('../../supabase/migrations/0036_voice_api_control.sql', import.meta.url), 'utf8').replaceAll('clock_timestamp()', 'public.fixture_clock()'));
   await db.query('update public.voice_control_authority set token_hash=$1', [createHash('sha256').update(authority).digest('hex')]);
   const val = async <T>(sql: string, args: unknown[] = []) => (await db.query<{ v: T }>(sql, args)).rows[0]?.v;
   const admin = () => db.exec('reset role');
@@ -240,15 +243,17 @@ test('voice dispatch stays disabled by default and only confirms a connected ini
     await f.admin();
     assert.equal(await f.val('select public.dispatch_voice_watches() v'), 0);
     assert.equal(await f.val('select count(*)::integer v from public.fixture_http'), 0);
-    await f.db.exec("update public.voice_watch_config set enabled=true,endpoint='https://here-preview.vercel.app/api/internal/voice-watch'");
+    await f.db.exec("insert into vault.decrypted_secrets values('cccccccc-cccc-4ccc-8ccc-cccccccccccc','fixture-only');update public.voice_watch_config set enabled=true,endpoint='https://here-preview.vercel.app/api/internal/voice-watch',bypass_secret_id='cccccccc-cccc-4ccc-8ccc-cccccccccccc'");
     await f.anon();
     assert.equal(await f.val('select public.start_voice_watch($1,$2) v', [r.id, 'f'.repeat(64)]), false);
     assert.equal(await f.val('select public.start_voice_watch($1,$2) v', [r.id, r.token]), true);
     assert.equal(await f.val('select public.start_voice_watch($1,$2) v', [r.id, r.token]), true, 'retry must not dispatch duplicate worker');
     assert.equal(await f.val('select public.voice_watch_ready($1,$2) v', [r.id, r.token]), false);
     await assert.rejects(f.db.query('select public.dispatch_voice_watches()'), /permission denied/);
+    await assert.rejects(f.db.query("select public.voice_watch_headers('test')"), /permission denied/);
     await f.admin();
-    const jobs = (await f.db.query<{ headers: { Authorization: string }; timeout_ms: number }>('select * from public.fixture_http')).rows;
+    const jobs = (await f.db.query<{ headers: { Authorization: string; 'x-vercel-protection-bypass': string }; timeout_ms: number }>('select * from public.fixture_http')).rows;
+    assert.equal(jobs[0].headers['x-vercel-protection-bypass'], 'fixture-only');
     assert.equal(jobs.length, 1); assert.equal(jobs[0].timeout_ms, 90000);
     const token = jobs[0].headers.Authorization.slice(7);
     await f.anon(); await f.val('select public.claim_voice_watch($1) v', [token]);
@@ -258,4 +263,18 @@ test('voice dispatch stays disabled by default and only confirms a connected ini
     await f.tick(6);
     assert.equal(await f.val('select public.voice_watch_ready($1,$2) v', [r.id, r.token]), false, 'stale readiness must fail closed');
   } finally { await f.db.close(); }
+});
+
+
+test('voice API clock and active call authorization cannot cross account or deadline', async () => {
+ const f=await fixture();try {
+  const r=await f.reserve();
+  const stamp=await f.val<string>('select public.begin_voice_request($1,$2) v',[r.id,r.token]);assert.ok(stamp);
+  assert.equal(await f.val('select public.begin_voice_request($1,$2) v',[r.id,r.token]),null);
+  await f.start(r,await f.clock());
+  assert.equal(await f.val('select public.voice_call_authorized($1) v',[r.id]),true);
+  await f.user(b);assert.equal(await f.val('select public.voice_call_authorized($1) v',[r.id]),false);
+  await f.user(a);await f.tick(301);assert.equal(await f.val('select public.voice_call_authorized($1) v',[r.id]),false);
+  await f.anon();assert.equal(await f.val('select public.finish_voice_observed($1,$2) v',[r.id,r.token]),true);
+ }finally{await f.db.close();}
 });

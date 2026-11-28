@@ -1,8 +1,9 @@
 // 글은 한국 날짜별 정상 답변 + 진행 중 예약을 반영한다. 조회는 차감하지 않는다.
-// 음성 시간 계약은 별도 마이그레이션에서 교체 예정.
+// 음성은 DB가 관측한 연결 시간(초)을 사용한다.
 
 export type QuotaCount = { limit: number; used: number; reserved?: number };
-export type QuotaStatus = { chat: QuotaCount; realtime: QuotaCount; resetAt: number };
+export type VoiceUsage = { call_limit_seconds: number; active_call: boolean; day: { limit_seconds: number; used_seconds: number; reset_at: number }; month: { limit_seconds: number; used_seconds: number; reset_at: number } };
+export type QuotaStatus = { chat: QuotaCount; realtime: QuotaCount; resetAt: number; voice?: VoiceUsage };
 
 const isCount = (value: unknown): value is QuotaCount => {
   if (!value || typeof value !== "object") return false;
@@ -14,9 +15,10 @@ const isCount = (value: unknown): value is QuotaCount => {
 /** api_quota_status()의 응답을 확인한다. 모양이 다르면 null로 두고 화면에서 감춘다. */
 export function parseQuotaStatus(data: unknown): QuotaStatus | null {
   if (!data || typeof data !== "object") return null;
-  const { chat, realtime, reset_at } = data as Record<string, unknown>;
+  const { chat, realtime, reset_at, voice } = data as Record<string, unknown>;
   if (!isCount(chat) || !isCount(realtime) || !Number.isSafeInteger(reset_at) || (reset_at as number) <= 0) return null;
-  return { chat: { limit: chat.limit, used: chat.used, ...(chat.reserved === undefined ? {} : { reserved: chat.reserved }) }, realtime: { limit: realtime.limit, used: realtime.used }, resetAt: reset_at as number };
+  if (voice !== undefined && !parseVoiceUsage(voice)) return null;
+  return { ...(voice ? { voice: voice as VoiceUsage } : {}), chat: { limit: chat.limit, used: chat.used, ...(chat.reserved === undefined ? {} : { reserved: chat.reserved }) }, realtime: { limit: realtime.limit, used: realtime.used }, resetAt: reset_at as number };
 }
 
 export type QuotaSummary = { chatLeft: number; voiceLeft: number; ratio: number; state: "ok" | "low" | "out" };
@@ -35,4 +37,19 @@ export async function requestQuotaStatus(token: string, signal?: AbortSignal): P
   const response = await fetch("/api/quota", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal });
   if (!response.ok) return null;
   return parseQuotaStatus(await response.json());
+}
+
+
+export function parseVoiceUsage(data: unknown): VoiceUsage | null {
+ if (!data || typeof data !== 'object') return null;
+ const v=data as VoiceUsage;
+ if(v.call_limit_seconds!==300 || typeof v.active_call!=='boolean')return null;
+ for(const [period,limit] of [[v.day,600],[v.month,1800]] as const) {
+  if(!period || period.limit_seconds!==limit || !Number.isFinite(period.used_seconds) || period.used_seconds<0 || !Number.isFinite(period.reset_at) || period.reset_at<=0)return null;
+ }
+ return v;
+}
+export function voiceTimeLeft(period: VoiceUsage['day']): string {
+ const seconds=Math.max(0,Math.floor(period.limit_seconds-period.used_seconds));
+ return `${Math.floor(seconds/60)}분 ${seconds%60}초`;
 }

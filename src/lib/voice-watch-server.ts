@@ -109,6 +109,7 @@ export function watchVoiceLease(job: VoiceWatchJob, token: string, socket: Watch
 
 export async function handleVoiceWatch(request: Request, env: Env, deps: {
   client?: SupabaseClient;
+  defer?: (work: () => Promise<void>) => void;
   connect?: (id: string, key: string) => WatchSocket;
 } = {}): Promise<Response> {
   if (env.VOICE_WATCH_ENABLED !== 'true') return json({ error: 'disabled' }, 404);
@@ -124,20 +125,52 @@ export async function handleVoiceWatch(request: Request, env: Env, deps: {
     return data as T;
   };
   let claimed = false;
+  let phase = 'claim';
   try {
     const claimStarted = performance.now();
     const raw = await rpc<unknown>('claim_voice_watch', { p_token: token });
     if (raw === null) return json({ processed: false });
     claimed = true;
+    phase = 'validate_job';
     const job = parseVoiceWatchJob(raw);
     if (!job) throw Error('invalid_watch_job');
-    const connect = deps.connect ?? ((id, key) => new WebSocket(`wss://api.openai.com/v1/live/sessions/${encodeURIComponent(id)}/attach`, {
-      headers: { Authorization: `Bearer ${key}` }, handshakeTimeout: 5000, maxPayload: 512 * 1024,
-    }));
-    const result = await watchVoiceLease(job, token, connect(job.provider_session_id, env.OPENAI_API_KEY), rpc, performance.now() - claimStarted);
-    if (result === 'unconfirmed') throw Error('voice_close_unconfirmed');
-    return json({ processed: true, outcome: result });
-  } catch {
+    const connect = deps.connect ?? ((id, key) => {
+      const socket = new WebSocket(`wss://api.openai.com/v1/live/sessions/${encodeURIComponent(id)}/attach`, {
+        headers: { Authorization: `Bearer ${key}` }, handshakeTimeout: 5000, maxPayload: 512 * 1024,
+      });
+      socket.on('error', error => {
+        const code = (error as NodeJS.ErrnoException).code;
+        console.warn(JSON.stringify({ event: 'voice_watch_socket_error', kind: ['ECONNRESET','ETIMEDOUT','ENOTFOUND','ECONNREFUSED'].includes(code ?? '') ? code : 'socket_error' }));
+      });
+      socket.on('unexpected-response', (_request, response) => {
+        console.warn(JSON.stringify({ event: 'voice_watch_attach_rejected', status: response.statusCode }));
+        response.resume(); socket.terminate();
+      });
+      return socket;
+    });
+    const work = async () => {
+      try {
+        phase = 'connect';
+        const socket = connect(job.provider_session_id, env.OPENAI_API_KEY!.trim());
+        phase = 'watch';
+        const result = await watchVoiceLease(job, token, socket, rpc, performance.now() - claimStarted);
+        if (result === 'unconfirmed') throw Error('voice_close_unconfirmed');
+        return result;
+      } catch {
+        console.warn(JSON.stringify({ event: 'voice_watch_failed', phase }));
+        try { await rpc('fail_voice_watch', { p_token: token }); } catch { /* Durable lock remains. */ }
+        return 'unconfirmed' as const;
+      }
+    };
+    if (deps.defer) {
+      // after()/waitUntil keeps the invocation alive without occupying pg_net's HTTP batch.
+      deps.defer(async () => { await work(); });
+      return json({ processed: true, scheduled: true }, 202);
+    }
+    const outcome = await work();
+    return outcome === 'unconfirmed' ? json({ error: 'voice_watch_failed' }, 503) : json({ processed: true, outcome });
+  } catch (error) {
+    console.warn(JSON.stringify({ event: 'voice_watch_failed', phase, kind: error instanceof TypeError ? /constructor/i.test(error.message) ? 'constructor_unavailable' : /socket.on|on is not a function/i.test(error.message) ? 'event_api_missing' : 'type_error' : error instanceof Error && error.message === 'voice_close_unconfirmed' ? 'close_unconfirmed' : 'internal_error' }));
     if (claimed) { try { await rpc('fail_voice_watch', { p_token: token }); } catch { /* Durable active lock is kept for recovery. */ } }
     return json({ error: 'voice_watch_failed' }, 503);
   }
