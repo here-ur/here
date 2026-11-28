@@ -6,6 +6,11 @@ if (!process.argv.includes('--live')) {
   process.exit(0);
 }
 if (!process.env.LIVE_PROBE_WRTC_PATH) throw Error('native_webrtc_dependency_required');
+const application = process.argv.includes('--app');
+const fixture = application ? JSON.parse((await import('node:fs')).readFileSync('/tmp/here-voice-fixture-auth.json','utf8')) : null;
+const appUrl = process.env.LIVE_PROBE_APP_URL;
+if(application && !/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(appUrl ?? '')) throw Error('preview_url_required');
+const callId = crypto.randomUUID();
 const require = createRequire(import.meta.url);
 const { RTCPeerConnection, MediaStream, nonstandard: { RTCAudioSource } } = require(process.env.LIVE_PROBE_WRTC_PATH);
 const peer = new RTCPeerConnection();
@@ -25,13 +30,22 @@ channel.onmessage = event => {
 };
 try {
   await peer.setLocalDescription(await peer.createOffer());
-  const response = await fetch('http://127.0.0.1:3003/session', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:3003' },
-    body: JSON.stringify({ sdp: peer.localDescription.sdp }), signal: AbortSignal.timeout(25_000),
+  const response = await fetch(application ? appUrl + '/api/live' : 'http://127.0.0.1:3003/session', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:3003', ...(application ? {Authorization: `Bearer ${fixture.accessToken}`, 'x-vercel-protection-bypass': fixture.bypass} : {}) },
+    body: JSON.stringify({ sdp: peer.localDescription.sdp, dcid: 4, callId }), signal: AbortSignal.timeout(25_000),
   });
   const result = await response.json();
-  if (!response.ok) { console.log(JSON.stringify({ type: 'probe_rejected', status: response.status })); finish('creation_failed'); }
-  else { await peer.setRemoteDescription({ type: 'answer', sdp: result.sdp }); }
+  if (!response.ok) { console.log(JSON.stringify({ type: 'probe_rejected', status: response.status, code: typeof result.code === 'string' ? result.code : 'unknown' })); finish('creation_failed'); }
+  else {
+    await peer.setRemoteDescription({ type: 'answer', sdp: result.sdp });
+    if(application) {
+      console.log(JSON.stringify({type:'metered_app_connected',boundCallId:result.callId===callId,hasDeadline:Number.isFinite(result.deadlineAt)}));
+      setTimeout(async()=>{
+        const stop=await fetch(appUrl+'/api/live/close',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${fixture.accessToken}`,'x-vercel-protection-bypass':fixture.bypass},body:JSON.stringify({callId})});
+        console.log(JSON.stringify({type:'manual_close_api',status:stop.status}));
+      },3000);
+    }
+  }
   console.log(JSON.stringify({ result: await done }));
 } catch {
   console.log(JSON.stringify({ result: 'probe_client_failed' }));

@@ -32,6 +32,8 @@ async function fixture() {
   await db.exec('create schema vault;create table vault.decrypted_secrets(id uuid primary key,decrypted_secret text)');
   await db.exec(readFileSync(new URL('../../supabase/migrations/0035_voice_watch_protection_cron.sql', import.meta.url), 'utf8'));
   await db.exec(readFileSync(new URL('../../supabase/migrations/0036_voice_api_control.sql', import.meta.url), 'utf8').replaceAll('clock_timestamp()', 'public.fixture_clock()'));
+  await db.exec(readFileSync(new URL('../../supabase/migrations/0037_voice_dispatch_gate.sql', import.meta.url), 'utf8').replaceAll('clock_timestamp()', 'public.fixture_clock()'));
+  await db.exec("update public.voice_watch_config set enabled=true,endpoint='https://here-preview.vercel.app/api/internal/voice-watch'");
   await db.query('update public.voice_control_authority set token_hash=$1', [createHash('sha256').update(authority).digest('hex')]);
   const val = async <T>(sql: string, args: unknown[] = []) => (await db.query<{ v: T }>(sql, args)).rows[0]?.v;
   const admin = () => db.exec('reset role');
@@ -239,6 +241,8 @@ test('voice dispatch stays disabled by default and only confirms a connected ini
   const f = await fixture();
   try {
     const r = await f.reserve(); await f.begin(r); await f.start(r, await f.clock());
+    await f.admin(); await f.db.exec('update public.voice_watch_config set enabled=false'); await f.user(a);
+    assert.equal((await f.reserve()).code, 'voice_control_unavailable');
     assert.equal(await f.val('select public.start_voice_watch($1,$2) v', [r.id, r.token]), false);
     await f.admin();
     assert.equal(await f.val('select public.dispatch_voice_watches() v'), 0);

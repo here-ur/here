@@ -1,0 +1,152 @@
+{
+  "scenario": "hosted worker control; local observer is emergency cleanup only",
+  "events": [
+    {
+      "type": "session_created",
+      "at": "2026-11-28T09:13:49.938Z"
+    },
+    {
+      "type": "observer_attached",
+      "at": "2026-11-28T09:13:50.427Z",
+      "observer": 1
+    },
+    {
+      "type": "server_observed_start",
+      "at": "2026-11-28T09:13:50.439Z"
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:14:04.905Z",
+      "observer": 1,
+      "seconds": 15
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:14:19.907Z",
+      "observer": 1,
+      "seconds": 28
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:14:34.908Z",
+      "observer": 1,
+      "seconds": 43
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:14:50.143Z",
+      "observer": 1,
+      "seconds": 58
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:15:04.910Z",
+      "observer": 1,
+      "seconds": 73
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:15:19.911Z",
+      "observer": 1,
+      "seconds": 88
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:15:34.910Z",
+      "observer": 1,
+      "seconds": 103
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:15:49.911Z",
+      "observer": 1,
+      "seconds": 118
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:16:04.913Z",
+      "observer": 1,
+      "seconds": 133
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:16:19.914Z",
+      "observer": 1,
+      "seconds": 148
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:16:34.914Z",
+      "observer": 1,
+      "seconds": 163
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:16:49.915Z",
+      "observer": 1,
+      "seconds": 178
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:17:04.916Z",
+      "observer": 1,
+      "seconds": 193
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:17:19.922Z",
+      "observer": 1,
+      "seconds": 208
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:17:34.919Z",
+      "observer": 1,
+      "seconds": 223
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:17:49.920Z",
+      "observer": 1,
+      "seconds": 238
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:18:04.924Z",
+      "observer": 1,
+      "seconds": 253
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:18:19.922Z",
+      "observer": 1,
+      "seconds": 268
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:18:34.922Z",
+      "observer": 1,
+      "seconds": 283
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:18:49.923Z",
+      "observer": 1,
+      "seconds": 298
+    },
+    {
+      "type": "session_closed",
+      "at": "2026-11-28T09:18:58.686Z",
+      "observer": 1,
+      "reason": "close_requested",
+      "usageSeconds": 306,
+      "elapsedMs": 308247
+    },
+    {
+      "type": "observer_socket_closed",
+      "at": "2026-11-28T09:18:58.861Z",
+      "observer": 1
+    }
+  ],
+  "result": "closed_without_local_request"
+}
