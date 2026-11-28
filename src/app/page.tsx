@@ -4,7 +4,7 @@ import { useConversationHistory } from "./use-conversation-history";
 import { Button } from "./ui/Button";
 import { safeHomeOpener } from "@/lib/home-opener";
 
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { hasCrisisSignal } from "@/lib/crisis";
 import { companionState } from "@/lib/companion-state";
 import { ChatQueue, queuedChatContext } from "@/lib/chat-queue";
@@ -47,6 +47,7 @@ import MemberBasicsStage from "./MemberBasicsStage";
 import { MemberBasicsContext } from "./member-basics-context";
 import { StageHandoff } from "./sheet-handoff";
 import CatLoading from "./CatLoading";
+import { identify, resetAnalytics, track, voiceEnded, voiceStarted } from "@/lib/analytics";
 
 type Status = "connecting" | "idle" | "listening" | "thinking" | "speaking";
 
@@ -69,8 +70,17 @@ function Account({ userId, signOut }: { userId: string; signOut: SignOut }) {
   const [run, setRun] = useState(0);
   const restart = useCallback(() => setRun((n) => n + 1), []);
   const fromConsent = useContext(StageHandoff);
+  // 분석은 해시한 회원 ID로 묶고, 로그아웃·계정 전환으로 이 화면이 내려가면 끊는다.
+  // 자식(홈 등)의 useEffect보다 먼저 돌도록 layout effect로 둔다. 그래야 첫 이벤트가 익명으로 남지 않는다.
+  useLayoutEffect(() => { identify(userId); return () => resetAnalytics(); }, [userId]);
   // run > 0: 개발용 '처음부터 다시 만들기'로 다시 연 온보딩. 생일·성별까지 처음과 같은 전체 흐름을 보여 준다.
   return <Home key={run} userId={userId} signOut={signOut} startEmpty={run > 0 || fromConsent?.newMember === true} afterConsent={run === 0 && fromConsent?.consented === true} replay={run > 0} onRestart={restart} />;
+}
+
+/** 분석: 홈이 화면에 올라올 때마다 한 번 센다(리포트·캐릭터 화면에서 돌아올 때 포함). 그리는 것은 없다. */
+function HomeViewed() {
+  useEffect(() => { track("home_viewed"); }, []);
+  return null;
 }
 
 /** 이 기기에 남은 설정이 없어 계정의 캐릭터 설정을 처음 불러오는 동안(새로 가입했거나 이 기기에서 처음 로그인).
@@ -103,7 +113,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   // 도움받기·친구·구름 정원은 보류(준비 중): 메뉴·버튼은 그대로 두고 누르면 '준비 중' 안내만 잠깐 띄운다.
   const [soon, setSoon] = useState<{ feature: SoonFeature; n: number } | null>(null);
-  const showSoon = useCallback((feature: SoonFeature) => setSoon((prev) => ({ feature, n: (prev?.n ?? 0) + 1 })), []);
+  const showSoon = useCallback((feature: SoonFeature) => { track("coming_soon_shown", { feature }); setSoon((prev) => ({ feature, n: (prev?.n ?? 0) + 1 })); }, []);
   const hideSoon = useCallback(() => setSoon(null), []);
   const [micOn, setMicOn] = useState(true);
   const [hearing, setHearing] = useState(false); // 음성에서 사용자가 말하는 중(몽글이 반응용)
@@ -236,12 +246,14 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
       at: Math.max(Date.now(), (messagesRef.current.at(-1)?.at ?? 0) + 1) };
     history.append([message]);
     commitMessages([...messagesRef.current, message]);
+    track("chat_message_sent");
     draftRef.current = "";
     setDraft("");
     setError("");
     chatQueue.current ??= new ChatQueue<HistoryMessage>({
       state: (busy, failed) => { setChatSending(busy); setChatFailed(failed); setStatus(busy ? "thinking" : "idle"); },
       error: (e) => {
+        track("chat_reply_failed");
         if (e instanceof ChatRequestError) {
           if (e.crisis) setCrisis(true);
           if (e.suggest) setSuggest(true);
@@ -268,6 +280,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
           const reply: HistoryMessage = { id: assistantId, role: "assistant", content: result.reply, at: result.assistantAt ?? Date.now() };
           history.append([reply]);
           commitMessages([...messagesRef.current, reply]);
+          track("chat_reply_received");
           if (result.crisis) setCrisis(true);
           if (result.suggest) setSuggest(true);
         } finally {
@@ -341,6 +354,8 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
       conn.setMic(true);
       setMicOn(conn.hasMic);
       setHasMic(conn.hasMic);
+      if (conn.hasMic) voiceStarted();
+      else track("voice_failed", { reason: "no_mic" });
       if (!conn.hasMic) {
         openText();
         setError(conn.microphoneError ?? "마이크를 쓸 수 없어서 글로 적을 수 있게 열어 뒀어요.");
@@ -348,6 +363,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
     } catch (e) {
       if (!current()) return;
       setYawning(false);
+      track("voice_failed", { reason: "error" });
       setError((e as Error).message);
       setStatus("idle");
     }
@@ -356,6 +372,8 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
   /** 채팅 진입 시 음성 연결은 닫고, 첫 전송 전에는 API를 호출하지 않는다. */
   function openText() {
     dismissHint();
+    voiceEnded();
+    track("text_opened");
     setResetNote(null);
     setYawning(false);
     headlineLocked.current = true;
@@ -404,6 +422,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
   }
 
   function stopVoice() {
+    voiceEnded();
     setYawning(false);
     setHearing(false);
     setSearchSources([]);
@@ -420,6 +439,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
   }
 
   function openReport(mode: ReportMode) {
+    track("report_opened", { mode: mode === "library" ? "library" : "insight" });
     cancelChat();
     stopVoice();
     setReportMode(mode);
@@ -500,7 +520,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
         headline={openingLine}
         onVoice={toVoice}
         onText={openText}
-        onMenu={() => { dismissHint(); setResetNote(null); setShowMenu(true); }}
+        onMenu={() => { dismissHint(); track("menu_opened"); setResetNote(null); setShowMenu(true); }}
         nudge={showHint ? <HomeHint name={profile.companion} onDismiss={dismissHint} /> : undefined}
         banner={resetNote ?? undefined}
         menuButtonRef={menuButtonRef}
@@ -542,6 +562,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
           {suggest && <Button variant="plain" onClick={openHelpSoon} className="ui-press h-11 rounded-full bg-white px-5 text-t4 font-bold text-[#1F2A55]">도움받기</Button>}
         </div> : undefined}
       >
+        <HomeViewed />
         {micAsk.sheet}
         <Drawer
           open={showMenu}

@@ -47,6 +47,7 @@ AI와 말로 이야기하고, 필요할 때 도움받기에서 실제 사람인 
 - **글 대화 계약**: 요청은 `{ messages: [{ role: "user" | "assistant", content }], name?, nickname?, style? }`, 성공 응답은 `{ reply, crisis, suggest }`, 실패 응답은 non-2xx와 `{ error, crisis, suggest }`다. 클라이언트는 최근 60개 메시지를 role·content만 보내고(메시지 시각 같은 기기 정보 제외), 서버는 허용된 역할·길이를 검증한 뒤 지시문을 붙인다. `name`은 캐릭터 이름, `nickname`은 사용자가 불러 달라고 한 이름, `style`은 고른 대화 방식(`listen`·`sort`·`chat`)이며 셋 다 서버가 다시 걸러 지시문에만 넣는다(아래 "사용자가 정한 이름·대화 방식"). 음성 `/api/realtime` 요청 `{ name?, voice?, nickname?, style? }`도 같다. 구현은 `src/lib/chat.ts`·`src/lib/chat-server.ts`다.
 - **리포트 계약**: 리포트를 열 때 허락(첫 안내에서 고름)이 있으면 지난 날만 `POST /api/report-sky`로 보낸다. 요청은 `{ days: [{ date, text }] }`(1~7일, 날마다 그날 내가 한 말만 최근 4,000자)이고, 성공 응답은 `{ days: [{ date, sky: "sunny"|"cozy"|"cloudy"|"rain"|"thunder"|"wind"|null, crisis }] }`, 실패 응답은 non-2xx와 `{ error }`다. 위기 키워드가 있는 날은 보내지 않고 `crisis: true`로만 돌려준다. Runyour `text.format` json_schema(날짜·하늘 enum, 추론 low)로 한 번만 요청하고, 몽글이 이름·말투·기억은 쓰지 않는다. 회원·동의 확인 뒤 `chat` 할당량을 함께 쓴다. 구현은 `src/lib/report.ts`·`src/lib/report-sky-server.ts`다.
 - 키는 `.env.local`(커밋 금지, `.gitignore`에 이미 있음)과 Vercel 환경변수에 둔다.
+- **제품 분석(2026-11-28)**: PostHog(`src/lib/analytics.ts`, 기준 [docs/ANALYTICS.md](docs/ANALYTICS.md)). `NEXT_PUBLIC_POSTHOG_KEY`가 있는 배포에서만 켜진다. 키는 Vercel Production(운영)·Preview(here-dev)에 있고 로컬은 비워 둔다. 이벤트의 `app_env`로 운영·개발을 나눈다. `EVENTS` 목록의 이벤트·값만 보내며 대화 원문·이름·온보딩 답·표정·위기 여부는 보내지 않는다. 자동 수집·화면 녹화는 끈다. 회원 ID는 해시로만 묶는다. 실제 사용자 출시 전 개인정보 처리방침에 PostHog(미국) 사용 기록 수집을 적어야 한다(팀·법무).
 
 ## 디자인 기준
 

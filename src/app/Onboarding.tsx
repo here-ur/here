@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import OnboardingStage, { type StageSnapshot } from "./OnboardingStage";
 import type { MemberBasics } from "./member-basics-context";
 import { basicsFromAnswers, basicsSaveError } from "@/lib/member-basics";
+import { track } from "@/lib/analytics";
 import {
   ONBOARDING_STEPS,
   BASICS_SCENES,
@@ -63,6 +64,7 @@ export default function Onboarding({ onDone, initialStep, initialAnswers = {}, s
     initial: { nickname: draft?.nickname ?? "", companion: draft?.companion ?? "", answers: draft?.answers ?? initialAnswers },
   }));
   const finished = useRef(false);
+  const seenScene = useRef<string | null>(null); // 분석: 같은 장면을 잇달아 두 번 세지 않는다
 
   // 저장이 실패 없이 끝났는데 이 화면이 그대로 남아 있으면 마지막 버튼을 다시 누를 수 있게 한다.
   useEffect(() => {
@@ -73,6 +75,7 @@ export default function Onboarding({ onDone, initialStep, initialAnswers = {}, s
   function remember(snapshot: StageSnapshot) {
     if (preview || finished.current || snapshot.scene === "done") return;
     saveOnboardingDraft({ step: stepOfScene(snapshot.scene), nickname: snapshot.nickname, answers: pickOnboardingAnswers(snapshot.answers), companion: snapshot.companion });
+    if (snapshot.scene !== seenScene.current) { seenScene.current = snapshot.scene; track("onboarding_step_viewed", { scene: snapshot.scene }); }
   }
 
   // 약속의 '다음'(동의를 다시 받을 때)·성별의 '다음': 저장한 뒤에 넘어간다. 실패하면 그 글을 돌려주고 이 장면에 머문다.
@@ -92,6 +95,7 @@ export default function Onboarding({ onDone, initialStep, initialAnswers = {}, s
     if (finished.current) return; // 두 번 눌러도 저장은 한 번만 시작한다
     finished.current = true;
     if (!preview) clearOnboardingDraft();
+    if (!preview) track("onboarding_completed");
     const answers = pickOnboardingAnswers(snapshot.answers);
     const concern = concernId(answers.concern);
     const support = supportId(answers.support);
