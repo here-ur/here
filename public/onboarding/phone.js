@@ -1595,7 +1595,7 @@
 
       root.append(ui.topbar(ctx, { back: (b) => (mode === "done" ? edit() : ctx.back(b)), pages: true }));      // 아래에는 고양이 얼굴이 있으므로 쪽 표시는 위 줄에
       // 고양이 뒤의 주황 덩어리(참고 이미지의 라일락 화면): 올려다보는 얼굴 뒤에 둥근 언덕으로 솟아 있다가, 이름을 정하면 위로 모여 다섯 갈래 별이 되어 앉는 자리가 된다
-      const BACK = { x: 195, y: 862, r: 302, m: 0 }, SPOT = { x: 195, y: SEATED.ground - 80, r: 168, m: 1 };
+      const BACK = { x: 195, y: 838, r: 302, m: 0 }, SPOT = { x: 195, y: SEATED.ground - 80, r: 168, m: 1 };
       const spot = ui.shape(ctx, { color: "var(--hp-orange)", shape: [[5, 0.12, -90]], ...BACK });
       root.append(spot.el);
       const cat = ctx.cat(PEEK, { z: 3 });
@@ -1741,6 +1741,7 @@
         // 아래에서 쑥 올라오며 한마디(뒤의 덩어리도 같이 솟는다)
         cat.place({ ...PEEK, ground: PEEK.ground + 300 }).place(PEEK, { ms: 900, easing: EASE.soft });
         spot.set({ ...BACK, y: BACK.y + 320 }).to(BACK);
+        if (!reduced()) spot.el.animate([{ filter: "blur(1.5px)" }, { filter: "blur(0)" }], { duration: 420, easing: EASE.out });
         intro.begin(() => hAsk.finish());
         hAsk.play({ speed: 44, delay: 620 }).then(() => intro.end());
       }

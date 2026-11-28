@@ -28,7 +28,7 @@ import "./onboarding-stage.css";
 // 무대는 390×844 기준으로 그려지고, 이 칸의 크기에 맞게 한 비율로 줄거나 늘어난다(둘레에 남는 띠는 장면의 바탕색).
 // 무대 파일을 고치면 STAGE_VERSION을 올린다(브라우저가 옛 파일을 붙잡지 않게).
 const STAGE_BASE = "/onboarding/";
-const STAGE_VERSION = "2026-11-29r";
+const STAGE_VERSION = "2026-11-29s";
 const SCRIPTS = ["copy.js", "cat.js", "sound.js", "phone.js", "scenes/promise.js", "scenes/birthday.js", "scenes/gender.js", "scenes/q2.js", "scenes/q4.js", "scenes/meet.js"];
 const STYLES = ["phone.css", "scenes/promise.css", "scenes/birthday.css", "scenes/gender.css", "scenes/q2.css", "scenes/q4.css", "scenes/meet.css"];
 const CAT_ART = "/characters/motion/"; // 고양이 그림은 홈과 같은 파일을 쓴다(앉은 그림·걷는 그림만 더했다)
