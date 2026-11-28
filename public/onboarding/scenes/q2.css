@@ -40,13 +40,13 @@
 .hp .hp-q2-opts.hp-q2-fade { animation: hp-q2-fade 420ms linear 360ms backwards; }
 @keyframes hp-q2-fade { from { opacity: 0; } }
 /* 창: 맨 위에 온 보기가 크게 적히는 검정 알약 + 끝의 주황 화살표(참고 이미지의 "Languages →"). 누르면 정한다: 그대로 제목으로 날아가 고른 말이 된다 */
-.hp .hp-q2-lens-wrap { position: absolute; left: 0; right: 0; top: 0; height: 60px; display: flex; align-items: center; justify-content: center; pointer-events: none; will-change: transform; transition: opacity 100ms linear; }
+.hp .hp-q2-lens-wrap { position: absolute; left: 0; right: 0; top: 0; height: 56px; display: flex; align-items: center; justify-content: center; pointer-events: none; will-change: transform; transition: opacity 100ms linear; }
 .hp .hp-q2-lens-wrap.is-gone { opacity: 0; visibility: hidden; }
 .hp .hp-pill.hp-q2-lens { margin: 0; top: 0; pointer-events: auto; touch-action: none; cursor: pointer; transition: transform 420ms var(--hp-spring); }
 .hp .hp-q2-lens.is-press { transform: scale(.95); transition-duration: 80ms; }
 .hp .hp-q2-lens.is-focus { outline: 3px solid var(--hp-ink); outline-offset: 3px; }
-.hp .hp-q2-lens-text { position: relative; display: block; height: 60px; transition: width 380ms var(--hp-spring-soft); }
-.hp .hp-q2-lens-text > span { position: absolute; left: 0; top: 0; height: 60px; line-height: 60px; white-space: nowrap; }
+.hp .hp-q2-lens-text { position: relative; display: block; height: 38px; transition: width 380ms var(--hp-spring-soft); }
+.hp .hp-q2-lens-text > span { position: absolute; left: 0; top: 0; height: 38px; line-height: 38px; white-space: nowrap; }
 .hp .hp-q2-lens-text > span.is-out { animation: hp-q2-out 110ms ease-in both; }
 .hp .hp-q2-lens-text > span.is-in { animation: hp-q2-in 300ms var(--hp-out) 70ms both; }
 @keyframes hp-q2-out { to { opacity: 0; transform: translate3d(calc(var(--dir, 1) * 26px), 0, 0); } }

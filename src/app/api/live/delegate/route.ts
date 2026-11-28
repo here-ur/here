@@ -1,9 +1,11 @@
+import { requireActiveVoice } from '@/lib/voice-quota';
 import { chatResponse } from "@/lib/chat-server";
 import { requireMember } from "@/lib/member-auth";
 import { requireMemoryConsent } from "@/lib/memory-access";
 import { requireApiQuota } from "@/lib/api-quota";
 import { contextConfig, contextStore, createConversationContext } from '@/lib/conversation-context';
 import { memoryEnabled } from '@/lib/memory';
+import { requireCipher } from '@/lib/conversation-cipher';
 
 export const maxDuration = 120;
 
@@ -12,9 +14,16 @@ export async function POST(request: Request) {
   if (access.response) return access.response;
   const consent = await requireMemoryConsent(access.supabase);
   if (consent) return consent;
+  const active = await requireActiveVoice(access.supabase, request.headers.get('x-here-voice-call'));
+  if (active) return active;
   const quota = await requireApiQuota(access.supabase, "chat");
   if (quota) return quota;
-  const prepareContext = memoryEnabled(process.env) ? createConversationContext(contextStore(access.supabase), contextConfig(process.env), 4500, true) : undefined;
+  let prepareContext;
+  if (memoryEnabled(process.env)) {
+    const guard = requireCipher(access.userId);
+    if (guard.response) return guard.response;
+    prepareContext = createConversationContext(contextStore(access.supabase, guard.cipher), contextConfig(process.env), 4500, true);
+  }
   return chatResponse(request, {
     onboardingAnswers: access.onboardingAnswers,
     hereName: access.hereName,

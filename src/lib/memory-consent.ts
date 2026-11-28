@@ -1,5 +1,5 @@
 // Versioned development draft. This is NOT an approved production privacy policy.
-export const MEMORY_CONSENT_VERSION = "2026-11-16-dev-v2";
+export const MEMORY_CONSENT_VERSION = "2026-11-28-dev-v3";
 export function validMemoryConsent(body: unknown): boolean {
   if (typeof body !== "object" || body === null) return false;
   const value = body as Record<string, unknown>;
@@ -7,15 +7,26 @@ export function validMemoryConsent(body: unknown): boolean {
 }
 
 /** 동의 항목의 전문(화면의 '보기'). 문구를 바꾸면 MEMORY_CONSENT_VERSION도 올린다. [소제목, 본문] 순서이고 첫째가 개인정보, 둘째가 민감정보다. */
+// Structure references (reviewed 2026-11-28):
+// https://fe-web-assets.static.wrtn.ai/sso/policy/KR/privacy_20261021.html
+// https://docs.wrks.ai/policies/privacy
+// Only Here conversation/memory/activity scope is included; no marketing or model-training consent.
+// Release follow-up: owner retained the one-year post-withdrawal period; its purpose/legal basis is pending.
+// Provider identities, subprocessors and overseas transfers belong in the separate privacy notice.
 export const MEMORY_CONSENT_DETAILS: readonly (readonly (readonly [string, string])[])[] = [
   [
-    ["목적", "회원 확인과 사용자별 대화 기억·맞춤 답변 제공"],
-    ["항목", "계정 식별자, 최근 30일 텍스트 대화·음성 자막, 대화 요약, 기억 검색용 임베딩, 생성 시점과 동의 이력, 정원·라이브러리의 날짜별 통계와 하늘·씨앗 선택, 실천 기록. 카카오·구글 계정으로 로그인해요."],
-    ["처리 방식", "텍스트 답변은 Runyour AI, 음성 대화와 받아쓰기는 OpenAI로 처리해요. 사용자와 캐릭터의 텍스트·음성 자막을 계정별로 Supabase에 30일 보관한 뒤 자동 삭제해요. 기기를 바꿔도 최근 대화를 이어 볼 수 있어요. 전체 대화는 구간별로 Runyour AI가 요약하고 OpenAI가 임베딩해요. 요약·임베딩은 개인화 기억으로 계속 보관하며 30일 원문 삭제와 별개예요. 정원·라이브러리 활동 기록은 계정에 최대 1년 보관해 다른 기기에서도 이어 볼 수 있어요. 음성 파일 자체는 저장하지 않아요."],
-    ["보관기간 초안", "회원 탈퇴 전까지 보유하고 탈퇴 후 1년 보관하는 정책을 검토 중이에요. 탈퇴 후 보관 목적·근거, 자동 파기와 국외 처리 고지는 운영 전 확정해야 해요."],
-    ["공용 모델 학습", "공용 모델 학습 동의는 이번 항목에 포함되지 않아요."],
+    ["수집·이용 목적", "AI 대화 및 맞춤형 답변 제공, 이전 대화의 맥락 유지, 대화·활동 기록의 저장 및 조회, 동의 여부 확인"],
+    ["수집·이용 항목", "계정 식별자, 텍스트 대화 및 음성을 문자로 변환한 내용, 대화 요약과 기억 검색 정보, 기록 생성 일시, 정원·라이브러리의 활동 통계 및 선택·실천 기록, 동의·철회 이력"],
+    ["보유·이용 기간", "텍스트 대화와 음성 자막은 생성일로부터 30일간 보관합니다. 대화 요약과 기억 검색 정보는 원문과 별도로 보관하며, 정원·라이브러리는 최근 1년의 활동 기록을 관리합니다. 탈퇴 신청 후 7일이 지나면 탈퇴가 확정되며, 계정에 남아 있는 정보는 탈퇴 확정일로부터 1년간 보관한 후 삭제합니다."],
+    ["대화 정보의 처리", "대화 내용은 AI 응답 생성과 대화 요약·기억 검색에 이용됩니다. 이 과정에서 외부 AI 서비스를 통해 처리됩니다. 음성 파일 자체는 here의 대화 기록으로 저장하지 않습니다. 이번 동의에는 공용 AI 모델 학습을 위한 이용이 포함되지 않습니다."],
+    ["동의 거부 및 철회", "개인정보 수집·이용에 동의하지 않을 권리가 있습니다. 다만, 동의하지 않으면 AI 대화 및 기억 기능을 이용할 수 없습니다. 동의를 철회하면 저장된 대화와 기억 정보가 삭제됩니다."],
   ],
-  [["", "사용자가 직접 이야기한 정신·신체 건강 관련 내용이 요약과 기억에 포함될 수 있어요. 개인별 대화를 이어가기 위한 용도로 처리하며, 공용 모델 학습에는 자동으로 사용하지 않아요. 목적·보관기간은 위 초안과 같아요."]],
+  [
+    ["처리 목적", "이용자가 이야기한 내용을 반영한 AI 답변 제공 및 이전 대화의 맥락 유지"],
+    ["처리 항목", "이용자가 대화에서 직접 입력하거나 음성으로 전달한 정신·신체 건강 관련 정보와 해당 내용이 포함된 대화 요약·기억 검색 정보"],
+    ["보유·이용 기간", "건강 정보가 포함된 텍스트 대화와 음성 자막은 생성일로부터 30일간 보관합니다. 해당 내용이 포함된 대화 요약과 기억 검색 정보는 원문과 별도로 보관하며, 탈퇴 확정일로부터 1년간 보관한 후 삭제합니다. 동의 철회 시 저장된 대화와 기억 정보는 삭제됩니다."],
+    ["동의 거부 및 철회", "민감정보 처리에 동의하지 않을 권리가 있습니다. 다만, 동의하지 않으면 AI 대화 및 기억 기능을 이용할 수 없습니다. 건강 정보는 이용자가 직접 이야기한 범위에서 처리하며, 이번 동의에는 공용 AI 모델 학습을 위한 이용이 포함되지 않습니다."],
+  ],
 ];
 /** 동의 화면 아래의 안내(가운뎃점에서 줄을 나눈다). */
 export const MEMORY_CONSENT_NOTE = "거부할 수 있지만, 동의해야 대화를 시작할 수 있어요 · 테스트용 초안이라 실제 정보는 쓰지 마세요";

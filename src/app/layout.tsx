@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bagel_Fat_One } from "next/font/google";
 import "./ui/framework7.css";
-import "framework7-icons/css/framework7-icons.css";
 import "./globals.css";
 import "./ui/foundation.css";
 import "./app-frame.css";

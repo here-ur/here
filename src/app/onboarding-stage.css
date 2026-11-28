@@ -2,7 +2,7 @@
    무대 둘레에 남는 띠는 지금 장면의 바탕색으로 채운다(--stage-field). 앱의 다른 스타일은 섀도 루트 안으로 들어가지 않는다. */
 .onboarding-stage {
   background: var(--stage-field, #FDE249);
-  transition: background-color 420ms linear;
+  transition: background-color 560ms cubic-bezier(.4,0,.2,1);
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
@@ -29,6 +29,26 @@
   color: #131111;
 }
 
+/* Extend the opening arch through any space outside the centered stage. */
+.onboarding-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 560ms cubic-bezier(.4,0,.2,1);
+  background: radial-gradient(circle calc(410px * var(--stage-k, 1)) at 50% calc(50% + 282px * var(--stage-k, 1)), #FF6A32 0 100%, #FDE249 calc(100% + 1px));
+}
+
+.onboarding-stage[data-scene="open"]::before { opacity: 1; }
+
+/* 생일 장면 아래의 남는 화면도 고양이 하단 색으로 이어 붙인다. */
+.onboarding-stage[data-scene="birthday"] {
+  background: linear-gradient(to bottom,
+    var(--stage-field) 0 calc(50% + 300px * var(--stage-k, 1)),
+    #23252b calc(50% + 300px * var(--stage-k, 1)) 100%);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .onboarding-stage { transition: none; }
+  .onboarding-stage, .onboarding-stage::before { transition: none; }
 }

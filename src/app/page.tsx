@@ -17,8 +17,7 @@ import { DEFAULT_COMPANION, type Profile } from "@/lib/onboarding";
 import { useAccountActivity } from "./use-account-activity";
 import { useAccountProfile } from "./use-account-profile";
 import { type Realtime, type Handlers } from "@/lib/realtime";
-import { connectLive, LiveConnectionError } from "@/lib/live";
-import { prepareLiveSession } from '@/lib/live-preconnect';
+import { connectLive } from "@/lib/live";
 import { muteSfx } from "@/lib/sfx";
 import { displayNameForServer } from "@/lib/friends";
 import { requestQuotaStatus } from "@/lib/quota-status";
@@ -26,7 +25,7 @@ import { syncReport } from "@/lib/report";
 import { browserSupabase } from "@/lib/supabase";
 import type { SearchSource } from "@/lib/web-search-protocol";
 import AuthGate, { type SignOut } from "./AuthGate";
-import { acceptMemoryConsent, memoryConsentAvailable } from "./MemoryConsentGate";
+import { acceptMemoryConsent } from "./MemoryConsentGate";
 import { WITHDRAW_DONE_MESSAGE, withdrawMember } from "@/lib/member-withdrawal";
 import { clearAccountStorage, setLocalOwner } from "@/lib/local-scope";
 import { devToolsVisible } from "@/lib/deploy-env";
@@ -93,14 +92,6 @@ function ProfileLoading({ error, onRetry, onSignOut }: { error: string; onRetry:
 
 function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRestart }: { userId: string; signOut: SignOut; startEmpty: boolean; afterConsent: boolean; replay?: boolean; onRestart: () => void }) {
   const account = useAccountProfile(userId, { startEmpty, onRemoteReset: onRestart });
-  // 개발용 다시 만들기: 기억 기능이 켜진 서버면 약속 장면에서 동의 칸까지 다시 보여 준다. 무대는 시작할 때 정하므로 먼저 확인한다.
-  const [replayConsent, setReplayConsent] = useState<boolean | undefined>(replay ? undefined : false);
-  useEffect(() => {
-    if (!replay) return;
-    let active = true;
-    memoryConsentAvailable().then((on) => { if (active) setReplayConsent(on); }, () => { if (active) setReplayConsent(false); });
-    return () => { active = false; };
-  }, [replay]);
   const basics = useContext(MemberBasicsContext);
   const activity = useAccountActivity(userId);
   const profile = account.profile === null ? DEV_PROFILE : account.profile;
@@ -113,6 +104,8 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const history = useConversationHistory(userId, messages);
+  const restoredHistoryRef = useRef<HistoryMessage[]>([]);
+  useEffect(() => { restoredHistoryRef.current = history.messages; }, [history.messages]);
   const [status, setStatus] = useState<Status>("idle");
   const [crisis, setCrisis] = useState(false);
   const [suggest, setSuggest] = useState(false);
@@ -149,26 +142,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
   const outputLevel = useRef(0);
   const voiceClickedAt = useRef<number | undefined>(undefined);
   const outputShape = useRef<import("@/lib/mouth-shape").MouthShape>("rest");
-  const voiceWarmup = useRef<ReturnType<typeof prepareLiveSession> | null>(null);
-  const canPrepareVoice = Boolean(profile) && !basics.needed && !typing && !reportMode && !customizing && !showFriends;
-  const voiceProfileKey = JSON.stringify([profile?.companion, profile?.onboardingAnswers]);
-  useEffect(() => {
-    const dispose = () => { voiceWarmup.current?.dispose(); voiceWarmup.current = null; };
-    const prepare = () => {
-      if (document.hidden || !canPrepareVoice) { dispose(); return; }
-      if (!voiceMode && !voiceWarmup.current) voiceWarmup.current = prepareLiveSession(async () => {
-        const client = browserSupabase();
-        const result = await client?.auth.getSession();
-        if (!result?.data.session) throw Error('authentication_required');
-        return result.data.session.access_token;
-      });
-    };
-    prepare();
-    document.addEventListener('visibilitychange', prepare);
-    window.addEventListener('pagehide', dispose);
-    // The claimed session is removed from this ref before entering voice mode.
-    return () => { document.removeEventListener('visibilitychange', prepare); window.removeEventListener('pagehide', dispose); dispose(); };
-  }, [canPrepareVoice, voiceMode, voiceProfileKey]);
   // 음성 대화 중에는 효과음이 마이크에 섞이지 않게 모두 쉰다.
   useEffect(() => { muteSfx(voiceMode); return () => muteSfx(false); }, [voiceMode]);
 
@@ -214,7 +187,22 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
   const voiceRequest = useRef<AbortController | null>(null);
   const chatRequest = useRef<AbortController | null>(null);
 
-  useEffect(() => () => { connectionAttempt.current += 1; voiceRequest.current?.abort(); rt.current?.close(); chatRequest.current?.abort(); chatQueue.current?.cancel(); }, []);
+  useEffect(() => {
+    const dispose = () => {
+      connectionAttempt.current += 1;
+      voiceRequest.current?.abort(); voiceRequest.current = null;
+      rt.current?.close(); rt.current = null;
+      chatRequest.current?.abort(); chatQueue.current?.cancel();
+    };
+    // A cached page must return to the disconnected home state when restored.
+    const leave = () => {
+      dispose();
+      setVoiceMode(false); setMicOn(false); setHasMic(false);
+      setYawning(false); setHearing(false); setStatus('idle');
+    };
+    window.addEventListener('pagehide', leave);
+    return () => { window.removeEventListener('pagehide', leave); dispose(); };
+  }, []);
 
   const connecting = status === "connecting";
 
@@ -283,7 +271,8 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
           const saved = await loadRecentChatHistory(token, controller.signal);
           if (signal.aborted) return;
           // Read the ref after loading: new queued messages/replies may arrive in the meantime.
-          const context = queuedChatContext(mergeChatHistory(saved, messagesRef.current), batch);
+          const local = mergeChatHistory(restoredHistoryRef.current, messagesRef.current);
+          const context = queuedChatContext(mergeChatHistory(saved, local), batch);
           const assistantId = crypto.randomUUID();
           const result = await requestChat(context, { name: profile?.companion ?? DEFAULT_COMPANION, nickname: profile?.nickname, style: profile?.style }, controller.signal, token,
             { batchId: crypto.randomUUID(), userMessageId: last.id, assistantMessageId: assistantId, userAt: last.at, assistantAt: Math.max(Date.now(), last.at + 1) });
@@ -303,10 +292,8 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
     chatQueue.current.enqueue(message);
   }
 
-  /** 음성 대화만 기존 OpenAI Realtime 연결을 사용한다. */
+  /** 마이크 버튼을 눌렀을 때만 유료 Live 연결을 시작한다. */
   async function begin(startedAt = performance.now()) {
-    const prepared = voiceWarmup.current;
-    voiceWarmup.current = null;
     headlineLocked.current = true;
     cancelChat();
     const attempt = ++connectionAttempt.current;
@@ -333,7 +320,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
     }).catch(() => {});
     try {
       const token = await accessToken();
-      if (!current()) { prepared?.dispose(); return; }
+      if (!current()) return;
       const handlers: Handlers = {
         onOutputLevel: (level, shape) => { if (current()) { outputLevel.current = level; outputShape.current = shape; } },
         onStatus: (next) => { if (current()) { setStatus(next); if (next === "speaking") setYawning(false); } },
@@ -360,15 +347,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
         onMemoryWarning: (message) => { if (current()) setMemoryWarning(message); },
         onSearchSources: (sources) => { if (current()) setSearchSources(sources); },
       };
-      let conn: Realtime;
-      try {
-        if (!prepared) throw Error('no_prepared_session');
-        conn = await prepared.claim(handlers, startedAt, token, controller.signal);
-      } catch (error) {
-        if (!current() || controller.signal.aborted) return;
-        if (error instanceof LiveConnectionError && [401, 403, 429].includes(error.status)) throw error;
-        conn = await connectLive(handlers, { name: profile?.companion, voice: profile?.voice, nickname: profile?.nickname || undefined, style: profile?.style }, controller.signal, token, { historyManaged: true, startedAt });
-      }
+      const conn = await connectLive(handlers, { name: profile?.companion, voice: profile?.voice, nickname: profile?.nickname || undefined, style: profile?.style }, controller.signal, token, { historyManaged: true, startedAt });
       if (!current()) { conn.close(); return; }
       rt.current = conn;
       conn.setSound(true);
@@ -382,7 +361,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
         setError(conn.microphoneError ?? "마이크를 쓸 수 없어서 글로 적을 수 있게 열어 뒀어요.");
       }
     } catch (e) {
-      prepared?.dispose();
       if (!current()) return;
       setYawning(false);
       track("voice_failed", { reason: "error" });
@@ -497,8 +475,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
 
   if (profile === undefined) return <ProfileLoading error={account.loadError} onRetry={account.retry} onSignOut={() => { void signOut(); }} />;
 
-  if (profile === null && replayConsent === undefined) return <ProfileLoading error="" onRetry={account.retry} onSignOut={() => { void signOut(); }} />;
-
   if (profile === null) {
     // 마지막 '알겠어요' 뒤 저장하는 동안에도 같은 화면을 두고, 버튼에 진행·실패·다시 저장을 보여 준다.
     // 저장이 끝나면 홈이 온보딩의 빛이 걷히는 모션(greet)으로 바로 이어진다.
@@ -506,7 +482,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
       <Onboarding
         basics={basics}
         askBasics={replay || undefined}
-        consent={replayConsent ? acceptMemoryConsent : undefined}
+        consent={acceptMemoryConsent}
         afterConsent={afterConsent}
         onSignOut={() => { void signOut(); }}
         saving={pendingProfile !== null && account.saving}

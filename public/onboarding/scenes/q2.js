@@ -124,7 +124,7 @@
         if (snap) { void word.offsetWidth; word.classList.remove("is-snap"); }
       };
       /** 알약 속 글자를 max 너비에 맞춘다(30px에서 19px까지) */
-      const fitText = (node, max = TEXT_MAX) => { node.style.fontSize = ""; let px = 30; while (px > 19 && node.offsetWidth > max) { px -= 1; node.style.fontSize = px + "px"; } };
+      const fitText = (node, max = TEXT_MAX) => { node.style.fontSize = ""; let px = 32; while (px > 19 && node.offsetWidth > max) { px -= 1; node.style.fontSize = px + "px"; } };
       /** 바퀴가 한 칸 넘어갈 때: 제목 알약의 하트와 창의 주황 화살표가 한 번 뛴다 */
       const beat = () => { if (still) return; for (const d of [wordPill.querySelector(".hp-pill-dot"), lensDot]) if (d && d.animate) d.animate([{ transform: "scale(1)" }, { transform: "scale(1.24)", offset: 0.3 }, { transform: "scale(1)" }], { duration: 300, easing: ui.ease.out }); };
 
@@ -152,8 +152,9 @@
       const measure = () => radios.forEach((b, i) => { inset[i] = Math.max(0, b.firstChild.offsetWidth - 116) * 0.42; });
       // 창: 맨 위에 온 보기가 적히는 검정 알약(끝에 주황 화살표). 누르면 그 보기로 정한다. 화면 읽기 · 키보드는 위의 라디오로 같은 일을 한다
       const lensText = el("span", "hp-q2-lens-text");
-      const lensDot = el("span", "hp-pill-dot", icon("arrow"));
-      const lens = el("div", "hp-pill hp-pill-big hp-q2-lens", lensText, lensDot); lens.setAttribute("aria-hidden", "true");
+      const lens = ui.pill({ content: lensText, dot: "arrow" });
+      lens.classList.add("hp-q2-lens"); lens.setAttribute("aria-hidden", "true");
+      const lensDot = lens.querySelector(".hp-pill-dot");
       const lensWrap = el("div", "hp-q2-lens-wrap", lens);
       lens.addEventListener("click", () => choose(aim(), false));
       dial.append(svg, grab, group, lensWrap);
@@ -370,7 +371,7 @@
         line3.classList.remove("hp-rise"); line3.classList.add("hp-leave"); line3.setAttribute("aria-hidden", "true");
         sizeWord(true, instant);
         const pill = ui.pill({ text: label, dot: "pencil", onPress: () => release(), label: `${label}, 다시 고르기` });
-        pill.classList.add("hp-pill-big");
+        pill.classList.add("hp-pill-answer");
         answer.replaceChildren(pill);
         const text = pill.querySelector(".hp-pill-text"); if (text) fitText(text);
         if (!instant) flyTo(pill, rectOf(lens));

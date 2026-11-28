@@ -1,6 +1,7 @@
 import { requireMember } from "@/lib/member-auth";
 import { memoryEnabled } from "@/lib/memory";
 import { JsonRequestError, readSmallJson } from "@/lib/request-json";
+import { requireCipher } from "@/lib/conversation-cipher";
 
 const json = (body: object, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
@@ -8,14 +9,17 @@ export async function GET(request: Request) {
   const access = await requireMember(request);
   if (access.response) return access.response;
   if (!memoryEnabled(process.env)) return json({ enabled: false, available: false, memories: [] });
+  const guard = requireCipher(access.userId);
+  if (guard.response) return guard.response;
   try {
     const signal = AbortSignal.timeout(5000);
     const { data: enabled, error: settingsError } = await access.supabase.rpc("memory_is_enabled").abortSignal(signal);
     const { data, error } = await access.supabase.from("conversation_memories")
-      .select("id,summary,status,created_at,updated_at").eq("user_id", access.userId)
+      .select("id,summary,summary_key_version,status,created_at,updated_at").eq("user_id", access.userId)
       .neq("status", "deleted").order("created_at", { ascending: false }).limit(100).abortSignal(signal);
     if (error || settingsError) return json({ error: "기억을 불러오지 못했어요." }, 503);
-    return json({ enabled, available: true, memories: data });
+    const memories = data.map(({ summary_key_version, ...m }) => ({ ...m, summary: guard.cipher.decryptSummary("conversation_memories", m.summary, summary_key_version ?? 0) }));
+    return json({ enabled, available: true, memories });
   } catch { return json({ error: "기억을 불러오지 못했어요." }, 503); }
 }
 

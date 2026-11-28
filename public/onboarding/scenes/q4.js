@@ -26,7 +26,7 @@
   const HOP = -700;                                              // 알약 위에서 레일로 뛰어들 때의 첫 속도(px/s)
   const DOCK_LEAN = -0.55;                                       // 답하기 전에는 옆에 놓인 손잡이를 슬쩍 본다(-1 왼쪽 ~ 1 오른쪽)
   // 손잡이 안의 아이콘: 양쪽 화살표(참고 이미지의 주황 동그라미 속 흰 화살표와 같은 선). "옆으로 옮긴다"는 뜻뿐이라 어느 답에서나 같다
-  const GRIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.8 12h16.4M7.6 8.2 3.8 12l3.8 3.8M16.4 8.2l3.8 3.8-3.8 3.8"/></svg>';
+  const GRIP = '<svg viewBox="0 0 24 24" fill="none"><use href="/icons/iconsax-free.svg?v=20261128-keyline2#swap"/></svg>';
   const WAVE = [5, 9, 15, 22, 26, 20, 12, 17, 24, 18, 10, 14, 8, 4];      // 숨소리 막대의 높이(open의 알약과 같은 박자)
 
   HerePhone.addScene({
@@ -41,12 +41,13 @@
 
       /* ── 위 줄 · 제목(마지막 낱말이 답이 담기는 알약) · 그 아래 한 줄 ── */
       const bar = ui.topbar(ctx, { skip: true, pages: true });   // 큰 버튼 위에는 이름표가 있으므로 쪽 표시는 위 줄에
-      const [l1, l2, l3] = ui.lines(Q.text, [2, 3, 2]);
+      const [l1, l2, l3] = ui.lines(Q.text, [3, 3, 1]);
       const ASK = l3.split(" ").pop();                           // "있어요?"
       const word = (t) => el("span", "hp-q4-word", t);
       const ans = el("span", "hp-q4-ans", word(ASK));
-      const dot = el("span", "hp-pill-dot", ui.icon("check")); dot.setAttribute("aria-hidden", "true");
-      const pill = el("span", "hp-pill hp-q4-pill is-open", ans, dot);
+      const pill = ui.pill({ content: ans, dot: "check" });
+      pill.classList.add("hp-q4-pill", "is-open");
+      const dot = pill.querySelector(".hp-pill-dot");
       pill.dataset.say = ASK;
       const title = ui.headline([l1, l2, ui.swap(l3, ASK, pill)], { size: 38 });
       const sub = el("p", "hp-body hp-q4-sub hp-rise", C.eyebrows.support); sub.style.setProperty("--i", 3);

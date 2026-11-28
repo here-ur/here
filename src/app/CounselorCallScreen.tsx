@@ -46,10 +46,7 @@ export default function CounselorCallScreen({ counselor, crisis, onEnd }: { coun
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6">
         <div className="flex min-h-full flex-col items-center justify-center py-8 text-center">
           <div aria-hidden="true" className="grid size-36 shrink-0 place-items-center rounded-full" style={{ backgroundColor: palette.light, color: palette.deep }}>
-            <svg width="72" height="72" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="10" r="5" fill="currentColor" opacity=".65" />
-              <path d="M6 28v-2a10 10 0 0 1 20 0v2" fill="currentColor" opacity=".4" />
-            </svg>
+            <Icon name="profile" size={72} />
           </div>
           <p className="mt-5 text-t2 font-medium text-ios-secondary">예시 프로필</p>
           <h1 ref={headingRef} tabIndex={-1} className="mt-1 rounded-r2 text-t10 font-bold text-balance focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1F2A55]">

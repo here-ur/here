@@ -67,7 +67,8 @@
 
       /* ── 첫마디(큰 제목). 맨 앞의 "…"는 줄 안의 검정 알약 = 점 세 개(말을 고르는 중) ── */
       const rows = headLines(M.line(answers));
-      const dots = el("span", "hp-pill hp-meet-dots", [0, 1, 2].map((n) => { const d = el("i"); d.style.setProperty("--n", n); return d; }));
+      const dots = ui.pill({ content: [0, 1, 2].map((n) => { const d = el("i"); d.style.setProperty("--n", n); return d; }) });
+      dots.classList.add("hp-meet-dots");
       dots.dataset.say = "…"; dots.setAttribute("aria-hidden", "true");
       const dotEls = Array.from(dots.children);
       const hLine = ui.headline(rows.map((r, i) => (i === 0 && r.startsWith("…") ? [dots, r.slice(1)] : r)), { typed: true });

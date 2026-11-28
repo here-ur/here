@@ -2,7 +2,6 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { connectLive } from "./live.ts";
 import type { Handlers } from "./realtime.ts";
-import { prepareLiveSession } from './live-preconnect.ts';
 
 function setup(t: TestContext, fail = false, media?: () => Promise<unknown>, permission?: PermissionState) {
   function global(name: string, value: unknown) {
@@ -52,20 +51,21 @@ function setup(t: TestContext, fail = false, media?: () => Promise<unknown>, per
   global("navigator", { mediaDevices: { getUserMedia: () => { microphoneOpens++; return media ? media() : Promise.resolve(stream); } }, ...(permission ? { permissions: { query: async () => ({ state: permission }) } } : {}) });
   t.mock.method(globalThis, "fetch", async (url: Parameters<typeof fetch>[0], init?: RequestInit) => {
     requests.push({ url: String(url), body: JSON.parse(String(init?.body)) });
-    if (url === "/api/live") return Response.json({ sdp: "v=0\r\no=answer", memory: true }, { status: fail ? 502 : 200 });
+    if (url === "/api/live") return Response.json({ sdp: "v=0\r\no=answer", callId: requests.at(-1)!.body.callId, deadlineAt: Date.now()/1000+300, memory: true }, { status: fail ? 502 : 200 });
+    if(url === "/api/live/close") return Response.json({ requested: true });
     assert.equal(url, "/api/voice-memory");
     return Response.json({ accepted: true }, { status: 202 });
   });
   const handlers: Handlers = { onStatus: () => {}, onError: () => {}, onUserText: s => users.push(s),
     onUserPartial: () => {}, onAssistantPartial: () => {}, onAssistantText: () => {}, onTool: () => {} };
-  return { track, stream, emit, requests, sent, users, handlers, peerClosed: () => peerClosed, microphoneOpens: () => microphoneOpens };
+  return { track, stream, channel, emit, requests, sent, users, handlers, peerClosed: () => peerClosed, microphoneOpens: () => microphoneOpens };
 }
 
 test("Live exchanges SDP through authenticated app route and sends no Realtime commands", async t => {
   const m = setup(t);
   const rt = await connectLive(m.handlers, { name: "보리" }, undefined, "test-token", {});
   assert.equal(m.requests[0].url, "/api/live");
-  assert.deepEqual(m.requests[0].body, { sdp: "v=0\r\no=test", dcid: 4 });
+  assert.deepEqual(m.requests[0].body, { sdp: "v=0\r\no=test", dcid: 4, callId: m.requests[0].body.callId });
   assert.equal(m.track.enabled, true);
   assert.deepEqual(m.sent.map(e => e.type), ["session.input_audio.unmute"]);
   rt.setMic(false); assert.equal(m.track.enabled, false);
@@ -134,61 +134,50 @@ test('cancel during parallel signaling stops a microphone that arrives later', a
   assert.equal(m.track.stops, 1); assert.equal(m.peerClosed(), true);
 });
 
-test('app-entry standby connects silently; only activation opens the mic and requests a fresh greeting', async t => {
+test('ending releases the microphone immediately and sends only one close command', async t => {
   const m = setup(t);
-  const rt = await connectLive(m.handlers, {}, undefined, 'test-token', { standby: true, historyManaged: true });
-  assert.equal(m.microphoneOpens(), 0);
-  assert.equal(m.requests.length, 1);
-  assert.equal(m.requests[0].body.standby, true);
-  assert.equal(rt.hasMic, false);
-  assert.deepEqual(m.sent.map(e => e.type), ['session.input_audio.mute']);
-  await rt.activate(m.handlers, performance.now(), 'fresh-token');
-  await rt.activate(m.handlers, performance.now(), 'fresh-token');
-  assert.equal(m.microphoneOpens(), 1);
-  assert.equal(rt.hasMic, true);
-  assert.equal(m.track.enabled, true);
-  assert.deepEqual(m.sent.map(e => e.type), ['session.input_audio.mute', 'session.input_audio.unmute', 'session.commentary.append']);
-  rt.close(); m.emit({type:'session.closed'});
+  const rt = await connectLive(m.handlers, {}, undefined, 'test-token');
+  rt.close(); rt.close(); rt.setMic(true);
+  assert.equal(m.track.stops, 1);
+  assert.equal(m.track.enabled, false);
+  assert.equal(m.sent.filter(e => e.type === 'session.close').length, 1);
+  m.emit({ type: 'session.closed' });
+  assert.equal(m.peerClosed(), true);
+  assert.equal(m.track.stops, 1);
+  assert.equal(m.requests.filter(r => r.url === '/api/live').length, 1);
 });
 
-test('standby that generated speech before the click is rejected rather than replayed', async t => {
+test('missing provider close acknowledgement still releases local transport at the deadline', async t => {
   const m = setup(t);
-  const rt = await connectLive(m.handlers, {}, undefined, 'test-token', { standby: true });
-  m.emit({ type: 'session.output_transcript.delta', delta: '안녕', start_ms: 0, end_ms: 200 });
-  await assert.rejects(rt.activate(m.handlers, performance.now()));
-  assert.equal(m.microphoneOpens(), 0);
-  rt.close(); assert.equal(m.peerClosed(), true);
-});
-
-test('cancelling standby activation stops a late microphone and closes the paid connection', async t => {
-  let resolve!: (value: unknown) => void;
-  const m = setup(t, false, () => new Promise(r => { resolve = r; }));
-  const controller = new AbortController();
-  const rt = await connectLive(m.handlers, {}, controller.signal, 'test-token', { standby: true });
-  const activation = rt.activate(m.handlers, performance.now());
-  controller.abort(); resolve(m.stream);
-  await assert.rejects(activation);
-  assert.equal(m.track.stops, 1); assert.equal(m.peerClosed(), true);
-});
-
-test('leaving home while authentication is pending prevents a paid preconnection', async t => {
-  const m = setup(t);
-  let resolve!: (token: string) => void;
-  const prepared = prepareLiveSession(() => new Promise(r => { resolve = r; }));
-  prepared.dispose(); resolve('test-token');
-  await new Promise(r => setImmediate(r));
-  assert.equal(m.requests.length, 0); assert.equal(m.microphoneOpens(), 0);
-});
-
-test('claim transfers a standby session from home cleanup to the active call cancellation', async t => {
-  const m = setup(t);
-  const prepared = prepareLiveSession(async () => 'test-token');
-  const controller = new AbortController();
-  const claiming = prepared.claim(m.handlers, performance.now(), 'fresh-token', controller.signal);
-  prepared.dispose();
-  const rt = await claiming;
-  assert.equal(m.requests.length, 1); assert.equal(m.microphoneOpens(), 1);
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
+  const rt = await connectLive(m.handlers, {}, undefined, 'test-token');
+  rt.close();
+  assert.equal(m.track.stops, 1);
   assert.equal(m.peerClosed(), false);
-  controller.abort(); m.emit({type:'session.closed'});
-  assert.equal(m.peerClosed(), true); assert.equal(rt.hasMic, true);
+  t.mock.timers.tick(15_000);
+  assert.equal(m.peerClosed(), true);
+  assert.equal(m.channel.readyState, 'closed');
+  t.mock.timers.tick(60_000);
+  assert.equal(m.requests.filter(r => r.url === '/api/live').length, 1);
+});
+
+test('a close send failure cannot strand the microphone or peer connection', async t => {
+  const m = setup(t);
+  const rt = await connectLive(m.handlers, {}, undefined, 'test-token');
+  t.mock.method(m.channel, 'send', () => { throw new Error('transport lost'); });
+  assert.doesNotThrow(() => rt.close());
+  assert.equal(m.track.stops, 1);
+  assert.equal(m.peerClosed(), true);
+});
+
+test('cancelling an established call sends close and never starts another session', async t => {
+  const m = setup(t);
+  const controller = new AbortController();
+  await connectLive(m.handlers, {}, controller.signal, 'test-token');
+  controller.abort();
+  assert.equal(m.track.stops, 1);
+  assert.equal(m.sent.at(-1)?.type, 'session.close');
+  m.emit({ type: 'session.closed' });
+  assert.equal(m.peerClosed(), true);
+  assert.equal(m.requests.filter(r => r.url === '/api/live').length, 1);
 });

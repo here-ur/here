@@ -21,10 +21,10 @@ test("동의는 약속 장면에서 받고, 항목별 전문은 체크 칸 바�
   const text = readFileSync(new URL("./memory-consent.ts", import.meta.url), "utf8");
   assert.match(component, /<OnboardingStage consent /);
   assert.match(component, /beforeNext=\{\(snapshot\) => \(snapshot\.scene === "promise" \? accept\(\) : null\)\}/);
-  assert.match(scene, /list\.append\(el\("div", "hp-promise-ask", b, more\)\)/);
+  assert.match(scene, /wrapper\.append\(more\)/);
   assert.match(scene, /panel\.setAttribute\("role", "dialog"\)/);
   assert.match(scene, /const cta = ui\.cta\(\{ label: K\.cta, disabled: !N,/);
-  for (const words of ["보관기간 초안", "공용 모델 학습", "음성 파일 자체는 저장하지 않아요", "정신·신체 건강"]) assert.ok(text.includes(words), words);
+  for (const words of ["보유·이용 기간", "공용 AI 모델 학습", "음성 파일 자체는 here의 대화 기록으로 저장하지 않습니다", "정신·신체 건강", "동의 거부 및 철회"]) assert.ok(text.includes(words), words);
 });
 
 test("로그인 시트에서 이어 가기: 이미 동의한 기기면 바로 넘어가고, 다시 확인할 때 이미 홈이면 전환을 반복하지 않는다", () => {

@@ -1,5 +1,3 @@
-import FrameworkIcon from "framework7-react/components/icon.js";
-
 // 몽글이 프로토타입의 그림(구름 캐릭터, 복숭아 언덕)과 아이콘을 그대로 옮긴 것.
 
 const CLOUD = [
@@ -91,39 +89,11 @@ export function Hills({ variant, className = "" }: { variant: keyof typeof LAYOU
 }
 
 
-const ICONS = {
-  help: "bubble_left",
-  down: "chevron_down",
-  back: "chevron_left",
-  forward: "arrow_right",
-  log: "list_bullet",
-  mic: "mic",
-  stop: "stop_fill",
-  micOff: "mic_slash",
-  keyboard: "keyboard",
-  soundOn: "speaker_2",
-  soundOff: "speaker_slash",
-  send: "arrow_up",
-  hangUp: "phone_down",
-  captions: "captions_bubble",
-  info: "info_circle",
-  lock: "lock",
-  phone: "phone",
-  email: "envelope",
-  close: "xmark",
-  pin: "pin",
-  add: "plus",
-  menu: "line_horizontal_3",
-  library: "book",
-  sparkles: "sparkles",
-  paintbrush: "paintbrush",
-  pencil: "pencil",
-  check: "checkmark",
-  chat: "chat_bubble",
-  paw: "paw",
-  refresh: "arrow_clockwise",
-} as const;
+// Names map directly to the Iconsax Free sprite symbols.
+export type IconName = "help" | "down" | "back" | "forward" | "log" | "mic" | "stop" | "micOff" | "keyboard" | "soundOn" | "soundOff" | "send" | "hangUp" | "captions" | "info" | "lock" | "phone" | "email" | "close" | "pin" | "add" | "menu" | "library" | "sparkles" | "paintbrush" | "pencil" | "check" | "chat" | "paw" | "refresh" | "calendar" | "profile" | "wind" | "drop" | "grid" | "heart" | "flame" | "sun" | "notification" | "cake" | "swap";
 
-export function Icon({ name, size = 24 }: { name: keyof typeof ICONS; size?: number }) {
-  return <FrameworkIcon f7={ICONS[name]} size={size} aria-hidden="true" />;
+export function Icon({ name, size = 24, className = "" }: { name: IconName; size?: number; className?: string }) {
+  return <svg className={`here-icon ${className}`} width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" style={{ display: "inline-block", flexShrink: 0, verticalAlign: "middle" }}>
+    <use href={`/icons/iconsax-free.svg?v=20261128-keyline2#${name}`} />
+  </svg>;
 }

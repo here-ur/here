@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { MemoryConsentPreview } from "../../MemoryConsentGate";
 import Onboarding from "../../Onboarding";
 import { Icon } from "../../art";
@@ -16,6 +17,7 @@ const STAGES: { id: Stage; label: string }[] = [
 ];
 
 export default function Preview() {
+  const router = useRouter();
   const [stage, setStage] = useState<Stage>("consent");
   const [run, setRun] = useState(0);
   const [result, setResult] = useState("");
@@ -31,7 +33,7 @@ export default function Preview() {
   let screen;
   switch (stage) {
     case "consent":
-      screen = <MemoryConsentPreview key={run} onAccept={() => { setConsented(true); open("onboarding"); }} onSignOut={() => open("consent")} />;
+      screen = <MemoryConsentPreview key={run} onAccept={() => { setConsented(true); open("onboarding"); }} onSignOut={() => router.push("/")} />;
       break;
     case "onboarding":
       screen = <Onboarding key={run} afterConsent={consented} basics={{ needed: true, save: async (gender, birth) => { setResult(`성별 ${gender} · 생년월일 ${birth}`); return "ok"; } }} onSignOut={() => open("consent")} onDone={(p) => { setResult((r) => `${r ? `${r} · ` : ""}이름 ${p.companion} · 목소리 ${p.voice} · 자리 ${p.color} · 대화 방식 ${p.style}`); setStage("done"); }} />;

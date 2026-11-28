@@ -50,33 +50,12 @@
     reel: canLinear ? springCurve(70, 12.5) : "cubic-bezier(.12,.75,.15,1)",    // 이름 굴리기
     out: "cubic-bezier(.2,.8,.2,1)", inout: "cubic-bezier(.65,0,.25,1)",
   };
-  /** cubic-bezier(x1, y1, x2, y2)의 값을 구한다: (0~1) → (0~1). 장면 전환에서 앞서가는 고리를 처음부터 끝까지 같은 두께로 그릴 때 쓴다. */
-  function bezier(x1, y1, x2, y2) {
-    const at = (a, b, t) => 3 * a * (1 - t) * (1 - t) * t + 3 * b * (1 - t) * t * t + t * t * t;
-    return (x) => { let lo = 0, hi = 1; for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (at(x1, x2, m) < x) lo = m; else hi = m; } return at(y1, y2, (lo + hi) / 2); };
-  }
-  const INOUT = bezier(0.65, 0, 0.25, 1);       // EASE.inout과 같은 곡선
-
   /* ───────────────────────── 아이콘(인라인 SVG) ───────────────────────── */
-  const LINE = 'fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"';
-  const STAR = "M12 2.2c.7 5.6 4 8.9 9.8 9.8-5.8.9-9.1 4.2-9.8 9.8-.7-5.6-4-8.9-9.8-9.8 5.8-.9 9.1-4.2 9.8-9.8Z";
-  const ICONS = {
-    back: `<svg viewBox="0 0 24 24" ${LINE} stroke-width="2"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>`,
-    chev: `<svg viewBox="0 0 24 24" ${LINE} stroke-width="2"><path d="M9.5 6 15.5 12l-6 6"/></svg>`,
-    chev2: `<svg viewBox="0 0 24 24" ${LINE} stroke-width="1.7"><path d="M5.5 6.5 11 12l-5.5 5.5M13 6.5l5.5 5.5-5.5 5.5"/></svg>`,
-    arrow: `<svg viewBox="0 0 24 24" ${LINE} stroke-width="2"><path d="M4.5 12h15M13 5.5l6.5 6.5-6.5 6.5"/></svg>`,
-    // 통통한 두 잎 하트(tone-1): 살짝 기울고, 가운데가 깊이 패이고, 아래는 둥글게 모인다
-    heart: `<svg viewBox="0 0 48 48"><path fill="currentColor" d="M22.4 21.2C19.6 15 15.4 8 9.6 6.6 4.4 5.4 1.2 10.2 2.2 17.8 3.4 26.6 9 35.8 15 40.9 17.4 42.9 20.2 42.9 23 41.2 31.4 36.2 41.2 27.6 45.4 19.4 48 13.6 43.4 9.8 37.4 11.2 31.2 12.6 25.9 16.6 22.4 21.2Z"/></svg>`,
-    sparkle: `<svg viewBox="0 0 24 24" ${LINE} stroke-width="1.5"><path d="${STAR}"/></svg>`,
-    star: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="${STAR}"/></svg>`,
-    check: `<svg viewBox="0 0 24 24" ${LINE} stroke-width="2.6"><path d="M5.6 12.6l4.1 4.1 8.7-9.4"/></svg>`,
-    dice: `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5.5" fill="currentColor"/><g fill="var(--pip, #fff)"><circle cx="8.3" cy="8.3" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="15.7" cy="15.7" r="1.7"/></g></svg>`,
-    phone: `<svg viewBox="0 0 24 24"><path fill="currentColor" d="M7.1 3.5h2c.5 0 1 .4 1.1.9l.7 3c.1.4 0 .9-.3 1.2L9.1 10.1a12.5 12.5 0 0 0 4.8 4.8l1.5-1.5c.3-.3.8-.4 1.2-.3l3 .7c.5.1.9.6.9 1.1v2c0 1.3-1.1 2.3-2.4 2.2C10.9 18.6 5.4 13.1 4.9 5.9 4.8 4.6 5.8 3.5 7.1 3.5Z"/></svg>`,
-    pencil: `<svg viewBox="0 0 24 24" ${LINE} stroke-width="2"><path d="M4.5 19.5 5.6 15 15.7 4.9a2 2 0 0 1 2.8 0l.6.6a2 2 0 0 1 0 2.8L9 18.4l-4.5 1.1Z"/></svg>`,
-    clock: `<svg viewBox="5 4.5 14 14" ${LINE} stroke-width="1.9"><path d="M12 5.8V12l4.3 2.8"/></svg>`,      // 바늘만 그린다(알약 끝의 동그란 점이 시계판)
-  };
-  ICONS.sound = `<svg viewBox="0 0 24 24" ${LINE} stroke-width="1.9"><path d="M4 9.6h3.1L11.4 6v12l-4.3-3.6H4Z"/><path d="M15 9.3a4 4 0 0 1 0 5.4M17.7 6.9a7.4 7.4 0 0 1 0 10.2"/></svg>`;
-  ICONS.mute = `<svg viewBox="0 0 24 24" ${LINE} stroke-width="1.9"><path d="M4 9.6h3.1L11.4 6v12l-4.3-3.6H4Z"/><path d="m15.6 9.6 4.8 4.8M20.4 9.6l-4.8 4.8"/></svg>`;
+  // Iconsax Free; the same local sprite serves React and this shadow-root stage.
+  const glyph = (name) => `<svg viewBox="0 0 24 24" fill="none"><use href="/icons/iconsax-free.svg?v=20261128-keyline3#${name}"/></svg>`;
+  const ICONS = Object.fromEntries(["back", "chev", "chev2", "arrow", "heart", "sparkle", "star", "check", "checkFilled", "dice", "phone", "pencil", "clock"].map((name) => [name, glyph(name)]));
+  ICONS.sound = glyph("soundOn");
+  ICONS.mute = glyph("soundOff");
   /** 효과음(shared/sound.js의 HereSound). 없으면 아무 일도 하지 않는다. sfx("tick") · sfx("pick", i) · sfx("purr", ms) → 멈추는 함수 */
   const sfx = (name, ...a) => { const S = window.HereSound; try { return S && typeof S[name] === "function" ? S[name](...a) : undefined; } catch { return undefined; } };
   function icon(name, cls) {
@@ -244,18 +223,26 @@
     },
 
     /** 줄 안의 알약. { text, dot: 아이콘 이름 | { text }, wave, swatch: [색], onPress, label, name } */
-    pill({ text, dot, wave = false, swatch, onPress, label, name = false } = {}) {
+    pill({ text, dot, wave = false, swatch, onPress, label, name = false, headline = !wave && !swatch, content } = {}) {
       const p = el(onPress ? "button" : "span", "hp-pill" + (swatch ? " is-swatch" : ""));
       if (onPress) { p.type = "button"; p.addEventListener("click", onPress); }
+      if (headline || name) p.classList.add("hp-pill-headline");
       if (label) p.setAttribute("aria-label", label);
       p.dataset.say = text || "";
       if (wave) {
-        const w = el("span", "hp-wave"); w.setAttribute("aria-hidden", "true");
-        [5, 9, 15, 22, 26, 20, 12, 17, 24, 18, 10, 14, 8, 4].forEach((hh, n) => { const b = el("i"); b.style.cssText = `--h:${hh};--n:${n}`; w.append(b); });
-        p.append(w);
+        // Figma 500:356: keep the exported waveform and z badge at their native sizes.
+        p.classList.add("hp-pill-sleep");
+        p.setAttribute("role", "img");
+        p.setAttribute("aria-label", label || "자는 중");
+        const w = el("span", "hp-sleep-wave");
+        const waveform = el("img"); waveform.src = "/onboarding/assets/sleep-wave.svg"; waveform.alt = "";
+        const badge = el("img", "hp-sleep-badge"); badge.src = "/onboarding/assets/sleep-badge-v2.svg"; badge.alt = "";
+        w.append(waveform); p.append(w, badge);
+        return p;
       }
       if (swatch) swatch.forEach((c) => { const d = el("i"); d.style.setProperty("--c", c); p.append(d); });
-      if (text) p.append(el("span", name ? "hp-pill-name" : "hp-pill-text", text));
+      if (content) p.append(...[].concat(content));
+      else if (text) p.append(el("span", name ? "hp-pill-name" : "hp-pill-text", text));
       if (dot) {
         const d = el("span", "hp-pill-dot"); d.setAttribute("aria-hidden", "true");
         if (typeof dot === "string") d.innerHTML = ICONS[dot] || ""; else d.append(el("b", "", dot.text));
@@ -265,8 +252,8 @@
     },
 
     /** 큰 검정 알약 버튼. { label, tail(글의 끝. 자리가 모자라면 앞부분만 줄어든다), onPress, hidden, disabled, icon, pages: ctx } → button(.setLabel(글, 바로, tail) / .show / .hide)
-     *  pages에 ctx를 주면 버튼 바로 위에 쪽 표시(짧은 줄 + 점)가 붙는다(참고 이미지의 자리). 버튼과 같이 움직인다. */
-    cta({ label, tail, onPress, hidden = false, disabled = false, icon: ic = "chev2", pages } = {}) {
+     *  진행률은 상단 바에서 표시한다. */
+    cta({ label, tail, onPress, hidden = false, disabled = false, icon: ic = "arrow", pages } = {}) {
       const b = el("button", "hp-cta" + (hidden ? " is-hidden" : ""));
       b.type = "button"; b.disabled = disabled; if (hidden) b.tabIndex = -1;
       /** 글 한 벌. tail(글의 끝, 예: "로 할게요")을 주면 자리가 모자랄 때 앞부분만 말줄임표로 줄고 끝은 그대로 남는다 */
@@ -278,7 +265,7 @@
       };
       const lab = el("span", "hp-cta-label", piece(label, tail));
       b.append(lab, icon(ic));
-      if (pages) b.append(ui.pages(pages));
+      // 진행률은 모든 설정 장면의 상단 바에서 표시한다.
       if (onPress) b.addEventListener("click", (e) => onPress(e, b));
       /** 글이 길면 17 → 15px까지 줄인 뒤에야 말줄임표를 쓴다 */
       const fit = () => {
@@ -320,20 +307,20 @@
       return b;
     },
 
-    /** 위 줄: 테두리 없는 뒤로 화살표 · 글자뿐인 건너뛰기(참고 이미지에는 위 줄이 없어서 진행 막대는 두지 않는다).
-     *  { back: true | false | fn(button), skip: false | true | fn(button), pages: true(쪽 표시를 위 줄 가운데에 둔다) }
-     *  쪽 표시의 자리: 아래 큰 버튼 위가 비어 있는 장면은 ui.cta({ pages: ctx }), 그 자리에 고양이가 있는 장면은 여기(pages: true). 한 장면 안에서는 자리를 바꾸지 않는다. */
+    /** 위 줄: 뒤로가기 · 설정 진행률 · 건너뛰기 · 사운드. */
     topbar(ctx, { back = true, skip = false, pages = false } = {}) {
       const bar = el("div", "hp-top");
-      if (pages) { bar.pages = ui.pages(ctx); bar.append(bar.pages); }
       if (back) {
         const b = el("button", "hp-back hp-drop", icon("back")); b.type = "button"; b.setAttribute("aria-label", "뒤로");
         b.addEventListener("click", () => (typeof back === "function" ? back(b) : ctx.back(b)));
         bar.append(b); bar.back = b;
       }
-      // 화면 읽기 프로그램에는 몇 번째 장면인지 글로 알린다(쪽 표시는 그림일 뿐이다)
+      if (ctx.id !== "open" && ctx.id !== "promise") {
+        bar.pages = ui.pages(ctx); bar.append(bar.pages);
+      }
+      // 화면 읽기 프로그램에는 몇 번째 장면인지 글로 알린다
       const ids = sceneIds();
-      bar.append(el("span", "hp-sr", `${ids.length}단계 중 ${ids.indexOf(ctx.id) + 1}단계`));
+      if (!bar.pages) bar.append(el("span", "hp-sr", `${ids.length}단계 중 ${ids.indexOf(ctx.id) + 1}단계`));
       if (skip) {
         const s = el("button", "hp-skip hp-drop", "건너뛰기"); s.type = "button";
         s.addEventListener("click", () => (typeof skip === "function" ? skip(s) : ctx.next(s)));
@@ -349,16 +336,21 @@
       return bar;
     },
 
-    /** 쪽 표시: 짧은 줄 하나(지금 장면) + 점(나머지 장면). 참고 이미지처럼 아래 큰 버튼 바로 위 가운데에 둔다(ui.cta의 pages). 그 자리에 고양이가 있는 장면은 위 줄 가운데(ui.topbar의 pages).
-     *  짧은 줄은 앞 장면의 자리에서 이 장면의 자리로 옮겨 온다. 지금 등록된 장면 수만큼 그린다. */
+    /** 이름 입력부터 마지막 설정까지 페이지마다 한 칸으로 진행률을 표시한다. */
     pages(ctx) {
-      const ids = sceneIds(), at = ids.indexOf(ctx.id);
-      const box = el("span", "hp-pages"); box.setAttribute("aria-hidden", "true");
-      const marks = ids.map(() => box.appendChild(el("i")));
-      const on = (n) => marks.forEach((m, i) => m.classList.toggle("is-on", i === n));
-      const from = ctx.instant || ctx.fromId == null ? at : ids.indexOf(ctx.fromId);
-      on(from < 0 ? at : from);
-      if (from >= 0 && from !== at) ctx.later(() => on(at), 420);
+      const ids = sceneIds().filter((id) => id !== "open" && id !== "promise");
+      const at = ids.indexOf(ctx.id), total = ids.length;
+      const box = el("span", "hp-progress");
+      box.setAttribute("role", "progressbar"); box.setAttribute("aria-label", "설정 진행률");
+      box.setAttribute("aria-valuemin", "0"); box.setAttribute("aria-valuemax", String(total));
+      box.setAttribute("aria-valuenow", String(at + 1));
+      box.setAttribute("aria-valuetext", `${total}단계 중 ${at + 1}단계`);
+      ids.forEach((id, index) => {
+        const segment = el("i", "hp-progress-step" + (index === at ? " is-current" : ""));
+        segment.setAttribute("aria-hidden", "true");
+        segment.dataset.step = id;
+        box.append(segment);
+      });
       return box;
     },
 
@@ -444,7 +436,7 @@
       const h = ui.headline(lines(make(TOKEN), counts).map((p) => (p.includes(TOKEN) ? swap(p, TOKEN, pill) : p)), { typed: true });
       const fit = () => {
         const t = pill.querySelector(".hp-pill-name"); if (!t) return;
-        t.style.maxWidth = max + "px"; t.style.fontSize = ""; let px = 26;
+        t.style.maxWidth = max + "px"; t.style.fontSize = ""; let px = 32;
         while (px > min && t.scrollWidth > t.clientWidth + 0.5) { px -= 1; t.style.fontSize = px + "px"; }
       };
       return { h, pill, fit };
@@ -457,10 +449,19 @@
     },
 
     /** 작은 표시(하트·반짝이). { x, y, s(크기), r(기울기), pop, float, twinkle, d(지연 ms) } */
-    mark(kind, { x, y, s = 28, r = 0, pop = false, float = false, twinkle = false, d = 0 } = {}) {
-      const m = el("span", "hp-mark" + (pop ? " is-pop" : "") + (float ? " is-float" : "") + (twinkle ? " is-twinkle" : ""));
+    mark(kind, { x, y, s = 28, r = 0, pop = false, float = false, twinkle = false, d = 0, asset, color } = {}) {
+      // 라인 아이콘 대신 공통 Figma 채움 별을 사용한다.
+      if (kind === "sparkle") asset = "/onboarding/assets/solid-star.svg";
+      const m = el("span", "hp-mark" + (kind === "sparkle" ? " hp-mark-solid-star" : "") + (pop ? " is-pop" : "") + (float ? " is-float" : "") + (twinkle ? " is-twinkle" : ""));
       m.setAttribute("aria-hidden", "true");
-      const inner = el("span"); inner.innerHTML = ICONS[kind] || ""; m.append(inner);
+      if (color) m.style.color = color;
+      const inner = el("span");
+      if (asset) {
+        m.classList.add("hp-mark-asset");
+        const image = el("img"); image.src = asset; image.alt = "";
+        inner.append(image);
+      } else inner.innerHTML = ICONS[kind] || "";
+      m.append(inner);
       for (const [k, v] of Object.entries({ x, y, s, r, d })) m.style.setProperty("--" + k, v);
       return m;
     },
@@ -468,16 +469,23 @@
     /** 그 자리에서 조각이 튀어나온다. bits = [{ kind, dx, dy, s, r, delay, hold, color }] */
     burst(parent, x, y, bits) {
       if (reduced()) return;
-      bits.forEach((b) => {
-        const n = el("span", "hp-bit"); n.setAttribute("aria-hidden", "true"); n.innerHTML = ICONS[b.kind] || "";
+      bits.filter((b) => b.kind !== "sparkle").forEach((b) => {
+        const n = el("span", "hp-bit"); n.setAttribute("aria-hidden", "true");
+        // Opening effects use the same solid Figma star as the resting decorations.
+        const starAsset = b.kind === "sparkle" && parent.closest('[data-scene="open"]');
+        if (starAsset) {
+          n.classList.add("hp-bit-asset");
+          const image = el("img"); image.src = "/onboarding/assets/sleep-star.svg"; image.alt = "";
+          n.append(image);
+        } else n.innerHTML = ICONS[b.kind] || "";
         n.style.setProperty("--s", b.s || 22);
         if (b.color) n.style.color = b.color;
         parent.append(n);
         const r = b.r || 0;
-        const from = `translate3d(${x}px, ${y}px, 0) scale(0) rotate(${r - 50}deg)`;
+        const from = `translate3d(${x}px, ${y}px, 0) scale(${starAsset ? .85 : 0}) rotate(${r - (starAsset ? 12 : 50)}deg)`;
         const to = `translate3d(${x + b.dx}px, ${y + b.dy}px, 0) scale(1) rotate(${r}deg)`;
         const gone = `translate3d(${x + b.dx * 1.1}px, ${y + b.dy * 1.1 - 14}px, 0) scale(.5) rotate(${r + 30}deg)`;
-        n.animate([{ transform: from, opacity: 0 }, { opacity: 1, offset: 0.25 }, { transform: to, opacity: 1 }], { duration: 640, delay: b.delay || 0, easing: EASE.spring, fill: "both" }).finished
+        n.animate([{ transform: from, opacity: 0 }, { opacity: 1, offset: 0.25 }, { transform: to, opacity: 1 }], { duration: starAsset ? 760 : 640, delay: (b.delay || 0) + (starAsset ? 120 : 0), easing: starAsset ? EASE.out : EASE.spring, fill: "both" }).finished
           .then(() => n.animate([{ opacity: 1, transform: to }, { opacity: 0, transform: gone }], { duration: 420, delay: b.hold == null ? 260 : b.hold, easing: "ease-in", fill: "forwards" }).finished)
           .then(() => n.remove(), () => n.remove());
       });
@@ -598,7 +606,12 @@
       dots.forEach((dt) => {
         const d = el("i", "hp-bub-dot" + (dt.mark ? " is-mark" : "")); d.setAttribute("aria-hidden", "true");
         d.style.cssText = `--c:${dt.color || "none"};--rot:${dt.rot || 0}deg;width:${dt.r * 2}px;height:${dt.r * 2}px`;
-        if (dt.mark) d.innerHTML = ICONS[dt.mark] || "";
+        if (dt.mark === "sparkle") {
+          d.classList.add("hp-bub-solid-star");
+          d.style.setProperty("--s", dt.r * 2);
+          const image = el("img"); image.src = "/onboarding/assets/solid-star.svg"; image.alt = "";
+          d.append(image);
+        } else if (dt.mark) d.innerHTML = ICONS[dt.mark] || "";
         field.append(d);
         bodies.push({ kind: "dot", el: d, x: dt.x, y: dt.y, vx: 0, vy: 0, r: dt.r, r0: dt.r, rv: 0, rt: dt.r, hx: dt.x, hy: dt.y, homeX: dt.x, homeY: dt.y, ...DOT, m: dt.r * dt.r * 1.5, away: false, sq: 0, sqv: 0, sqa: 0, p1: rnd(0, 6.28), p2: rnd(0, 6.28), w1: rnd(0.5, 1.1), w2: rnd(0.5, 1), wa: 40 });
       });
@@ -846,7 +859,7 @@
       if (typeof initial.companion === "string" && initial.companion) data.companion = initial.companion;
       if (initial.answers) for (const [k, v] of Object.entries(initial.answers)) if (v != null) data.answers[k] = v;
     }
-    let current = null, endWipe = null, kb = 0, fakeKb = null, fakeBy = null, building = null;
+    let current = null, endTransition = null, kb = 0, fakeKb = null, fakeBy = null, building = null;
 
     if (window.HereCat) window.HereCat.preload(assets, ["sleep"]).catch(() => {});
     warmFonts(C);
@@ -955,6 +968,7 @@
       def.build(ctx);
       // 고양이를 콕 누르면 움찔한다(어느 장면에서든). 골골거릴 때는 하트가, 아니면 반짝이가 튄다.
       ctx.on(sceneEl, "pointerdown", (e) => {
+        if (def.id === "open") return;
         const control = e.target.closest && e.target.closest("button, a, input, label, .hp-hit");
         if (control && !control.disabled) return;
         const p = ui.point(e, root);
@@ -970,15 +984,11 @@
     }
     function teardown(s) { if (!s) return; s.ctx.destroy(); s.el.remove(); }
 
-    /** 장면 바꾸기. 눌린 버튼(from)에서 그 버튼의 색이 먼저 퍼지고, 바로 뒤따라 새 색면이 퍼진다. */
-    function navigate(id, { state: st, from, wipe = true, back = false } = {}) {
-      if (endWipe) { if (wipe) return; endWipe(); }
+    /** 이전 화면을 먼저 지운 뒤 새 화면을 나타낸다. 두 화면의 콘텐츠는 겹치지 않는다. */
+    function navigate(id, { state: st, wipe = true } = {}) {
+      if (endTransition) { if (wipe) return; endTransition(); }
       if (fakeBy) { fakeKb = null; fakeBy = null; kb = 0; root.classList.remove("has-kb", "has-fake-kb"); }      // 장면이 켠 시험용 키보드는 장면과 함께 내려간다
       const old = current;
-      const o = from && from.isConnected ? ui.center(from, root) : { x: W / 2, y: H - 60 };
-      let inkColor = "";
-      // 불투명한 배경색만 버튼의 색으로 본다(투명하거나 눌리는 동안만 살짝 물드는 뒤로 화살표 · 건너뛰기는 색이 없는 것으로)
-      if (from && from.isConnected) { const bg = getComputedStyle(from).backgroundColor, m = /^rgba?\(([^)]+)\)$/.exec(bg || ""), p = m ? m[1].split(/[,\/\s]+/).filter(Boolean) : null; if (p && (p.length < 4 || parseFloat(p[3]) >= 0.98)) inkColor = bg; }
       building = id;
       try { current = build(id, { state: st, instant: st != null && !wipe, fromId: old ? old.id : null }); } finally { building = null; }
       const settleBg = () => { root.style.background = `var(--hp-${current.def.field})`; };
@@ -986,34 +996,33 @@
       if (kb) current.ctx.keyboardChanged(kb);
       if (!old || !wipe || reduced() || !current.el.animate) { teardown(old); settleBg(); return; }
       old.el.classList.add("is-frozen");
-      sfx("whoosh");
-      const R = Math.ceil(Math.hypot(Math.max(o.x, W - o.x), Math.max(o.y, H - o.y))) + 12;
-      const circle = (r) => `circle(${Math.max(0, r).toFixed(1)}px at ${o.x}px ${o.y}px)`;
-      const fresh = current, lead = back ? 60 : 80, dur = 620, BAND = 28;
-      const fieldColor = getComputedStyle(fresh.el).backgroundColor;
-      // 버튼이 투명하거나(건너뛰기 · 뒤로) 다음 색면과 같은 색이면(q1의 주황 화살표) 다음 색면의 색이 그대로 번진다. 검정 버튼이면 잉크색 고리가 앞서간다.
-      const flood = !inkColor || inkColor === fieldColor;
-      const ink = el("div", "hp-ink");
-      ink.style.background = flood ? fieldColor : inkColor;
-      settleBg();                                         // 물러나는 옛 장면 둘레로는 새 색면의 색이 보인다
-      stack.insertBefore(ink, current.el);
-      // 새 장면은 색이 퍼지는 첫 순간에는 눌리지 않는다(같은 자리를 두 번 눌러도 다음 장면의 버튼이 눌리지 않게)
-      fresh.el.classList.add("is-entering"); setTimeout(() => fresh.el.classList.remove("is-entering"), 400);
-      old.el.animate([{ transform: "scale(1)" }, { transform: "scale(.94)" }], { duration: 600, easing: EASE.inout, fill: "forwards" });
-      let a;
-      if (flood) {
-        ink.animate([{ clipPath: circle(0) }, { clipPath: circle(R) }], { duration: dur, easing: EASE.inout, fill: "forwards" });
-        a = fresh.el.animate([{ clipPath: circle(0) }, { clipPath: circle(R) }], { duration: dur, delay: lead, easing: EASE.inout, fill: "both" });
-      } else {
-        // 버튼 색의 고리는 처음부터 끝까지 같은 두께(BAND)다: 새 색면이 바로 뒤를 따라가므로 화면이 버튼 색으로 덮이는 순간이 없다
-        const N = 32, ring = [], field = [];
-        for (let i = 0; i <= N; i++) { const r = INOUT(i / N) * (R + BAND); ring.push({ clipPath: circle(r) }); field.push({ clipPath: circle(r - BAND) }); }
-        ink.animate(ring, { duration: dur, easing: "linear", fill: "forwards" });
-        a = fresh.el.animate(field, { duration: dur, easing: "linear", fill: "both" });
-      }
-      endWipe = () => { endWipe = null; teardown(old); ink.remove(); a.cancel(); settleBg(); };
-      if (root.contains(focusedIn(root))) fresh.el.focus({ preventScroll: true });      // 다음 Tab은 새 장면의 맨 위부터
-      a.finished.then(() => { if (endWipe) endWipe(); }, () => {});
+      const fresh = current;
+      const restoreFocus = root.contains(focusedIn(root));
+      old.el.inert = true;
+      fresh.el.inert = true;
+      fresh.el.classList.add("is-entering");
+      settleBg();
+      const easing = "cubic-bezier(.4,0,.2,1)";
+      const outgoing = old.el.animate([{ opacity: 1 }, { opacity: 0 }], {
+        duration: 200, easing, fill: "both",
+      });
+      const incoming = fresh.el.animate([{ opacity: 0 }, { opacity: 1 }], {
+        delay: 200, duration: 360, easing, fill: "both",
+      });
+      const removeOld = () => { teardown(old); outgoing.cancel(); };
+      const finish = () => {
+        if (endTransition !== finish) return;
+        endTransition = null;
+        removeOld();
+        incoming.cancel();
+        fresh.el.inert = false;
+        fresh.el.classList.remove("is-entering");
+        settleBg();
+        if (restoreFocus) fresh.el.focus({ preventScroll: true });
+      };
+      endTransition = finish;
+      outgoing.finished.then(removeOld, () => {});
+      incoming.finished.then(finish, () => {});
     }
 
     // 화면 키보드: 보이는 화면(visualViewport)이 줄어 무대 아래쪽이 가려지면 그 높이를 장면에 알린다(ctx.kb · ctx.onKeyboard).
@@ -1049,7 +1058,7 @@
       root,
       /** 앱: 화면에서 내릴 때(리스너·타이머·고양이를 모두 정리한다) */
       destroy() {
-        if (endWipe) endWipe();
+        if (endTransition) endTransition();
         if (current) { teardown(current); current = null; }
         if (vv) { vv.removeEventListener("resize", watchKeyboard); vv.removeEventListener("scroll", watchKeyboard); }
         root.remove();
@@ -1083,12 +1092,16 @@
     id: "open", field: "yellow", states: ["idle", "awake"],
     build(ctx) {
       const { el: root, copy: C } = ctx;
-      // 자는 영상은 원본이 작아서(493px) 크게 늘리지 않는다(h 200 → 그림 너비 313px, 2배 화면에서 1.27배). 깬 뒤의 앉은 그림은 고해상도라 크게 쓴다.
-      const SLEEP = { x: 195, ground: 596, h: 200 }, SIT = { x: 195, ground: 682, h: 348 };
+      // 잠든 고양이는 발을 고정한 2초 호흡 루프를 재생한다.
+      const SLEEP = { x: 195, ground: 646, h: 280 }, SIT = { x: 195, ground: 682, h: 348 };
       let awake = false, said = false;
       const talk = ui.speech();
 
-      root.append(ui.topbar(ctx, { back: false }));
+      root.append(ui.topbar(ctx, { back: (button) => {
+        if (awake) ctx.go("open", "idle", button);
+        else if (ctx.actions.signOut) ctx.actions.signOut();
+        else ctx.back(button);
+      } }));
 
       // 제목 두 벌: 자는 동안(서비스의 말) → 깬 뒤(고양이의 첫마디)
       const head = ui.block("hp-head", { top: 92 });
@@ -1101,26 +1114,27 @@
       head.append(hA);
       root.append(head);
 
-      // 고양이의 자리: 주황 동그라미(tone-1의 색 덩어리). 깨는 순간 여섯 갈래 꽃 모양으로 통 튄다.
-      const SPOT = { x: 195, y: SLEEP.ground - 58, r: 128, m: 0 }, SPOT_UP = { x: 195, y: 536, r: 208, m: 1 };
-      const spot = ui.shape(ctx, { color: "var(--hp-orange)", shape: [[6, 0.1, 0]], ...SPOT });      // 여섯 갈래: 양옆 갈래는 화면 밖으로 잘리고, 아래는 골이라 쪽 표시 자리가 빈다
+      // 화면 양옆과 아래를 채우는 큰 원의 윗부분만 보여 아치형 배경을 만든다.
+      const SPOT = { x: 195, y: 704, r: 410, m: 0 };
+      const spot = ui.shape(ctx, { color: "#FF6A32", shape: [], ...SPOT });
       root.append(spot.el);
-      // 고양이 + 제목의 알약까지 이어지는 z
+      // 고정된 수면 말풍선 안에서 z 세 글자의 투명도만 차례로 바뀐다.
       const cat = ctx.cat(SLEEP);
       cat.pose(reduced() ? "purr" : "sleep");
       const zz = el("div", "hp-zz"); zz.setAttribute("aria-hidden", "true");
-      [[0, 26, 0, 0], [1, 38, 24, -58], [2, 54, 58, -138]].forEach(([n, s, x, y]) => { const b = el("b", "", "z"); b.style.cssText = `--n:${n};--s:${s};left:${x}px;top:${y}px`; zz.append(b); });
-      zz.style.transform = `translate3d(${SLEEP.x + 26}px, ${SLEEP.ground - SLEEP.h * 0.8}px, 0)`;
+      [0, 1, 2].forEach((n) => { const b = el("b", "", "z"); b.style.setProperty("--n", n); zz.append(b); });
+      zz.style.left = `${SLEEP.x + 31}px`;
+      zz.style.top = `${SLEEP.ground - 263}px`;
       // 자는 동안의 하트·반짝이(참고 이미지의 작은 표시): z 곁에 둔다. 깨면 물러나고 깬 뒤의 표시(decorate)가 대신한다
-      const dozing = [["heart", { x: 58, y: 408, s: 38, r: -12, float: true }], ["sparkle", { x: 340, y: 468, s: 24, r: 12, twinkle: true, d: 500 }]]
+      const dozing = [["heart", { x: 58, y: 448, s: 38, r: -12, float: true, color: "#000" }], ["sparkle", { x: 352, y: 480, s: 24, r: 0, twinkle: true, d: 500, asset: "/onboarding/assets/sleep-star.svg" }]]
         .map(([kind, o], n) => { const m = ui.mark(kind, { ...o, pop: !ctx.instant, d: ctx.instant ? o.d : 760 + n * 120 }); root.append(m); return m; });
       const hit = el("div", "hp-hit");
       hit.style.cssText = `left:${SPOT.x - SPOT.r}px;top:${SPOT.y - SPOT.r}px;width:${SPOT.r * 2}px;height:${SPOT.r * 2}px;border-radius:50%`;      // 동그라미 어디를 눌러도 깬다
-      const cta = ui.cta({ label: C.open.approach || "다가가기", pages: ctx, onPress: () => { if (!awake) wake(reduced()); else if (talk.pass()) ctx.next(cta); } });
+      const cta = ui.cta({ label: C.open.approach || "다가가기", onPress: () => { if (!awake) wake(reduced()); else if (talk.pass()) ctx.next(cta); } });
       root.append(zz, hit, cta);
 
       function decorate(pop) {
-        [["heart", { x: 344, y: 342, s: 44, r: 8, float: true }], ["sparkle", { x: 48, y: 426, s: 30, r: 14, twinkle: true, d: 300 }], ["sparkle", { x: 344, y: 588, s: 20, r: -12, twinkle: true, d: 1200 }]]
+        [["heart", { x: 344, y: 342, s: 44, r: 8, float: true, color: "#000" }], ["sparkle", { x: 48, y: 426, s: 30, r: 14, twinkle: true, d: 300, asset: "/onboarding/assets/sleep-star.svg" }], ["sparkle", { x: 344, y: 588, s: 20, r: -12, twinkle: true, d: 1200, asset: "/onboarding/assets/sleep-star.svg" }]]
           .forEach(([kind, o], i) => root.append(ui.mark(kind, { ...o, pop, d: pop ? i * 110 : o.d })));
       }
       /** 첫마디가 다 보인 상태(끝 상태). 적히는 중에 버튼을 누르면 바로 여기로 온다. */
@@ -1136,31 +1150,23 @@
       function wake(instant) {
         if (awake) return; awake = true;
         root.dataset.state = "awake";
-        zz.remove(); hit.remove();
+        if (instant) zz.remove();
+        else { zz.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 280, fill: "forwards" }).finished.then(() => zz.remove(), () => zz.remove()); }
+        hit.remove();
         dozing.forEach((m) => { if (instant) m.remove(); else { m.classList.add("is-out"); ctx.later(() => m.remove(), 260); } });
         cta.setLabel(C.open.cta || "계속", instant);
         ctx.set({});
-        if (instant) { cat.place(SIT).pose("sit"); spot.set(SPOT_UP); spoken(false); talk.end(ctx.state === "awake"); return; }
+        if (instant) { cat.place(SIT).pose("sit"); spoken(false); talk.end(ctx.state === "awake"); return; }
         talk.begin(() => spoken(true));
         sfx("wake");
-        // 0ms: 깜짝 — 눈이 동그래지고, 자리가 꽃 모양으로 튀고, 반짝이가 튄다
-        cat.pose("round").place(SIT, { ms: 420, easing: EASE.spring }); cat.pop(2.2);
-        spot.to(SPOT_UP, { kick: 14 });
-        const hx = SIT.x, hy = SIT.ground - SIT.h * 0.72;
-        ui.ring(root, hx, hy, { to: 3.6 });
-        ui.burst(root, hx, hy, [
-          { kind: "sparkle", dx: -128, dy: -92, s: 30, r: -12 }, { kind: "sparkle", dx: 124, dy: -116, s: 38, r: 16, delay: 40 },
-          { kind: "sparkle", dx: -150, dy: 18, s: 18, r: 10, delay: 90 }, { kind: "sparkle", dx: 152, dy: 6, s: 20, r: -8, delay: 70 },
-          { kind: "sparkle", dx: -44, dy: -168, s: 22, r: 24, delay: 110 },
-        ]);
-        hA.querySelectorAll(".hp-l").forEach((l, i) => { l.classList.remove("hp-rise"); l.style.setProperty("--i", i); l.classList.add("hp-leave"); });
+        // 잠든 자세를 서서히 겹쳐 지우며 앉은 자세로 이동한다. 배경은 고정한다.
+        cat.pose("sit", { ms: 560 }).place(SIT, { ms: 780, easing: "cubic-bezier(.4,0,.2,1)" });
+        hA.querySelectorAll(".hp-l").forEach((l, i) => { l.classList.remove("hp-rise"); l.style.setProperty("--i", i); l.classList.add("hp-open-leave"); });
         ctx.later(() => {
           if (said) return;
           hA.remove(); head.append(hB);
           hB.play({ speed: 46 }).then(() => { spoken(true); talk.end(); });
-        }, 330);
-        // 첫 줄이 끝날 즈음 평소 얼굴로 돌아온다
-        ctx.later(() => { if (cat.state.pose === "round") { cat.pose("sit"); cat.pop(1); } }, 980);
+        }, 480);
       }
       hit.addEventListener("click", () => wake(reduced()));
       if (ctx.state === "awake") wake(true);
@@ -1181,40 +1187,47 @@
       const { el: root, copy: C } = ctx;
       // 기울어진 무대의 자리(x, y = 발이 닿는 점의 화면 좌표, r = 기울기°). 고양이 크기는 h. 발은 화면 밖에 둔다(머리·어깨·앞발만 보인다).
       const OUT = { x: 700, y: 360, r: -58, h: 400 }, PEEK = { x: 478, y: 438, r: -38, h: 400 };
-      const SPEAK = { x: 268, y: 524, r: 0, h: 256 };             // 대답하는 동안: 별 위에 똑바로 앉아서(입을 벌린 그림은 387px라 크게 늘리지 않는다)
-      const NEAR = { x: 492, y: 596, r: -38, h: 470 };            // 말이 끝나면: 크게 들이민다(앉은 그림은 고해상도)
       const ASK_TOP = 412;
       /** 키보드가 올라왔을 때의 자리: 묻는 글의 윗변(top) 위쪽 귀퉁이에 PEEK와 같은 짜임으로 작게 들어간다.
        *  첫 줄("뭐라고")은 x 150에서 끝나므로 그 오른쪽은 둘째 줄 바로 위(top + 44)까지 쓸 수 있다. 고양이·동그라미는 그 아래로 내려가지 않는다. */
       const typeSpot = (top) => { const floor = top + 44, h = clamp(floor * 0.95, 150, 250); return { x: 386 + 0.23 * h, y: floor - 8 - 0.155 * h, r: -38, h }; };
-      let mode = "ask", calm = 0, hReply = null, deco = [];
+      let mode = "ask", changing = false, panelAnimations = [];
       const talk = ui.speech();
 
       root.append(ui.topbar(ctx, { back: (b) => (mode === "reply" ? edit() : ctx.back(b)) }));
 
-      // 고양이 뒤의 노란 동그라미(라일락 위의 색 덩어리). 자리·크기는 고양이(무대)를 따라가고, 고양이가 대답하는 순간 다섯 갈래 별로 튄다.
-      // k = 반지름 / 고양이 키. 내다볼 때는 왼쪽 귀 끝이 동그라미 안쪽으로 넉넉히 들어오게 조금 크게(0.555), 키보드 위에서는 더 크게(0.6), 별은 0.515
-      const backOf = (p, m = 0, k = 0.515) => ({ x: p.x - 0.37 * p.h, y: p.y - 0.53 * p.h, r: k * p.h, m });
-      const DISC = 0.555, DISC_TYPE = 0.6, STAR_SPEAK = { x: 280, y: 406, r: 176, m: 1 };
-      const back = ui.shape(ctx, { color: "var(--hp-yellow)", shape: [[5, 0.12, -60]], ...backOf(PEEK, 0, DISC) });
-      root.append(back.el);
-      const backAt = (spec, kick = 0) => (ctx.instant ? back.set(spec) : back.to(spec, { kick }));
-      const stage = el("div", "hp-catlayer hp-tilt");
-      root.append(stage);
-      const cat = ctx.cat({ x: 0, ground: 0, h: PEEK.h }, { layer: stage });
-      /** 무대를 옮긴다(스프링). n = 적은 글자 수만큼 더 들이민다. */
+      // 노란 배경과 고양이가 같은 원형 컨테이너를 사용해 경계가 어긋나지 않는다.
+      const circle = el("div", "hp-name-peek-circle");
+      root.append(circle);
+      const stage = el("div", "hp-catlayer hp-name-peek");
+      const peekImage = document.createElement("img");
+      peekImage.src = "/characters/name-peek-left-v4.png";
+      peekImage.alt = ""; peekImage.draggable = false;
+      stage.setAttribute("aria-hidden", "true");
+      stage.append(peekImage); circle.append(stage);
+      // 전용 포즈를 오른쪽 가장자리에서 수평으로 내민다. 이미지 자체는 회전하지 않는다.
       function stageTo(p, n = 0) {
-        stage.style.setProperty("--sx", p.x - n * 6 + "px"); stage.style.setProperty("--sy", p.y + n * 2 + "px"); stage.style.setProperty("--sr", p.r - n * 0.7 + "deg");
-        if (cat.state.h !== p.h) cat.place({ h: p.h }, { ms: ctx.instant ? 0 : 700, easing: EASE.soft });
+        const size = p.h * 0.875;
+        const x = W - size * 0.82 + (p === OUT ? W : 0) - Math.min(n * 2, 12);
+        const y = p.y - size - 24;
+        const radius = size * 0.55;
+        const left = x + size * 0.01, top = y - size * 0.16;
+        circle.style.setProperty("--circle-x", left + "px");
+        circle.style.setProperty("--circle-y", top + "px");
+        circle.style.setProperty("--circle-size", radius * 2 + "px");
+        stage.style.setProperty("--sx", x - left + "px");
+        stage.style.setProperty("--sy", y - top + "px");
+        stage.style.setProperty("--peek-size", size + "px");
       }
 
       // 묻는 쪽
       const field = ui.nameField(ctx, { label: C.name.label, placeholder: C.name.placeholder, value: ctx.data.nickname || "", caret: true, onInput: sync, onEnter: () => submit(false) });
+      field.el.querySelector(".hp-field-label").remove();
+      field.input.setAttribute("aria-label", C.name.label);
       field.el.classList.add("hp-rise"); field.el.style.setProperty("--i", 2);
-      const note = el("p", "hp-note hp-rise", lines(C.name.desc, [4, 2]).map((t) => el("span", "", t)));
-      note.id = "hp-name-note"; note.style.setProperty("--i", 3); field.input.setAttribute("aria-describedby", note.id);
-      const ask = ui.block("hp-name-ask", { top: ASK_TOP }, ui.headline(lines(C.name.title, [1, 2])), field.el, note);
-      const reply = ui.block("hp-head", { bottom: 136 });
+      const ask = ui.block("hp-name-ask", { top: ASK_TOP }, ui.headline(lines(C.name.title, [1, 2])), field.el);
+      const reply = ui.block("hp-head hp-name-reply", { top: ASK_TOP });
+      reply.style.visibility = "hidden"; reply.inert = true;
       const cta = ui.cta({ label: "다음", disabled: true, pages: ctx, onPress: () => { if (mode === "ask") submit(false); else if (talk.pass()) ctx.next(cta); } });
       cta.classList.add("hp-name-cta");
       cta.addEventListener("blur", () => cta.classList.remove("is-quiet"));
@@ -1229,9 +1242,9 @@
         const up = mode === "ask" && ctx.kb > 0;
         root.classList.toggle("is-typing", up);
         const top = up ? askTop() : ASK_TOP;
-        ask.style.transform = top === ASK_TOP ? "" : `translate3d(0, ${top - ASK_TOP}px, 0)`;
+        if (mode === "ask") ask.style.transform = top === ASK_TOP ? "" : `translate3d(0, ${top - ASK_TOP}px, 0)`;
         cta.style.bottom = up ? ctx.kb + 12 + "px" : "";
-        if (mode === "ask") { stageTo(spot(), lean()); backAt(backOf(spot(), 0, up ? DISC_TYPE : DISC)); }
+        stageTo(mode === "ask" ? spot() : PEEK, lean());
       }
       ctx.onKeyboard(layout);
 
@@ -1240,80 +1253,63 @@
         cta.disabled = !field.clean();
         if (mode !== "ask") return;
         stageTo(spot(), lean());
-        if (!typedNow) return;
-        // 적을 때마다 눈이 동그래지고 통 튄다. 멈추면 평소 얼굴로.
-        if (cat.state.pose !== "round") cat.pose("round");
-        cat.pop(0.7);
-        clearTimeout(calm); calm = ctx.later(() => { if (mode === "ask") { cat.pose("sit"); cat.pop(0.5); } }, 1100);
+
       }
 
-      // 하트·반짝이(참고 이미지의 작은 표시): 처음부터 고양이 곁에 떠 있고, 고양이가 대답하면 자리를 옮기며 반짝이가 하나 더 생긴다. [종류, 모양, 묻는 동안의 자리, 대답한 뒤의 자리]
-      const MARKS = [["heart", { s: 40, r: -14, float: true }, [46, 330], [50, 250]], ["sparkle", { s: 28, r: 12, twinkle: true, d: 500 }, [86, 176], [132, 128]]];
-      const marks = MARKS.map(([kind, o, at], n) => { const m = ui.mark(kind, { ...o, x: at[0], y: at[1], pop: !ctx.instant, d: ctx.instant ? o.d : 700 + n * 120 }); m.classList.add("hp-name-mark"); root.append(m); return m; });
-      const marksTo = (near) => marks.forEach((m, n) => { const p = MARKS[n][near ? 3 : 2]; m.style.setProperty("--x", p[0]); m.style.setProperty("--y", p[1]); });
-      function decorate(pop) {
-        marksTo(true);
-        deco = [ui.mark("sparkle", { x: 56, y: 424, s: 18, r: -10, twinkle: true, pop, d: pop ? 160 : 1400 })];
-        deco.forEach((m) => root.append(m));
+      // 제거했던 라인 별 자리에는 채움 별만 되돌린다. 하트는 복구하지 않는다.
+      root.append(ui.mark("sparkle", { x: 86, y: 176, s: 28, r: 12, twinkle: true, d: 500 }));
+
+      // 이름과 확인 문구는 같은 상단 기준선에서 교체한다. 복제한 이름의 비행은 사용하지 않는다.
+      function swapPanels(from, to, instant, done) {
+        changing = true; cta.disabled = true;
+        from.inert = true; to.inert = true;
+        to.style.visibility = "visible";
+        const finish = () => {
+          from.style.visibility = "hidden";
+          panelAnimations.forEach((animation) => animation.cancel()); panelAnimations = [];
+          to.inert = false; changing = false;
+          cta.disabled = mode === "ask" && !field.clean();
+          if (done) done();
+        };
+        if (instant || reduced() || !from.animate) { finish(); return; }
+        const out = from.animate([{ opacity: 1 }, { opacity: 0 }], {
+          duration: 160, easing: "ease-out", fill: "both",
+        });
+        const incoming = to.animate([{ opacity: 0 }, { opacity: 1 }], {
+          delay: 160, duration: 280, easing: "cubic-bezier(.22,1,.36,1)", fill: "both",
+        });
+        panelAnimations = [out, incoming];
+        incoming.finished.then(finish, () => {});
       }
+      ctx.onDestroy(() => { panelAnimations.forEach((animation) => animation.cancel()); });
 
       function submit(instant) {
         const name = field.clean();
-        if (!name || mode === "reply") return;
+        if (!name || mode === "reply" || changing) return;
         mode = "reply"; root.dataset.state = "filled";
-        clearTimeout(calm);
         field.input.value = name; field.fit();
         ctx.set({ nickname: name });
-        // "[지우]." / "흠, 알았어." — 마침표와 말줄임표가 한 줄에 몰리지 않고, 한 글자만 남는 줄도 없다
-        // 긴 이름은 알약과 마침표가 고양이의 앞발에 닿지 않게 좁은 너비 안에서 16px까지 줄인다
         const made = ui.nameLine(C.name.reply, [1, 3], name, () => edit(), { max: 186, min: 16 });
-        const mine = made.h; hReply = mine; reply.replaceChildren(mine); made.fit();
-        cta.disabled = false;
-        /** 대답이 다 보인 상태(끝 상태): 평소 얼굴로 돌아와 크게 들이민다 */
-        const spoken = (pop) => {
-          if (hReply !== mine || mine.said) return; mine.said = true;
-          ask.classList.add("is-gone");
-          root.querySelectorAll(".hp-ghost").forEach((g) => g.remove()); made.pill.style.visibility = ""; made.pill.classList.add("is-on", "is-set");
-          mine.finish();
-          stage.classList.remove("is-sitting");
-          cat.pose("sit"); if (pop) cat.pop(0.8);
-          stageTo(NEAR); backAt(backOf(NEAR, 1)); decorate(pop);
-        };
-        if (instant) { cta.setLabel("계속", true); layout(); spoken(false); talk.end(ctx.state === "filled"); return; }
-        talk.begin(() => spoken(true));
+        reply.replaceChildren(made.h); made.fit();
+        made.pill.classList.add("is-on", "is-set"); made.h.finish();
         const typing = focusedIn(root) === field.input, soft = ctx.kb > 0;
-        const flight = ui.flyName(field, made.pill, root);      // 자리를 먼저 잰 뒤에 키보드 자리를 푼다
         field.input.blur(); if (ctx.state === "typing") ctx.keyboard(null);
-        // 입력칸에서 Enter로 넘겼다면 포커스는 '계속'으로 간다(화면 키보드였다면 포커스 고리는 그리지 않는다)
-        if (typing) { cta.classList.toggle("is-quiet", soft); cta.focus({ preventScroll: true }); }
         layout();
-        ask.classList.add("is-leaving");
-        // 별 위로 물러나 앉아 한마디 한다
-        cat.pose("grumble"); cat.pop(1.4); stage.classList.add("is-sitting"); stageTo(SPEAK); backAt(STAR_SPEAK, 7);
-        cta.setLabel("계속");
-        flight.then(() => {
-          if (hReply !== mine || mine.said) return;
-          ask.classList.add("is-gone");
-          const c = ctx.center(made.pill), edge = c.x + made.pill.offsetWidth / 2;      // 알약의 오른쪽 끝에서 튄다(긴 이름이어도 알약 위에 겹치지 않는다)
-          ui.burst(root, edge, c.y, [{ kind: "sparkle", dx: 46, dy: -34, s: 24, r: 12 }, { kind: "sparkle", dx: 72, dy: 14, s: 16, r: -10, delay: 60 }]);
-          return mine.play({ speed: 44 }).then(() => { spoken(true); talk.end(); });
+        cta.setLabel("계속", true);
+        swapPanels(ask, reply, instant, () => {
+          talk.end(true);
+          if (typing) { cta.classList.toggle("is-quiet", soft); cta.focus({ preventScroll: true }); }
         });
       }
 
       function edit() {
-        if (mode !== "reply") return;
+        if (mode !== "reply" || changing) return;
         mode = "ask"; root.dataset.state = "empty";
         talk.reset();
-        if (hReply) { hReply.said = true; hReply.finish(); }
-        reply.replaceChildren(); hReply = null;
-        deco.forEach((m) => m.remove()); deco = []; marksTo(false);
-        ask.classList.remove("is-gone", "is-leaving");
-        cta.setLabel("다음", ctx.instant);
-        stage.classList.remove("is-sitting");
-        cat.pose("sit"); cat.pop(0.8);
+        cta.setLabel("다음", true);
         sync(false); if (ctx.state === "typing") ctx.keyboard(336);
         layout();
-        field.input.focus({ preventScroll: true });
+        swapPanels(reply, ask, false, () => { field.input.focus({ preventScroll: true }); });
       }
 
       sync(false);
@@ -1327,8 +1323,9 @@
         if (ctx.state == null) ctx.later(() => { if (mode === "ask" && root.isConnected) field.input.focus({ preventScroll: true }); }, 60);      // 동작 줄이기에서도 바로 적을 수 있게
       } else {
         // 오른쪽 밖에서 고개를 들이밀며 들어온다
-        stage.style.transition = "none"; stageTo(OUT); void stage.offsetWidth; stage.style.transition = "";
-        back.set({ ...backOf(OUT, 0, DISC), r: 110 });
+        circle.style.transition = "none"; stage.style.transition = "none";
+        stageTo(OUT); void circle.offsetWidth;
+        circle.style.transition = ""; stage.style.transition = "";
         ctx.later(() => { if (mode === "ask") layout(); }, 240);
         ctx.later(() => { if (mode === "ask" && root.isConnected) field.input.focus({ preventScroll: true }); }, 1000);
       }
@@ -1434,7 +1431,7 @@
 
         // 큰 문장: 질문이 있던 자리에 "요즘 나는 / [고른 말 ✎]". 고른 말은 방울에서 검정 알약으로 날아온다.
         const pill = ui.pill({ text: it.label, dot: "pencil", onPress: () => field.release(), label: `${it.label}, 다시 고르기` });
-        pill.classList.add("hp-pill-big");
+        pill.classList.add("hp-pill-answer");
         const say = ui.headline([SAY, [pill]], { tag: "p", cls: "hp-q1-say" });
         say.style.setProperty("--d", "230ms");
         pill.parentNode.classList.remove("hp-rise");

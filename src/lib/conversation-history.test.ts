@@ -14,7 +14,7 @@ test('이전 페이지와 현재 메시지는 ID로 합치고 시각이 같아�
 });
 test('전체 대화 요약은 두 화자를 유지하고 이전 문맥을 새 사실과 분리한다',async()=>{
  let payload={input:[] as {content:string}[],store:true,instructions:""};
- const result=await summarizeConversation([{role:'user',content:'그걸로 할게'},{role:'assistant',content:'토요일부터 해보자'}],{openaiKey:'test',summaryKey:'test',fetch:async(_url,init)=>{
+ const result=await summarizeConversation([{role:'user',content:'그걸로 할게'},{role:'assistant',content:'토요일부터 해보자'}],{summaryKey:'test',fetch:async(_url,init)=>{
   payload=JSON.parse(String(init?.body)); return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({summary:'사용자는 제안을 받아들였고 캐릭터가 토요일부터 시작하자고 제안했다.'})}]}]});
  }},AbortSignal.timeout(1000),[{role:'assistant',content:'산책하는 건 어때?'}]);
  assert.match(result,/캐릭터가/);const input=JSON.parse(payload.input[0].content);
@@ -32,7 +32,7 @@ test('기존 로컬 기록 이관은 재실행해도 같은 ID이며 만료 기�
 test('최대 크기 대화 배치도 요약하고 문맥 개수 초과는 거절한다',async()=>{
  const messages=Array.from({length:12},()=>({role:'user' as const,content:'가'.repeat(8000)}));
  const context=messages.slice(0,2);let called=0;
- const config={openaiKey:'test',summaryKey:'test',fetch:async()=>{called++;return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'{"summary":"가상 요약"}'}]}]});}};
+ const config={summaryKey:'test',fetch:async()=>{called++;return Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:'{"summary":"가상 요약"}'}]}]});}};
  assert.equal(await summarizeConversation(messages,config,AbortSignal.timeout(1000),context),'가상 요약');
  await assert.rejects(summarizeConversation(messages,config,AbortSignal.timeout(1000),messages.slice(0,3)),/invalid_conversation/);
  assert.equal(called,1);

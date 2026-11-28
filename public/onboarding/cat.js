@@ -39,7 +39,9 @@
     purr: { w: 428, h: 281, rel: 0.6315 },
   };
   // 그림 파일 이름: 시안 폴더에서는 "cat-sleep.webp"처럼 앞에 cat-가 붙고, 앱에서는 public/characters/motion의 이름(sleep.webp)을 그대로 쓴다
-  const fileOf = (name) => (window.HereCatPlainNames ? "" : "cat-") + name + ".webp";
+  const fileOf = (name) => window.HereCatPlainNames && name === "sleep"
+    ? "sleep-breathing-v5.webp"
+    : (window.HereCatPlainNames ? "" : "cat-") + name + ".webp";
   // 반복 영상(493×381): 그림 높이 = 앉은 키의 1.21배, 바닥선 아래로 0.0587배 내려온다
   const CLIPS = ["sleep", "yawn", "groom", "belly", "glare", "swat"];
   const CLIP = { w: 493, h: 381, rel: 1.21, drop: 0.0587 };
@@ -97,7 +99,7 @@
       const body = el.querySelector(".hc-body"), img = el.querySelector(".hc-img"), canvas = el.querySelector(".hc-walk");
       const ctx = canvas.getContext("2d");
       const cur = { x: 0, ground: 0, h: BASE };
-      let pose = "sit", raf = 0, walking = null, placeAnim = null;
+      let pose = "sit", raf = 0, walking = null, placeAnim = null, poseTransition = null;
 
       function apply() { el.style.transform = `translate(${cur.x}px, ${cur.ground}px) scale(${cur.h / BASE})`; }
       function layoutImg(name) {
@@ -115,9 +117,12 @@
         ctx.drawImage(im, (k % COLS) * FW, Math.floor(k / COLS) * FH, FW, FH, 0, 0, FW, FH);
       }
       function setPose(name) {
+        if (poseTransition) { poseTransition(); poseTransition = null; }
         if (!STILLS[name] && !CLIPS.includes(name)) throw new Error("모르는 자세: " + name);
         pose = name; el.dataset.pose = name; el.dataset.mode = "still";
         const url = assets + fileOf(name);
+        // The new transparent breathing artwork needs no old-video shadow crop.
+        img.dataset.breathing = String(name === "sleep" && Boolean(window.HereCatPlainNames));
         layoutImg(name);
         if (img.getAttribute("src") !== url) img.src = url;
       }
@@ -145,7 +150,21 @@
           return actor;
         },
         /** 자세를 바꾼다. */
-        pose(name) { if (walking) finishWalk(); setPose(name); return actor; },
+        pose(name, { ms = 0 } = {}) {
+          if (walking) finishWalk();
+          const previous = ms && !reduced() && img.complete && img.animate ? img.cloneNode(true) : null;
+          setPose(name);
+          if (previous) {
+            body.append(previous);
+            const options = { duration: ms, easing: "cubic-bezier(.4,0,.2,1)" };
+            const incoming = img.animate([{ opacity: 0 }, { opacity: 1 }], options);
+            const outgoing = previous.animate([{ opacity: 1 }, { opacity: 0 }], options);
+            const clean = () => { incoming.cancel(); outgoing.cancel(); previous.remove(); };
+            poseTransition = clean;
+            outgoing.finished.then(() => { if (poseTransition === clean) { poseTransition = null; clean(); } }, () => {});
+          }
+          return actor;
+        },
         /** 일어나서 걸어와 앉는다. duration은 전체 시간(ms, 최소 약 1.7초). 끝나면 sit 자세가 된다. */
         walkTo(to, { duration = 2600 } = {}) {
           if (walking) finishWalk();
@@ -189,7 +208,7 @@
           body.animate([{ transform: "scale(1,1)" }, { transform: `scale(${1 + 0.06 * scale},${1 - 0.08 * scale})`, offset: 0.3 }, { transform: `scale(${1 - 0.03 * scale},${1 + 0.05 * scale})`, offset: 0.62 }, { transform: "scale(1,1)" }], { duration: 460, easing: "cubic-bezier(.3,.7,.4,1)" });
           return actor;
         },
-        destroy() { cancelAnimationFrame(raf); walking = null; el.remove(); },
+        destroy() { cancelAnimationFrame(raf); if (poseTransition) poseTransition(); walking = null; el.remove(); },
       };
 
       // 스프라이트가 캐시에 있으면 바로 쓰고, 없으면 받는 대로 붙인다.

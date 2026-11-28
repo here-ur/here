@@ -1,0 +1,56 @@
+{
+  "scenario": "hosted worker control; local observer is emergency cleanup only",
+  "events": [
+    {
+      "type": "session_created",
+      "at": "2026-11-28T09:11:55.793Z"
+    },
+    {
+      "type": "observer_attached",
+      "at": "2026-11-28T09:11:55.979Z",
+      "observer": 1
+    },
+    {
+      "type": "server_observed_start",
+      "at": "2026-11-28T09:11:55.996Z"
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:12:10.709Z",
+      "observer": 1,
+      "seconds": 15
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:12:25.709Z",
+      "observer": 1,
+      "seconds": 28
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:12:40.711Z",
+      "observer": 1,
+      "seconds": 43
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T09:12:55.712Z",
+      "observer": 1,
+      "seconds": 58
+    },
+    {
+      "type": "session_closed",
+      "at": "2026-11-28T09:13:07.128Z",
+      "observer": 1,
+      "reason": "close_requested",
+      "usageSeconds": 69,
+      "elapsedMs": 71132
+    },
+    {
+      "type": "observer_socket_closed",
+      "at": "2026-11-28T09:13:07.173Z",
+      "observer": 1
+    }
+  ],
+  "result": "closed_without_local_request"
+}

@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { memoryRetryFetch, operationMetric, usageMetric } from "./ai-operations.ts";
 
 export const EMBEDDING_MODEL = "text-embedding-3-large";
+// Runyour routing ID; keep EMBEDDING_MODEL unchanged for existing stored vectors.
+export const EMBEDDING_REQUEST_MODEL = `openai/${EMBEDDING_MODEL}`;
 export const EMBEDDING_DIMENSIONS = 1536;
 export const MEMORY_PROMPT_VERSION = "memory-v1";
 export const DEFAULT_SUMMARY_MODEL = "openai/gpt-5.6-luna";
@@ -17,7 +19,7 @@ export interface MemoryStore {
   search(vector: number[], signal: AbortSignal): Promise<MemoryHit[]>;
 }
 export type MemoryConfig = {
-  openaiKey: string;
+  // Both summaries and embeddings use this server-only Runyour key and base URL.
   summaryKey: string;
   summaryBaseUrl?: string;
   summaryModel?: string;
@@ -66,15 +68,18 @@ export async function readProvider(response: Response, signal: AbortSignal): Pro
 const record = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 export async function embed(text: string, config: MemoryConfig, signal: AbortSignal): Promise<number[]> {
-  if (!text.trim() || text.length > 1600 || !config.openaiKey) throw new Error("invalid_embedding_input");
-  const response = await (config.fetch ?? fetch)("https://api.openai.com/v1/embeddings", {
-    method: "POST", headers: { Authorization: `Bearer ${config.openaiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: EMBEDDING_MODEL, dimensions: EMBEDDING_DIMENSIONS, encoding_format: "float", input: text }),
+  if (!text.trim() || text.length > 1600 || !config.summaryKey) throw new Error("invalid_embedding_input");
+  const url = new URL(config.summaryBaseUrl || "https://api.runyour.ai/v1");
+  if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) throw new Error("invalid_embedding_url");
+  url.pathname = `${url.pathname.replace(/\/+$/, "")}/embeddings`;
+  const response = await (config.fetch ?? fetch)(url, {
+    method: "POST", headers: { Authorization: `Bearer ${config.summaryKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: EMBEDDING_REQUEST_MODEL, dimensions: EMBEDDING_DIMENSIONS, encoding_format: "float", input: text }),
     signal, cache: "no-store", redirect: "error",
   });
   const body = await readProvider(response, signal);
   usageMetric("embedding", body);
-  if (!record(body) || body.model !== EMBEDDING_MODEL || !Array.isArray(body.data) || body.data.length !== 1) throw new Error("invalid_embedding");
+  if (!record(body) || (body.model !== EMBEDDING_MODEL && body.model !== EMBEDDING_REQUEST_MODEL) || !Array.isArray(body.data) || body.data.length !== 1) throw new Error("invalid_embedding");
   const item = body.data[0];
   const vector = record(item) ? item.embedding : null;
   if (!Array.isArray(vector) || vector.length !== EMBEDDING_DIMENSIONS || vector.some(n => typeof n !== "number" || !Number.isFinite(n)) || !vector.some(n => n !== 0)) throw new Error("invalid_embedding");

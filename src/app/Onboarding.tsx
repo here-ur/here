@@ -32,7 +32,7 @@ import {
 // 하던 자리를 이 탭에 남겼다가 되살리고, 마지막 '대화 시작하기'에서 고른 답을 프로필로 바꿔 넘긴다.
 // 흐름은 만남(자는 고양이에게 다가가면 AI라고 밝힌다) → 시작 전 약속(AI·기록·109) → 내 이름 → 질문 넷
 // → 데려가기(많이 힘들면 109, 꾹 누른 뒤 들은 것 정리·확인) → 이름 짓기다. 새 회원은 내 이름 다음에 생일·성별을 묻고, 성별의 '다음'에서 저장한다.
-// 기억 동의는 이 앞의 시트가 맡는다.
+// 동의 화면은 MemoryConsentGate와 같은 디자인을 쓴다. 실제 앱은 consent 콜백으로 저장하고 개발 미리보기만 저장을 생략한다.
 // 문구는 lib/onboarding.ts에 두고 무대에 넘긴다. 큰 글씨 중 한 글자씩 적히는 줄은 고양이의 말이고, 안내·질문·109는 서비스의 말이다.
 // 장면 순서(ONBOARDING_STEPS)는 하던 자리를 남길 때 쓰는 이름이다(무대의 장면과의 짝은 sceneOfStep · stepOfScene).
 export { ONBOARDING_STEPS, type OnboardingStep };
@@ -52,7 +52,7 @@ export default function Onboarding({ onDone, initialStep, initialAnswers = {}, s
   saving?: boolean; saveError?: string; onRetry?: () => void;
   basics?: MemberBasics; onSignOut?: () => void;
   askBasics?: boolean; // 값이 이미 있어도 생일·성별 장면을 연다(개발용 '처음부터 다시 만들기'의 전체 흐름)
-  consent?: () => Promise<string | null>; // 있으면 약속 장면에서 기억 동의 칸을 다시 보여 주고 '다음'에서 저장한다(같은 흐름)
+  consent?: () => Promise<string | null>; // 실제 앱의 동의 저장 콜백. 없으면 개발 미리보기처럼 화면만 진행한다.
   afterConsent?: boolean; // 방금 약속 장면에서 동의했으면 내 이름부터 잇는다
 }) {
   const preview = initialStep !== undefined;
@@ -107,5 +107,5 @@ export default function Onboarding({ onDone, initialStep, initialAnswers = {}, s
   }
 
   return <OnboardingStage scene={start.scene} state={start.state} initial={start.initial} saving={saving} saveError={saveError} onChange={remember} onFinish={finish}
-    scenes={STAGE_SCENES.filter((id) => askBasics || !(BASICS_SCENES as readonly string[]).includes(id))} beforeNext={beforeNext} onSignOut={onSignOut} consent={Boolean(consent)} />;
+    scenes={STAGE_SCENES.filter((id) => askBasics || !(BASICS_SCENES as readonly string[]).includes(id))} beforeNext={beforeNext} onSignOut={onSignOut} consent />;
 }

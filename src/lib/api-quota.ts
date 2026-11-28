@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type QuotaResource = "chat" | "realtime" | "voice_memory" | "home_greeting";
+export type QuotaResource = "chat" | "realtime" | "voice_memory" | "home_greeting" | "text_request";
 export async function requireApiQuota(client: SupabaseClient, resource: QuotaResource): Promise<Response | null> {
   const unavailable = () => Response.json({ error: "이용 한도를 확인하지 못했어요. 잠시 뒤 다시 시도해 주세요." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   try {

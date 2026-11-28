@@ -10,7 +10,7 @@ export class VoiceProviderError extends Error {
 // Member-level quota is enforced by the route. Edge/IP abuse protection remains separate.
 export async function openai(path: string, init: RequestInit): Promise<Response> {
   const started = Date.now();
-  const key = process.env.OPENAI_API_KEY;
+  const key = process.env.OPENAI_API_KEY?.trim();
   if (!key) throw new Error("provider_not_configured");
   const res = await fetch(`https://api.openai.com/v1/${path}`, {
     ...init,

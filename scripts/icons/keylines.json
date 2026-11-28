@@ -1,0 +1,590 @@
+[
+  {
+    "id": "help",
+    "keyline": "square",
+    "bounds": {
+      "width": 18,
+      "height": 17.275,
+      "cx": 12,
+      "cy": 12.0125
+    },
+    "scale": 0.8234533114362337,
+    "stroke": 1.5
+  },
+  {
+    "id": "down",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 20,
+      "height": 9.8,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 1.1672998173832392,
+    "stroke": 1.5
+  },
+  {
+    "id": "back",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 8,
+      "height": 16,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.9136249676573194,
+    "stroke": 1.5
+  },
+  {
+    "id": "forward",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 20,
+      "height": 14.7,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 1.0865136493277199,
+    "stroke": 1.5
+  },
+  {
+    "id": "log",
+    "keyline": "square",
+    "bounds": {
+      "width": 18,
+      "height": 17.1,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.915448188175461,
+    "stroke": 1.5
+  },
+  {
+    "id": "mic",
+    "keyline": "vertical",
+    "bounds": {
+      "width": 16,
+      "height": 17.65,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.8054113575585968,
+    "stroke": 1.5
+  },
+  {
+    "id": "stop",
+    "keyline": "square",
+    "bounds": {
+      "width": 18,
+      "height": 18,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 1,
+    "stroke": null
+  },
+  {
+    "id": "micOff",
+    "keyline": "vertical",
+    "bounds": {
+      "width": 16,
+      "height": 19.5,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.898095931379858,
+    "stroke": 1.5
+  },
+  {
+    "id": "keyboard",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 18.75,
+      "height": 16,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.9057938965059709,
+    "stroke": 1.5
+  },
+  {
+    "id": "soundOn",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 20,
+      "height": 16,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.9233005904254811,
+    "stroke": 1.5
+  },
+  {
+    "id": "soundOff",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 16,
+      "height": 16,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.7237733755298866,
+    "stroke": 1.5
+  },
+  {
+    "id": "send",
+    "keyline": "vertical",
+    "bounds": {
+      "width": 14.7,
+      "height": 20,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 1.0865136493277199,
+    "stroke": 1.5
+  },
+  {
+    "id": "hangUp",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 16,
+      "height": 16,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.7237733755298866,
+    "stroke": 1.5
+  },
+  {
+    "id": "captions",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 16,
+      "height": 16,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.7237733755298866,
+    "stroke": 1.5
+  },
+  {
+    "id": "info",
+    "keyline": "circle",
+    "bounds": {
+      "width": 20,
+      "height": 20,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.9233077500144267,
+    "stroke": 1.5
+  },
+  {
+    "id": "lock",
+    "keyline": "vertical",
+    "bounds": {
+      "width": 16,
+      "height": 16,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.7237733755298866,
+    "stroke": 1.5
+  },
+  {
+    "id": "phone",
+    "keyline": "square",
+    "bounds": {
+      "width": 17.95,
+      "height": 18,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.8234533114362337,
+    "stroke": 1.5
+  },
+  {
+    "id": "email",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 18.55,
+      "height": 16,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.8515592515592516,
+    "stroke": 1.5
+  },
+  {
+    "id": "close",
+    "keyline": "circle",
+    "bounds": {
+      "width": 20,
+      "height": 20,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 2.1785009190550753,
+    "stroke": 1.5
+  },
+  {
+    "id": "pin",
+    "keyline": "vertical",
+    "bounds": {
+      "width": 16,
+      "height": 18.325,
+      "cx": 12,
+      "cy": 12.0125
+    },
+    "scale": 0.8402051282051283,
+    "stroke": 1.5
+  },
+  {
+    "id": "add",
+    "keyline": "circle",
+    "bounds": {
+      "width": 20,
+      "height": 20,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 1.5390616245084017,
+    "stroke": 1.5
+  },
+  {
+    "id": "menu",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 14.95,
+      "height": 16,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.8401728138661334,
+    "stroke": 1.5
+  },
+  {
+    "id": "library",
+    "keyline": "vertical",
+    "bounds": {
+      "width": 16,
+      "height": 15.05,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.7237733755298866,
+    "stroke": 1.5
+  },
+  {
+    "id": "sparkles",
+    "keyline": "square",
+    "bounds": {
+      "width": 17.825,
+      "height": 18,
+      "cx": 12.0125,
+      "cy": 12
+    },
+    "scale": 0.8234533114362337,
+    "stroke": 1.5
+  },
+  {
+    "id": "paintbrush",
+    "keyline": "vertical",
+    "bounds": {
+      "width": 16,
+      "height": 19.6,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.9045017511471892,
+    "stroke": 1.5
+  },
+  {
+    "id": "pencil",
+    "keyline": "vertical",
+    "bounds": {
+      "width": 16,
+      "height": 17.5,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.8054113575585968,
+    "stroke": 1.5
+  },
+  {
+    "id": "check",
+    "keyline": "circle",
+    "bounds": {
+      "width": 20,
+      "height": 20,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.9233077500144267,
+    "stroke": 1.5
+  },
+  {
+    "id": "chat",
+    "keyline": "square",
+    "bounds": {
+      "width": 18,
+      "height": 17.275,
+      "cx": 12,
+      "cy": 12.0125
+    },
+    "scale": 0.8234533114362337,
+    "stroke": 1.5
+  },
+  {
+    "id": "paw",
+    "keyline": "square",
+    "bounds": {
+      "width": 18,
+      "height": 17.15,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.8571428571428571,
+    "stroke": null
+  },
+  {
+    "id": "refresh",
+    "keyline": "circle",
+    "bounds": {
+      "width": 20,
+      "height": 20,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.9233077500144267,
+    "stroke": 1.5
+  },
+  {
+    "id": "chev",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 8,
+      "height": 16,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.9136249676573194,
+    "stroke": 1.5
+  },
+  {
+    "id": "chev2",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 8,
+      "height": 16,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.9136249676573194,
+    "stroke": 1.5
+  },
+  {
+    "id": "arrow",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 20,
+      "height": 14.7,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 1.0865136493277199,
+    "stroke": 1.5
+  },
+  {
+    "id": "heart",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 18,
+      "height": 16,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.898876404494382,
+    "stroke": null
+  },
+  {
+    "id": "sparkle",
+    "keyline": "square",
+    "bounds": {
+      "width": 17.825,
+      "height": 18,
+      "cx": 12.0125,
+      "cy": 12
+    },
+    "scale": 0.8234533114362337,
+    "stroke": 1.5
+  },
+  {
+    "id": "star",
+    "keyline": "square",
+    "bounds": {
+      "width": 17.825,
+      "height": 18,
+      "cx": 11.9875,
+      "cy": 12
+    },
+    "scale": 0.9102402022756005,
+    "stroke": null
+  },
+  {
+    "id": "dice",
+    "keyline": "square",
+    "bounds": {
+      "width": 18,
+      "height": 16.15,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.9155371098061725,
+    "stroke": 1.5
+  },
+  {
+    "id": "clock",
+    "keyline": "circle",
+    "bounds": {
+      "width": 20,
+      "height": 20,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.9233077500144267,
+    "stroke": 1.5
+  },
+  {
+    "id": "calendar",
+    "keyline": "square",
+    "bounds": {
+      "width": 16.35,
+      "height": 18,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.8234533114362337,
+    "stroke": 1.5
+  },
+  {
+    "id": "profile",
+    "keyline": "vertical",
+    "bounds": {
+      "width": 14.1,
+      "height": 20,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 1,
+    "stroke": null
+  },
+  {
+    "id": "wind",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 17.3,
+      "height": 16,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.7879909486850233,
+    "stroke": 1.5
+  },
+  {
+    "id": "drop",
+    "keyline": "vertical",
+    "bounds": {
+      "width": 16,
+      "height": 19.4,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.8942958075517342,
+    "stroke": 1.5
+  },
+  {
+    "id": "grid",
+    "keyline": "square",
+    "bounds": {
+      "width": 18,
+      "height": 18,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.8234533114362337,
+    "stroke": 1.5
+  },
+  {
+    "id": "flame",
+    "keyline": "vertical",
+    "bounds": {
+      "width": 16,
+      "height": 14.65,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.7441860465116279,
+    "stroke": null
+  },
+  {
+    "id": "sun",
+    "keyline": "circle",
+    "bounds": {
+      "width": 20,
+      "height": 20,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.9233077500144267,
+    "stroke": 1.5
+  },
+  {
+    "id": "notification",
+    "keyline": "square",
+    "bounds": {
+      "width": 14.675,
+      "height": 18,
+      "cx": 12.0125,
+      "cy": 12
+    },
+    "scale": 0.8200196146667088,
+    "stroke": 1.5
+  },
+  {
+    "id": "cake",
+    "keyline": "square",
+    "bounds": {
+      "width": 18,
+      "height": 18,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.9,
+    "stroke": null
+  },
+  {
+    "id": "swap",
+    "keyline": "horizontal",
+    "bounds": {
+      "width": 15.15,
+      "height": 16,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 0.8515408288009361,
+    "stroke": 1.5
+  },
+  {
+    "id": "checkFilled",
+    "keyline": "circle",
+    "bounds": {
+      "width": 20,
+      "height": 20,
+      "cx": 12,
+      "cy": 12
+    },
+    "scale": 1,
+    "stroke": null
+  }
+]
