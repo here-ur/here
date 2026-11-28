@@ -33,6 +33,7 @@ async function fixture() {
   await db.exec(readFileSync(new URL('../../supabase/migrations/0035_voice_watch_protection_cron.sql', import.meta.url), 'utf8'));
   await db.exec(readFileSync(new URL('../../supabase/migrations/0036_voice_api_control.sql', import.meta.url), 'utf8').replaceAll('clock_timestamp()', 'public.fixture_clock()'));
   await db.exec(readFileSync(new URL('../../supabase/migrations/0037_voice_dispatch_gate.sql', import.meta.url), 'utf8').replaceAll('clock_timestamp()', 'public.fixture_clock()'));
+  await db.exec(readFileSync(new URL('../../supabase/migrations/0039_voice_confirmed_start.sql', import.meta.url), 'utf8').replaceAll('clock_timestamp()', 'public.fixture_clock()'));
   await db.exec("update public.voice_watch_config set enabled=true,endpoint='https://here-preview.vercel.app/api/internal/voice-watch'");
   await db.query('update public.voice_control_authority set token_hash=$1', [createHash('sha256').update(authority).digest('hex')]);
   const val = async <T>(sql: string, args: unknown[] = []) => (await db.query<{ v: T }>(sql, args)).rows[0]?.v;
@@ -280,5 +281,37 @@ test('voice API clock and active call authorization cannot cross account or dead
   await f.user(b);assert.equal(await f.val('select public.voice_call_authorized($1) v',[r.id]),false);
   await f.user(a);await f.tick(301);assert.equal(await f.val('select public.voice_call_authorized($1) v',[r.id]),false);
   await f.anon();assert.equal(await f.val('select public.finish_voice_observed($1,$2) v',[r.id,r.token]),true);
+ }finally{await f.db.close();}
+});
+
+
+test('confirmed voice start excludes all preparation time and duplicate events cannot extend a call', async () => {
+ const f=await fixture();try {
+  const r=await f.reserve();await f.begin(r);await f.tick(12);
+  const prepared=await f.val<{deadline_at:number}>('select public.prepare_voice_usage($1,$2,$3) v',[r.id,r.token,'live_start_fixture']);
+  assert.ok(prepared);assert.equal((await f.status()).day.used_seconds,0);assert.equal((await f.status()).active_call,true);
+  assert.equal(await f.val('select public.voice_call_authorized($1) v',[r.id]),false);
+  await f.admin();const [w]=(await f.db.query<{token:string}>('select * from public.issue_voice_watch_jobs()')).rows;
+  await f.anon();const job=await f.val<{awaiting_start:boolean}>('select public.claim_voice_watch($1) v',[w.token]);assert.equal(job.awaiting_start,true);
+  await f.tick(8);
+  assert.equal(await f.val('select public.confirm_voice_started($1) v',['f'.repeat(64)]),null);
+  const started=await f.val<{deadline_at:number;server_now:number}>('select public.confirm_voice_started($1) v',[w.token]);assert.equal(started.deadline_at-started.server_now,300);
+  await f.user(a);assert.equal((await f.status()).day.used_seconds,0);assert.equal(await f.val('select public.voice_call_authorized($1) v',[r.id]),true);
+  await f.tick(5);await f.anon();const repeat=await f.val<{deadline_at:number}>('select public.confirm_voice_started($1) v',[w.token]);assert.equal(repeat.deadline_at,started.deadline_at);
+  assert.equal(await f.val('select public.confirm_voice_watch_closed($1,$2) v',[w.token,25]),true);
+  await f.user(a);assert.equal((await f.status()).day.used_seconds,5);assert.equal((await f.status()).active_call,false);
+ }finally{await f.db.close();}
+});
+
+test('provider acknowledgement without startup consumes zero and an unconfirmed preparation stays locked', async () => {
+ const f=await fixture();try {
+  const r=await f.reserve();await f.begin(r);
+  await f.val('select public.prepare_voice_usage($1,$2,$3) v',[r.id,r.token,'live_no_start']);
+  await f.admin();const [w]=(await f.db.query<{token:string}>('select * from public.issue_voice_watch_jobs()')).rows;
+  await f.anon();await f.val('select public.claim_voice_watch($1) v',[w.token]);await f.tick(21);
+  assert.equal((await f.val<{close_requested:boolean}>('select public.voice_watch_heartbeat($1) v',[w.token])).close_requested,true);
+  await f.user(a);assert.equal((await f.status()).day.used_seconds,0);assert.equal((await f.reserve()).code,'voice_call_active');
+  await f.anon();assert.equal(await f.val('select public.confirm_voice_watch_closed($1,$2) v',[w.token,20]),true);
+  await f.user(a);assert.equal((await f.status()).day.used_seconds,0);assert.equal((await f.reserve()).allowed,true);
  }finally{await f.db.close();}
 });

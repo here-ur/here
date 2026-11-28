@@ -1,5 +1,6 @@
 /** Public application errors only; provider messages and account details stay server-side. */
 const messages: Record<string, string> = {
+  voice_client_outdated: '화면을 새로고침한 뒤 음성을 다시 시작해 주세요.',
   voice_daily_limit: '오늘 음성 대화 10분을 모두 이용했어요. 한국 시간 자정에 다시 이야기할 수 있어요.',
   voice_monthly_limit: '이번 달 음성 대화 30분을 모두 이용했어요. 다음 달 1일에 다시 이야기할 수 있어요.',
   voice_call_active: '이전 음성 연결이 아직 종료되지 않았어요. 잠시 뒤 다시 눌러 주세요.',

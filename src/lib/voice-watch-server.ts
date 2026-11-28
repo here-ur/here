@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { WebSocket } from 'ws';
 
-export type VoiceWatchJob = { call_id: string; provider_session_id: string; server_now: number; deadline_at: number; run_until: number; close_requested: boolean };
+export type VoiceWatchJob = { call_id: string; provider_session_id: string; server_now: number; deadline_at: number; run_until: number; close_requested: boolean; awaiting_start?: boolean };
 export type WatchSocket = {
   readyState: number;
   on(event: 'open' | 'message' | 'close' | 'error', listener: (data?: unknown) => void): unknown;
@@ -18,7 +18,7 @@ export function parseVoiceWatchJob(data: unknown): VoiceWatchJob | null {
   const j = data as VoiceWatchJob;
   if (typeof j.call_id !== 'string' || !/^[a-f0-9-]{36}$/i.test(j.call_id)
     || typeof j.provider_session_id !== 'string' || !/^[a-zA-Z0-9_-]{1,200}$/.test(j.provider_session_id)
-    || typeof j.close_requested !== 'boolean'
+    || typeof j.close_requested !== 'boolean' || (j.awaiting_start !== undefined && typeof j.awaiting_start !== 'boolean')
     || ![j.server_now, j.deadline_at, j.run_until].every(n => typeof n === 'number' && Number.isFinite(n) && n > 0)
     || j.run_until <= j.server_now || j.run_until - j.server_now > 45.01
     || j.deadline_at - j.server_now > 300.01) return null;
@@ -33,8 +33,10 @@ export function watchVoiceLease(job: VoiceWatchJob, token: string, socket: Watch
     let closeRetry: ReturnType<typeof setInterval> | undefined;
     let drain: ReturnType<typeof setTimeout> | undefined;
     let attempts = 0;
+    let startConfirmation: Promise<void> | undefined;
+    let deadline: ReturnType<typeof setTimeout> | undefined;
     const timers: ReturnType<typeof setTimeout>[] = [];
-    const clear = () => { timers.forEach(clearTimeout); clearInterval(heartbeat); clearInterval(closeRetry); clearTimeout(drain); };
+    const clear = () => { timers.forEach(clearTimeout); clearInterval(heartbeat); clearInterval(closeRetry); clearTimeout(drain); clearTimeout(deadline); };
     const finish = (result: WatchResult) => {
       if (ended) return;
       ended = true; clear(); socket.terminate(); resolve(result);
@@ -67,7 +69,7 @@ export function watchVoiceLease(job: VoiceWatchJob, token: string, socket: Watch
     // Subtract the entire claim round trip conservatively; network delay must not extend the allowance.
     // Durations use DB clock differences, not the Vercel host's wall clock.
     const elapsed = Math.max(0, claimElapsedMs);
-    timers.push(setTimeout(requestClose, Math.max(0, (job.deadline_at - job.server_now) * 1000 - elapsed)));
+    deadline = setTimeout(requestClose, Math.max(0, (job.deadline_at - job.server_now) * 1000 - elapsed));
     timers.push(setTimeout(async () => {
       if (ended || settling || closing) return;
       try {
@@ -87,12 +89,31 @@ export function watchVoiceLease(job: VoiceWatchJob, token: string, socket: Watch
       if (ended || settling) return;
       let event: { type?: unknown; usage?: { seconds?: unknown } };
       try { event = JSON.parse(String(raw)); } catch { return; }
+      if (event?.type === 'session.started' && job.awaiting_start && !startConfirmation && !closing) {
+        startConfirmation = (async () => {
+          for (let attempt = 0; attempt < 2; attempt++) {
+            const began = performance.now();
+            try {
+              const state = await rpc<{ server_now: number; deadline_at: number; close_requested: boolean } | null>('confirm_voice_started', { p_token: token });
+              if (!state || !Number.isFinite(state.server_now) || !Number.isFinite(state.deadline_at) || typeof state.close_requested !== 'boolean'
+                || state.deadline_at - state.server_now > 300.01) throw Error('invalid_start_confirmation');
+              if (ended || settling) return;
+              clearTimeout(deadline);
+              if (state.close_requested) requestClose();
+              else deadline = setTimeout(requestClose, Math.max(0, (state.deadline_at-state.server_now)*1000-(performance.now()-began)));
+              return;
+            } catch { /* Same server observation is idempotent after a lost DB reply. */ }
+          }
+          requestClose();
+        })();
+      }
       if (event?.type === 'error') { requestClose(); return; }
       if (event?.type !== 'session.closed') return;
       settling = true; clear();
       const seconds = event.usage?.seconds;
       const usage = typeof seconds === 'number' && Number.isFinite(seconds) && seconds >= 0 ? seconds : null;
       void (async () => {
+        await startConfirmation;
         // Idempotent retry covers a response lost after the DB commit.
         for (let i = 0; i < 2; i++) {
           try {

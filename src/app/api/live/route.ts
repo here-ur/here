@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     const input = await readSmallJson(request, 5000, 64 * 1024);
     const callId = (input as { callId?: unknown })?.callId;
     if (typeof callId !== 'string' || !/^[a-f0-9-]{36}$/i.test(callId)) throw new JsonRequestError(400, '음성 연결 요청을 확인해 주세요.');
+    if ((input as { meteringVersion?: unknown }).meteringVersion !== 2) return Response.json({ error: '화면을 새로고침한 뒤 음성을 다시 시작해 주세요.', code: 'voice_client_outdated' }, { status: 409 });
     let body;
     // Both checks must finish before creating a paid session; neither depends on the other.
     const [quota, snapshot] = await Promise.all([
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
     if (result instanceof Response) return result;
     timed('provider');
     // Never return credentials, provider instructions, or the full session configuration.
-    return Response.json({ id: result.id, sdp: result.sdp, callId: result.callId, deadlineAt: result.deadlineAt, model: body.session.model,
+    return Response.json({ id: result.id, sdp: result.sdp, callId: result.callId, deadlineAt: result.deadlineAt, awaitingStart: result.awaitingStart, model: body.session.model,
       voice: body.session.audio.output.voice, memory: memoryEnabled(process.env) }, { headers: { "Cache-Control": "no-store", "Server-Timing": timings.join(', ') } });
   } catch (error) {
     if (error instanceof JsonRequestError) return Response.json({ error: error.message }, { status: error.status });

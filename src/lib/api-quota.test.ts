@@ -64,3 +64,21 @@ test("비용 발생 API는 회원/동의 확인 뒤 공유 한도를 검사한�
     assert.match(source, /if \(quotaError\) return quotaError/);
   }
 });
+
+
+test('voice creation keeps five per minute but ignores historical daily counts above sixty', async () => {
+ const db=new PGlite();const uid='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ try {
+  await db.exec(`create role anon;create role authenticated;create schema auth;
+    create function auth.uid() returns uuid language sql stable as $$select '${uid}'::uuid$$;
+    grant usage on schema auth,public to authenticated,anon;create table public.members(user_id uuid primary key,withdrawn_at timestamptz);insert into public.members(user_id) values('${uid}');`);
+  for(const file of ['0004_api_limits.sql','0006_api_quota_status.sql','0034_text_usage_quota.sql','0038_voice_minute_guard.sql'])await db.exec(readFileSync(new URL('../../supabase/migrations/'+file,import.meta.url),'utf8'));
+  await db.exec(`insert into public.api_usage_windows values('${uid}','realtime',86400,(floor(extract(epoch from clock_timestamp()))::bigint/86400)*86400,1000);set role authenticated;`);
+  const take=async()=>(await db.query<{v:{allowed:boolean}}>("select public.consume_api_quota('realtime') v")).rows[0].v;
+  for(let i=0;i<5;i++)assert.equal((await take()).allowed,true);
+  assert.equal((await take()).allowed,false);
+  await db.exec(`reset role;update public.api_usage_windows set window_start=0 where resource='realtime' and window_seconds=60;set role authenticated;`);
+  assert.equal((await take()).allowed,true);
+  await db.exec('reset role');assert.equal((await db.query<{used:number}>("select used from public.api_usage_windows where resource='realtime' and window_seconds=86400")).rows[0].used,1000);
+ }finally{await db.close();}
+});
