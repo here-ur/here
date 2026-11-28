@@ -282,7 +282,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
           {codeStep && <EmailCodeField value={code} onChange={setCode} inputRef={stepInputRef} readOnly={busy} invalid={invalid("code")} describedBy={describedBy} />}
           {error && <p id="auth-error" role="alert" className="email-auth-error">{error}</p>}
           {notice && !error && <p role="status" className="email-auth-note">{notice}</p>}
-          {step === "login" && <Button variant="plain" disabled={busy} className="email-auth-link" onClick={() => openForm("recovery")}>비밀번호를 잊었어요</Button>}
+          {step === "login" && !UT_EMAIL_LOGIN && <Button variant="plain" disabled={busy} className="email-auth-link" onClick={() => openForm("recovery")}>비밀번호를 잊었어요</Button>}
           {codeStep && <div>
             <p className="email-auth-note">메일이 없으면 스팸함도 확인해 주세요.</p>
             {resendWait > 0 ? <p className="email-auth-note">{resendWait}초 후 다시 받을 수 있어요</p>
@@ -291,7 +291,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
         </div>
         <div className="email-auth-footer">
           {step === "signup" && <Button variant="plain" className="email-auth-link" disabled={busy} onClick={() => openForm("login")}>이미 가입했어요 · 로그인</Button>}
-          {step === "login" && <Button variant="plain" className="email-auth-link" disabled={busy} onClick={() => openForm("signup", true)}>이메일로 가입하기</Button>}
+          {step === "login" && !UT_EMAIL_LOGIN && <Button variant="plain" className="email-auth-link" disabled={busy} onClick={() => openForm("signup", true)}>이메일로 가입하기</Button>}
           <Button type="submit" tone="ink" className="email-auth-next" loading={busy} disabled={codeStep && code.length !== 6} aria-label={copy.submit}><Icon name="forward" size={26} /></Button>
         </div>
       </form>}
@@ -302,9 +302,9 @@ export default function AuthGate({ children }: { children: (userId: string, sign
       <div className="here-auth-welcomeBottom">
         {showWelcome && error && <p role="alert" className="here-auth-unavailable auth-provider-error">{error}</p>}
         {client ? <div className="here-auth-actions">
-          <Button className="auth-provider-button auth-provider-kakao" tone="ink" fullWidth loading={busy && provider === "kakao"} disabled={busy} onClick={() => { void startSocial("kakao"); }}><AuthProviderIcon provider="kakao" />카카오로 시작하기</Button>
-          <Button className="auth-provider-button auth-provider-google" tone="ink" fullWidth loading={busy && provider === "google"} disabled={busy} onClick={() => { void startSocial("google"); }}><AuthProviderIcon provider="google" />구글로 시작하기</Button>
-          {/* UT 전용 브랜치: Useberry 안에서는 카카오·구글 로그인 창이 열리지 않아 미리 만든 테스트 계정으로 들어간다. 운영 빌드에는 나오지 않는다. */}
+          {/* UT 전용 브랜치: Useberry 안에서는 카카오·구글 로그인 창이 열리지 않아 미리 만든 테스트 계정으로만 들어간다. 운영 빌드는 그대로 카카오·구글이다. */}
+          {!UT_EMAIL_LOGIN && <Button className="auth-provider-button auth-provider-kakao" tone="ink" fullWidth loading={busy && provider === "kakao"} disabled={busy} onClick={() => { void startSocial("kakao"); }}><AuthProviderIcon provider="kakao" />카카오로 시작하기</Button>}
+          {!UT_EMAIL_LOGIN && <Button className="auth-provider-button auth-provider-google" tone="ink" fullWidth loading={busy && provider === "google"} disabled={busy} onClick={() => { void startSocial("google"); }}><AuthProviderIcon provider="google" />구글로 시작하기</Button>}
           {UT_EMAIL_LOGIN && <Button className="auth-provider-button" tone="ink" fullWidth disabled={busy} onClick={() => openForm("login")}><AuthProviderIcon provider="email" />이메일로 시작하기</Button>}
         </div> : <p role="status" className="here-auth-unavailable">로그인을 준비하고 있어요.<br />잠시 후 다시 방문해 주세요.</p>}
       </div>
