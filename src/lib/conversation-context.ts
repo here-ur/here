@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { contextJson, objectSchema, stringSchema } from './context-model.ts';
 import { embed, type MemoryConfig, type MemoryHit, type MemoryMessage } from './memory.ts';
 import { supabaseMemoryStore } from './memory-store.ts';
+import type { UserCipher } from './conversation-cipher.ts';
 
 export type ConversationContext = {
   tone_guidance: string;
@@ -18,8 +19,8 @@ type ContextStore = {
   search(vector: number[], signal: AbortSignal): Promise<MemoryHit[]>;
 };
 
-export function contextStore(client: SupabaseClient): ContextStore {
-  const memory = supabaseMemoryStore(client);
+export function contextStore(client: SupabaseClient, cipher: UserCipher): ContextStore {
+  const memory = supabaseMemoryStore(client, cipher);
   let revision: unknown;
   return { async enabled(signal) {
     const { data, error } = await client.rpc('context_access_revision').abortSignal(signal);
@@ -29,7 +30,11 @@ export function contextStore(client: SupabaseClient): ContextStore {
   }, search: memory.search, async summary(signal) {
     const { data, error } = await client.rpc('read_chat_summary').abortSignal(signal);
     if (error) throw Error('summary_unavailable');
-    return typeof data === 'string' && data.length <= 2400 ? data : '';
+    // 0030부터 { summary, summary_key_version } 행(0~1개)으로 온다. 암호문이면 복호화한 뒤 길이를 본다.
+    const row = Array.isArray(data) ? data[0] : undefined;
+    if (!row || typeof row.summary !== 'string') return '';
+    const summary = cipher.decryptSummary('chat_context_state', row.summary, row.summary_key_version ?? 0);
+    return summary.length <= 2400 ? summary : '';
   } };
 }
 

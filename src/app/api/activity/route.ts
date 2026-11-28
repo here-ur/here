@@ -3,6 +3,7 @@ import { requireMember } from '@/lib/member-auth';
 import { JsonRequestError, readSmallJson } from '@/lib/request-json';
 import { emptyActivity, parseActivity } from '@/lib/activity-types';
 import { refreshActivityDays, syncAccountActivity } from '@/lib/account-activity-server';
+import { requireCipher } from '@/lib/conversation-cipher';
 export const maxDuration=60;
 const json=(body:object,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
 async function sync(request:Request) {
@@ -19,7 +20,8 @@ async function sync(request:Request) {
   }
   // Import first, then reconcile with all account messages; refresh errors remain retryable.
   await syncAccountActivity(access.supabase,input);
-  await refreshActivityDays(access.supabase);
+  const guard=requireCipher(access.userId); if(guard.response) return guard.response;
+  await refreshActivityDays(access.supabase,guard.cipher);
   return json(await syncAccountActivity(access.supabase));
  } catch(e) {return e instanceof JsonRequestError?json({error:e.message},e.status):json({error:'정원·라이브러리 기록을 동기화하지 못했어요. 다시 시도할게요.'},503);}
 }

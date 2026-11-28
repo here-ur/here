@@ -6,6 +6,7 @@ import { readSmallJson, JsonRequestError } from "@/lib/request-json";
 import { liveSessionRequest } from "@/lib/live-session";
 import { memoryEnabled } from "@/lib/memory";
 import { liveStartContext } from '@/lib/live-start-context';
+import { requireCipher } from '@/lib/conversation-cipher';
 
 export async function POST(request: Request) {
   const timings: string[] = [];
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
     const [quota, snapshot] = await Promise.all([
       requireApiQuota(access.supabase, "realtime"),
       memoryEnabled(process.env)
-        ? liveStartContext(access.supabase, request.signal).then(value => ({ value, failed: false })).catch(() => ({ value: undefined, failed: true }))
+        ? Promise.resolve(requireCipher(access.userId)).then(guard => { if (!guard.cipher) throw Error('cipher_unavailable'); return liveStartContext(access.supabase, request.signal, guard.cipher); }).then(value => ({ value, failed: false })).catch(() => ({ value: undefined, failed: true }))
         : Promise.resolve({ value: undefined, failed: false }),
     ]);
     if (quota) return quota;

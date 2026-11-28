@@ -11,6 +11,7 @@ import { requireMemoryConsent } from "@/lib/memory-access";
 import { requireApiQuota } from "@/lib/api-quota";
 import { contextStore, createConversationContext } from '@/lib/conversation-context';
 import { processContextMaintenance } from '@/lib/context-maintenance';
+import { requireCipher } from '@/lib/conversation-cipher';
 
 export const maxDuration = 120;
 
@@ -26,8 +27,15 @@ export async function POST(request: Request) {
     summaryBaseUrl: process.env.RUNYOUR_BASE_URL,
     summaryModel: process.env.MEMORY_SUMMARY_MODEL,
   };
-  const memory = memoryEnabled(process.env) ? createMemoryService(supabaseMemoryStore(access.supabase), memoryConfig) : null;
-  const prepareContext = memory ? createConversationContext(contextStore(access.supabase), memoryConfig, 4500, true) : undefined;
+  // 기억 기능이 켜진 환경에서만 대화를 저장하므로, 그때만 암호화 키가 필요하다.
+  let cipher: import('@/lib/conversation-cipher').UserCipher | undefined;
+  if (memoryEnabled(process.env)) {
+    const guard = requireCipher(access.userId);
+    if (guard.response) return guard.response;
+    cipher = guard.cipher;
+  }
+  const memory = cipher ? createMemoryService(supabaseMemoryStore(access.supabase, cipher), memoryConfig) : null;
+  const prepareContext = cipher ? createConversationContext(contextStore(access.supabase, cipher), memoryConfig, 4500, true) : undefined;
   let history: {batchId:string;userMessageId:string;assistantMessageId:string;userAt:number;assistantAt:number}|undefined;
   const historyVersion = request.headers.get("x-here-history");
   if(memory && (historyVersion === "v1" || historyVersion === "v2")) {
@@ -47,11 +55,14 @@ export async function POST(request: Request) {
       const h=history!;
       const assistantAt = historyVersion === "v2" ? Math.max(Date.now(), h.userAt + 1) : h.assistantAt;
       try {
-      const {error}=await access.supabase.rpc('save_conversation_batch',{p_id:h.batchId,p_messages:[
+      // DB에는 암호문만 보내고, 재전송 판단용 지문은 원문 기준으로 만든다.
+      const batch=cipher!.encryptBatch([
         {id:h.userMessageId,role:'user',content:messages.at(-1)!.content,at:new Date(h.userAt).toISOString()},
         {id:h.assistantMessageId,role:'assistant',content:reply,at:new Date(assistantAt).toISOString()},
-      ]}).abortSignal(AbortSignal.timeout(8000));
-      if (!error) after(async()=>{await Promise.allSettled([refreshActivityDays(access.supabase),processConversationMemories(access.supabase,memoryConfig)]);});
+      ]);
+      const {error}=await access.supabase.rpc('save_conversation_batch',{p_id:h.batchId,p_messages:batch.messages,p_fingerprint:batch.fingerprint})
+        .abortSignal(AbortSignal.timeout(8000));
+      if (!error) after(async()=>{await Promise.allSettled([refreshActivityDays(access.supabase,cipher!),processConversationMemories(access.supabase,memoryConfig)]);});
       } catch { /* The durable outbox retries without changing the reply timestamp. */ }
       // Return the exact timestamp even if the durable client outbox must retry this save.
       return { assistantAt };

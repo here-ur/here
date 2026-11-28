@@ -14,6 +14,7 @@ export async function handleContextWorker(request: Request, env: Record<string, 
     const { data: job, error } = await client.rpc('claim_context_work', { p_token: token }).abortSignal(AbortSignal.timeout(5000));
     if (error) return json({ error: 'unavailable' }, 503);
     if (!job) return json({ processed: false });
+    // 작업자는 로그인 사용자가 없으므로 finishMaintenance가 DB가 넘겨준 job.user_id 기준으로 복호화·암호화한다.
     const processed = await finishMaintenance(client, token, job, { ...contextConfig(env), fetch: deps.fetch });
     return json({ processed }, processed ? 200 : 503);
   } catch { return json({ error: 'processing_failed' }, 503); }
