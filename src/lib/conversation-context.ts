@@ -14,19 +14,18 @@ export class ContextUnavailableError extends Error {
   constructor() { super('context_unavailable'); }
 }
 type ContextStore = {
-  enabled(signal: AbortSignal): Promise<boolean>;
+  /** null: 기억 기능이 꺼졌거나 동의가 없거나(철회·탈퇴 포함) 확인하지 못함. 값이 바뀌면 요약 갱신이나 기억 삭제가 있었다는 뜻. */
+  revision(signal: AbortSignal): Promise<number | string | null>;
   summary(signal: AbortSignal): Promise<string>;
   search(vector: number[], signal: AbortSignal): Promise<MemoryHit[]>;
 };
 
 export function contextStore(client: SupabaseClient, cipher: UserCipher): ContextStore {
   const memory = supabaseMemoryStore(client, cipher);
-  let revision: unknown;
-  return { async enabled(signal) {
+  return { async revision(signal) {
     const { data, error } = await client.rpc('context_access_revision').abortSignal(signal);
-    if (error || data === null) return false;
-    if (revision === undefined) revision = data;
-    return revision === data;
+    if (error || (typeof data !== 'number' && typeof data !== 'string')) return null;
+    return data;
   }, search: memory.search, async summary(signal) {
     const { data, error } = await client.rpc('read_chat_summary').abortSignal(signal);
     if (error) throw Error('summary_unavailable');
@@ -59,7 +58,8 @@ export function createConversationContext(store: ContextStore, config: MemoryCon
     const latest = messages.at(-1);
     if (latest?.role !== 'user' || !latest.content.trim()) return context;
     try {
-      if (!await store.enabled(signal)) throw new ContextUnavailableError();
+      const startRevision = await store.revision(signal);
+      if (startRevision === null) throw new ContextUnavailableError();
       const hits = new Map<string, MemoryHit>();
       async function search(query: string) {
         try {
@@ -83,7 +83,19 @@ export function createConversationContext(store: ContextStore, config: MemoryCon
       for (const hit of [...direct, ...followups.flat()]) if (!hits.has(hit.id)) hits.set(hit.id, hit);
       context.retrieved_memories = [...hits.values()].slice(0, 5).map(h => ({ summary: h.summary, at: h.created_at }));
       // Withdrawal while the providers were running must also suppress their results.
-      if (requestSignal.aborted || !await store.enabled(AbortSignal.any([requestSignal, AbortSignal.timeout(1000)]))) throw new ContextUnavailableError();
+      const recheck = AbortSignal.any([requestSignal, AbortSignal.timeout(1000)]);
+      const endRevision = await store.revision(recheck);
+      if (requestSignal.aborted || endRevision === null) throw new ContextUnavailableError();
+      if (endRevision !== startRevision) {
+        // 이전 대화의 요약 정리가 끝났거나 기억이 지워졌다. 탈퇴가 아니므로 대화를 막지 않되,
+        // 그 전에 읽은 기억(지워졌을 수 있음)과 요약은 버리고 요약만 새로 읽는다.
+        context.retrieved_memories = [];
+        context.chat_summary = '';
+        try {
+          const summary = await store.summary(recheck);
+          if (await store.revision(recheck) === endRevision) context.chat_summary = summary;
+        } catch { /* 요약 없이 답한다. */ }
+      }
       return context;
     } catch { if (required) throw new ContextUnavailableError(); return emptyContext(); }
   };
