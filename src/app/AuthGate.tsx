@@ -23,6 +23,7 @@ import "./first-run.css";
 type Step = "login" | "signup" | "signup-code" | "recovery" | "recovery-code" | "new-password";
 type Field = "email" | "password" | "confirmation" | "code";
 const RESEND_SECONDS = 60;
+const UT_EMAIL_LOGIN = process.env.HERE_DEPLOY_ENV !== "production";
 
 export default function AuthGate({ children }: { children: (userId: string, signOut: () => Promise<void>) => React.ReactNode }) {
   const client = browserSupabase();
@@ -303,6 +304,8 @@ export default function AuthGate({ children }: { children: (userId: string, sign
         {client ? <div className="here-auth-actions">
           <Button className="auth-provider-button auth-provider-kakao" tone="ink" fullWidth loading={busy && provider === "kakao"} disabled={busy} onClick={() => { void startSocial("kakao"); }}><AuthProviderIcon provider="kakao" />카카오로 시작하기</Button>
           <Button className="auth-provider-button auth-provider-google" tone="ink" fullWidth loading={busy && provider === "google"} disabled={busy} onClick={() => { void startSocial("google"); }}><AuthProviderIcon provider="google" />구글로 시작하기</Button>
+          {/* UT 전용 브랜치: Useberry 안에서는 카카오·구글 로그인 창이 열리지 않아 미리 만든 테스트 계정으로 들어간다. 운영 빌드에는 나오지 않는다. */}
+          {UT_EMAIL_LOGIN && <Button className="auth-provider-button" tone="ink" fullWidth disabled={busy} onClick={() => openForm("login")}><AuthProviderIcon provider="email" />이메일로 시작하기</Button>}
         </div> : <p role="status" className="here-auth-unavailable">로그인을 준비하고 있어요.<br />잠시 후 다시 방문해 주세요.</p>}
       </div>
     </div>
