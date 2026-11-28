@@ -12,7 +12,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - 새 화면과 기존 화면의 공통 UI에는 **Framework7 React의 iOS 테마**를 기본으로 사용한다. 먼저 `src/app/ui/`의 공통 컴포넌트를 확인하고, 새 공통 요소는 그 폴더에 추가한다.
 - `src/app/layout.tsx`에서 `ui/FrameworkShell.tsx`와 `ui/framework7.css`를 연결한다. `FrameworkShell`은 `theme="ios"`를 사용한다. Framework7 패키지 CSS는 전용 파일에서 `framework7` 레이어로 불러오고, Here 테마 조정은 `ui/foundation.css`에서 `--f7-*` 변수로 관리한다.
-- 공통 아이콘은 `framework7-icons`와 `src/app/art.tsx`의 `Icon`을 사용한다. 아이콘만 있는 버튼에는 동작을 설명하는 접근성 이름을 붙인다.
+- 공통 UI 아이콘은 24×24px 그리드와 KRDS 키라인(정사각 18×18, 원형 20×20, 가로 20×16, 세로 16×20)을 기준으로 정렬한다. 기본 스트로크는 24px에서 1.5px이며 내부 도형을 줄여도 이 두께를 유지한다. `npm run icons:build`로 키라인을 생성·검증한다. **Iconsax Free**만 사용하고 `src/app/art.tsx`의 `Icon`으로 렌더링한다. 무료 원본은 `public/icons/iconsax-free.svg`, 출처와 매핑은 같은 폴더의 `NOTICE.md`에 둔다. 스피커는 `volume-high / Twotone`, 음소거는 `volume-slash / Twotone`을 쓴다. 아이콘만 있는 버튼에는 동작을 설명하는 접근성 이름을 붙인다. 피그마에서 지정한 장식 에셋과 브랜드 로고는 해당 원본을 유지한다.
 - 컴포넌트를 교체할 때 폼 제출, 키보드 입력, 포커스 복귀를 보존한다. Framework7 React가 필요한 DOM 속성이나 이벤트를 전달하지 않으면 네이티브 요소에 Framework7 클래스를 적용한다.
 - UI 수정 후 로컬 브라우저에서 변경한 화면을 조작해 본다. 테마 로딩을 수정했다면 홈에서 반투명 글 대화 버튼과 검정 마이크 버튼을 확인하고 `npm run build`로 검증한다. `ios` 클래스 확인에 더해 실제 스타일이나 `--f7-glass-bg-color` 계산값을 확인한다.
 - Tailwind 기본 스타일(base 레이어)이 Framework7 레이어보다 뒤라서, Framework7 컴포넌트의 여백·둥근 모서리·테두리가 지워질 수 있다. 목록(List) 여백은 `ui/framework7.css`의 `framework7-restore` 레이어에서 다시 적용하며, 다른 컴포넌트에서 같은 문제가 보이면 그곳에 더한다. `List` 안에 `ListItem`을 감싼 컴포넌트를 넣을 때는 `<ul>`을 직접 둔다(바로 아래 자식이 `ListItem`일 때만 자동으로 감싼다).

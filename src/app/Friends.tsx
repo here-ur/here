@@ -9,13 +9,12 @@ import { browserSupabase } from '@/lib/supabase';
 import { inviteMessage } from '@/lib/friends';
 import { friendCode, friendInviteUrl, parseConnections, parseInvitation, parseInviteDetails, pendingFriendInvite, dismissFriendInvite, type Connection, type FriendInvitation, type InviteDetails } from '@/lib/friend-connections';
 import { COLORS } from '@/lib/onboarding';
-import { Icon } from './art';
+import { Icon, type IconName } from './art';
 import { Shell, type Who } from './Conversation';
-const stroke = { fill:'none',stroke:'currentColor',strokeWidth:1.7,strokeLinecap:'round',strokeLinejoin:'round' } as const;
-const IDEAS = [
-  { title: "서로의 하늘 나누기", body: "그날 하늘만 친구에게 보여요. 대화 내용은 보이지 않아요.", icon: <><circle cx="12" cy="12" r="4" /><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4" /></> },
-  { title: "응원 한마디 보내기", body: "힘든 날, 친구에게 짧은 응원을 보내요.", icon: <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" /> },
-  { title: "안부 알림 받기", body: "친구가 오랜만에 들르면 살짝 알려 줘요.", icon: <><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15Z" /><path d="M10 20a2 2 0 0 0 4 0" /></> },
+const IDEAS: { title: string; body: string; icon: IconName }[] = [
+  { title: "서로의 하늘 나누기", body: "그날 하늘만 친구에게 보여요. 대화 내용은 보이지 않아요.", icon: "sun" },
+  { title: "응원 한마디 보내기", body: "힘든 날, 친구에게 짧은 응원을 보내요.", icon: "heart" },
+  { title: "안부 알림 받기", body: "친구가 오랜만에 들르면 살짝 알려 줘요.", icon: "notification" },
 ];
 
 export default function Friends({who,onBack,preview=false,userId}:{who:Who;onBack:()=>void;preview?:boolean;userId?:string}) {
@@ -134,7 +133,7 @@ export default function Friends({who,onBack,preview=false,userId}:{who:Who;onBac
    </section>
    <section className={`${card} mt-4`} aria-labelledby="friends-ideas">
     <h2 id="friends-ideas" className="text-t5 font-bold">Here!에서 친구가 되면</h2>
-    <ul className="mt-3 flex flex-col gap-3">{IDEAS.map(idea=><li key={idea.title} className="flex items-start gap-3"><span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-r3 bg-[#F4F6FB] text-[#3D4559]"><svg width="18" height="18" viewBox="0 0 24 24" {...stroke}>{idea.icon}</svg></span><span className="min-w-0 flex-1"><span className="flex items-center gap-2 text-t4 font-medium">{idea.title}<span className="rounded-full bg-ios-group px-2 py-0.5 text-t1 text-ios-secondary">준비 중</span></span><span className="text-t2 text-ios-secondary">{idea.body}</span></span></li>)}</ul>
+    <ul className="mt-3 flex flex-col gap-3">{IDEAS.map(idea=><li key={idea.title} className="flex items-start gap-3"><span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-r3 bg-[#F4F6FB] text-[#3D4559]"><Icon name={idea.icon} size={18} /></span><span className="min-w-0 flex-1"><span className="flex items-center gap-2 text-t4 font-medium">{idea.title}<span className="rounded-full bg-ios-group px-2 py-0.5 text-t1 text-ios-secondary">준비 중</span></span><span className="text-t2 text-ios-secondary">{idea.body}</span></span></li>)}</ul>
    </section>
   </div>
   {showInvite&&invitation&&<Dialog label="친구 초대장" onClose={()=>{if(!busy)setShowInvite(false);}}>

@@ -39,7 +39,7 @@ test("0029: 대화 요약·밤 기억 정리 작업은 탈퇴한 회원을 고�
       await db.query("insert into auth.users(id) values($1)", [user]);
       await db.query("insert into public.members(user_id) values($1)", [user]);
       await as(user);
-      assert.equal(await val("select public.accept_memory_consent('2026-11-16-dev-v2',true,true) v"), true);
+      assert.equal(await val("select public.accept_memory_consent('2026-11-28-dev-v3',true,true) v"), true);
       await val("select public.save_conversation_batch($1,$2::jsonb) v", [user, JSON.stringify([{ id: user, role: "user", content: "기타 좋아해", at: new Date(Date.now() - 60000).toISOString() }])]);
     }
     await admin();

@@ -3,11 +3,11 @@
  * 제목("○○의 [생일]은 / 언제예요?") 아래에 세로로 선 알약 세 개가 드럼처럼 구른다: "[2000]년 [1]월 [1]일".
  * 손대기 전에는 테두리만 있는 빈칸(안의 숫자는 자리 표시 색)이고, 한 칸이라도 굴리면 검정 알약으로 차오르면서
  * 제목의 "언제예요?" 자리에 고른 날짜가 글로 적힌다(HereCopy.about.format). 그때 '다음'이 켜진다.
- * 고양이는 릴 아래 주황 덩어리 위에 앉아, 구르는 릴 쪽으로 몸을 기울이고 눈이 동그래졌다가, 멈추면 통 튄다(덩어리는 동그라미 → 열두 갈래 로제트).
+ * 고양이는 피그마와 같은 크기·위치의 정지 이미지로 배치한다.
  * 만 14세가 안 되는 날짜면 흰 안내 카드가 고양이 앞에 올라오고(장식 · 튀는 움직임 · 튀는 소리 없음) '다음'은 꺼진 채로 남는다.
  * 날짜를 다시 굴려 만 14세 이상이 되면 카드가 물러난다.
  *
- * 참고: tone-1의 노란 화면을 그대로 따랐다 — 노란 색면 · 줄 안의 검정 알약(끝에 주황 동그라미) · 캐릭터 뒤의 주황 덩어리 ·
+ * 참고: tone-1의 노란 화면을 그대로 따랐다 — 노란 색면 · 줄 안의 검정 알약(끝에 주황 동그라미) ·
  *       캐릭터 앞에 놓인 검정 덩어리(책상) → 검정 알약 릴 · 테두리 선 그림(유리 돔) → 손대기 전의 빈 알약 · 하트와 반짝이 · 검정 알약 버튼.
  *       짜임은 layout-3(바퀴로 고르는 날짜 + 까닭 한 줄), 손맛은 interaction-1(관성 · 눌림 · 통 튀는 멈춤).
  */
@@ -18,7 +18,7 @@
   const ui = HP.ui, { el, clamp, lerp, reduced, sfx } = ui;
 
   // 알약 끝 동그라미 안의 초 꽂은 케이크(작게 보여도 읽히게 속을 채운 모양). 촛불은 가만히 일렁인다(birthday.css의 hp-bd-flame)
-  const CAKE = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M4.8 14.9c0-1.3 1.1-2.4 2.4-2.4h9.6c1.3 0 2.4 1.1 2.4 2.4V21H4.8z"/><rect x="10.9" y="8.3" width="2.2" height="4.9" rx="1.1" fill="currentColor"/><path class="hp-bd-flame" fill="currentColor" d="M12 1.9c1.4 1.6 2 2.6 2 3.6a2 2 0 0 1-4 0c0-1 .6-2 2-3.6Z"/></svg>';
+  const CAKE = '<svg viewBox="0 0 24 24" fill="none"><use href="/icons/iconsax-free.svg?v=20261128-keyline2#cake"/></svg>';
 
   const mod = (a, n) => ((a % n) + n) % n;
   const daysIn = (y, m) => new Date(y, m, 0).getDate();
@@ -37,13 +37,14 @@
   const SLOW = 2.4;                         // 이 속도(칸/초)보다 느려지면 가까운 칸으로 끌려간다
   function makeReel(ctx, o) {
     const { min, max, cyclic = false, page = 1, digits = 2, coast = 0.38, height } = o;      // coast = 놓은 뒤 속도가 줄어드는 시간(초). 길수록 멀리 구른다
-    const n = max - min + 1, R = height / 2 - 8, PITCH = R * STEP;
+    let n = max - min + 1;
+    const R = height / 2 - 8, PITCH = R * STEP;
     const box = el("div", "hp-bd-reel" + (o.cls ? " " + o.cls : ""));
     box.tabIndex = 0; box.setAttribute("role", "spinbutton"); box.setAttribute("aria-label", o.label); box.setAttribute("aria-valuemin", min);
     box.dataset.sfx = "none";      // 소리는 장면이 한 칸마다 낸다(onStep)
     const drum = el("span", "hp-bd-drum"); drum.setAttribute("aria-hidden", "true");
     const cells = [];
-    for (let i = 0; i < 7; i++) { const c = el("span", "hp-bd-num"); drum.append(c); cells.push({ el: c, idx: null, on: null, off: null }); }
+    for (let i = 0; i < 7; i++) { const c = el("span", "hp-bd-num"); drum.append(c); cells.push({ el: c, idx: null, on: null }); }
     box.append(drum);
 
     // pos = 가운데에 온 칸(소수). mode: rest(멈춤) · held(손에 잡힘) · free(관성) · spring(target 칸으로 끌려가는 중)
@@ -63,8 +64,7 @@
         const i = base + k, cell = cells[mod(i, 7)], d = i - pos, th = d * STEP;
         if (Math.abs(th) >= 1.56 || !exists(i)) { if (cell.on !== false) { cell.el.style.visibility = "hidden"; cell.on = false; } cell.idx = null; continue; }
         if (cell.idx !== i) { cell.el.textContent = valueAt(i); cell.idx = i; }
-        const off = valueAt(i) > limit;
-        if (cell.off !== off) { cell.el.classList.toggle("is-off", off); cell.off = off; }
+        cell.el.style.opacity = k === 0 ? "1" : "0.5";
         let a = Math.min(1, Math.abs(d)); a = a * a * (3 - 2 * a);
         const s = lerp(1, 0.56, a);      // 가운데에서 멀어질수록 작아지고(0.56배), 원통을 따라 위아래로 눌린다
         cell.el.style.transform = `translate3d(0, ${(R * Math.sin(th)).toFixed(2)}px, 0) scale(${s.toFixed(4)}, ${(s * Math.cos(th)).toFixed(4)})`;
@@ -246,15 +246,19 @@
       /** 멈출 칸이 정해졌는지(손에 잡혀 있거나 관성으로 구르는 중이면 아직 모른다) */
       get settled() { return !drag && (mode === "rest" || mode === "spring"); },
       nudge, setValue,
-      /** 이 값까지만 있다(그 달의 날 수). 넘는 값은 테두리 숫자로 보이고, 거기 멈춰 있으면 되굴린다(now면 바로 옮긴다) */
-      setLimit(v, now) {
+      /** 달의 실제 일수만 순환한다. 연·월 변경 시 기존 날짜를 유지하거나 말일로 보정한다. */
+      setLimit(v) {
         if (v === limit) return;
-        limit = v; cells.forEach((c) => { c.off = null; });
-        const over = valueAt(Math.round(pos)) - limit;
-        if (mode === "rest" && !drag && over > 0) {
-          if (now) { pos = mod(Math.round(pos) - over, n); last = Math.round(pos); target = pos; cells.forEach((c) => { c.idx = null; }); }
-          else { by = "auto"; go(Math.round(pos) - over); }
-        }
+        const current = valueAt(nearest());
+        const destination = valueAt(mode === "spring" ? target : nearest());
+        limit = v;
+        n = limit - min + 1;
+        pos = Math.min(current, limit) - min;
+        target = Math.min(destination, limit) - min;
+        last = Math.round(pos);
+        cells.forEach((c) => { c.idx = null; });
+        if (drag) { drag.pos0 = pos; drag.trail = [[performance.now(), pos]]; }
+        if (!drag && mode !== "rest") { mode = "spring"; vel = 0; run(); }
         paint(); aria();
       },
       /** 바로 멈춘다(버튼을 누른 순간 구르던 릴) */
@@ -284,7 +288,7 @@
     build(ctx) {
       const { el: root, copy: C } = ctx, A = C.about;
       const today = new Date(), Y1 = today.getFullYear(), Y0 = Y1 - 100;
-      let touched = false, state = "idle", calm = 0, marks = [], card = null, lastTick = 0, lastText = "";
+      let touched = false, state = "idle", card = null, lastTick = 0;
 
       // 처음 보여 줄 날짜: 손대기 전의 자리(아직 정하지 않은 날짜) · 바로 가기 상태 · 돌아왔을 때 골랐던 날짜
       const stored = /(\d{4})\D+(\d{1,2})\D+(\d{1,2})/.exec(ctx.data.answers.birth || "");
@@ -300,7 +304,8 @@
       // 제목: "○○의 [생일]은 / 언제예요?" — 정하고 나면 끝 줄의 "언제예요?"가 고른 날짜로 바뀐다. 긴 이름은 이름만 한 줄을 차지한다
       const words = A.birth(ctx.data.nickname).split(" ");
       const askWord = words.pop() || "", dayWord = words.pop() || "", who = words.join(" ");
-      const pill = ui.pill({ text: "생일", dot: "star" });
+      const pill = ui.pill({ text: "생일", dot: "star", headline: true });
+      pill.classList.add("hp-bd-pill");
       pill.querySelector(".hp-pill-dot").innerHTML = CAKE;
       const ask = el("span", "hp-bd-ask", askWord), said = el("span", "hp-bd-date");
       said.setAttribute("aria-hidden", "true");
@@ -325,21 +330,20 @@
       fitWho(); if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitWho);
       const shift = long ? Math.max(0, head.offsetHeight - 138) : 0;      // 세 줄 제목이면 그만큼 아래로
 
-      // 자리(390×844). 제목이 세 줄이면 릴이 내려가는 만큼 고양이가 작아진다
       const REELS_TOP = 246 + shift, REEL_H = 160;
-      const CAT = { x: 195, ground: 696, h: 264 - shift };
-      const SPOT = { x: 195, y: 594 + shift / 2, r: 140 - shift / 2, m: 0 }, SPOT_SET = { ...SPOT, m: 1 }, SPOT_CALM = { x: 195, y: 584 + shift / 2, r: 130 - shift / 2, m: 0 };
-
-      // 고양이 뒤의 주황 덩어리(동그라미 → 날짜를 정하면 열두 갈래 로제트) + 고양이
-      const spot = ui.shape(ctx, { color: "var(--hp-orange)", shape: [[12, 0.04, 180]], ...SPOT });
-      root.append(spot.el);
-      const cat = ctx.cat(CAT);
-      const lean = cat.el.parentNode; lean.classList.add("hp-bd-cat");
+      // Figma 492:89 (393×852)의 원본 이미지와 하단 그라데이션.
+      // 동일한 2배 해상도 원본에 Figma 투명 이미지의 마스크를 사용한다.
+      const cat = el("div", "hp-bd-art"); cat.setAttribute("aria-hidden", "true");
+      const image = el("img", "hp-bd-art-image");
+      image.src = "/characters/black-cat-final.png";
+      image.alt = ""; image.draggable = false;
+      image.width = 3396; image.height = 1852;
+      cat.append(image, el("div", "hp-bd-art-fade"));
+      root.append(cat);
 
       // 릴 세 개: "[년]년 [월]월 [일]일"
       const group = el("div", "hp-bd-reels hp-rise"); group.style.top = REELS_TOP + "px"; group.style.setProperty("--i", 3);
       group.setAttribute("role", "group"); group.setAttribute("aria-label", A.birthLabel); group.setAttribute("aria-describedby", why.id);
-      const X = [86, 205, 301];      // 릴 가운데의 x
       const defs = [
         { unit: A.units.y, min: Y0, max: Y1, value: init.y, page: 10, digits: 4, coast: 0.5, cls: "is-year" },      // 해는 백 칸이라 한 번 튕기면 더 멀리 구른다
         { unit: A.units.m, min: 1, max: 12, value: init.m, page: 3, cyclic: true },
@@ -348,11 +352,8 @@
       const reels = defs.map((d, i) => {
         const r = makeReel(ctx, {
           ...d, height: REEL_H, label: `${A.birthLabel} ${d.unit}`,
-          onGrab: () => { if (state !== "under14") watch(i); },
-          onDrop: () => { if (allRest()) calmSoon(); },
           onStep: (by) => stepped(i, by),
           onLand: (by) => landedOn(i, by),
-          onRest: () => { if (allRest()) calmSoon(); },
           onConfirm: (enter) => { touch(i); if (allSettled()) evaluate(false); if (enter) focusNext(i); },
           onTyped: (full) => { touch(i); if (full) focusNext(i, true); },
           onSide: (dir) => { const t = reels[i + dir]; if (t) t.el.focus({ preventScroll: true }); },
@@ -375,16 +376,6 @@
       const show = () => { const t = dateOf(false); said.textContent = A.format(t.y, t.m, t.d); };
       const focusNext = (i, reelOnly) => { const t = reels[i + 1]; if (t) t.el.focus({ preventScroll: true }); else if (!reelOnly && !cta.disabled) cta.focus({ preventScroll: true }); };
 
-      /** 고양이가 그 릴 쪽으로 몸을 기울인다(발은 제자리에 두고 머리 쪽만 그쪽으로. birthday.css의 --gr). -1이면 바로 앉는다 */
-      function watch(i) {
-        const dx = i < 0 ? 0 : clamp((X[i] - CAT.x) / 120, -1, 1);
-        lean.style.setProperty("--gr", (dx * 4.5).toFixed(2) + "deg");
-      }
-      /** 릴이 모두 멈추면 조금 뒤에 평소 얼굴로 돌아와 바로 앉는다 */
-      function calmSoon() {
-        clearTimeout(calm);
-        calm = ctx.later(() => { if (!allRest()) return; if (cat.state.pose !== "sit") { cat.pose("sit"); cat.pop(0.5); } watch(-1); }, 420);
-      }
       /** 처음 손댄 순간: 빈 알약이 검정으로 차오르고(손댄 것부터 차례로) 날짜가 제목에 적힌다 */
       function touch(i, instant) {
         if (touched) return; touched = true;
@@ -398,10 +389,8 @@
           const now = performance.now();
           if (now - lastTick > 34) { lastTick = now; sfx("slot"); }      // 한 칸에 한 번 "틱"(아주 빠르게 구를 때는 조금 솎는다)
         }
-        if (by === "user") {
-          touch(i); clearTimeout(calm);
-          if (state !== "under14") { watch(i); if (cat.state.pose !== "round") cat.pose("round"); }      // 구르는 걸 보는 동안 눈이 동그래진다
-        }
+        if (by === "user") touch(i);
+        if (i < 2) rd.setLimit(daysIn(ry.value, rm.value));
         if (touched) show();
       }
       function landedOn(i, by) {
@@ -409,36 +398,34 @@
         if ((by !== "intro" || touched) && allSettled()) evaluate(false);      // 들어오며 구르는 동안 다른 릴에 손댔다면, 다 굴러온 날짜로 다시 맞춘다
       }
 
-      // 하트 하나 · 반짝이 둘(고양이 곁, 덩어리 밖). 제목이 세 줄이면 위의 둘도 릴만큼 내려간다
-      const MARKS = [["heart", { x: 344, y: 474 + shift, s: 40, r: 10, float: true }], ["sparkle", { x: 40, y: 500 + shift, s: 26, r: -12, twinkle: true, d: 500 }], ["sparkle", { x: 354, y: 652, s: 18, r: 10, twinkle: true, d: 1300 }]];
-      function decorate(pop, delay = 0) {
-        if (marks.length) return;
-        marks = MARKS.map(([kind, o], n) => ui.mark(kind, { ...o, pop, d: pop ? delay + n * 110 : o.d }));
-        marks.forEach((m) => root.append(m));
-      }
-      function undecorate(instant) {
-        const old = marks; marks = [];
-        old.forEach((m) => { if (instant) m.remove(); else { m.classList.add("is-out"); ctx.later(() => m.remove(), 240); } });
-      }
       /** 화면 읽기 프로그램에 한 번 알린다(phone.js의 알림 자리) */
       const say = (text) => { const hp = root.closest(".hp"), live = hp && hp.querySelector(".hp-live"); if (live) live.textContent = text; };
-      /** 만 14세 안내 카드(장식 없음). 109는 번호가 보이는 진짜 전화 링크다 */
-      function notice(instant) {
+      /** 공통 Dialog와 같은 네이티브 모달: 배경 입력 차단, Escape, 포커스 복귀. */
+      function notice() {
         if (card) return;
-        const call = el("a", "hp-bd-call", el("span", "hp-bd-call-ic", ui.icon("phone")), el("span", "hp-bd-call-text", el("b", "", C.sos.title), el("span", "", C.sos.sub)), ui.icon("chev", "hp-bd-call-go"));
-        call.href = "tel:109"; call.setAttribute("aria-label", `${C.sos.title}, ${C.sos.sub}, 전화하기`);
-        const rule = el("i", "hp-bd-rule"); rule.setAttribute("aria-hidden", "true");
-        card = el("div", "hp-bd-card" + (instant ? "" : " hp-rise"), el("strong", "hp-bd-card-title", A.under14.title), el("span", "hp-bd-card-desc", A.under14.desc), rule, call);
-        if (ctx.actions.signOut) { const out = el("button", "hp-bd-leave", A.under14.leave); out.type = "button"; out.addEventListener("click", () => ctx.actions.signOut()); card.append(out); }      // 앱: 쓸 수 없는 나이면 나갈 길을 둔다
-        card.setAttribute("role", "note");
-        root.insertBefore(card, cta);
-        say(`${A.under14.title} ${A.under14.desc}`);
+        const close = el("button", "hp-bd-modal-close", A.under14.close);
+        close.type = "button";
+        close.autofocus = true;
+        const title = el("strong", "hp-bd-modal-title", A.under14.title);
+        card = el("dialog", "hp-bd-modal", title, close);
+        card.setAttribute("aria-label", A.under14.title);
+        const modal = card;
+        ctx.on(close, "click", () => unnotice());
+        ctx.on(modal, "cancel", (event) => { event.preventDefault(); unnotice(); });
+        root.append(modal);
+        ctx.later(() => {
+          if (card !== modal || !modal.isConnected) return;
+          modal.showModal();
+          close.focus({ preventScroll: true });
+        }, 0);
       }
-      function unnotice(instant) {
+      function unnotice() {
         const old = card; card = null;
         if (!old) return;
-        if (instant) old.remove(); else { old.classList.remove("hp-rise"); old.classList.add("is-out"); ctx.later(() => old.remove(), 200); }
+        if (old.open) old.close();
+        old.remove();
       }
+      ctx.onDestroy(unnotice);
 
       /** 멈출 날짜가 정해질 때마다: 날짜를 적어 두고(만 14세 미만이면 지우고) 상태를 맞춘다 */
       function evaluate(instant) {
@@ -448,42 +435,18 @@
         if (allRest()) said.textContent = text;
         if (next === "set") { if (ctx.data.answers.birth !== text) ctx.set({ answers: { birth: text } }); }
         else if (ctx.data.answers.birth != null) ctx.set({ answers: { birth: null } });
-        const quiet = instant || reduced(), changed = text !== lastText;
-        lastText = text;
-        if (next === state) {
-          if (next === "set" && changed && !quiet) { cat.pop(0.7); spot.to({}, { kick: 2.4 }); }      // 다시 고를 때마다 작게 통
-          return;
-        }
-        const first = state === "idle";
+        const quiet = instant || reduced();
+        if (next === state) return;
         state = next; root.dataset.state = next;
         cta.disabled = next !== "set";
-        if (next === "under14") {
-          // 조용하게: 하트·반짝이를 거두고, 덩어리는 동그라미로 돌아가고, 고양이는 평소 얼굴로 가만히 있는다(눌러도 반짝이가 튀지 않는다)
-          undecorate(quiet); notice(quiet);
-          clearTimeout(calm);
-          if (cat.state.pose !== "sit") cat.pose("sit");
-          cat.away = true; watch(-1);
-          if (quiet) spot.set(SPOT_CALM); else spot.to(SPOT_CALM);
-          return;
-        }
-        if (card) { unnotice(quiet); say(text); }      // 안내가 물러나면 받아들인 날짜를 알린다
-        cat.away = false;
-        if (quiet) { spot.set(SPOT_SET); decorate(false); return; }
-        // 덩어리가 통 튀며 로제트가 되고, 고양이도 통 튄다
-        spot.to(SPOT_SET, { kick: first ? 7 : 4 }); sfx("pop");
-        cat.pop(1.3);
-        if (first) ui.burst(root, CAT.x, CAT.ground - CAT.h * 0.5, [{ kind: "sparkle", dx: -154, dy: 26, s: 22, r: -10 }, { kind: "sparkle", dx: 152, dy: -4, s: 16, r: 8, delay: 60 }]);
-        else decorate(true, 80);
+        if (next === "under14") { notice(quiet); return; }
+        if (card) { unnotice(quiet); say(text); }
       }
 
       // 처음 상태
       if (preset) { touch(1, true); rd.setLimit(daysIn(init.y, init.m), true); evaluate(true); }
-      else decorate(!ctx.instant, 760);
       if (!ctx.instant) {
-        // 덩어리와 고양이가 통 올라오고, 릴은 몇 칸 굴러 들어와 멈춘다
-        const home = state === "under14" ? SPOT_CALM : state === "set" ? SPOT_SET : SPOT;
-        spot.set({ ...home, r: 60 }).to(home);
-        cat.place({ ...CAT, ground: CAT.ground + 30, h: CAT.h * 0.8 }).place(CAT, { ms: 620, easing: ui.ease.spring });
+        // 릴만 몇 칸 굴러 들어와 멈춘다. 고양이는 움직이지 않는다.
         if (!preset) {
           reels.forEach((r, i) => r.intro([4, 3, 5][i], 420 + i * 110));
           // 굴릴 수 있다는 눈짓: 손대기 전까지 가끔 릴 하나가 살짝 밀렸다 돌아온다

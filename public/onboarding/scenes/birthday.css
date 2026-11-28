@@ -1,6 +1,6 @@
 /* ═════════════════════════ 장면: birthday (노랑) ═════════════════════════
  * 세로로 선 알약 세 개가 드럼처럼 구른다: "[2000]년 [1]월 [1]일".
- * 손대기 전에는 테두리만 있는 빈칸(숫자는 자리 표시 색), 굴리면 검정 알약(안의 숫자는 흰색만. 흐리게 하지 않고 크기로만 멀고 가까움을 보인다).
+ * 손대기 전에는 테두리만 있는 빈칸(숫자는 자리 표시 색), 굴리면 검정 선택칸. 가운데 외의 숫자는 투명도 50%.
  * 모든 선택자는 .hp 로 시작한다. 색은 phone.css 의 토큰과 잉크를 바탕에 섞은 색만 쓴다. */
 
 /* 제목: 끝 줄의 "언제예요?"가 고른 날짜로 바뀐다 */
@@ -21,7 +21,7 @@
 /* 릴 세 개와 그 뒤의 단위 */
 .hp .hp-bd-reels { position: absolute; left: 28px; z-index: 6; display: flex; align-items: center; }
 .hp .hp-bd-reel {
-  position: relative; display: block; flex: none; width: 70px; height: 160px; border-radius: 35px; overflow: hidden;
+  position: relative; display: block; flex: none; width: 70px; height: 160px; border-radius: 20px; overflow: hidden;
   background: transparent; box-shadow: inset 0 0 0 2.5px var(--hp-ink); color: var(--hp-ink);
   cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none;
   transition: background-color 80ms linear, color 80ms linear, transform 460ms var(--hp-spring);
@@ -39,29 +39,36 @@
 }
 /* 손대기 전: 빈칸에 흐리게 적힌 자리 표시 숫자(아직 정하지 않았다) */
 .hp .hp-bd-reel:not(.is-on) .hp-bd-num { color: rgb(19 17 17 / 28%); }
-/* 그 달에 없는 날(2월 30일…): 검정 알약 위의 테두리 숫자 */
-.hp .hp-bd-reel.is-on .hp-bd-num.is-off { color: var(--hp-ink); -webkit-text-stroke: 2.4px #fff; paint-order: stroke fill; }
 .hp .hp-bd-unit { flex: none; width: 26px; text-align: center; font-size: 17px; line-height: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--fg); }
 .hp .hp-still .hp-bd-reel { transition: none; }
 
-/* 고양이: 구르는 릴 쪽으로 몸을 기울인다. 발은 바닥(납작한 그림자)에 붙여 두고 머리 쪽만 그쪽으로 간다: 조금 돌리고(0.4배) 나머지는 옆으로 밀어서(skew) */
-.hp .hp-bd-cat .hc-img { transform-origin: 50% 100%; transform: rotate(calc(var(--gr, 0deg) * .4)) skewX(calc(var(--gr, 0deg) * -.7)); transition: transform 520ms var(--hp-out); }
-.hp .hp-still .hp-bd-cat .hc-img { transition: none; }
+/* Figma 492:89. 393×852 디자인을 기존 390×844 무대에 맞춘 정지 이미지.
+ * 추가 clip-path 없이 화면 가장자리에서만 잘라 귀와 턱의 수평 잘림을 없앤다. */
+.hp:has(.hp-scene[data-scene="birthday"]),
+.hp .hp-scene[data-scene="birthday"] { overflow: visible; }
+.hp .hp-bd-art { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.hp .hp-bd-art-image {
+  position: absolute; left: -190.610687%; top: calc(24.061033% + 40px); width: 481.221374%; height: 121.014084%;
+  max-width: none; object-fit: fill; user-select: none; -webkit-user-drag: none;
+  mask-image: url("/onboarding/assets/birthday-cat-figma.png");
+  mask-size: 100% 100%; mask-repeat: no-repeat;
+}
+.hp .hp-bd-art-fade {
+  position: absolute; left: -1.526718%; bottom: calc(-1 * var(--stage-bottom-gap, 0px) - 1px);
+  width: 103.053435%; height: calc(164px + var(--stage-bottom-gap, 0px));
+  background: linear-gradient(to top, #23252b 64.329%, rgb(35 37 43 / 0));
+}
 
-/* 만 14세 안내: 하얀 카드. 고양이 앞(아래 버튼 위)에 조용히 올라온다 */
-.hp .hp-bd-card { position: absolute; left: 20px; right: 20px; bottom: 110px; z-index: 12; padding: 20px 12px 8px 22px; border-radius: 32px; background: var(--hp-white); color: var(--hp-ink); }
-.hp .hp-bd-card.is-out { opacity: 0; transform: translate3d(0, 12px, 0); pointer-events: none; transition: opacity 160ms linear, transform 200ms var(--hp-inout); }
-.hp .hp-bd-leave { display: block; width: 100%; min-height: 44px; margin-top: 2px; font-size: 15px; font-weight: 600; letter-spacing: -0.02em; color: var(--hp-ink); text-align: center; }
-.hp .hp-bd-card-title { display: block; font-size: 19px; font-weight: 600; line-height: 1.3; letter-spacing: -0.04em; }
-.hp .hp-bd-card-desc { display: block; margin-top: 3px; font-size: 16px; line-height: 1.4; font-weight: 500; color: rgb(19 17 17 / 72%); letter-spacing: -0.03em; }
-.hp .hp-bd-rule { display: block; height: 1.5px; margin: 14px 10px 0 0; border-radius: 1px; background: rgb(19 17 17 / 10%); }
-/* 109: 번호가 보이는 전화 링크(조용한 한 줄). 포커스 고리가 카드의 둥근 모서리 안에 들어오게 줄도 둥글다 */
-.hp .hp-bd-call { display: flex; align-items: center; gap: 12px; min-height: 56px; margin: 6px 0 0 -10px; padding: 6px 8px 6px 10px; border-radius: 28px; color: var(--hp-ink); transition: transform 460ms var(--hp-spring); }
-.hp .hp-bd-call:focus-visible { outline-offset: 0; }
-.hp .hp-bd-call:active { transform: scale(.98); transition-duration: 80ms; }
-.hp .hp-bd-call-ic { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--hp-ink); color: #fff; display: grid; place-items: center; }
-.hp .hp-bd-call-ic svg { width: 20px; height: 20px; }
-.hp .hp-bd-call-text { flex: 1; min-width: 0; display: block; }
-.hp .hp-bd-call-text b { display: block; font-size: 16px; line-height: 1.3; font-weight: 600; letter-spacing: -0.03em; }
-.hp .hp-bd-call-text span { display: block; font-size: 14px; line-height: 1.35; font-weight: 500; letter-spacing: -0.03em; color: rgb(19 17 17 / 72%); }
-.hp .hp-bd-call-go svg { width: 20px; height: 20px; }
+.hp .hp-scene[data-scene="birthday"] .hp-cta { background: #fff; color: var(--hp-ink); }
+.hp .hp-scene[data-scene="birthday"] .hp-cta[disabled] { background: #fff; color: rgb(19 17 17 / 38%); }
+
+/* 네이티브 top layer에서 화면 중앙에 표시한다. */
+.hp .hp-bd-modal {
+  position: fixed; inset: 0; margin: auto; width: min(calc(100% - 48px), 382px);
+  max-height: calc(100dvh - 48px); padding: 24px; border: 0;
+  border-radius: var(--f7-dialog-border-radius, 24px); background: #fff; color: var(--hp-ink);
+  font: inherit; box-shadow: 0 12px 40px rgb(0 0 0 / 16%);
+}
+.hp .hp-bd-modal::backdrop { background: rgb(20 28 60 / 40%); backdrop-filter: blur(4px); }
+.hp .hp-bd-modal-title { display: block; font-size: 20px; line-height: 1.5; font-weight: 600; letter-spacing: -0.04em; }
+.hp .hp-bd-modal-close { display: block; width: 100%; min-height: 48px; margin-top: 24px; border-radius: 24px; background: var(--hp-ink); color: #fff; font-size: 17px; font-weight: 600; }

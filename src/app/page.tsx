@@ -25,7 +25,7 @@ import { syncReport } from "@/lib/report";
 import { browserSupabase } from "@/lib/supabase";
 import type { SearchSource } from "@/lib/web-search-protocol";
 import AuthGate, { type SignOut } from "./AuthGate";
-import { acceptMemoryConsent, memoryConsentAvailable } from "./MemoryConsentGate";
+import { acceptMemoryConsent } from "./MemoryConsentGate";
 import { WITHDRAW_DONE_MESSAGE, withdrawMember } from "@/lib/member-withdrawal";
 import { clearAccountStorage, setLocalOwner } from "@/lib/local-scope";
 import { devToolsVisible } from "@/lib/deploy-env";
@@ -82,14 +82,6 @@ function ProfileLoading({ error, onRetry, onSignOut }: { error: string; onRetry:
 
 function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRestart }: { userId: string; signOut: SignOut; startEmpty: boolean; afterConsent: boolean; replay?: boolean; onRestart: () => void }) {
   const account = useAccountProfile(userId, { startEmpty, onRemoteReset: onRestart });
-  // 개발용 다시 만들기: 기억 기능이 켜진 서버면 약속 장면에서 동의 칸까지 다시 보여 준다. 무대는 시작할 때 정하므로 먼저 확인한다.
-  const [replayConsent, setReplayConsent] = useState<boolean | undefined>(replay ? undefined : false);
-  useEffect(() => {
-    if (!replay) return;
-    let active = true;
-    memoryConsentAvailable().then((on) => { if (active) setReplayConsent(on); }, () => { if (active) setReplayConsent(false); });
-    return () => { active = false; };
-  }, [replay]);
   const basics = useContext(MemberBasicsContext);
   const activity = useAccountActivity(userId);
   const profile = account.profile === null ? DEV_PROFILE : account.profile;
@@ -463,8 +455,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
 
   if (profile === undefined) return <ProfileLoading error={account.loadError} onRetry={account.retry} onSignOut={() => { void signOut(); }} />;
 
-  if (profile === null && replayConsent === undefined) return <ProfileLoading error="" onRetry={account.retry} onSignOut={() => { void signOut(); }} />;
-
   if (profile === null) {
     // 마지막 '알겠어요' 뒤 저장하는 동안에도 같은 화면을 두고, 버튼에 진행·실패·다시 저장을 보여 준다.
     // 저장이 끝나면 홈이 온보딩의 빛이 걷히는 모션(greet)으로 바로 이어진다.
@@ -472,7 +462,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
       <Onboarding
         basics={basics}
         askBasics={replay || undefined}
-        consent={replayConsent ? acceptMemoryConsent : undefined}
+        consent={acceptMemoryConsent}
         afterConsent={afterConsent}
         onSignOut={() => { void signOut(); }}
         saving={pendingProfile !== null && account.saving}

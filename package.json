@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --test src/**/*.test.ts",
-    "test:voice-greeting": "node scripts/eval-voice-greeting.mjs"
+    "test:voice-greeting": "node scripts/eval-voice-greeting.mjs",
+    "icons:build": "node scripts/build-icons.mjs"
   },
   "dependencies": {
     "@seed-design/css": "3.0.3",

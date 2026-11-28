@@ -86,7 +86,8 @@
       // 제목: "성별도 [알약]" / "알려 줄래요?" + 그 아래 본문 한 줄. 알약은 고르기 전에는 빈 동그라미 셋, 고르면 그 말 + 체크
       const [l1, l2] = ui.lines(A.gender, [1, 2]);
       const slot = el("span", "hp-gd-slot"); slot.setAttribute("aria-hidden", "true");      // 고른 답은 동전(라디오)의 상태로 읽힌다
-      slot.append(el("span", "hp-pill hp-gd-wait", el("i"), el("i")));
+      const waiting = ui.pill({ content: [el("i"), el("i")] });
+      waiting.classList.add("hp-gd-wait"); slot.append(waiting);
       const title = ui.headline([[l1 + " ", slot], l2]);
       const why = el("p", "hp-body hp-rise hp-gd-why"); why.id = "hp-gd-why"; why.style.setProperty("--i", 2);
       A.genderWhy.split(" · ").forEach((part, n) => { if (n) why.append(el("i", "", "·")); why.append(part); });      // 가운뎃점 양옆을 조금 띄운다(문구는 그대로)

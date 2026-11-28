@@ -61,6 +61,9 @@ export async function memoryConsentAvailable(): Promise<boolean> {
 /** 약속 장면에서 동의를 저장한다. 성공하면 null, 실패하면 장면에 보여 줄 글. 이미 같은 버전에 동의했으면 서버는 그대로 둔다. */
 export async function acceptMemoryConsent(): Promise<string | null> {
   try {
+    // 기능이 닫힌 환경에서는 GET이 required:false만 반환한다.
+    // 동의 저장 API를 호출하지 않고 기존의 비기억 온보딩 흐름을 이어 간다.
+    if (!await memoryConsentAvailable()) return null;
     const body = await consentRequest("POST");
     return body.ok === true ? null : "동의를 저장하지 못했어요. 다시 시도해 주세요.";
   } catch (error) { return error instanceof ConsentVersionError ? error.message : "동의를 저장하지 못했어요. 다시 시도해 주세요."; }
