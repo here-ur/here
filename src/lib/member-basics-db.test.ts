@@ -24,6 +24,7 @@ test("PostgreSQL: 새 회원만 성별·생년월일을 묻고, 본인 행만 RP
     for (let n = 1; n <= 4; n++) await db.query("insert into auth.users(id) values($1)", [id(n)]);
     await db.query("insert into public.members(user_id) values($1)", [id(1)]); // 마이그레이션 전에 가입한 회원
     await migrate("0020_member_basics");
+    await migrate("20261128121308_member_gender_undisclosed");
     await db.query("insert into public.members(user_id) values($1),($2)", [id(2), id(3)]); // 새 회원. 4는 회원이 아님
 
     const flags = (await db.query<{ user_id: string; basics_required: boolean }>("select user_id, basics_required from public.members order by user_id")).rows;
@@ -55,6 +56,9 @@ test("PostgreSQL: 새 회원만 성별·생년월일을 묻고, 본인 행만 RP
     assert.deepEqual(unchanged, [{ gender: null, birth_date: null }], "거절하면 아무것도 저장하지 않고, RLS로 내 행만 보인다");
 
     assert.equal(await save("male", dates.fourteen), "ok", "만 14세 생일부터 저장");
+    assert.equal(await save("undisclosed", dates.under), "under_14");
+    assert.equal(await save("undisclosed", "1990-02-28"), "ok");
+    assert.equal((await db.query<{ gender: string }>("select gender from public.members")).rows[0].gender, "undisclosed");
     assert.equal(await save("female", "1990-02-28"), "ok", "본인 값은 고칠 수 있다");
     assert.deepEqual((await db.query("select gender, birth_date::text, basics_required from public.members")).rows,
       [{ gender: "female", birth_date: "1990-02-28", basics_required: true }]);

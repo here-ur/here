@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MemoryConsentPreview } from "../../MemoryConsentGate";
 import Onboarding from "../../Onboarding";
+import AppSplash from "../../AppSplash";
 import { Icon } from "../../art";
 import { Button } from "../../ui/Button";
 
@@ -48,7 +49,7 @@ export default function Preview() {
       break;
   }
 
-  return <>
+  return <AppSplash>
     {screen}
     {controls && <div className="fixed left-2 top-2 z-50 flex items-center gap-2 rounded-xl bg-white p-2 text-sm text-black shadow">
       <label htmlFor="first-run-stage" className="sr-only">미리보기 단계</label>
@@ -58,5 +59,5 @@ export default function Preview() {
       <Button variant="plain" onClick={() => open("consent")} className="min-h-8 whitespace-nowrap px-1">처음부터</Button>
       <Button variant="plain" onClick={() => setControls(false)} aria-label="미리보기 도구 숨기기" className="grid size-8 place-items-center"><Icon name="close" size={16} /></Button>
     </div>}
-  </>;
+  </AppSplash>;
 }

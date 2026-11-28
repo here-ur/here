@@ -1,11 +1,8 @@
-/* ═════════════════════════ 장면: meet (주황) ═════════════════════════
- * 주황 색면 + 라일락 덩어리. 알약 끝의 동그라미도 라일락으로 맞춰 색을 둘로 줄인다(주황 · 라일락 + 잉크 · 흰색).
- * 꾹 누르는 동안 번지는 색 · 길 위의 점 · 켜지는 점도 같은 라일락이다(가까워지는 만큼 라일락이 늘어난다).
- * 모든 선택자는 .hp 로 시작한다. 들어오는 움직임은 바로 보여 주는 상태(.hp-still)에서는 없다. */
+/* 고양이 첫 만남 */
 .hp .hp-scene[data-scene="meet"] { --dot: var(--hp-lilac); --dot-fg: var(--hp-ink); }
 
 /* ── 첫마디: 맨 앞의 말줄임표 = 줄 안의 검정 알약 속 점 세 개 ── */
-.hp .hp-meet-head.is-gone { visibility: hidden; }
+.hp .hp-meet-head .hp-h .hp-l { white-space: normal; }
 .hp .hp-pill.hp-meet-dots { margin-right: 7px; }
 .hp .hp-meet-dots i { display: block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: #fff; transition: background-color 140ms linear, transform 460ms var(--hp-spring); }
 /* 말을 고르는 중: 점이 차례로 들썩인다 */
@@ -14,21 +11,9 @@
 /* 많이 힘든 날에는 들썩이지 않고 차례로 옅어졌다 돌아온다 */
 .hp .hp-scene.is-tough .hp-meet-dots.is-thinking i { animation-name: hp-meet-think-soft; }
 @keyframes hp-meet-think-soft { 0%, 55%, 100% { opacity: 1; } 28% { opacity: .3; } }
-/* 꾹 누르는 동안: 누르자마자 첫 점이, 한 발 다가올 때마다 다음 점이 라일락으로 켜진다 */
-.hp .hp-meet-dots i.is-lit { background: var(--hp-lilac); transform: scale(1.25); }
-.hp .hp-scene.is-tough .hp-meet-dots i.is-lit { transform: none; }
 .hp .hp-scene:not(.hp-still):not(.is-tough) .hp-meet-dots { animation: hp-popin 620ms var(--hp-spring) backwards; animation-delay: 380ms; }
 .hp .hp-scene.is-tough:not(.hp-still) .hp-meet-dots { animation: hp-meet-fade 320ms linear backwards; animation-delay: 380ms; }
 @keyframes hp-meet-fade { from { opacity: 0; } }
-
-/* ── 들은 것: 작은 이름표 + 되짚는 말(토막마다 줄을 바꾸고, 짧은 토막끼리는 한 줄에 선다) ── */
-/* 오른쪽에도 왼쪽만큼(28px) 비운다: 긴 토막은 그 안에서 두 줄로 고르게 나뉜다 */
-.hp .hp-block.hp-meet-heard { right: 28px; visibility: hidden; }
-.hp .hp-block.hp-meet-heard.is-on { visibility: visible; }
-.hp .hp-meet-label { display: block; margin: 4px 0 8px; font-size: 14px; line-height: 1.3; font-weight: 500; letter-spacing: -0.02em; color: var(--fg2); }
-.hp .hp-h.hp-meet-sum { font-size: 26px; line-height: 1.36; letter-spacing: -0.045em; }
-.hp .hp-meet-sum .hp-l { display: inline-block; max-width: 100%; margin-right: .26em; white-space: normal; text-wrap: balance; vertical-align: top; }
-/* 이름 알약(글자 크기를 따라 줄어든다) */
 
 /* ── 고양이의 자리 · 길 위의 점(멀수록 작다. 덩어리와 같은 색이라 부풀어 오는 덩어리에 스며든다) ── */
 .hp .hp-scene:not(.hp-still):not(.is-tough) .hp-meet-spot { animation: hp-meet-spot 760ms var(--hp-spring) backwards; animation-delay: 180ms; }
@@ -41,53 +26,10 @@
 .hp .hp-scene[data-scene="meet"] .hp-catlayer { --hc-shadow-o: 1; --hc-shadow-bg: rgb(19 17 17 / 17%); }
 .hp .hp-scene[data-scene="meet"] .hc { transition: opacity 160ms linear; }
 
-/* ── 109 안내(많이 힘들어요): q1의 카드 그대로, 첫마디 바로 아래에(통통 튀지 않고 조용히 올라온다) ── */
-.hp .hp-sos.hp-meet-sos { top: 212px; bottom: auto; transform-origin: 50% 0; transition: opacity 200ms linear, visibility 0s linear; }
-.hp .hp-meet-sos .hp-sos-sub { margin-bottom: 6px; }
-.hp .hp-meet-sos-desc { display: block; margin: 0 0 14px; font-size: 15px; line-height: 1.45; letter-spacing: -0.03em; color: rgb(19 17 17 / 72%); }
-.hp .hp-meet-sos.is-off { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 200ms linear, visibility 0s linear 200ms; }
-/* 들은 것을 되짚는 동안에도 남는 한 줄(흰 알약) */
-.hp .hp-meet-call { position: absolute; left: 22px; top: 340px; z-index: 7; display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 14px 0 16px; border-radius: 24px; background: var(--hp-white); color: var(--hp-ink); font-size: 16px; font-weight: 600; letter-spacing: -0.03em; white-space: nowrap; visibility: hidden; opacity: 0; transition: transform 460ms var(--hp-spring), opacity 200ms linear; }
-.hp .hp-meet-call.is-on { visibility: visible; opacity: 1; transition-delay: 0s, 260ms; }
-.hp .hp-meet-call:active { transform: scale(.97); transition-duration: 80ms; }
-.hp .hp-meet-call svg { width: 19px; height: 19px; }
-.hp .hp-meet-call .hp-i:last-child svg { width: 18px; height: 18px; }
+/* 첨부된 걷기 영상이 포즈를 전담한다. 반복·끝 프레임 초기화는 하지 않는다. */
+.hp .hp-meet-first-frame, .hp .hp-meet-walk { position: absolute; left: -215px; top: -363px; width: 430px; height: 430px; max-width: none; object-fit: contain; opacity: 0; pointer-events: none; }
+.hp .hp-scene[data-scene="meet"] .hc:not(.is-walking-video) .hp-meet-first-frame,
+.hp .hc.is-walking-video .hp-meet-walk { opacity: 1; }
+.hp .hp-scene[data-scene="meet"] .hc-img { visibility: hidden; }
 
-/* ── 도움말 풍선: 버튼 위의 작은 흰 알약 + 아래로 향한 꼬리 ── */
-.hp .hp-meet-tip { position: absolute; left: 0; right: 0; bottom: 105px; width: -moz-fit-content; width: fit-content; margin: 0 auto; z-index: 21; height: 36px; padding: 0 16px; border-radius: 18px; background: var(--hp-white); color: var(--hp-ink); font-size: 14px; font-weight: 600; line-height: 36px; letter-spacing: -0.025em; white-space: nowrap; pointer-events: none; transform-origin: 50% 130%; transition: opacity 140ms linear, scale 460ms var(--hp-spring); }
-.hp .hp-meet-tip::after { content: ""; position: absolute; left: 50%; bottom: -5px; width: 12px; height: 12px; margin-left: -6px; border-radius: 2.5px; background: var(--hp-white); transform: rotate(45deg); }
-.hp .hp-meet-tip span { position: relative; z-index: 1; }
-.hp .hp-meet-tip.is-off { opacity: 0; scale: .5; transition: opacity 120ms linear, scale 200ms var(--hp-inout); }
-@keyframes hp-meet-bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5px; } }
-.hp .hp-scene:not(.hp-still):not(.is-tough) .hp-meet-tip { animation: hp-popin 620ms var(--hp-spring) backwards, hp-meet-bob 2.6s ease-in-out infinite; animation-delay: 1700ms, 2320ms; }
-.hp .hp-scene.is-tough:not(.hp-still) .hp-meet-tip { animation: hp-meet-fade 320ms linear backwards; animation-delay: 1700ms; }
-/* 많이 힘든 날에는 풍선이 튀지 않고 조용히 사라졌다 나타난다 */
-.hp .hp-scene.is-tough .hp-meet-tip, .hp .hp-scene.is-tough .hp-meet-tip.is-off { scale: 1; transition: opacity 160ms linear; }
-
-/* ── 꾹 누르는 버튼: 큰 버튼과 같은 자리 · 같은 높이의 검정 알약. 끝에 라일락 동그라미(차오르는 고리).
- *    누르고 있으면 손끝에서 라일락이 동그랗게 번져 알약을 채우고, 지나간 자리의 글자는 잉크색이 된다 ── */
-.hp .hp-meet-hold { position: absolute; left: 20px; right: 20px; bottom: 30px; height: var(--hp-cta-h); z-index: 20; display: block; overflow: hidden; border-radius: 29px; background: var(--hp-ink); color: #fff; text-align: left; touch-action: none; -webkit-touch-callout: none; transition: transform 460ms var(--hp-spring), opacity 120ms linear; }
-.hp .hp-meet-hold.is-full { background: var(--hp-lilac); }
-.hp .hp-meet-hold.is-down { transform: scale(.965); transition-duration: 90ms, 120ms; }
-.hp .hp-meet-hold.is-off { opacity: 0; transform: scale(.92); visibility: hidden; pointer-events: none; transition: transform 300ms var(--hp-inout), opacity 120ms linear, visibility 0s linear 120ms; }
-.hp .hp-scene:not(.hp-still) .hp-meet-hold { animation: hp-rise 640ms var(--hp-out) backwards; animation-delay: 430ms; }
-.hp .hp-meet-face { position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 6px 0 28px; border-radius: inherit; font-size: 17px; font-weight: 600; letter-spacing: -0.025em; white-space: nowrap; }
-.hp .hp-meet-face.is-fill { background: var(--hp-lilac); color: var(--hp-ink); clip-path: circle(var(--fr, 0px) at var(--fx, 300px) var(--fy, 29px)); }
-.hp .hp-meet-knob { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--hp-lilac); color: var(--hp-ink); transition: transform 460ms var(--hp-spring); }
-.hp .hp-meet-knob svg { width: 26px; height: 26px; overflow: visible; }
-.hp .hp-meet-hold.is-down .hp-meet-knob { transform: scale(.9); transition-duration: 90ms; }
-
-/* ── 들은 뒤의 두 대답: 테두리 알약(조금 달라요) + 검정 알약(맞아요). 꾹 누르던 알약이 물러난 뒤에 올라온다 ── */
-.hp .hp-meet-row { position: absolute; left: 20px; right: 20px; bottom: 30px; height: var(--hp-cta-h); z-index: 20; display: flex; gap: 8px; visibility: hidden; pointer-events: none; }
-.hp .hp-meet-row.is-on { visibility: visible; pointer-events: auto; }
-.hp .hp-meet-row > * { opacity: 0; }
-.hp .hp-meet-row.is-on > * { opacity: 1; }
-.hp .hp-meet-row .hp-cta { position: relative; left: auto; right: auto; bottom: auto; flex: 1; min-width: 0; z-index: auto; transition: transform 460ms var(--hp-spring), opacity 180ms linear 130ms; }
-.hp .hp-meet-no { flex: none; display: inline-flex; align-items: center; gap: 7px; height: var(--hp-cta-h); padding: 0 22px 0 18px; border-radius: 29px; box-shadow: inset 0 0 0 2px var(--hp-ink); color: var(--hp-ink); font-size: 16px; font-weight: 600; letter-spacing: -0.03em; white-space: nowrap; transition: transform 460ms var(--hp-spring), background-color 120ms linear, opacity 180ms linear 130ms; }
-.hp .hp-meet-no svg { width: 18px; height: 18px; }
-.hp .hp-meet-no:active { transform: scale(.955); transition-duration: 80ms, 120ms, 180ms; background-color: rgb(19 17 17 / 10%); }
-.hp .hp-scene:not(.hp-still) .hp-meet-row.is-on > * { animation: hp-rise 560ms var(--hp-out) backwards; animation-delay: 150ms; }
-.hp .hp-scene:not(.hp-still) .hp-meet-row.is-on > .hp-cta { animation-delay: 220ms; }
-
-/* 바로 보여 주는 상태(?state=heard)로 지어질 때는 버튼이 바뀌는 짧은 움직임도 건너뛴다 */
-.hp .hp-scene.is-now .hp-meet-hold, .hp .hp-scene.is-now .hp-meet-row > *, .hp .hp-scene.is-now .hp-meet-call, .hp .hp-scene.is-now .hp-meet-sos, .hp .hp-scene.is-now .hp-meet-tip { transition: none; }
+.hp .hp-scene[data-scene="meet"] .hc-body { animation: none; }

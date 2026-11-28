@@ -3,10 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 /** 새로 가입한 회원이 기억 동의 다음, 캐릭터 만나기 전에 한 번 적는 성별·생년월일.
  * 값은 members 행에만 두고(0020_member_basics.sql) AI 대화·기억·리포트에는 보내지 않는다.
  * 이 마이그레이션 전에 가입한 회원은 묻지 않는다(basics_required = false). */
-export type Gender = "female" | "male";
+export type Gender = "female" | "male" | "undisclosed";
 export const GENDERS: readonly { id: Gender; label: string }[] = [
   { id: "female", label: "여성" },
   { id: "male", label: "남성" },
+  { id: "undisclosed", label: "선택하고 싶지 않아요" },
 ];
 /** 법정대리인 동의 절차가 없어 만 14세 미만은 가입을 막는다. DB 함수도 같은 기준으로 저장을 거절한다. */
 export const MIN_AGE = 14;

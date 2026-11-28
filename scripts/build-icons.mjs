@@ -7,9 +7,9 @@ const shapes = {
   square: [18, 18], circle: [20, 20], horizontal: [20, 16], vertical: [16, 20],
 };
 const groups = {
-  circle: 'info check checkFilled clock refresh sun add close',
-  horizontal: 'back down forward keyboard soundOn soundOff hangUp captions email menu wind chev chev2 arrow heart swap',
-  vertical: 'mic micOff send lock pin paintbrush pencil drop flame profile library',
+  circle: 'badgeClock heartCircle info check checkFilled clock refresh sun add close',
+  horizontal: 'badgeChat back down forward keyboard soundOn soundOff hangUp captions email menu wind chev chev2 arrow heart swap',
+  vertical: 'badgeEdit badgeProfile mic micOff send lock pin paintbrush pencil drop flame profile library',
 };
 const source = await fs.readFile(new URL('./icons/iconsax-free.source.svg', import.meta.url), 'utf8');
 const symbols = [...source.matchAll(/<symbol\b([^>]*)>([\s\S]*?)<\/symbol>/g)];

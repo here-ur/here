@@ -1,58 +1,33 @@
-/* ═════════════════════════ 장면: q4 (노랑) ═════════════════════════
- * 1번 톤의 "검정 알약 + 끝의 주황 동그라미"를 키운 세 칸 슬라이더. 고양이는 그 알약 위에 앉아 손잡이 쪽으로 기운다.
- * 색: 노란 색면 · 라일락 덩어리 · 검정 알약 · 주황 손잡이 · 흰 테두리(빈 칸). 다른 색은 없다. */
+/* 세 칸의 검은 트랙과 주황 손잡이. 드래그와 키보드는 네이티브 range가 처리한다. */
+.hp .hp-q4-say { min-height: 52px; }
+.hp .hp-q4-say p { margin: 0; }
+.hp .hp-q4-reply { font-size: 17px; line-height: 1.42; color: var(--fg); }
+.hp .hp-q4-cat { position: absolute; left: 99.6px; top: 336px; width: 190.8px; height: 260px; pointer-events: none; z-index: 3; }
+.hp .hp-q4-cat img, .hp .hp-q4-cat canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.hp .hp-q4-slider { position: absolute; left: 20px; right: 20px; top: 568px; height: 72px; z-index: 6; }
+.hp .hp-q4-rail { position: absolute; inset: 0; display: flex; align-items: center; padding-inline: 25px; border-radius: 36px; background: var(--hp-ink); }
+.hp .hp-q4-ring { flex: 0 0 22px; height: 22px; border: 2px solid var(--hp-white); border-radius: 50%; }
+.hp .hp-q4-wave { flex: 1; display: flex; justify-content: space-between; align-items: center; margin-inline: 12px; }
+.hp .hp-q4-wave i { width: 2px; border-radius: 1px; background: var(--hp-white); opacity: .48; }
+.hp .hp-q4-travel { position: absolute; inset: 0 36px; pointer-events: none; }
+.hp .hp-q4-thumb { position: absolute; left: var(--support-position, 0%); top: 6px; display: grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; background: var(--hp-orange); color: var(--hp-white); transform: translateX(-50%); transition: left 220ms var(--hp-out), transform 280ms var(--hp-spring-soft); }
+.hp .hp-q4-range { position: absolute; inset: 0 6px; width: calc(100% - 12px); height: 100%; margin: 0; opacity: 0; cursor: grab; appearance: none; writing-mode: horizontal-tb; direction: ltr; touch-action: none; }
+.hp .hp-q4-range::-webkit-slider-runnable-track { height: 60px; background: transparent; }
+.hp .hp-q4-range::-webkit-slider-thumb { appearance: none; width: 60px; height: 60px; border: 0; }
+.hp .hp-q4-range::-moz-range-thumb { width: 60px; height: 60px; border: 0; }
+.hp .hp-q4-slider:has(.hp-q4-range:focus-visible) .hp-q4-rail { outline: 3px solid var(--hp-ink); outline-offset: 3px; }
+/* 고르기 전에는 손잡이가 레일 위에 놓인다. 그 자리에서도 바로 잡아 끌 수 있다. */
+.hp .hp-scene:not([data-state="chosen"]):not(.is-q4-dragging) .hp-q4-thumb { transform: translate(-50%, -66px); }
+.hp .hp-scene:not([data-state="chosen"]):not(.is-q4-dragging) .hp-q4-range { top: -60px; height: calc(100% + 60px); clip-path: polygon(0 0, 60px 0, 60px 60px, 100% 60px, 100% 100%, 0 100%); }
+.hp .hp-scene.is-q4-dragging .hp-q4-thumb { transition-property: transform; }
+.hp .hp-scene.is-q4-instant .hp-q4-thumb { transition: none; }
+@media (prefers-reduced-motion: reduce) { .hp .hp-q4-thumb { transition: none; } }
 
-/* 제목 아래 한 줄: 서비스의 한 줄(고르기 전) → 고양이의 대답(적힌다) */
-.hp .hp-q4-say { position: relative; margin-top: 14px; min-height: 52px; }
-.hp .hp-q4-sub { transition: opacity 140ms linear; }
-.hp .hp-scene[data-state="chosen"] .hp-q4-sub { opacity: 0; }
-.hp .hp-q4-reply { position: absolute; left: 0; top: 0; right: 0; margin: 0; font-size: 18px; line-height: 1.42; font-weight: 500; letter-spacing: -0.025em; color: var(--fg); }
-
-/* 제목의 줄 안 알약 = 답이 담기는 칸. 고르기 전에는 질문의 낱말("있어요?")과 빈 테두리 동그라미, 고르면 고른 말과 주황 체크 */
-.hp .hp-q4-ans { position: relative; display: block; flex: none; height: 38px; overflow: hidden; transition: width 320ms var(--hp-spring-soft); }
-.hp .hp-q4-word { position: absolute; left: 0; top: 0; height: 38px; line-height: 38px; white-space: nowrap; font-size: inherit; letter-spacing: inherit; }      /* 이름 알약과 같은 크기: 지금 칸의 말이 크게 보인다 */
-.hp .hp-q4-word.is-out { animation: hp-q4-word-out 150ms var(--hp-inout) both; }
-.hp .hp-q4-word.is-in { animation: hp-q4-word-in 380ms var(--hp-out) both; }
-@keyframes hp-q4-word-out { 60% { opacity: 0; } to { transform: translate3d(0, calc(var(--dir, 1) * -90%), 0); opacity: 0; } }
-@keyframes hp-q4-word-in { from { transform: translate3d(0, calc(var(--dir, 1) * 90%), 0); opacity: 0; } 30% { opacity: 0; } }
-.hp .hp-q4-pill .hp-pill-dot { transition: background-color 160ms linear, box-shadow 160ms linear; }
-.hp .hp-q4-pill .hp-pill-dot svg { transition: transform 480ms var(--hp-spring), opacity 120ms linear; }
-.hp .hp-q4-pill.is-open .hp-pill-dot { background: transparent; box-shadow: inset 0 0 0 2px #fff; }
-.hp .hp-q4-pill.is-open .hp-pill-dot svg { transform: scale(.3); opacity: 0; transition: transform 160ms var(--hp-inout), opacity 120ms linear; }
-/* "지금은 없어요"에서는 알약의 너비 · 체크도 넘치지 않고 들어온다 */
-.hp .hp-scene.is-q4-calm .hp-q4-ans, .hp .hp-scene.is-q4-calm .hp-q4-pill .hp-pill-dot svg { transition-timing-function: var(--hp-out), linear; }
-
-/* 고양이: 알약의 윗변이 바닥이다(납작한 그림자는 거둔다). 기울기는 q4.js가 그림에 발끝을 축으로 준다 */
-.hp .hp-catlayer.hp-q4-seat { --hc-shadow-o: 0; }
-
-/* 슬라이더 */
-.hp .hp-q4-slider { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
-.hp .hp-q4-range { position: absolute; left: 20px; top: 636px; width: 350px; height: 72px; margin: 0; opacity: 0; pointer-events: none; }
-.hp .hp-q4-track { position: absolute; left: 20px; top: 636px; width: 350px; height: 72px; border-radius: 36px; background: var(--hp-ink); pointer-events: auto; touch-action: none; cursor: pointer; }
-/* 키보드로 들어왔을 때만 고리를 그린다(손가락으로 만진 뒤에 옮겨 온 포커스에는 그리지 않는다) */
-.hp .hp-q4-slider:not(.is-quiet) .hp-q4-range:focus-visible + .hp-q4-track { outline: 3px solid var(--hp-ink); outline-offset: 3px; }
-/* 세 칸: 흰 테두리의 빈 동그라미 */
-.hp .hp-q4-ring { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; box-shadow: inset 0 0 0 2px #fff; }
-.hp .hp-q4-track.is-hint .hp-q4-ring { animation: hp-q4-ring 640ms var(--hp-out) both; animation-delay: calc(var(--n) * 120ms + 140ms); }
-@keyframes hp-q4-ring { 40% { transform: scale(1.4); } }
-/* 칸 사이의 숨소리 막대(참고 이미지의 알약 속 막대). 손잡이가 지나가는 자리에서 일어선다 */
-.hp .hp-q4-bar { position: absolute; top: 50%; width: 2px; height: calc(var(--h) * 1px); margin: calc(var(--h) * -.5px) 0 0 -1px; border-radius: 1px; background: #fff; opacity: .48; }
-/* 손잡이: 주황 동그라미 + 흰 아이콘 */
-.hp .hp-q4-knob { position: absolute; left: 0; top: 0; width: 60px; height: 60px; margin: -30px 0 0 -30px; pointer-events: none; touch-action: none; cursor: grab; will-change: transform; }
-.hp .hp-q4-knob.is-in { pointer-events: auto; }
-.hp .hp-q4-knob > span { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; background: var(--hp-orange); color: #fff; transform: scale(0); transition: transform 460ms var(--hp-spring); }
-.hp .hp-q4-knob.is-in > span { transform: scale(1); }
-.hp .hp-q4-knob.is-held > span { transform: scale(1.1); transition-duration: 90ms; }
-.hp .hp-q4-knob svg { width: 26px; height: 26px; }
-.hp .hp-q4-slider.is-dragging .hp-q4-knob, .hp .hp-q4-slider.is-dragging .hp-q4-track { cursor: grabbing; }
-.hp .hp-scene.is-q4-calm .hp-q4-knob > span { transition-timing-function: var(--hp-out); }
-/* 이름표: 칸 아래의 세 가지 답. 지금 칸의 것만 진하고 조금 크다 */
-.hp .hp-q4-ticks { position: absolute; left: 0; right: 0; top: 711px; height: 44px; }
-.hp .hp-q4-tick { position: absolute; top: 0; height: 44px; padding: 0 2px; min-width: 44px; pointer-events: auto; white-space: nowrap; font-size: 16px; font-weight: 500; letter-spacing: -0.03em; color: var(--fg2); transition: color 120ms linear, transform 420ms var(--hp-spring); }
-.hp .hp-q4-tick[data-i="0"] { left: 26px; text-align: left; transform-origin: 0 50%; }
-.hp .hp-q4-tick[data-i="1"] { left: 195px; translate: -50% 0; }
-.hp .hp-q4-tick[data-i="2"] { right: 26px; text-align: right; transform-origin: 100% 50%; }
-.hp .hp-q4-tick.is-on { color: var(--fg); font-weight: 600; transform: scale(1.08); }
-.hp .hp-q4-tick:active { transform: scale(.94); transition-duration: 120ms, 80ms; }
-.hp .hp-scene.is-q4-calm .hp-q4-tick { transition-timing-function: linear, var(--hp-out); }
-.hp .hp-still .hp-q4-ans, .hp .hp-still .hp-q4-knob > span, .hp .hp-still .hp-q4-tick, .hp .hp-still .hp-q4-sub, .hp .hp-still .hp-q4-pill .hp-pill-dot, .hp .hp-still .hp-q4-pill .hp-pill-dot svg { transition: none; }
+.hp .hp-q4-labels { position: absolute; inset-inline: 20px; top: 642px; height: 44px; z-index: 6; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: center; }
+.hp .hp-q4-label { display: flex; align-items: center; justify-content: center; min-height: 36px; min-width: 0; padding-inline: 4px; border-radius: 999px; background: var(--hp-white); color: var(--hp-ink); font-size: 16px; font-weight: 500; line-height: 1.25; white-space: nowrap; }
+.hp .hp-q4-label[aria-pressed="true"] { background: var(--hp-ink); color: var(--hp-white); }
+@media (prefers-reduced-motion: no-preference) {
+  .hp .hp-q4-label { transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .hp .hp-q4-label[aria-pressed="true"] { animation: hp-chip-settle 180ms var(--hp-out); }
+}
+@keyframes hp-chip-settle { from { transform: translateY(1px); filter: blur(.6px); } }

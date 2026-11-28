@@ -4,7 +4,8 @@
  * 모든 선택자는 .hp 로 시작한다. 색은 phone.css 의 토큰과 잉크를 바탕에 섞은 색만 쓴다. */
 
 /* 제목: 끝 줄의 "언제예요?"가 고른 날짜로 바뀐다 */
-.hp .hp-bd-head .hp-note { margin-top: 12px; white-space: nowrap; }
+.hp .hp-block.hp-bd-head { inset-inline: var(--hp-gutter); }
+.hp .hp-bd-head .hp-note { white-space: nowrap; }
 .hp .hp-bd-who { display: inline-block; white-space: nowrap; }
 .hp .hp-bd-head .hp-pill-dot svg { width: 22px; height: 22px; overflow: visible; }      /* 속을 채운 작은 그림이라 선 아이콘(19px)보다 조금 크게 */
 /* 알약 속 촛불: 가만히 일렁인다(첫 화면 알약의 숨소리 막대처럼). 만 14세 안내가 떠 있는 동안과 바로 보여 주는 상태에서는 멈춘다 */
@@ -48,7 +49,7 @@
 .hp .hp-scene[data-scene="birthday"] { overflow: visible; }
 .hp .hp-bd-art { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
 .hp .hp-bd-art-image {
-  position: absolute; left: -190.610687%; top: calc(24.061033% + 40px); width: 481.221374%; height: 121.014084%;
+  position: absolute; left: -190.610687%; top: calc(24.061033% + 40px + var(--bd-content-shift, 0px)); width: 481.221374%; height: 121.014084%;
   max-width: none; object-fit: fill; user-select: none; -webkit-user-drag: none;
   mask-image: url("/onboarding/assets/birthday-cat-figma.png");
   mask-size: 100% 100%; mask-repeat: no-repeat;

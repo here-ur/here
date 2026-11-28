@@ -72,3 +72,11 @@ The linked speaker is volume-high / Twotone; mute uses volume-slash / Twotone.
 - swap: arrow-swap-01 / linear
 
 - checkFilled: tick-circle / bold (official Iconsax Free page, user-selected 2026-11-28). Filled geometry retains its original cutout; no added stroke.
+
+- heartCircle: heart-circle / bold
+
+- badgeEdit: edit-2 / bold
+- badgeClock: clock / bold
+- badgeChat: message-bubble / bold
+- badgeProfile: profile / bold
+- badgePhone: call / bold

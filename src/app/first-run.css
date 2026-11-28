@@ -31,12 +31,14 @@
 .first-run .fr-round:focus-visible { outline: 2px solid var(--fr-ink); outline-offset: 2px; }
 
 /* 제목 묶음: 큰 글씨는 제목(캐릭터 장면에서는 캐릭터의 말), 작은 글씨는 설명 */
-.fr-heading { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0 28px; text-align: center; }
+.fr-heading { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; padding: 0 28px; text-align: center; }
 .fr-eyebrow { font-size: 12.5px; font-weight: 600; color: var(--fr-faint); }
 .fr-title { font-size: 21px; line-height: 1.35; font-weight: 800; letter-spacing: -.025em; text-wrap: balance; }
 .fr-title--cat { font-size: 25px; }
 /* 장면이 바뀔 때 화면 낭독기용으로 제목에 포커스를 옮긴다(누를 수 있는 것이 아니라 테두리는 그리지 않는다). */
 .fr-title:focus { outline: none; }
+.fr-eyebrow + .fr-title { margin-top: 8px; }
+.fr-title + .fr-desc { margin-top: 16px; }
 .fr-desc { font-size: 14px; line-height: 1.5; color: var(--fr-muted); text-wrap: balance; }
 .fr-note { font-size: 12.5px; font-weight: 600; color: var(--fr-faint); text-align: center; }
 

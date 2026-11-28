@@ -52,8 +52,8 @@
   };
   /* ───────────────────────── 아이콘(인라인 SVG) ───────────────────────── */
   // Iconsax Free; the same local sprite serves React and this shadow-root stage.
-  const glyph = (name) => `<svg viewBox="0 0 24 24" fill="none"><use href="/icons/iconsax-free.svg?v=20261128-keyline3#${name}"/></svg>`;
-  const ICONS = Object.fromEntries(["back", "chev", "chev2", "arrow", "heart", "sparkle", "star", "check", "checkFilled", "dice", "phone", "pencil", "clock"].map((name) => [name, glyph(name)]));
+  const glyph = (name) => `<svg viewBox="0 0 24 24" fill="none"><use href="/icons/iconsax-free.svg?v=20261128-keyline5#${name}"/></svg>`;
+  const ICONS = Object.fromEntries(["back", "chev", "chev2", "arrow", "heart", "sparkle", "star", "check", "checkFilled", "dice", "phone", "pencil", "clock", "chat", "profile", "heartCircle", "badgeEdit", "badgeClock", "badgeChat", "badgeProfile", "badgePhone"].map((name) => [name, glyph(name)]));
   ICONS.sound = glyph("soundOn");
   ICONS.mute = glyph("soundOff");
   /** 효과음(shared/sound.js의 HereSound). 없으면 아무 일도 하지 않는다. sfx("tick") · sfx("pick", i) · sfx("purr", ms) → 멈추는 함수 */
@@ -173,6 +173,76 @@
       if (top != null) b.style.top = top + "px";
       if (bottom != null) b.style.bottom = bottom + "px";
       return b;
+    },
+
+    /** 타이틀 오른쪽의 공통 고양이. 모든 반응이 같은 기본 프레임을 공유한다. */
+    titleCat({ cls = "" } = {}) {
+      const actor = el("div", "hp-title-cat" + (cls ? " " + cls : ""));
+      actor.setAttribute("aria-hidden", "true");
+      const still = el("img", "hp-title-cat-default");
+      still.src = "/characters/reactions/default-front-v3.png"; still.alt = "";
+      actor.append(still);
+      return { el: actor, still };
+    },
+
+    pawIcon() {
+      const paw = el("img");
+      paw.src = "/onboarding/assets/gender-paw-24.svg";
+      paw.alt = "";
+      return paw;
+    },
+
+    /** 성별·관심사 화면이 공유하는 단일 선택 카드 목록. */
+    choiceList(ctx, { labels, label, value = -1, onPick }) {
+      const group = el("div", "hp-choice-list");
+      group.setAttribute("role", "radiogroup"); group.setAttribute("aria-label", label);
+      let choice = value;
+      const buttons = labels.map((text, i) => {
+        const tick = el("span", "hp-choice-check", ui.pawIcon()); tick.setAttribute("aria-hidden", "true");
+        const button = el("button", "hp-choice-option", el("span", "hp-choice-label", text), tick);
+        button.type = "button"; button.setAttribute("role", "radio"); button.setAttribute("aria-label", text); button.dataset.sfx = "none";
+        ctx.on(button, "click", () => select(i)); group.append(button); return button;
+      });
+      function select(i, notify = true) {
+        choice = i;
+        buttons.forEach((b, n) => { b.setAttribute("aria-checked", String(n === choice)); b.tabIndex = n === (choice < 0 ? 0 : choice) ? 0 : -1; });
+        if (notify && onPick) onPick(i);
+      }
+      ctx.on(group, "keydown", (event) => {
+        const at = buttons.indexOf(event.target.closest(".hp-choice-option"));
+        if (at < 0 || event.altKey || event.ctrlKey || event.metaKey) return;
+        const step = ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : ["ArrowLeft", "ArrowUp"].includes(event.key) ? -1 : 0;
+        const to = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1 : step ? (at + step + buttons.length) % buttons.length : -1;
+        if (to < 0) return; event.preventDefault(); buttons[to].focus({ preventScroll: true }); select(to);
+      });
+      select(value, false);
+      return { el: group, select, buttons };
+    },
+
+    /** 제목 다음 영역을 공통 간격으로 배치한다. 폰트·줄바꿈 변화에도 무대 좌표를 유지한다. */
+    afterTitle(ctx, anchor, apply) {
+      const update = () => {
+        if (!anchor.isConnected) return;
+        const stage = ctx.el.getBoundingClientRect(), scale = stage.width / W;
+        apply((anchor.getBoundingClientRect().bottom - stage.top) / scale + 24);
+      };
+      const observer = new ResizeObserver(update); observer.observe(anchor);
+      ctx.onDestroy(() => observer.disconnect()); ctx.later(update, 0);
+      document.fonts?.ready.then(update);
+    },
+
+    /** 제목의 핵심 단어를 기존 공통 알약으로 감싼다. 문구와 읽기 순서는 그대로다. */
+    badgedHeadline(lineList, { token, ...options } = {}) {
+      let added = false;
+      const rows = lineList.map(row => {
+        if (added || typeof row !== "string" || !token || !row.includes(token)) return row;
+        added = true;
+        const badgeIcons = { "마음": "heartCircle", "성별": "badgeProfile", "사람": "badgeProfile", "시간": "badgeClock", "뭐라고": "badgeEdit", "이름": "badgeEdit", "이야기": "badgeChat", "얘기하러": "badgeChat", "AI": "star" };
+        const badge = ui.pill({ text: token, dot: badgeIcons[token] || "star", headline: true });
+        badge.classList.add("hp-title-badge");
+        return swap(row, token, badge);
+      });
+      return ui.headline(rows, options);
     },
 
     /** 큰 제목. lineList = 줄 배열(줄은 문자열이거나 [문자열 | 노드] 배열). typed면 한 글자씩 적힌다(.play() / .finish()). */
@@ -307,8 +377,20 @@
       return b;
     },
 
-    /** 위 줄: 뒤로가기 · 설정 진행률 · 건너뛰기 · 사운드. */
-    topbar(ctx, { back = true, skip = false, pages = false } = {}) {
+    questionFooter(ctx, cta, answerId) {
+      const skip = el("button", "hp-skip", "건너뛰기");
+      skip.type = "button";
+      skip.addEventListener("click", () => {
+        ctx.set({ answers: { [answerId]: null } });
+        ctx.next(skip);
+      });
+      const footer = el("div", "hp-question-footer", cta, skip);
+      footer.skip = skip;
+      return footer;
+    },
+
+    /** 위 줄: 뒤로가기 · 설정 진행률 · 사운드. */
+    topbar(ctx, { back = true, pages = false } = {}) {
       const bar = el("div", "hp-top");
       if (back) {
         const b = el("button", "hp-back hp-drop", icon("back")); b.type = "button"; b.setAttribute("aria-label", "뒤로");
@@ -321,11 +403,6 @@
       // 화면 읽기 프로그램에는 몇 번째 장면인지 글로 알린다
       const ids = sceneIds();
       if (!bar.pages) bar.append(el("span", "hp-sr", `${ids.length}단계 중 ${ids.indexOf(ctx.id) + 1}단계`));
-      if (skip) {
-        const s = el("button", "hp-skip hp-drop", "건너뛰기"); s.type = "button";
-        s.addEventListener("click", () => (typeof skip === "function" ? skip(s) : ctx.next(s)));
-        bar.append(s); bar.skip = s;
-      }
       // 소리 켜고 끄기(앱의 온보딩과 같은 자리·같은 읽기 방식: 이름은 그대로 두고 눌림 상태로 꺼졌는지 알린다)
       if (window.HereSound) {
         const snd = el("button", "hp-sound hp-drop"); snd.type = "button"; snd.setAttribute("aria-label", "소리 끄기"); snd.dataset.sfx = "none";
@@ -361,12 +438,13 @@
       const C = ctx.copy;
       const input = el("input", "hp-bigin");
       Object.assign(input, { type: "text", placeholder, value, autocomplete: "off", spellcheck: false, enterKeyHint: "done" });
+      input.setAttribute("aria-label", label);
       input.setAttribute("autocapitalize", "off"); input.setAttribute("autocorrect", "off");
       const mirror = el("span", "hp-bigin-mirror"); mirror.setAttribute("aria-hidden", "true");      // 글자 너비를 재는 숨은 글
       const box = el("span", "hp-bigin-box" + (rule ? " has-rule" : ""), input, mirror);
       const tick = caret ? el("i", "hp-caret") : null;
       if (tick) { tick.setAttribute("aria-hidden", "true"); box.append(tick); }
-      const wrap = el("label", "hp-field", el("span", "hp-field-label", label), box);
+      const wrap = el("label", "hp-field", box);
       let composing = false, untouched = true;
       const widthAt = (text, px) => { mirror.style.fontSize = px + "px"; mirror.textContent = text; return mirror.offsetWidth; };
       const api = {
@@ -432,7 +510,7 @@
      *  → { h(적히는 제목), pill, fit()(붙인 뒤 부른다: 긴 이름은 26px에서 min까지 줄인 뒤에야 말줄임표를 쓴다) } */
     nameLine(make, counts, name, onEdit, { max = 236, min = 20 } = {}) {
       const TOKEN = "\u0001";
-      const pill = ui.pill({ text: name, name: true, dot: "pencil", onPress: onEdit, label: `${name}, 이름 고치기` });
+      const pill = ui.pill({ text: name, name: true, dot: "badgeEdit", onPress: onEdit, label: `${name}, 이름 고치기` });
       const h = ui.headline(lines(make(TOKEN), counts).map((p) => (p.includes(TOKEN) ? swap(p, TOKEN, pill) : p)), { typed: true });
       const fit = () => {
         const t = pill.querySelector(".hp-pill-name"); if (!t) return;
@@ -521,12 +599,21 @@
       const N = 72, rs = []; let max = 0;
       for (let i = 0; i < N; i++) {
         const a = (i / N) * Math.PI * 2; let r = 1;
-        for (const [n, amp, deg = 0] of shape) r += m * amp * Math.cos(n * (a - turn) - (deg * Math.PI) / 180);
+        for (const [n, amp, deg = 0] of (Array.isArray(shape) ? shape : [])) r += m * amp * Math.cos(n * (a - turn) - (deg * Math.PI) / 180);
         rs.push(r); if (r > max) max = r;
       }
       // 점과 점 사이를 곡선으로 잇는다(크게 그려도 각이 지지 않는다)
       const px = [], py = [];
-      for (let i = 0; i < N; i++) { const a = (i / N) * Math.PI * 2, r = (rs[i] / max) * 100; px.push(Math.cos(a) * r); py.push(Math.sin(a) * r); }
+      for (let i = 0; i < N; i++) {
+        const a = (i / N) * Math.PI * 2, r = (rs[i] / max) * 100, x = Math.cos(a), y = Math.sin(a);
+        if (shape === "tilted-square") {
+          const sx = Math.sign(x) * Math.pow(Math.abs(x), .3) * 100;
+          const sy = Math.sign(y) * Math.pow(Math.abs(y), .3) * 100;
+          const mix = clamp(m, 0, 1);
+          px.push(lerp(x * 100, (sx + sy * .04) * .91, mix));
+          py.push(lerp(y * 100, (sy - sx * .07) * .90, mix));
+        } else { px.push(x * r); py.push(y * r); }
+      }
       const mid = (i) => { const j = (i + 1) % N; return ((px[i] + px[j]) / 2).toFixed(1) + " " + ((py[i] + py[j]) / 2).toFixed(1); };
       let d = "M" + mid(N - 1);
       for (let i = 0; i < N; i++) d += "Q" + px[i].toFixed(1) + " " + py[i].toFixed(1) + " " + mid(i);
@@ -619,11 +706,18 @@
       const squashOf = (b) => { const d = (b.sqa * 180) / Math.PI; return `rotate(${d.toFixed(1)}deg) scale(${(1 + b.sq).toFixed(4)}, ${(1 - b.sq * 0.7).toFixed(4)}) rotate(${(-d).toFixed(1)}deg)`; };
       function paint(b) {
         const soft = Math.abs(b.sq) > 0.002;
-        b.el.style.transform = `translate3d(${(b.x - b.r0).toFixed(2)}px, ${(b.y - b.r0).toFixed(2)}px, 0) scale(${(b.r / b.r0).toFixed(4)})` + (b.kind === "dot" && soft ? " " + squashOf(b) : "");
-        if (b.kind !== "item") return;
-        if (soft || b.squashed) { b.skin.style.transform = soft ? squashOf(b) : ""; b.squashed = soft; }       // 색 덩어리만 눌린다(글자는 그대로)
-        if (b.morph > 0.001 || b.shaped) { b.path.setAttribute("d", ui.blobPath(b.it.shape, b.morph, b.turn)); b.shaped = b.morph > 0.001; }
-        if (b.it.line) b.path.style.strokeWidth = (lerp(2.5, b.it.stroke || 2.5, clamp(b.morph, 0, 1)) * b.r0 / Math.max(b.r, 1)).toFixed(2) + "px";      // 방울일 때 2.5px, 덩어리가 되면 stroke까지 굵어진다
+        if (b.kind !== "item") {
+          b.el.style.transform = `translate3d(${(b.x - b.r0).toFixed(2)}px, ${(b.y - b.r0).toFixed(2)}px, 0) scale(${(b.r / b.r0).toFixed(4)})` + (soft ? " " + squashOf(b) : "");
+          return;
+        }
+        // 최종 지름에서 SVG와 글자를 다시 그려 확대된 합성 레이어의 흐림을 막는다.
+        const diameter = (b.r * 2).toFixed(2) + "px";
+        b.el.style.width = diameter; b.el.style.height = diameter;
+        b.el.style.transform = `translate(${(b.x - b.r).toFixed(2)}px, ${(b.y - b.r).toFixed(2)}px)`;
+        b.el.querySelector(".hp-bub-label").style.fontSize = (19 * b.r / b.r0).toFixed(2) + "px";
+        if (soft || b.squashed) { b.skin.style.transform = soft ? squashOf(b) : ""; b.squashed = soft; }
+        if (b.morph > 0.001 || b.shaped) { b.path.setAttribute("d", ui.blobPath(b.it.shape, b.morph, 0)); b.shaped = b.morph > 0.001; }
+        if (b.it.line) b.path.style.strokeWidth = lerp(2.5, b.it.stroke || 2.5, clamp(b.morph, 0, 1)).toFixed(2) + "px";
       }
       /** 부딪힌 쪽(nx, ny)으로 말랑하게 눌린다. hit = 0~1 세기 */
       const squish = (b, nx, ny, hit) => { if (hit < 0.1 || b === picked || t - (b.hitAt || -1) < 0.1) return; b.hitAt = t; b.sqa = Math.atan2(ny, nx); b.sqv -= Math.min(hit, 0.8) * 4.2; };      // 세게 부딪힌 순간에만(계속 밀고 있을 때는 아니다)
@@ -1104,12 +1198,12 @@
       } }));
 
       // 제목 두 벌: 자는 동안(서비스의 말) → 깬 뒤(고양이의 첫마디)
-      const head = ui.block("hp-head", { top: 92 });
+      const head = ui.block("hp-head", { top: 88 });
       const [a1, a2, a3] = lines(C.open.eyebrow, [2, 1, 2]);
       const hA = ui.headline([a1, [a2 + " ", ui.pill({ wave: true, dot: { text: "z" } })], a3], { size: 46 });
       const [b1, b2, b3] = lines(C.open.line || C.open.catLine, [1, 2, 2]);
       // 첫마디가 두 줄이면 셋째 줄은 없다. 줄에 "AI"가 있을 때만 알약으로 바꾼다
-      const hB = ui.headline([b1, b2 && swap(b2, "AI", ui.pill({ text: "AI", dot: "star" })), b3].filter(Boolean), { typed: true });
+      const hB = ui.badgedHeadline([b1, b2, b3].filter(Boolean), { token: (b2 || "").includes("AI") ? "AI" : "얘기하러", typed: true });
       const desc = el("p", "hp-body", C.open.note || C.open.desc);
       head.append(hA);
       root.append(head);
@@ -1222,10 +1316,8 @@
 
       // 묻는 쪽
       const field = ui.nameField(ctx, { label: C.name.label, placeholder: C.name.placeholder, value: ctx.data.nickname || "", caret: true, onInput: sync, onEnter: () => submit(false) });
-      field.el.querySelector(".hp-field-label").remove();
-      field.input.setAttribute("aria-label", C.name.label);
       field.el.classList.add("hp-rise"); field.el.style.setProperty("--i", 2);
-      const ask = ui.block("hp-name-ask", { top: ASK_TOP }, ui.headline(lines(C.name.title, [1, 2])), field.el);
+      const ask = ui.block("hp-name-ask", { top: ASK_TOP }, ui.badgedHeadline(lines(C.name.title, [1, 2]), { token: "뭐라고" }), field.el);
       const reply = ui.block("hp-head hp-name-reply", { top: ASK_TOP });
       reply.style.visibility = "hidden"; reply.inert = true;
       const cta = ui.cta({ label: "다음", disabled: true, pages: ctx, onPress: () => { if (mode === "ask") submit(false); else if (talk.pass()) ctx.next(cta); } });
@@ -1332,174 +1424,87 @@
     },
   });
 
-  /* ═════════════════════════ 장면: q1 (노랑) ═════════════════════════
-   * 마음 방울 네 개가 노란 색면 위를 떠다닌다(밀고 끌고 던질 수 있다). 하나를 고르면 자라서 말랑한 덩어리가 되고, 그 위에 고양이가 올라앉아 한마디 한다.
-   * 질문이 있던 자리에는 "요즘 나는 / [고른 말 ✎]"이 들어선다(고른 말은 방울에서 큰 검정 알약으로 날아온다. 누르면 다시 고른다).
-   * 아래 패널은 처음부터 떠 있다: "눌러서 고르기" + 흰 테두리의 화살표 → 고르면 고양이의 대답 + 주황 화살표.
-   * 고르기 전에는 고양이가 그 패널 너머로 얼굴을 내밀고 지켜본다(손가락을 따라 보고, 방울이 머리에 부딪히면 움찔하며 고개를 숙였다 든다).
-   * 참고: interaction-1(방울·덩어리·아래 패널과 화살표·"I'm feeling ___")의 짜임을 tone-1의 색과 모양으로 옮겼다
-   *       — 노란 색면, 흰·주황·라일락·테두리 방울, 캐릭터 뒤의 색 덩어리, 줄 안의 검정 알약, 검정 알약 + 끝의 주황 동그라미.
-   * 방울의 색은 고른 답을 되비추는 표시일 뿐이다(자리 순서대로 줬고, 좋다·나쁘다를 뜻하지 않는다).
-   */
+  /* 요즘 마음: 떠다니는 원형 선택지와 제목 오른쪽의 고양이. */
   addScene({
     id: "q1", field: "yellow", states: ["idle", "chosen", "tough"],
     build(ctx) {
-      const { el: root, copy: C } = ctx;
-      const Q = C.Q.lately;
-      // 방울의 자리·크기·덩어리 모양. 네 가지 모두 검은 고양이가 올라앉을 수 있는 색이다(흰색 · 주황 · 라일락 · 바탕색에 잉크 테두리).
-      const LOOK = [
-        { color: "var(--hp-white)", r: 82, x: 104, y: 296, shape: [[4, 0.075, 45]] },
-        { color: "var(--hp-orange)", r: 76, x: 290, y: 302, shape: [[5, 0.13, -90]] },
-        { color: "var(--hp-lilac)", r: 74, x: 96, y: 464, shape: [[3, 0.1, -90]] },
-        // 테두리 방울: 덩어리가 되면 굵은 선(4px)의 둥근 돔이 되고, 그 뒤에서 주황 별이 내다본다(참고 이미지의 유리 돔과 별). 고양이는 돔 안에 다 들어오게 조금 작게 앉는다
-        { color: "var(--hp-yellow)", line: true, stroke: 4, dome: true, r: 77, x: 296, y: 464, shape: [[2, 0, 0]] },
+      const { el: root, copy: C } = ctx, Q = C.Q.lately;
+      let choice = -1;
+      const bar = ui.topbar(ctx, { back: (button) => choice >= 0 ? field.release() : ctx.back(button), pages: true });
+      const title = ui.badgedHeadline(["요즘", "마음은", "어때요?"], { token: "마음" });
+      root.append(bar, ui.block("hp-head hp-q1-head", { top: 88 }, title));
+      // 네 반응은 같은 기본 프레임에서 시작하고, 재생 뒤에는 각 영상의 마지막 프레임을 유지한다.
+      const { el: cat, still } = ui.titleCat({ cls: "hp-q1-title-cat" });
+      still.classList.add("hp-q1-default");
+      const okay = el("video", "hp-q1-video hp-q1-okay");
+      okay.src = "/characters/reactions/okay-front-4s-v1.webm";
+      okay.muted = true; okay.playsInline = true; okay.preload = "auto";
+      const tired = el("video", "hp-q1-video hp-q1-tired");
+      tired.src = "/characters/reactions/tired-front-2s-v4.webm";
+      tired.muted = true; tired.playsInline = true; tired.preload = "auto";
+      const heavy = el("video", "hp-q1-video hp-q1-heavy");
+      heavy.src = "/characters/reactions/heavy-front-4s-v4.webm";
+      heavy.muted = true; heavy.playsInline = true; heavy.preload = "auto";
+      const unsure = el("video", "hp-q1-video hp-q1-unsure");
+      unsure.src = "/characters/reactions/unsure-front-4s-v2.webm";
+      unsure.muted = true; unsure.playsInline = true; unsure.preload = "auto";
+      const videos = [okay, tired, heavy, unsure];
+      cat.append(still, ...videos); root.querySelector(".hp-q1-head").append(cat);
+      let playId = 0;
+      function resetReaction() {
+        playId++;
+        videos.forEach((video) => { video.pause(); video.currentTime = 0; });
+        delete cat.dataset.playing;
+      }
+      videos.forEach((video) => { ctx.on(video, "ended", () => video.pause()); ctx.on(video, "error", resetReaction); });
+      const looks = [
+        { color: "var(--hp-white)", r: 82, x: 104, y: 360, shape: [[4, .075, 45]] },
+        { color: "var(--hp-orange)", r: 76, x: 290, y: 366, shape: [[5, .13, -90]] },
+        { color: "var(--hp-lilac)", r: 74, x: 96, y: 528, shape: [[3, .1, -90]] },
+        { color: "#BFE6C8", r: 77, x: 296, y: 528, shape: "tilted-square" },
       ];
-      const items = Q.options.map((label, i) => ({ label, ...LOOK[i % LOOK.length] }));
-      // 방울 사이를 떠다니는 작은 것들: 참고 이미지의 통통한 하트 하나와 테두리 반짝이 둘뿐이다(점은 참고 이미지에 없다)
-      const DOTS = [{ mark: "heart", rot: -14, r: 15, x: 200, y: 390 }, { mark: "sparkle", rot: 12, r: 13, x: 356, y: 224 }, { mark: "sparkle", rot: -10, r: 9, x: 30, y: 548 }];
-      const isTough = (i) => Q.options[i] === C.TOUGH;
-      const SAY = "요즘 나는";                                   // 고른 답 앞에 붙는 말(브리프의 "요즘 나는 / 조금 지쳤어요" 틀)
-      const PANEL_TOP = 726;                                     // 아래 패널의 윗변. 고르기 전에는 고양이가 그 너머로 내다본다
-      const HERO = { x: 195, y: 460, r: 180 }, HERO_TOUGH = { x: 195, y: 366, r: 134 }, HERO_DOME = { x: 195, y: 458, r: 170 };
-      const heroOf = (i) => (isTough(i) ? HERO_TOUGH : LOOK[i % LOOK.length].dome ? HERO_DOME : HERO);
-      // 내다보는 고양이: 코와 입 아래(앉은 그림 높이의 48%. 입은 44.7%에서 끝난다)가 패널 윗변에 걸린다. 머리가 그림 가운데보다 조금 왼쪽이라 8px 오른쪽에 세운다.
-      const LURK_H = 352, LURK_TOP = PANEL_TOP - 0.48 * LURK_H;
-      const LURK = { x: 203, ground: LURK_TOP + LURK_H, h: LURK_H }, DUCK = { ...LURK, ground: LURK.ground + 210 };
-      let choice = -1, extras = [], bumped = 0;
-      const talk = ui.speech();
-
-      const bar = ui.topbar(ctx, { back: (b) => (choice >= 0 ? field.release() : ctx.back(b)), skip: true, pages: true });      // 아래 패널 위에는 고양이가 있으므로 쪽 표시는 위 줄에
-      const [q1, q2] = lines(Q.text, [1, 2]);
-      const hAsk = ui.headline([[q1 + " ", ui.pill({ swatch: LOOK.map((l) => l.color) })], q2]);
-      const head = ui.block("hp-head hp-q1-head", { top: 88 }, hAsk);
-      root.append(bar, head);
-
-      // 고른 뒤에 덩어리 위로 올라오는 고양이(덩어리 색이 조금 어두워진 납작한 그림자가 깔린다)
-      const cat = ctx.cat({ x: 195, ground: 520, h: 20 }, { z: 5 });
-      cat.el.style.opacity = "0"; cat.el.parentNode.classList.add("hp-q1-cat");
-
-      // 패널 너머로 내다보는 고양이. 무대(.hp-q1-lurk)는 패널 가운데에서 잘려서 패널 아래로는 보이지 않는다.
-      const lurk = el("div", "hp-catlayer hp-q1-lurk"), look = el("div", "hp-q1-look"), dip = el("div", "hp-q1-look");
-      look.append(dip); lurk.append(look); root.append(lurk);
-      const peek = ctx.cat(ctx.instant ? LURK : DUCK, { layer: dip });
-      peek.hitTest = (p) => p.y < PANEL_TOP;                     // 패널에 가려진 몸은 눌리지 않는다
-      /** 방울이 머리에 부딪혔다: 움찔하며 고개를 살짝 숙였다 든다 */
-      const flinch = () => {
-        const now = performance.now(); if (choice >= 0 || now - bumped < 520) return; bumped = now;
-        peek.pop(0.9);
-        if (!reduced() && dip.animate) dip.animate([{ transform: "translate3d(0,0,0)" }, { transform: "translate3d(0,10px,0)", offset: 0.26 }, { transform: "translate3d(0,-2px,0)", offset: 0.68 }, { transform: "translate3d(0,0,0)" }], { duration: 440, easing: EASE.out });
-      };
-      // 눈길: 손가락(포인터)이 가는 쪽으로 고개를 슬쩍 돌리고, 위쪽이면 조금 더 내다본다
-      const glance = (e) => {
-        if (choice >= 0 || reduced()) return;
-        const p = ctx.point(e), dx = clamp((p.x - 195) / 160, -1, 1), dy = clamp((p.y - PANEL_TOP) / 420, -1, 0.2);
-        look.style.setProperty("--gx", (dx * 9).toFixed(1) + "px"); look.style.setProperty("--gy", (dy * 12).toFixed(1) + "px"); look.style.setProperty("--gr", (dx * 2.2).toFixed(2) + "deg");
-      };
-      ctx.on(root, "pointermove", glance); ctx.on(root, "pointerdown", glance);
-
+      let titleShift = 0;
+      const fieldBounds = { l: 10, t: 280, r: W - 10, b: 718 };
       const field = ui.bubbles(ctx, {
-        items, dots: DOTS, bounds: { l: 10, t: 206, r: W - 10, b: PANEL_TOP - 8 },
-        // 고양이의 머리와 두 귀: 방울이 튕겨 나가고 고양이가 움찔한다
-        solids: [{ x: 195, y: LURK_TOP + 0.42 * LURK_H, r: 0.345 * LURK_H, onHit: flinch }, ...[100, 570].map((ex) => ({ x: LURK.x + (ex - 367) * LURK_H / 1000, y: LURK_TOP + 0.072 * LURK_H, r: 0.072 * LURK_H, onHit: flinch }))],
-        hero: (it, i) => heroOf(i),
-        onPick: picked, onRelease: released,
+        items: Q.options.map((label, i) => ({ label, ...looks[i] })),
+        dots: [{ mark: "heart", rot: -14, r: 15, x: 200, y: 454 }, { mark: "sparkle", rot: 12, r: 13, x: 356, y: 288 }, { mark: "sparkle", rot: -10, r: 9, x: 30, y: 612 }],
+        bounds: fieldBounds,
+        hero: () => ({ x: 195, y: 458 + titleShift, r: 170 }), onPick: pick, onRelease: clear,
       });
-      // 돔 뒤에서 내다보는 주황 별(테두리 방울을 골랐을 때만 나타난다). 방울들보다 뒤에 깔린다
-      const STAR = { x: 74, y: 596, r: 84 };
-      const star = ui.shape(ctx, { color: "var(--hp-orange)", shape: [[5, 0.13, -90]], ...STAR, r: 0, m: 1 });
-      root.append(star.el, field.el);
+      const group = field.el;
+      const go = ui.cta({ label: "다음", disabled: true, pages: ctx, onPress: () => { if (choice >= 0) ctx.next(go); } });
+      const footer = ui.questionFooter(ctx, go, Q.id);
+      root.append(group, footer);
+      ui.afterTitle(ctx, title, top => {
+        const next = top - 278, delta = next - titleShift; titleShift = next;
+        fieldBounds.t = top;
+        field.bodies.forEach(body => { body.homeY += delta; if (field.picked < 0) { body.hy += delta; body.y += delta; } });
+      });
 
-      // 아래 패널: 검정 알약 + 끝의 둥근 화살표. 안내 → 고양이의 대답. 화살표는 고르기 전에는 흰 테두리뿐이다(회색은 쓰지 않는다).
-      const hint = el("p", "hp-panel-line is-hint", "눌러서 고르기");
-      const slot = el("div", "hp-panel-slot", hint);
-      const go = el("button", "hp-round hp-panel-go", icon("arrow")); go.type = "button"; go.disabled = true; go.setAttribute("aria-label", "계속");
-      go.addEventListener("click", () => { if (talk.pass()) ctx.next(go); });
-      const panel = el("div", "hp-panel hp-rise", slot, go); panel.style.setProperty("--i", 5);
-      root.append(panel);
-
-      function picked(i, instant, focused) {
-        choice = i;
-        const it = items[i], tough = isTough(i), T = heroOf(i);
-        root.dataset.state = tough ? "tough" : "chosen";
-        ctx.set({ answers: { lately: it.label } });
-        if (!instant && !tough) sfx("pop");      // 많이 힘들다는 답에는 통통 튀는 소리를 내지 않는다
-        if (bar.skip) bar.skip.classList.add("is-off");
-        hAsk.querySelectorAll(".hp-l").forEach((l, n) => { l.classList.remove("hp-rise"); l.style.setProperty("--i", n); l.classList.add("hp-leave"); });
-        hAsk.style.visibility = instant ? "hidden" : ""; hAsk.setAttribute("aria-hidden", "true");
-        // 내다보던 고양이는 패널 뒤로 쏙 내려간다
-        peek.away = true; peek.place(DUCK, { ms: instant ? 0 : 300, easing: EASE.inout });
-
-        // 큰 문장: 질문이 있던 자리에 "요즘 나는 / [고른 말 ✎]". 고른 말은 방울에서 검정 알약으로 날아온다.
-        const pill = ui.pill({ text: it.label, dot: "pencil", onPress: () => field.release(), label: `${it.label}, 다시 고르기` });
-        pill.classList.add("hp-pill-answer");
-        const say = ui.headline([SAY, [pill]], { tag: "p", cls: "hp-q1-say" });
-        say.style.setProperty("--d", "230ms");
-        pill.parentNode.classList.remove("hp-rise");
-        head.append(say);
-        if (!instant) {
-          const b = field.bodies[i], s = 0.6;
-          ui.fly({ x: b.x - (pill.offsetWidth * s) / 2, y: b.y - (pill.offsetHeight * s) / 2, s }, pill, root, { duration: 760, live: true });      // 날아가는 동안에도 눌린다(다시 고르기)
-        }
-
-        // 고양이가 덩어리 위에 통 올라앉는다(덩어리가 천천히 돌아도 발밑이 늘 덩어리 안에 있게 조금 위쪽에). 돔에서는 귀 끝까지 선 안쪽에 들어오게 조금 작게, 조금 아래에
-        const seat = it.dome ? { x: T.x, ground: T.y + T.r * 0.7, h: T.r * 1.42 } : { x: T.x, ground: T.y + T.r * 0.66, h: T.r * 1.52 };
-        if (it.dome) { if (instant) star.set(STAR); else ctx.later(() => { if (choice === i) star.to(STAR, { kick: 5 }); }, 380); }
-        cat.pose("sit");
-        if (instant) { cat.place(seat); cat.el.style.opacity = "1"; }
-        else {
-          cat.place({ ...seat, h: 24 });
-          ctx.later(() => { if (choice !== i) return; cat.el.style.opacity = "1"; cat.place(seat, { ms: 640, easing: EASE.spring }); }, 430);
-        }
-
-        extras = [say];
-        if (tough) {
-          // 109 안내(많이 힘들어요): 고르자마자, 고양이의 말보다 먼저 보인다
-          const call = el("a", "hp-sos-call", el("span", "hp-sos-num", icon("phone"), el("b", "", "109")), el("span", "hp-sos-go", "전화하기", icon("chev")));
-          call.href = "tel:109"; call.setAttribute("aria-label", "109에 전화하기");
-          const sos = el("div", "hp-sos" + (instant ? "" : " hp-popin"), el("strong", "hp-sos-title", C.sos.tough), el("span", "hp-sos-sub", C.sos.sub), call);
-          sos.setAttribute("role", "note");
-          root.append(sos); extras.push(sos);
-        } else {
-          // 덩어리 둘레의 하트·반짝이(참고 이미지의 작은 표시)
-          [["heart", { x: 350, y: 300, s: 40, r: 10, float: true }], ["sparkle", { x: 26, y: 352, s: 26, r: -12, twinkle: true, d: 500 }], ["sparkle", { x: 356, y: 628, s: 18, r: 10, twinkle: true, d: 1300 }]]
-            .forEach(([kind, o], n) => { const m = ui.mark(kind, { ...o, pop: !instant, d: instant ? o.d : 620 + n * 110 }); root.append(m); extras.push(m); });
-        }
-
-        // 아래 패널: 안내가 고양이의 대답으로 바뀌고 화살표가 주황으로 켜진다
-        const line = ui.typed(C.REPLIES.lately[it.label], "hp-panel-line");
-        slot.replaceChildren(line); line.wrap();
-        go.disabled = false;
-        if (focused) go.focus({ preventScroll: true });           // 키보드로 골랐다면 포커스는 화살표로
-        const spoken = () => { if (choice === i) line.finish(); };
-        if (instant) { line.finish(); talk.end(ctx.state != null); }
-        else {
-          talk.begin(spoken);
-          ctx.later(() => { if (choice !== i || !talk.speaking) return; cat.pop(0.9); line.play({ speed: 40 }).then(() => talk.end()); }, 860);
-        }
+      function render() {
+        root.dataset.state = choice < 0 ? "idle" : Q.options[choice] === C.TOUGH ? "tough" : "chosen";
+        go.disabled = choice < 0;
+        footer.skip.classList.toggle("is-off", choice >= 0);
       }
-
-      function released(i) {
-        choice = -1; root.dataset.state = "idle";
-        talk.reset();
-        const refocus = extras.some((n) => n.contains(focusedIn(root))) || focusedIn(root) === go;      // 고른 말(다시 고르기)이나 화살표에 있던 포커스는 그 방울로 돌아간다
-        extras.forEach((n) => n.remove()); extras = [];
-        root.querySelectorAll(".hp-ghost").forEach((g) => g.remove());
-        slot.replaceChildren(hint); go.disabled = true;
-        hAsk.style.visibility = ""; hAsk.removeAttribute("aria-hidden");
-        hAsk.querySelectorAll(".hp-l").forEach((l) => { l.classList.remove("hp-leave"); l.classList.add("hp-rise"); });
-        if (refocus && field.bodies[i]) field.bodies[i].el.focus({ preventScroll: true });
-        cat.el.style.opacity = "0";
-        if (ctx.instant) star.set({ r: 0 }); else star.to({ r: 0 });
-        peek.away = false; peek.place(LURK, { ms: 620, easing: EASE.spring });
-        if (bar.skip) bar.skip.classList.remove("is-off");
-        ctx.set({ answers: { lately: null } });
+      function pick(i, instant = false) {
+        choice = i; ctx.set({ answers: { lately: Q.options[i] } }); render();
+        resetReaction();
+        if (instant || reduced()) return;
+        const id = playId, video = videos[i];
+        video.play().then(() => {
+          if (id === playId) cat.dataset.playing = ["okay", "tired", "heavy", "unsure"][i];
+        }).catch(() => { if (id === playId) resetReaction(); });
       }
-
+      function clear() {
+        choice = -1; resetReaction();
+        ctx.set({ answers: { lately: null } }); render();
+      }
+      ctx.onDestroy(() => { resetReaction(); videos.forEach((video) => { video.removeAttribute("src"); video.load(); }); });
       const before = Q.options.indexOf(ctx.data.answers.lately);
       if (ctx.state === "chosen") field.pick(1, true);
       else if (ctx.state === "tough") field.pick(Q.options.indexOf(C.TOUGH), true);
-      else if (ctx.state == null && before >= 0) field.pick(before, true);      // 돌아왔을 때: 골랐던 답 그대로
-      else if (!ctx.instant) ctx.later(() => { if (choice < 0) peek.place(LURK, { ms: 700, easing: EASE.spring }); }, 760);      // 방울이 다 부푼 뒤에 고개를 내민다
+      else if (ctx.state == null && before >= 0) field.pick(before, true);
+      else render();
     },
   });
 
@@ -1514,51 +1519,48 @@
     build(ctx) {
       const { el: root, copy: C } = ctx;
       const Q = C.Q.want;
-      // NEAR: "계속" 버튼의 윗변(y 756)에 발이 닿게 앉는다. 걷는 그림은 원본이 작아서(493px) h 230까지만 키우고, 앉은 뒤에 고해상도 그림으로 한 번 더 다가온다.
-      const FAR = { x: 195, ground: 750, h: 188 }, NEAR = { x: 195, ground: 756, h: 280 }, WALK_H = 230;
-      let choice = -1, arrived = false, lock = 0;
+      let choice = -1;
 
-      const bar = ui.topbar(ctx, { skip: true, pages: true });      // 고양이가 버튼 위에 앉으므로 쪽 표시는 위 줄에
-      // 질문: 큰 제목 + 그 아래 본문 한 줄(참고 이미지의 본문 자리). 고르고 나면 제목은 조금 작아지고 본문 줄은 물러난다(CSS).
-      const [t1, t2] = lines(Q.text, [3, 2]);
-      const sub = el("p", "hp-body hp-q3-sub hp-rise", C.eyebrows.want); sub.style.setProperty("--i", 2);
-      root.append(bar, ui.block("hp-head hp-q3-head", { top: 88 }, ui.headline([swap(t1, "시간", ui.pill({ text: "시간", dot: "clock" })), t2], { size: 38 }), sub));
+      const bar = ui.topbar(ctx, { pages: true });      // 고양이가 버튼 위에 앉으므로 쪽 표시는 위 줄에
+      // 다른 질문과 같은 기본 제목 크기와 위치를 유지한다.
+      const titleRows = lines(Q.text, [2, 1, 2]);
+      const title = ui.badgedHeadline(titleRows, { token: "시간" });
+      root.append(bar, ui.block("hp-head hp-q3-head", { top: 88 }, title));
 
-      const list = ui.block("hp-opts hp-q3-list", { top: 246 }); list.setAttribute("role", "group"); list.setAttribute("aria-label", Q.text);
+      const list = ui.block("hp-opts hp-q3-list", { top: 304 }); list.setAttribute("role", "group"); list.setAttribute("aria-label", Q.text);
       const opts = Q.options.map((label, i) => {
-        const o = ui.option({ label, reply: C.REPLIES.want[label], onPick: () => pick(i, false) });
+        const o = ui.option({ label, onPick: () => pick(i, false) });
+        o.querySelector(".hp-opt-tick").innerHTML = ICONS.checkFilled;
         o.classList.add("hp-rise"); o.style.setProperty("--i", i + 3);
         list.append(o); return o;
       });
 
-      // 고양이의 자리(노란 동그라미). 고양이를 따라 커지면서 아래로 내려가 언덕이 된다.
+      // 원은 선택 후의 언덕 크기·위치로 고정한다.
       const disc = el("div", "hp-q3-disc"); disc.setAttribute("aria-hidden", "true");
+      disc.style.transform = "translate3d(75px, 680px, 0) scale(1.7833333333)";
       root.append(disc);
-      const cat = ctx.cat(FAR);
-      if (!reduced()) cat.pose("groom");
-      function seat() {
-        const s = cat.state, p = clamp((s.h - FAR.h) / (NEAR.h - FAR.h), 0, 1);
-        const r = lerp(124, 214, p), cy = lerp(s.ground - s.h * 0.46, s.ground + 44, p);
-        disc.style.transform = `translate3d(${(s.x - 120).toFixed(1)}px, ${(cy - 120).toFixed(1)}px, 0) scale(${(r / 120).toFixed(4)})`;
-      }
-      seat();
-      ctx.loop(() => { if (cat.state.walking) seat(); });
 
       const cta = ui.cta({
-        label: "계속", hidden: true,
+        label: "다음", disabled: true,
         onPress: () => {
-          const line = choice >= 0 && opts[choice].line, now = performance.now();
-          if (line && line.typing) { line.finish(); lock = now; return; }      // 적히는 중이면 먼저 대답을 다 보여 준다
-          if (now - lock < 380) return;
-          cat.settle(); cat.place(NEAR); cat.el.style.setProperty("--hc-shadow-o", "0"); seat(); ctx.next(cta);
+          if (choice < 0) return;
+          ctx.next(cta);
         },
       });
-      root.append(list, cta);
+      const footer = ui.questionFooter(ctx, cta, Q.id);
+      root.append(list, footer);
+      const catOffsetY = 20;
+      const cat = ctx.cat({ x: 195, ground: footer.offsetTop + catOffsetY, h: 230 });
+      cat.el.style.setProperty("--hc-shadow-o", "0");
+      ui.afterTitle(ctx, title, top => {
+        list.style.top = top + "px";
+        const ground = footer.offsetTop;
+        cat.place({ x: 195, ground: ground + catOffsetY, h: Math.min(230, ground - top - list.offsetHeight) });
+      });
 
-      // 하트·반짝이(참고 이미지의 작은 표시): 처음부터 멀리 있는 고양이 곁에 떠 있고, 고양이가 다가오면 같이 자리를 옮긴다. [종류, 모양, 먼 자리, 가까운 자리]
-      const MARKS = [["heart", { s: 40, r: 10, float: true }, [336, 566], [346, 500]], ["sparkle", { s: 26, r: -12, twinkle: true, d: 400 }, [48, 590], [44, 536]], ["sparkle", { s: 16, r: 8, twinkle: true, d: 1200 }, [348, 712], [356, 626]]];
-      const marks = MARKS.map(([kind, o, far], n) => { const m = ui.mark(kind, { ...o, x: far[0], y: far[1], pop: !ctx.instant, d: ctx.instant ? o.d : 760 + n * 110 }); m.classList.add("hp-q3-mark"); root.append(m); return m; });
-      const marksTo = (near) => marks.forEach((m, n) => { const p = MARKS[n][near ? 3 : 2]; m.style.setProperty("--x", p[0]); m.style.setProperty("--y", p[1]); });
+      // 장식도 선택 전후 같은 자리에 둔다.
+      [["heart", { s: 40, r: 10, x: 346, y: 500 }], ["sparkle", { s: 26, r: -12, x: 44, y: 536 }], ["sparkle", { s: 16, r: 8, x: 356, y: 626 }]]
+        .forEach(([kind, options]) => root.append(ui.mark(kind, options)));
 
       function pick(i, instant) {
         if (choice === i) return;
@@ -1567,85 +1569,66 @@
         choice = i; opts[i].select(instant);
         root.dataset.state = "chosen";
         ctx.set({ answers: { want: Q.options[i] } });
-        cta.show(); bar.skip.classList.add("is-off");
-        // 버튼 위에 앉으면 발밑의 납작한 그림자는 거둔다(검정 버튼이 바닥이다)
-        const sit = () => { arrived = true; cat.el.style.setProperty("--hc-shadow-o", "0"); };
-        if (instant) { cat.place(NEAR).pose("sit"); sit(); seat(); marksTo(true); return; }
-        if (first) {
-          cat.pop(0.7); ctx.later(() => marksTo(true), 420);
-          // 걸어오는 동안은 작게(걷는 그림이 흐려지지 않고, 세운 꼬리가 알약에 닿지 않게), 앉으면서 마지막으로 한 번 더 크게 다가온다
-          for (let k = 0; k < 9; k++) ctx.later(() => { if (!arrived && root.isConnected) sfx("step"); }, 220 + k * 250);
-          cat.walkTo({ ...NEAR, h: WALK_H }, { duration: 2500 }).then(() => {
-            if (arrived) return; sit();
-            if (!root.isConnected) return;
-            disc.classList.add("is-settling");
-            cat.place(NEAR, { ms: 520, easing: EASE.spring }); seat();
-            cat.pop(1.3); sfx("pop");
-            ui.burst(root, NEAR.x, NEAR.ground - NEAR.h * 0.9, [{ kind: "sparkle", dx: -122, dy: -18, s: 22, r: -10 }, { kind: "sparkle", dx: 118, dy: -40, s: 16, r: 8, delay: 60 }, { kind: "sparkle", dx: -96, dy: 56, s: 14, r: 0, delay: 110 }]);
-          });
-        } else if (arrived) cat.pop(1);
+        cta.disabled = false;
+        // 선택은 카드 상태만 바꾸고 고양이 위치와 자세는 유지한다.
       }
 
       const before = Q.options.indexOf(ctx.data.answers.want);
       if (ctx.state === "chosen") pick(0, true);
-      else if (ctx.state == null && before >= 0) pick(before, true);            // 돌아왔을 때: 골랐던 답 그대로
+      else if (ctx.state == null && before >= 0) pick(before, ctx.instant || reduced());            // 돌아왔을 때: 골랐던 답 그대로
     },
   });
 
   /* ═════════════════════════ 장면: naming (라일락) ═════════════════════════
    * 고양이 이름 짓기. 아주 큰 이름(깜박이는 커서·밑줄, 누르면 통째로 선택) + 주사위(이름이 슬롯처럼 구른다). 고양이는 주황 언덕 앞에서 크게 올려다본다.
-   * 정하면 언덕이 다섯 갈래 별로 모이고 그 위에서 식빵 자세로 골골거린다. 하트 하나와 반짝이 둘이 튀고, 버튼 위에 "준비됐어요" 한 줄이 켜진다.
-   * 참고: tone-1(라일락 색면 + 주황 별 덩어리 — 참고 이미지의 라일락 화면, 하트·반짝이·검정 알약).
-   *       짜임은 layout-4(이름 화면: 작은 이름표·아주 큰 이름과 커서·주사위·알약 버튼), interaction-2(마지막 줄이 체크로 바뀐다)
+   * 하단에서 이름을 확정하면 기본 자세의 고양이와 대화 시작 버튼을 보여 준다.
    */
   addScene({
     id: "naming", field: "lilac", states: ["idle", "done"],
     build(ctx) {
       const { el: root, copy: C } = ctx;
       const N = C.naming;
-      // 식빵 그림은 원본이 작아서(428px) h 240까지만 쓴다(너비 230px, 2배 화면에서 1.08배)
-      const PEEK = { x: 195, ground: 1012, h: 476 }, LOAF = { x: 195, ground: 610, h: 240 };
-      const FORM_TOP = 198;
+      const PEEK = { x: 195, ground: 1012, h: 476 }, SEATED = { x: 195, ground: 610, h: 240 };
+      let FORM_TOP = 198;
       let mode = "ask", rolling = false, calm = 0, hLine = null, extras = [];
-      const talk = ui.speech(), intro = ui.speech();      // intro = 처음의 한마디("내 이름? 없어. 네가 지어 봐.")를 지키는 문지기
+      const talk = ui.speech(), intro = ui.speech();      // intro는 이름을 묻는 첫 대사의 재생 상태를 관리한다.
 
       root.append(ui.topbar(ctx, { back: (b) => (mode === "done" ? edit() : ctx.back(b)), pages: true }));      // 아래에는 고양이 얼굴이 있으므로 쪽 표시는 위 줄에
-      // 고양이 뒤의 주황 덩어리(참고 이미지의 라일락 화면): 올려다보는 얼굴 뒤에 둥근 언덕으로 솟아 있다가, 이름을 정하면 위로 모여 다섯 갈래 별이 되어 식빵 굽는 자리가 된다
-      const BACK = { x: 195, y: 862, r: 302, m: 0 }, SPOT = { x: 195, y: LOAF.ground - 80, r: 168, m: 1 };
+      // 고양이 뒤의 주황 덩어리(참고 이미지의 라일락 화면): 올려다보는 얼굴 뒤에 둥근 언덕으로 솟아 있다가, 이름을 정하면 위로 모여 다섯 갈래 별이 되어 앉는 자리가 된다
+      const BACK = { x: 195, y: 862, r: 302, m: 0 }, SPOT = { x: 195, y: SEATED.ground - 80, r: 168, m: 1 };
       const spot = ui.shape(ctx, { color: "var(--hp-orange)", shape: [[5, 0.12, -90]], ...BACK });
       root.append(spot.el);
       const cat = ctx.cat(PEEK, { z: 3 });
-      // 올려다보는 얼굴 곁의 하트·반짝이(이름을 정하면 celebrate의 것들이 대신한다)
+      // 올려다보는 얼굴 곁의 하트·반짝이(이름을 정하면 완료 화면의 장식으로 바뀐다)
       [["heart", { x: 352, y: 488, s: 34, r: 12, float: true }], ["sparkle", { x: 34, y: 506, s: 24, r: -12, twinkle: true, d: 600 }]]
         .forEach(([kind, o], n) => { const m = ui.mark(kind, { ...o, pop: !ctx.instant, d: ctx.instant ? o.d : 1000 + n * 120 }); m.classList.add("hp-naming-mark"); root.append(m); });
 
       // 이름이 없을 때 고양이가 하는 말
-      const hAsk = ui.headline(lines(N.line(""), [2, 3]), { typed: true, size: 34 });
-      const head = ui.block("hp-head hp-naming-head", { top: 90 }, hAsk);
+      const hAsk = ui.badgedHeadline(lines(N.line(""), [2, 3]), { token: "이름", typed: true, size: 34 });
+      const head = ui.block("hp-head hp-naming-head", { top: 88 }, hAsk);
 
       // 이름을 정하는 버튼·Enter: 고양이의 첫 한마디가 적히는 중이면 그 줄부터 다 보여 준다(두 번 빠르게 눌러도 건너뛰지 않는다)
       const decide = () => { if (intro.pass()) confirm(false); };
-      const field = ui.nameField(ctx, { label: N.label, placeholder: N.placeholder, value: ctx.data.companion || N.defaultName, size: 96, selectOnFocus: true, caret: true, rule: true, onInput: sync, onEnter: decide });
+      const field = ui.nameField(ctx, { label: N.label, placeholder: N.placeholder, value: ctx.data.companion || N.defaultName, selectOnFocus: true, caret: true, rule: true, onInput: sync, onEnter: decide });
       const dice = el("button", "hp-round hp-dice", icon("dice")); dice.type = "button"; dice.setAttribute("aria-label", "이름 굴리기");
       // 버튼의 글("○○로 할게요"): 이름이 길면 이름만 말줄임표로 줄고 "로 할게요"는 남는다
       const tailOf = (name) => { const full = N.cta(name); return name && full.startsWith(name) ? full.slice(name.length) : ""; };
       const setOk = (name, instant) => ok.setLabel(N.cta(name), instant, tailOf(name));
       const ok = ui.cta({ label: N.cta(field.clean()), tail: tailOf(field.clean()), onPress: decide });
-      const row = el("div", "hp-row", dice, ok);
-      const form = ui.block("hp-naming-form hp-rise", { top: FORM_TOP }, field.el, row);
+      ok.classList.add("hp-naming-confirm");
+      const form = ui.block("hp-naming-form hp-rise", { top: FORM_TOP }, field.el, dice);
       form.style.setProperty("--i", 3);
-      const start = ui.cta({ label: C.done.cta, hidden: true, onPress: () => { if (talk.pass()) ctx.next(start); } });
+      const start = ui.cta({ label: C.done.cta, onPress: () => { if (talk.pass()) ctx.next(start); } });
       start.addEventListener("blur", () => start.classList.remove("is-quiet"));
-      // "준비됐어요": 고양이의 말이 끝나면 동그라미가 체크로 바뀌며 글자가 펼쳐진다
-      const ready = el("p", "hp-ready", el("span", "hp-ready-dot", icon("check")), el("span", "hp-ready-text", C.done.title));
-      ready.setAttribute("aria-hidden", "true");      // 켜지기 전에는 읽히지 않는다
-      root.append(head, form, ready, start);
+      root.append(head, form, ok);
+      ui.afterTitle(ctx, hAsk, top => { FORM_TOP = top; form.style.top = top + "px"; });
 
       /** 키보드가 올라오면: 고양이의 말은 물러나고 이름·버튼이 위로 붙고, 고양이는 키보드 너머로 눈만 내민다. */
       function layout() {
         const up = mode === "ask" && ctx.kb > 0;
         root.classList.toggle("is-typing", up);
         if (mode !== "ask") return;
+        ok.style.bottom = up ? ctx.kb + 12 + "px" : "";
         const rise = up ? 96 : 0, vb = H - ctx.kb;
         form.style.transform = rise ? `translate3d(0, ${-rise}px, 0)` : "";
         cat.place(up ? { x: 195, h: 300, ground: Math.max(vb + 150, FORM_TOP - rise + 228 + 300) } : PEEK, { ms: ctx.instant ? 0 : 560, easing: EASE.soft });
@@ -1657,7 +1640,7 @@
       function sync(typedNow) {
         field.fit();
         const name = field.clean();
-        setOk(name, !typedNow); ok.disabled = !name;
+        setOk(name, !typedNow); ok.disabled = !name || rolling;
         if (typedNow) curious();
       }
       function curious() {
@@ -1672,68 +1655,69 @@
         const cur = field.clean(), pool = N.names.filter((n) => n !== cur);
         const last = pool[Math.floor(Math.random() * pool.length)];
         const mid = pool.filter((n) => n !== last).sort(() => Math.random() - 0.5).slice(0, 5);
-        rolling = true; curious();
+        rolling = true; ok.disabled = true;
+        ok.setAttribute("aria-busy", "true"); curious();
         if (dice.animate && !reduced()) dice.animate([{ transform: "rotate(0) scale(1)" }, { transform: "rotate(-200deg) scale(.84)", offset: 0.35 }, { transform: "rotate(-360deg) scale(1)" }], { duration: 760, easing: EASE.soft });
         // 버튼의 글은 새 이름이 자리에 들어설 때 같이 바뀐다
-        field.roll([cur || " ", ...mid, last], (name) => { if (mode === "ask") { setOk(name); ok.disabled = false; } }).then(() => {
-          rolling = false; setOk(field.clean()); ok.disabled = false;
+        field.roll([cur || " ", ...mid, last], (name) => { if (mode === "ask") setOk(name); }).then(() => {
+          rolling = false; ok.removeAttribute("aria-busy"); sync(false);
           if (mode === "ask") { cat.pop(0.9); clearTimeout(calm); calm = ctx.later(() => { if (mode === "ask") cat.pose("sit"); }, 700); }
         });
       });
 
-      function celebrate(pop) {
-        // 참고 이미지처럼 하트 하나와 반짝이 둘, 그리고 "골골" 한 번
-        const marks = [["heart", { x: 46, y: 412, s: 42, r: -10, float: true }], ["sparkle", { x: 344, y: 424, s: 26, r: 12, twinkle: true, d: 400 }], ["sparkle", { x: 34, y: 628, s: 18, r: -10, twinkle: true, d: 1300 }]]
-          .map(([kind, o], i) => ui.mark(kind, { ...o, pop, d: pop ? 200 + i * 90 : o.d }));
-        const purrs = [[272, 356, 10, 0]].map(([x, y, r, n]) => { const p = el("span", "hp-purr" + (pop ? " hp-popin" : ""), N.purr); p.setAttribute("aria-hidden", "true"); p.style.cssText = `left:${x}px;top:${y}px;--r:${r}deg;--n:${n};--i:${n + 4}`; return p; });
-        extras = [...marks, ...purrs]; extras.forEach((m) => root.append(m));
+      function showIdleMarks() {
+        if (extras.length) return;
+        extras = [
+          ui.mark("heart", { x: 46, y: 412, s: 42, r: -10, float: true }),
+          ui.mark("sparkle", { x: 344, y: 424, s: 26, r: 12, float: true, d: 300 }),
+          ui.mark("sparkle", { x: 34, y: 628, s: 18, r: -4, float: true, d: 900 }),
+        ];
+        root.append(...extras);
       }
 
       function confirm(instant) {
         const name = field.clean();
         if (!name || mode === "done" || rolling) return;
         mode = "done"; root.dataset.state = "done";
+        const active = focusedIn(root);
+        const focusStart = active === ok || form.contains(active);
+        ok.replaceWith(start);
         clearTimeout(calm);
         field.input.value = name; field.fit();
         ctx.set({ companion: name });
         const made = ui.nameLine(N.line, [1, 1, 4], name, () => edit());
         const mine = made.h; hLine = mine;
         /** 고양이의 말이 다 보인 상태(끝 상태) */
-        const spoken = (pop) => {
+        const spoken = () => {
           if (hLine !== mine || mine.said) return; mine.said = true;
           hAsk.remove(); form.classList.add("is-gone");
           root.querySelectorAll(".hp-ghost").forEach((g) => g.remove()); made.pill.style.visibility = ""; made.pill.classList.add("is-on", "is-set");
-          if (!extras.length) celebrate(pop);
-          mine.finish(); ready.classList.add("is-on"); ready.removeAttribute("aria-hidden");
+          showIdleMarks();
+          mine.finish();
         };
         if (instant) {
           head.replaceChildren(mine); made.fit(); form.style.transform = "";
-          cat.place(LOAF).pose("purr"); spot.set(SPOT); start.show(); ready.classList.add("is-shown"); spoken(false); talk.end(ctx.state === "done");
+          cat.place(SEATED).pose("sit"); spot.set(SPOT); spoken(); talk.end(ctx.state === "done");
           return;
         }
-        talk.begin(() => spoken(true));
+        talk.begin(spoken);
         hAsk.finish(); hAsk.classList.add("is-leaving");
         head.append(mine); made.fit();
-        const inForm = form.contains(focusedIn(root)), soft = ctx.kb > 0;
+        const soft = ctx.kb > 0;
         const flight = ui.flyName(field, made.pill, root);
         field.input.blur(); root.classList.remove("is-typing");
         form.classList.add("is-leaving");
-        start.show(); ready.classList.add("is-shown");
         // 이름 칸이나 버튼에 있던 포커스는 '대화 시작하기'로 옮긴다(화면 키보드였다면 포커스 고리는 그리지 않는다)
-        if (inForm) { start.classList.toggle("is-quiet", soft); start.focus({ preventScroll: true }); }
-        // 고양이가 훌쩍 올라와 식빵을 굽는다
-        cat.pose("purr").place(LOAF, { ms: 760, easing: EASE.spring }); cat.pop(1.6);
-        sfx("pop"); ctx.later(() => { if (root.isConnected) sfx("purr", 2600); }, 700);
+        if (focusStart) { start.classList.toggle("is-quiet", soft); start.focus({ preventScroll: true }); }
+        // 고양이가 가까이 앉는다
+        cat.pose("sit").place(SEATED, { ms: 760, easing: EASE.spring }); cat.pop(1.6);
+        sfx("pop");
         spot.to(SPOT, { kick: 5 });
         flight.then(() => {
           if (hLine !== mine || mine.said) return;
           hAsk.remove(); form.classList.add("is-gone"); form.style.transform = "";
-          ui.burst(root, LOAF.x, LOAF.ground - 96, [
-            { kind: "heart", dx: -108, dy: -120, s: 30, r: -18 }, { kind: "heart", dx: 104, dy: -140, s: 24, r: 14, delay: 70 },
-            { kind: "sparkle", dx: -34, dy: -176, s: 24, r: 10, delay: 40 }, { kind: "sparkle", dx: 166, dy: -50, s: 26, r: -12, delay: 100 }, { kind: "sparkle", dx: -168, dy: -30, s: 18, r: 0, delay: 150 },
-          ]);
-          celebrate(true);
-          return mine.play({ speed: 44 }).then(() => { spoken(true); talk.end(); });
+          showIdleMarks();
+          return mine.play({ speed: 44 }).then(() => { spoken(); talk.end(); });
         });
       }
 
@@ -1745,7 +1729,7 @@
         hLine = null; extras.forEach((m) => m.remove()); extras = [];
         hAsk.classList.remove("is-leaving"); head.replaceChildren(hAsk); hAsk.finish(); intro.end(true);
         form.classList.remove("is-gone", "is-leaving");
-        start.hide(); ready.classList.remove("is-on", "is-shown"); ready.setAttribute("aria-hidden", "true");
+        start.replaceWith(ok);
         cat.pose("sit").place(PEEK, { ms: ctx.instant ? 0 : 620, easing: EASE.soft }); cat.pop(0.8);
         sync(false); layout();
       }

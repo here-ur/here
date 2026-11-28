@@ -12,6 +12,7 @@ import { emailAuthError, isWithdrawnAuthError, normalizeEmail, socialSignInUrl, 
 import { Button } from "./ui/Button";
 import { TextField } from "./ui/TextField";
 import AuthScreen from "./AuthScreen";
+import AppSplash from "./AppSplash";
 import AuthProviderIcon from "./AuthProviderIcon";
 import EmailAuthScreen from "./EmailAuthScreen";
 import { EmailCodeField } from "./ui/EmailCodeField";
@@ -99,7 +100,7 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     void checkEntry(client).then(result => {
       if (!active || generation !== checkGeneration.current) return;
       // 확인을 마치고 홈(또는 시트)으로 들어갈 때는 시트 단계를 마칠 때와 같은 화면 넘김으로 바꾼다.
-      if (result.kind === "member") void movePage("enter", () => enter(result)); else enter(result);
+      if (attempt > 0 && result.kind === "member") void movePage("enter", () => enter(result)); else enter(result);
     });
     return () => { active = false; };
   }, [client, attempt, enter]);
@@ -269,80 +270,83 @@ export default function AuthGate({ children }: { children: (userId: string, sign
     finally { setWorking(false); stepInputRef.current?.focus({ preventScroll: true }); }
   }
 
-  const brand = <h1 className="here-auth-brand"><span>나와 가장 가까운 친구</span><span>here</span></h1>;
-  // 앱을 열 때·로그인에서 돌아올 때의 확인: 환영 화면과 같은 침실 그림에 발자국만(로딩 화면 시안 A를 이 그림으로 대신). 배경이 바뀌지 않고 홈으로 넘어간다.
-  if (loading) return <AuthScreen key={attempt} loading
-    onRetry={() => { checkGeneration.current++; setAttempt(n => n + 1); }} onSignOut={() => { void signOut(); }} />;
-  if (checkFailed) return <AuthScreen>
-    <div className="here-auth-welcome">{brand}<div className="here-auth-welcomeBottom here-auth-retry">
-      <p role="alert" className="here-auth-unavailable">연결하지 못했어요</p>
-      <Button tone="ink" fullWidth onClick={() => { setLoading(true); setAttempt(n => n + 1); }}>다시 확인</Button>
-      <Button variant="tonal" tone="ink" fullWidth onClick={() => { void signOut(); }}>로그아웃</Button>
-    </div></div>
-  </AuthScreen>;
-  if (pendingWithdrawal) return <WithdrawalPending until={pendingWithdrawal.until} busy={busy} error={cancelError}
-    onCancel={() => { void undoWithdrawal(); }} onSignOut={() => { void signOut(); }} />;
-  // 로그인 뒤 시트 단계: 기억 동의 → 성별·생년월일(새 회원만) → 캐릭터 만나기·홈. 화면 넘김은 마지막 시트 단계가 맡는다.
-  if (userId) return <MemoryConsentGate key={userId} userId={userId} signOut={signOut} continueSheet={continueSheet} handoff>
-    <MemberBasicsGate userId={userId} signOut={signOut}>{children(userId, signOut)}</MemberBasicsGate>
-  </MemoryConsentGate>;
+  return <AppSplash waiting={loading && attempt === 0}>{renderScreen()}</AppSplash>;
 
-  const codeStep = step === "signup-code" || step === "recovery-code";
-  const copy = {
-    login: { title: <>다시 만나서 반가워요.</>, description: "가입한 이메일과 비밀번호를 입력해 주세요.", submit: "로그인" },
-    signup: { title: <>반가워요.<br />이메일을 알려 주세요.</>, description: "", submit: "인증번호 받기" },
-    "signup-code": { title: <>인증번호 6자리</>, description: `${verifiedEmail}로 보낸 인증번호를 입력해 주세요.`, submit: "인증번호 확인" },
-    recovery: { title: <>비밀번호를<br />다시 설정할게요.</>, description: "가입한 이메일로 인증번호를 보내 드려요.", submit: "인증번호 받기" },
-    "recovery-code": { title: <>인증번호 6자리</>, description: `${verifiedEmail} 계정이 있다면 인증메일을 보내 드려요.`, submit: "인증번호 확인" },
-    "new-password": { title: passwordPurpose === "signup" ? <>마지막으로,<br />비밀번호를 만들어 주세요.</> : <>새 비밀번호를<br />만들어 주세요.</>, description: "8자 이상으로 설정해 주세요.", submit: "" },
-  }[step];
-  const describedBy = [copy.description && "auth-desc", error && "auth-error"].filter(Boolean).join(" ") || undefined;
-  const invalid = (field: Field) => Boolean(error && errorField === field) || undefined;
-  const back = () => {
-    if (step === "new-password") { void signOut(); return; }
-    if (step === "signup" || step === "login") { closeSheet(); return; }
-    openForm(step === "signup-code" ? "signup" : step === "recovery-code" ? "recovery" : "login", true);
-  };
+  function renderScreen() {
+    const brand = <h1 className="here-auth-brand"><span>나와 가장 가까운 친구</span><span>here</span></h1>;
+    if (loading) return <AuthScreen key={attempt} loading
+      onRetry={() => { checkGeneration.current++; setAttempt(n => n + 1); }} onSignOut={() => { void signOut(); }} />;
+    if (checkFailed) return <AuthScreen>
+      <div className="here-auth-welcome">{brand}<div className="here-auth-welcomeBottom here-auth-retry">
+        <p role="alert" className="here-auth-unavailable">연결하지 못했어요</p>
+        <Button tone="ink" fullWidth onClick={() => { setLoading(true); setAttempt(n => n + 1); }}>다시 확인</Button>
+        <Button variant="tonal" tone="ink" fullWidth onClick={() => { void signOut(); }}>로그아웃</Button>
+      </div></div>
+    </AuthScreen>;
+    if (pendingWithdrawal) return <WithdrawalPending until={pendingWithdrawal.until} busy={busy} error={cancelError}
+      onCancel={() => { void undoWithdrawal(); }} onSignOut={() => { void signOut(); }} />;
+    // 로그인 뒤 시트 단계: 기억 동의 → 성별·생년월일(새 회원만) → 캐릭터 만나기·홈. 화면 넘김은 마지막 시트 단계가 맡는다.
+    if (userId) return <MemoryConsentGate key={userId} userId={userId} signOut={signOut} continueSheet={continueSheet} handoff>
+      <MemberBasicsGate userId={userId} signOut={signOut}>{children(userId, signOut)}</MemberBasicsGate>
+    </MemoryConsentGate>;
 
-  if (!showWelcome) return <EmailAuthScreen title={copy.title} description={copy.description} onBack={back} busy={busy}
-    progress={step === "signup" ? 1 : step === "signup-code" ? 2 : step === "new-password" && passwordPurpose === "signup" ? 3 : undefined}>
-    {step === "new-password" ? <PasswordSetup sheet signup={passwordPurpose === "signup"} inputRef={stepInputRef}
-      onSaved={finishPasswordSetup} onBusyChange={setWorking} onCancel={signOut} />
-      : <form key={step} noValidate onSubmit={submit} className="email-auth-form">
-        <div className="email-auth-fields">
-          {!codeStep && <TextField label="이메일" hideLabel={step !== "login"} variant="plain" ref={stepInputRef} name="email" type="email" inputMode="email"
-            autoComplete={step === "login" ? "username" : "email"} autoCapitalize="none" spellCheck={false} enterKeyHint={step === "login" ? "next" : "go"}
-            placeholder="이메일 주소" value={email} onChange={e => setEmail(e.target.value)} required readOnly={busy} aria-describedby={describedBy} aria-invalid={invalid("email")} />}
-          {step === "login" && <TextField label="비밀번호" variant="plain" ref={passwordInputRef} name="password" type="password" autoComplete="current-password"
-            placeholder="비밀번호" value={password} onChange={e => setPassword(e.target.value)} required readOnly={busy} aria-describedby={describedBy} aria-invalid={invalid("password")} />}
-          {codeStep && <EmailCodeField value={code} onChange={setCode} inputRef={stepInputRef} readOnly={busy} invalid={invalid("code")} describedBy={describedBy} />}
-          {error && <p id="auth-error" role="alert" className="email-auth-error">{error}</p>}
-          {notice && !error && <p role="status" className="email-auth-note">{notice}</p>}
-          {step === "login" && <Button variant="plain" disabled={busy} className="email-auth-link" onClick={() => openForm("recovery")}>비밀번호를 잊었어요</Button>}
-          {codeStep && <div>
-            <p className="email-auth-note">메일이 없으면 스팸함도 확인해 주세요.</p>
-            {resendWait > 0 ? <p className="email-auth-note">{resendWait}초 후 다시 받을 수 있어요</p>
-              : <Button variant="plain" disabled={busy} className="email-auth-link" onClick={() => { void resendCode(); }}>인증번호 다시 받기</Button>}
-          </div>}
+    const codeStep = step === "signup-code" || step === "recovery-code";
+    const copy = {
+      login: { title: <>다시 만나서 반가워요.</>, description: "가입한 이메일과 비밀번호를 입력해 주세요.", submit: "로그인" },
+      signup: { title: <>반가워요.<br />이메일을 알려 주세요.</>, description: "", submit: "인증번호 받기" },
+      "signup-code": { title: <>인증번호 6자리</>, description: `${verifiedEmail}로 보낸 인증번호를 입력해 주세요.`, submit: "인증번호 확인" },
+      recovery: { title: <>비밀번호를<br />다시 설정할게요.</>, description: "가입한 이메일로 인증번호를 보내 드려요.", submit: "인증번호 받기" },
+      "recovery-code": { title: <>인증번호 6자리</>, description: `${verifiedEmail} 계정이 있다면 인증메일을 보내 드려요.`, submit: "인증번호 확인" },
+      "new-password": { title: passwordPurpose === "signup" ? <>마지막으로,<br />비밀번호를 만들어 주세요.</> : <>새 비밀번호를<br />만들어 주세요.</>, description: "8자 이상으로 설정해 주세요.", submit: "" },
+    }[step];
+    const describedBy = [copy.description && "auth-desc", error && "auth-error"].filter(Boolean).join(" ") || undefined;
+    const invalid = (field: Field) => Boolean(error && errorField === field) || undefined;
+    const back = () => {
+      if (step === "new-password") { void signOut(); return; }
+      if (step === "signup" || step === "login") { closeSheet(); return; }
+      openForm(step === "signup-code" ? "signup" : step === "recovery-code" ? "recovery" : "login", true);
+    };
+
+    if (!showWelcome) return <EmailAuthScreen title={copy.title} description={copy.description} onBack={back} busy={busy}
+      progress={step === "signup" ? 1 : step === "signup-code" ? 2 : step === "new-password" && passwordPurpose === "signup" ? 3 : undefined}>
+      {step === "new-password" ? <PasswordSetup sheet signup={passwordPurpose === "signup"} inputRef={stepInputRef}
+        onSaved={finishPasswordSetup} onBusyChange={setWorking} onCancel={signOut} />
+        : <form key={step} noValidate onSubmit={submit} className="email-auth-form">
+          <div className="email-auth-fields">
+            {!codeStep && <TextField label="이메일" hideLabel={step !== "login"} variant="plain" ref={stepInputRef} name="email" type="email" inputMode="email"
+              autoComplete={step === "login" ? "username" : "email"} autoCapitalize="none" spellCheck={false} enterKeyHint={step === "login" ? "next" : "go"}
+              placeholder="이메일 주소" value={email} onChange={e => setEmail(e.target.value)} required readOnly={busy} aria-describedby={describedBy} aria-invalid={invalid("email")} />}
+            {step === "login" && <TextField label="비밀번호" variant="plain" ref={passwordInputRef} name="password" type="password" autoComplete="current-password"
+              placeholder="비밀번호" value={password} onChange={e => setPassword(e.target.value)} required readOnly={busy} aria-describedby={describedBy} aria-invalid={invalid("password")} />}
+            {codeStep && <EmailCodeField value={code} onChange={setCode} inputRef={stepInputRef} readOnly={busy} invalid={invalid("code")} describedBy={describedBy} />}
+            {error && <p id="auth-error" role="alert" className="email-auth-error">{error}</p>}
+            {notice && !error && <p role="status" className="email-auth-note">{notice}</p>}
+            {step === "login" && <Button variant="plain" disabled={busy} className="email-auth-link" onClick={() => openForm("recovery")}>비밀번호를 잊었어요</Button>}
+            {codeStep && <div>
+              <p className="email-auth-note">메일이 없으면 스팸함도 확인해 주세요.</p>
+              {resendWait > 0 ? <p className="email-auth-note">{resendWait}초 후 다시 받을 수 있어요</p>
+                : <Button variant="plain" disabled={busy} className="email-auth-link" onClick={() => { void resendCode(); }}>인증번호 다시 받기</Button>}
+            </div>}
+          </div>
+          <div className="email-auth-footer">
+            {step === "signup" && <Button variant="plain" className="email-auth-link" disabled={busy} onClick={() => openForm("login")}>이미 가입했어요 · 로그인</Button>}
+            {step === "login" && <Button variant="plain" className="email-auth-link" disabled={busy} onClick={() => openForm("signup", true)}>이메일로 가입하기</Button>}
+            <Button type="submit" tone="ink" className="email-auth-next" loading={busy} disabled={codeStep && code.length !== 6} aria-label={copy.submit}><Icon name="forward" size={26} /></Button>
+          </div>
+        </form>}
+    </EmailAuthScreen>;
+
+    return <AuthScreen welcome>
+      <div className="here-auth-welcome">{brand}
+        <div className="here-auth-welcomeBottom">
+          {showWelcome && error && <p role="alert" className="here-auth-unavailable auth-provider-error">{error}</p>}
+          {showWelcome && !error && farewell && <p role="status" className="here-auth-unavailable auth-provider-error">{farewell}</p>}
+          {client ? <div className="here-auth-actions">
+            <Button className="auth-provider-button auth-provider-kakao" tone="ink" fullWidth loading={busy && provider === "kakao"} disabled={busy} onClick={() => { void startSocial("kakao"); }}><AuthProviderIcon provider="kakao" />카카오로 시작하기</Button>
+            <Button className="auth-provider-button auth-provider-google" tone="ink" fullWidth loading={busy && provider === "google"} disabled={busy} onClick={() => { void startSocial("google"); }}><AuthProviderIcon provider="google" />구글로 시작하기</Button>
+          </div> : <p role="status" className="here-auth-unavailable">로그인을 준비하고 있어요.<br />잠시 후 다시 방문해 주세요.</p>}
         </div>
-        <div className="email-auth-footer">
-          {step === "signup" && <Button variant="plain" className="email-auth-link" disabled={busy} onClick={() => openForm("login")}>이미 가입했어요 · 로그인</Button>}
-          {step === "login" && <Button variant="plain" className="email-auth-link" disabled={busy} onClick={() => openForm("signup", true)}>이메일로 가입하기</Button>}
-          <Button type="submit" tone="ink" className="email-auth-next" loading={busy} disabled={codeStep && code.length !== 6} aria-label={copy.submit}><Icon name="forward" size={26} /></Button>
-        </div>
-      </form>}
-  </EmailAuthScreen>;
-
-  return <AuthScreen welcome>
-    <div className="here-auth-welcome">{brand}
-      <div className="here-auth-welcomeBottom">
-        {showWelcome && error && <p role="alert" className="here-auth-unavailable auth-provider-error">{error}</p>}
-        {showWelcome && !error && farewell && <p role="status" className="here-auth-unavailable auth-provider-error">{farewell}</p>}
-        {client ? <div className="here-auth-actions">
-          <Button className="auth-provider-button auth-provider-kakao" tone="ink" fullWidth loading={busy && provider === "kakao"} disabled={busy} onClick={() => { void startSocial("kakao"); }}><AuthProviderIcon provider="kakao" />카카오로 시작하기</Button>
-          <Button className="auth-provider-button auth-provider-google" tone="ink" fullWidth loading={busy && provider === "google"} disabled={busy} onClick={() => { void startSocial("google"); }}><AuthProviderIcon provider="google" />구글로 시작하기</Button>
-        </div> : <p role="status" className="here-auth-unavailable">로그인을 준비하고 있어요.<br />잠시 후 다시 방문해 주세요.</p>}
       </div>
-    </div>
-  </AuthScreen>;
+    </AuthScreen>;
+  }
 }
