@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { devCanonicalAddress } from "./lib/dev-canonical-address";
+import { authCookieOptions } from "./lib/supabase";
 
 // Refresh the same first-party session before the app boots after a long absence.
 // APIs still require a verified Bearer token and membership; cookies grant no access by themselves.
@@ -16,7 +17,7 @@ export async function proxy(request: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return response;
   const client = createServerClient(url, key, {
-    cookieOptions: { path: "/", sameSite: "lax", secure: request.nextUrl.protocol === "https:" },
+    cookieOptions: authCookieOptions(request.nextUrl.protocol === "https:"),
     global: { fetch: (input, init) => fetch(input, { ...init, cache: "no-store", signal: AbortSignal.timeout(5000) }) },
     cookies: {
       getAll: () => request.cookies.getAll(),
