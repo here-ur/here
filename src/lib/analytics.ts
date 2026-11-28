@@ -1,7 +1,7 @@
 // 제품 분석(PostHog). 기준: docs/ANALYTICS.md.
 // 무슨 일이 있었는지(단계·버튼·성공/실패)만 보낸다. 대화 원문·받아쓴 말·이름·표정(하늘)·위기 여부·동의 답·생일·성별은 보내지 않는다.
 // 아래 EVENTS에 적힌 이벤트·속성·값만 나가고, 그 밖의 것은 보내기 직전에 한 번 더 걸러 버린다.
-// 운영(here-prod)에서는 켜지지 않는다. 운영 반영은 개인정보 처리방침·동의 문구 확인 뒤 별도로 한다.
+// 키(NEXT_PUBLIC_POSTHOG_KEY)가 있는 배포에서만 켜진다. 어느 서버에서 켤지는 Vercel 환경변수로 정한다(운영 포함, 2026-11-28).
 
 import { STAGE_SCENES } from "./onboarding.ts";
 
@@ -86,7 +86,7 @@ export async function analyticsId(userId: string): Promise<string> {
 
 export type AnalyticsEnv = "local" | "preview" | "development" | "production";
 
-/** 어느 환경인지. 운영은 Vercel 환경값과 운영 주소 둘 다로 막는다. */
+/** 이벤트에 붙일 환경 이름(app_env). 운영은 Vercel 환경값이나 운영 주소로 알아본다. */
 export function analyticsEnv(vercelEnv: string | undefined, host: string, nodeEnv: string | undefined): AnalyticsEnv {
   if (vercelEnv === "production" || host === "here-prod.vercel.app") return "production";
   if (nodeEnv === "development" || host === "localhost" || host === "127.0.0.1") return "local";
@@ -110,12 +110,12 @@ function run(fn: (c: Client) => void | Promise<void>) {
   chain = chain.then(() => ready).then((c) => (c ? fn(c) : undefined)).catch(() => {});
 }
 
-/** 앱이 처음 뜰 때 한 번 부른다(src/instrumentation-client.ts). 키가 없거나 운영이면 아무것도 하지 않는다. */
+/** 앱이 처음 뜰 때 한 번 부른다(src/instrumentation-client.ts). 키가 없으면 아무것도 하지 않는다(posthog-js도 불러오지 않는다). */
 export function startAnalytics(): void {
   if (loading || typeof window === "undefined") return;
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   const env = analyticsEnv(process.env.NEXT_PUBLIC_VERCEL_ENV, window.location.hostname, process.env.NODE_ENV);
-  if (!key || env === "production") return;
+  if (!key) return;
   loading = import("posthog-js").then(({ default: posthog }) => {
     posthog.init(key, {
       api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",

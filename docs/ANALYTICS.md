@@ -1,13 +1,14 @@
 # 제품 분석 (PostHog)
 
-대상: 개발 서버 `here-dev.vercel.app`과 작업 브랜치 Preview(Vercel Preview 환경), 로컬은 `.env.local`에 키를 직접 넣었을 때만. 운영 적용 없음.
+대상: 운영 `here-prod.vercel.app`(Vercel Production, main에 병합되면), 개발 서버 `here-dev.vercel.app`과 작업 브랜치(Vercel Preview). 로컬은 `.env.local`에 키를 직접 넣었을 때만.
 구현: `src/lib/analytics.ts`(목록·거르기·전송), `src/instrumentation-client.ts`(앱이 뜰 때 한 번 시작).
 
 ## 켜지는 조건
 
 - `NEXT_PUBLIC_POSTHOG_KEY`가 있을 때만 켜진다. 비어 있으면 posthog-js를 불러오지도 않는다.
-- 운영은 `NEXT_PUBLIC_VERCEL_ENV=production`이나 주소 `here-prod.vercel.app` 둘 중 하나만 맞아도 꺼진다. 운영에서 켜려면 개인정보 처리방침·동의 문구를 고친 뒤 이 조건을 바꾸는 별도 PR로 한다.
-- 이벤트마다 `app_env`(`local`·`preview`·`development`)를 붙여 환경을 나눠 본다.
+- 어느 서버에서 켤지는 Vercel 환경변수로만 정한다(코드에는 서버별 차단이 없다). 2026-11-28 사용자 결정으로 운영도 켠다.
+- 실제 사용자 출시 전 개인정보 처리방침에 "PostHog(미국 리전)로 앱 사용 기록을 모은다"를 적어야 한다(팀·법무 확인).
+- 이벤트마다 `app_env`(`production`·`development`·`preview`·`local`)를 붙여 환경을 나눠 본다.
 
 ## 보내는 것
 
@@ -43,5 +44,5 @@
 
 - 프로젝트: Here (US Cloud, 무료 플랜이라 프로젝트 하나, 시간대 Asia/Seoul). "Discard client IP data" 켬, GeoIP 변환 일시정지.
 - 대시보드: [Here 기본 지표](https://us.posthog.com/project/773744/dashboard/2424560) — 온보딩 장면별 퍼널, 온보딩 완료 → 첫 글, 재방문, 하루 사용자, 글 vs 음성, 글 답변 실패율, 음성 길이·실패 이유, 리포트·메뉴·준비 중 안내. 모두 `app_env = local`을 뺀다. 이벤트 원본은 [Activity](https://us.posthog.com/project/773744/activity/explore).
-- 키는 Vercel의 **Preview**(dev 브랜치 → here-dev, 작업 브랜치 미리보기)에만 넣는다. Production·Development에는 넣지 않는다(Development에 넣으면 `vercel env pull`로 팀원 로컬에서 분석이 켜진다).
+- 키는 Vercel의 **Production**(main → here-prod)과 **Preview**(dev 브랜치 → here-dev, 작업 브랜치 미리보기)에 넣는다. Development에는 넣지 않는다(넣으면 `vercel env pull`로 팀원 로컬에서 분석이 켜진다). `NEXT_PUBLIC_` 값은 빌드할 때 들어가므로 바꾸면 다시 배포해야 한다.
 - 로컬은 기본으로 꺼 둔다. 분석을 손볼 때만 그 사람이 `.env.local`에 `NEXT_PUBLIC_POSTHOG_KEY`를 잠깐 넣고(이벤트에 `app_env: local`이 붙는다), 끝나면 지운다. 키는 PostHog → Settings → General의 Project token.

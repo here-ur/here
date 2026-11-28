@@ -53,7 +53,7 @@ test("회원 ID는 해시로 바꾸고 같은 회원은 같은 값이 된다", a
   assert.notEqual(a, await analyticsId("3f2b1c7e-0000-4000-8000-000000000002"));
 });
 
-test("운영은 Vercel 환경값이나 운영 주소 어느 쪽으로든 꺼진다", () => {
+test("환경 이름: 운영은 Vercel 환경값이나 운영 주소로, 개발 서버·Preview·로컬을 나눈다", () => {
   assert.equal(analyticsEnv("production", "here-dev.vercel.app", "production"), "production");
   assert.equal(analyticsEnv(undefined, "here-prod.vercel.app", "production"), "production");
   assert.equal(analyticsEnv("preview", "here-dev.vercel.app", "production"), "development");
