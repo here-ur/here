@@ -87,11 +87,11 @@ test("채팅은 Runyour 키와 확정한 모델·endpoint만 사용한다", asyn
   assert.deepEqual(tools, []);
 });
 
-test("답변 모델은 Runyour 키만 쓰고 임베딩 키로 대체하지 않는다", async () => {
+test("답변 모델과 기억 처리는 Runyour 키를 쓰고 OpenAI 키로 대체하지 않는다", async () => {
   const route = readFileSync(new URL("../app/api/chat/route.ts", import.meta.url), "utf8");
   const chatConfig = route.slice(route.indexOf("() => chatResponse"));
   assert.deepEqual([...chatConfig.matchAll(/process\.env\.([A-Z_]+)/g)].map((match) => match[1]), ["RUNYOUR_API_KEY", "RUNYOUR_BASE_URL", "CHAT_MODEL"]);
-  assert.match(route, /openaiKey: process\.env\.OPENAI_API_KEY/);
+  assert.doesNotMatch(route, /OPENAI_API_KEY/);
   const { config, calls } = provider();
   const response = await chatResponse(request(), { ...config, apiKey: undefined });
   assert.equal(response.status, 503);

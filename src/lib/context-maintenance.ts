@@ -1,11 +1,30 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { contextJson, objectSchema, stringSchema } from './context-model.ts';
 import { embed, DEFAULT_SUMMARY_MODEL, type MemoryConfig, type MemoryMessage } from './memory.ts';
+import { userCipher, type UserCipher } from './conversation-cipher.ts';
 
 type Candidate = { id: string; summary: string; created_at: string; updated_at: string };
 export type MaintenanceJob = { token?: string; nightly: boolean; memories: Candidate[]; messages: MemoryMessage[]; chat_summary: string };
 type Plan = { chat_summary: string; groups: { ids: string[]; summary: string }[]; discard: { id: string; reason: string }[] };
 const list = (items: object) => ({ type: 'array', items });
+
+/** DB가 넘겨주는 작업 데이터. 0030부터 요약·대화가 암호문이고 key_version과 user_id가 함께 온다. */
+export type StoredMaintenanceJob = Omit<MaintenanceJob, 'memories' | 'messages'> & {
+  user_id: string;
+  memories: (Candidate & { summary_key_version?: number })[];
+  messages: (MemoryMessage & { content_key_version?: number })[];
+  chat_summary_key_version?: number;
+};
+/** AI에 보내기 전에 원문으로 바꾼다. key_version 같은 저장용 필드는 AI 입력에서 뺀다. */
+export function decryptMaintenanceJob(job: StoredMaintenanceJob, cipher: UserCipher): MaintenanceJob {
+  return {
+    token: job.token,
+    nightly: job.nightly,
+    memories: job.memories.map(({ summary_key_version, ...m }) => ({ ...m, summary: cipher.decryptSummary('conversation_memories', m.summary, summary_key_version ?? 0) })),
+    messages: job.messages.map(({ content_key_version, ...m }) => ({ ...m, content: cipher.decryptContent(m.content, content_key_version ?? 0) })),
+    chat_summary: cipher.decryptSummary('chat_context_state', job.chat_summary, job.chat_summary_key_version ?? 0),
+  };
+}
 
 export function validateMaintenancePlan(value: unknown, job: MaintenanceJob): Plan {
   const p = value as Plan | null;
@@ -45,16 +64,24 @@ chat_summary는 이전 chat_summary와 새 messages를 합쳐 2400자 이내로 
   return validateMaintenancePlan(value, job);
 }
 
-export async function finishMaintenance(client: SupabaseClient, token: string, job: MaintenanceJob, config: MemoryConfig) {
+export async function finishMaintenance(client: SupabaseClient, token: string, stored: StoredMaintenanceJob, config: MemoryConfig, cipher?: UserCipher) {
   const signal = AbortSignal.timeout(45000);
   try {
+    cipher ??= userCipher(stored.user_id); // 키가 없으면 여기서 실패해 아래 catch가 작업을 실패로 돌려놓는다
+    const job = decryptMaintenanceJob(stored, cipher);
     const plan = job.memories.length || job.messages.length ? await maintenancePlan(job, config, signal)
       : { chat_summary: job.chat_summary, groups: [], discard: [] };
     const groups = [];
     // Bounded sequential embedding avoids a burst of model requests for large clusters.
-    for (const group of plan.groups) groups.push({ ...group, embedding: await embed(group.summary, config, signal) });
+    // 임베딩은 원문 요약으로 만들고, DB에는 암호문만 보낸다.
+    for (const group of plan.groups) {
+      const encrypted = cipher.encryptSummary('conversation_memories', group.summary);
+      groups.push({ ids: group.ids, summary: encrypted.value, summary_key_version: encrypted.keyVersion, embedding: await embed(group.summary, config, signal) });
+    }
+    const chatSummary = cipher.encryptSummary('chat_context_state', plan.chat_summary);
     const { data, error } = await client.rpc('finish_context_work', {
-      p_token: token, p_summary: plan.chat_summary, p_groups: groups, p_discard: plan.discard.map(d => d.id), p_model: config.summaryModel || DEFAULT_SUMMARY_MODEL,
+      p_token: token, p_summary: chatSummary.value, p_groups: groups, p_discard: plan.discard.map(d => d.id), p_model: config.summaryModel || DEFAULT_SUMMARY_MODEL,
+      p_summary_key_version: chatSummary.keyVersion,
     }).abortSignal(signal);
     if (error) throw Error('maintenance_save_failed');
     return data === true;

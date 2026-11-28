@@ -10,7 +10,7 @@ const messages = [{ role: 'user' as const, content: '아까보다 좀 편안해�
 const hit = (id: string) => ({ id, summary: id + ' 기억', created_at: '2026-11-20T00:00:00Z' });
 function provider() {
   const queries: string[] = [];
-  const config = { openaiKey: 'fake', summaryKey: 'fake', fetch: (async (url, init) => {
+  const config = { summaryKey: 'fake', fetch: (async (url, init) => {
     const body = JSON.parse(String(init?.body));
     if (String(url).endsWith('/embeddings')) { queries.push(body.input); return Response.json({ model: 'text-embedding-3-large', data: [{ embedding: vector }] }); }
     assert.match(body.instructions, /감정 흐름/);
@@ -39,7 +39,7 @@ test('미동의는 외부 호출을 막고 처리 중 철회하면 모든 결과
   }
 });
 test('분석·검색이 타임아웃이면 빈 결과로 대화를 계속하고 요약 성공분은 유지한다', async () => {
-  const config = { openaiKey: 'fake', summaryKey: 'fake', fetch: (async (_url, init) => new Promise<Response>((_resolve, reject) => {
+  const config = { summaryKey: 'fake', fetch: (async (_url, init) => new Promise<Response>((_resolve, reject) => {
     if (init?.signal?.aborted) reject(Error());
     else init?.signal?.addEventListener('abort', () => reject(Error()), { once: true });
   })) as typeof fetch };

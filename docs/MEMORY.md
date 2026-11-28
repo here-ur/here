@@ -26,8 +26,8 @@
 | --- | --- |
 | 답변 | Runyour Responses, `CHAT_MODEL`, 추론 medium |
 | 요약 | Runyour Responses, `MEMORY_SUMMARY_MODEL` → `openai/gpt-5.6-luna`, 추론 low, `store:false`. 채팅 모델과 독립 |
-| 임베딩 | OpenAI `text-embedding-3-large`, float, 1536차원 |
-| 키 | 요약 `RUNYOUR_API_KEY`, 임베딩 기존 `OPENAI_API_KEY`, 서버에서만 사용 |
+| 임베딩 | Runyour AI `/embeddings`로 OpenAI `text-embedding-3-large` 호출, float, 1536차원. 요청 ID는 `openai/text-embedding-3-large`, DB 모델명은 기존 `text-embedding-3-large` 유지 |
+| 키 | 요약·임베딩 모두 `RUNYOUR_API_KEY`·`RUNYOUR_BASE_URL`, 서버에서만 사용. `OPENAI_API_KEY`는 음성용 |
 | 검색 | 본인 ready 행만 cosine 유사도 > 0.30, 최대 5개. 임계값은 파일럿 값이며 품질 튜닝 전 |
 
 단순히 데이터가 쌓인다고 모델이 학습되지는 않는다. 공용 모델 학습 데이터셋·학습·배포는 구현하지 않았다.
@@ -50,6 +50,7 @@
 - `privacy_consents`(0024에서 `memory_consents`에서 이름 변경): 현재 개인 기억 동의 버전, 두 확인 항목, 확인·철회 시각.
 - `consent_versions`(0024): 동의 버전 목록과 버전마다 기억·대화 저장 적용 여부(`covers_memory`·`covers_conversation`). 현재 버전은 `is_current` 하나뿐이며, 동의 함수는 버전 문자열 대신 이 테이블을 본다. 회원은 직접 조회할 수 없다.
 - `privacy_consent_events`(0024에서 `memory_consent_events`에서 이름 변경): 이후 동의·철회·재동의 이벤트 이력. 기존 상태는 `snapshot`으로 구분하며 과거 이력을 추정하지 않음. 회원은 본인 이력 조회만 가능, 직접 추가·수정·삭제 불가. 회원 삭제 시 함께 삭제되며 탈퇴 후 1년 보존 구현이 아님. 공용 학습 동의와 별개.
+- 대화 원문·기억 요약·누적 요약은 0030부터 서버에서 AES-256-GCM으로 암호화해 저장한다. 벡터는 평문. 규격·키 관리는 [ENCRYPTION.md](ENCRYPTION.md).
 - `conversation_memories`: 사용자 ID, 요약, 벡터, 모델/프롬프트 버전, 처리 상태, lease, 재시도 횟수와 시각. 원문·음성 파일은 저장하지 않는다.
 - RLS로 본인 행만 조회한다. 앱은 service role 없이 회원 JWT로 요청한다. 변경은 소유자 검사를 하는 RPC만 허용한다.
 - 동일 요청 메시지 배열의 SHA-256으로 중복 처리를 막는다. 완전히 같은 이력은 새 세션에서도 같은 요청으로 취급한다. 메시지별 이벤트 ID는 후속 개선이다.
@@ -158,7 +159,7 @@
 | 리포트 날짜별 숫자 | 브라우저 `here.report.v1`(계정별) | 말한 횟수·시간대·하늘·자주 한 단어 상위 20개. 최대 1년, 서버 저장 없음 |
 | 음성·전사 | 브라우저 ↔ OpenAI 실시간 API, 확정 전사만 Here 서버 임시 처리 | 음성 대화·개인 기억 요약. Here 음성 파일 저장 없음 |
 | 개인 기억 요약 | Supabase conversation_memories | 동의 사용자 본인의 이후 대화에만 사용 |
-| 1,536차원 벡터 | OpenAI 임베딩 API → 같은 Supabase 행 | 본인 기억 의미 검색. 익명화나 모델 학습을 의미하지 않음 |
+| 1,536차원 벡터 | Runyour AI 경유 OpenAI 임베딩 → 같은 Supabase 행 | 본인 기억 의미 검색. 익명화나 모델 학습을 의미하지 않음 |
 | 동의·호출량 메타데이터 | Supabase 이벤트·카운터 테이블 | 동의 증빙·호출 제한. 학습 대상 제외 |
 | 공용 학습 데이터·모델 | 현재 없음 | 개인 기억 동의를 학습 동의로 대체하지 않음 |
 

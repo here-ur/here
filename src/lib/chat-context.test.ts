@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { loadRecentChatHistory, mergeChatHistory } from "./chat-context.ts";
 import { queuedChatContext } from "./chat-queue.ts";
 import { requestChat, ChatRequestError } from "./chat.ts";
-import type { HistoryMessage } from "./conversation-history.ts";
+import { HISTORY_DISABLED_CODE, type HistoryMessage } from "./conversation-history.ts";
 
 const message = (role: HistoryMessage["role"], content: string, at: number): HistoryMessage => ({ id: crypto.randomUUID(), role, content, at });
 
@@ -31,6 +31,43 @@ test("저장된 메시지는 중복하지 않고 대기 중인 다음 메시지�
   const old=message("user","면접 결과",now-3), reply=message("assistant","답변",now-2);
   const next=message("user","추가 질문",now-1), waiting=message("user","다음 질문",now);
   assert.deepEqual(queuedChatContext(mergeChatHistory([old,reply,next],[old,reply,next,waiting]),[next]),[old,reply,next]);
+});
+
+test("기록 기능이 꺼져 있어도 새로고침 후 복원된 기기 대화를 포함해 채팅 답변을 받는다", async t => {
+  const now = Date.now();
+  const current = [message("user", "오늘 산책했어", now - 2), message("assistant", "어디로 다녀왔어?", now - 1)];
+  const next = message("user", "집 앞 공원에 다녀왔어", now);
+  const calls: string[] = [];
+  t.mock.method(globalThis, "fetch", async (url: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    calls.push(String(url));
+    assert.equal((init?.headers as Record<string, string>).Authorization, "Bearer account-a");
+    if (url === "/api/conversations") return Response.json({ code: HISTORY_DISABLED_CODE }, { status: 404 });
+    assert.equal(url, "/api/chat");
+    assert.deepEqual(JSON.parse(String(init?.body)).messages, [...current, next].map(({ role, content }) => ({ role, content })));
+    return Response.json({ reply: "공원으로 산책 다녀왔구나.", crisis: false, suggest: false });
+  });
+  const saved = await loadRecentChatHistory("account-a", new AbortController().signal);
+  // After reload, the history hook restores old messages while current state has only the new turn.
+  const local = mergeChatHistory(current, [next]);
+  const context = queuedChatContext(mergeChatHistory(saved, local), [next]);
+  const result = await requestChat(context, { name: "호야" }, undefined, "account-a");
+  assert.equal(result.reply, "공원으로 산책 다녀왔구나.");
+  assert.deepEqual(calls, ["/api/conversations", "/api/chat"]);
+});
+
+test("기록 비활성 응답 외의 인증 오류와 조회 장애는 계속 차단한다", async t => {
+  const mock = t.mock.method(globalThis, "fetch");
+  for (const [status, body] of [
+    [401, { code: HISTORY_DISABLED_CODE }],
+    [403, { code: "consent_required" }],
+    [404, { error: "not_found" }],
+    [503, { code: HISTORY_DISABLED_CODE }],
+  ] as const) {
+    mock.mock.mockImplementation(async () => Response.json(body, { status }));
+    await assert.rejects(loadRecentChatHistory("token", new AbortController().signal), ChatRequestError);
+  }
+  mock.mock.mockImplementation(async () => new Response("Not Found", { status: 404 }));
+  await assert.rejects(loadRecentChatHistory("token", new AbortController().signal), ChatRequestError);
 });
 
 test("계정 전환 시 이전 계정 기록을 재사용하지 않는다", async t => {
