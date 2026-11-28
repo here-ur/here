@@ -18,22 +18,16 @@ export class LiveConnectionError extends Error {
     return new LiveConnectionError(response.status, body?.code);
   }
 }
-export type LiveConnection = Realtime & {
-  activate(handlers: Handlers, startedAt: number, token?: string): Promise<void>;
-};
-
 export async function connectLive(
   h: Handlers,
   persona: { name?: string; voice?: string; nickname?: string; style?: StyleId } = {},
   signal?: AbortSignal,
   accessToken?: string,
-  options: { microphone?: boolean; startedAt?: number; standby?: boolean;
+  options: { microphone?: boolean; startedAt?: number;
     historyManaged?: boolean; inputStream?: MediaStream; onDiagnostic?: (event: string) => void } = {},
-): Promise<LiveConnection> {
+): Promise<Realtime> {
   const controller = new AbortController();
-  let timing = voiceTiming(undefined, undefined, options.startedAt);
-  let active = options.standby !== true;
-  let generatedBeforeActivation = false;
+  const timing = voiceTiming(undefined, undefined, options.startedAt);
   timing('connect_begin');
   const peer = new RTCPeerConnection();
   // Pre-negotiate the event channel to avoid an extra data-channel handshake.
@@ -41,11 +35,11 @@ export async function connectLive(
   timing('peer_ready');
   const audio = new Audio();
   audio.autoplay = false;
-  audio.muted = !active;
+  audio.muted = false;
   let mic: MediaStream | undefined;
   let microphoneError: string | undefined;
   let started = false, closed = false, closing = false, memory = false;
-  let requestedMic = active && options.microphone !== false;
+  let requestedMic = options.microphone !== false;
   let requestedSound = true, contextMuted = false;
   const acknowledgments = new Map<string, { resolve(): void; reject(error: Error): void }>();
   let status: Parameters<Handlers["onStatus"]>[0] = "connecting";
@@ -60,7 +54,7 @@ export async function connectLive(
   // Setup can fail before awaiting readiness. Attach a handler immediately.
   void ready.catch(() => {});
   const updateStatus = (next: typeof status) => {
-    if (!active || status === next || closed || closing) return;
+    if (status === next || closed || closing) return;
     status = next; h.onStatus(next);
   };
   function send(event: object) {
@@ -84,7 +78,7 @@ export async function connectLive(
     })));
   }
   const playback = livePlaybackGate({
-    mute: blocked => { contextMuted = blocked; audio.muted = !active || contextMuted || !requestedSound; },
+    mute: blocked => { contextMuted = blocked; audio.muted = contextMuted || !requestedSound; },
     instruction: content => send({ type: 'session.instructions.append', delegation_id: null, content }),
     append: appendContext,
   });
@@ -150,15 +144,14 @@ export async function connectLive(
   // Live has no output-audio-done event. Drive both lip sync and speaking state
   // from actual playback energy; a transcript acknowledgment is not playback.
   const meter = createOutputAudioMeter((level, shape) => {
-    if (!active || closed || closing) return;
+    if (closed || closing) return;
     h.onOutputLevel?.(level, shape);
     if (level > .035) {
       lastSpeechAt = performance.now();
       timing("first_audio"); updateStatus("speaking");
     }
   }, speech => {
-    if (!active && speech) generatedBeforeActivation = true;
-    if (active) playback.observe(speech);
+    playback.observe(speech);
   }, true);
   meter.setEnabled(true);
   const monitor = setInterval(() => {
@@ -168,6 +161,16 @@ export async function connectLive(
     }
   }, 150);
 
+  let mediaStopped = false;
+  function stopMedia() {
+    if (mediaStopped) return;
+    mediaStopped = true;
+    mic?.getTracks().forEach(track => { track.enabled = false; track.stop(); });
+    silenceSource?.stop();
+    if (silenceContext) void silenceContext.close().catch(() => {});
+    audio.muted = true;
+    audio.pause();
+  }
   function cleanup() {
     if (closed) return;
     conversation.close();
@@ -185,27 +188,27 @@ export async function connectLive(
     meter.close();
     channel.onmessage = channel.onerror = channel.onclose = null;
     peer.ontrack = peer.onconnectionstatechange = null;
-    mic?.getTracks().forEach(track => track.stop());
-    silenceSource?.stop();
-    if (silenceContext) void silenceContext.close().catch(() => {});
-    audio.pause(); audio.srcObject = null;
+    stopMedia();
+    audio.srcObject = null;
     channel.close(); peer.close();
     readyReject(new Error(CONNECTION_ERROR));
   }
   function close() {
     if (closed || closing) return;
-    if (!active) { send({ type: 'session.close' }); cleanup(); return; }
     conversation.stopWork();
     playback.close();
-    // Stop transmitting/playing immediately; retain transport for final events.
-    mic?.getTracks().forEach(track => { track.enabled = false; });
-    audio.muted = true;
+    // Release the device immediately, but keep events open for the final
+    // transcript and provider acknowledgement. Never reopen after ending.
+    stopMedia();
     if (started && channel.readyState === "open") {
-      send({ type: "session.close" });
       closing = true;
       closeTimer = setTimeout(cleanup, 15_000);
+      try {
+        channel.send(JSON.stringify({ type: "session.close", event_id: crypto.randomUUID() }));
+      } catch { cleanup(); }
     } else cleanup();
   }
+
   function fail(message: string) {
     if (closed || closing) return;
     h.onStatus("idle"); h.onError(message);
@@ -227,16 +230,13 @@ export async function connectLive(
       started = true; clearTimeout(startTimer); timing("channel_ready");
       applyMic(); updateStatus(mic && requestedMic ? "listening" : "idle");
       readyResolve();
-    } else if (!active && event.type === 'session.output_transcript.delta') {
-      // A session that spoke before the click cannot supply a fresh greeting.
-      generatedBeforeActivation = true;
     } else if (event.type === "session.closed") {
       if (!closing) { h.onStatus("idle"); h.onError("음성 대화가 종료됐어요. 마이크를 눌러 다시 이어갈 수 있어요."); }
       cleanup();
     } else if (event.type === "error") {
       fail("음성 요청을 처리하지 못했어요. 마이크를 다시 눌러 주세요.");
     }
-    else if (active) conversation.accept(event);
+    else conversation.accept(event);
   };
   channel.onerror = () => fail(CONNECTION_ERROR);
   channel.onclose = () => { if (!closed) { if (!closing) fail(CONNECTION_ERROR); cleanup(); } };
@@ -267,11 +267,10 @@ export async function connectLive(
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
     h.onStatus("connecting");
     let sender: RTCRtpSender | undefined;
-    if (options.standby) sender ??= peer.addTransceiver('audio', { direction: 'sendrecv' }).sender;
     let parallelMedia = false;
     // Only overlap an already-authorized device open with signaling. A pending
     // permission prompt must not create a paid session before permission resolves.
-    if (!options.standby && options.microphone !== false && !options.inputStream && navigator.permissions?.query) {
+    if (options.microphone !== false && !options.inputStream && navigator.permissions?.query) {
       try {
         const permission = await navigator.permissions?.query({ name: 'microphone' as PermissionName });
         controller.signal.throwIfAborted();
@@ -283,7 +282,7 @@ export async function connectLive(
     }
     timing('permission_ready');
     const prepareMedia = async () => {
-      if (!options.standby && options.microphone !== false) {
+      if (options.microphone !== false) {
         try {
           mic = options.inputStream ?? await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
           if (closed || closing) { mic.getTracks().forEach(t => t.stop()); throw new DOMException("Aborted", "AbortError"); }
@@ -320,7 +319,7 @@ export async function connectLive(
     const exchange = fetch("/api/live", {
       method: "POST", credentials: "same-origin", cache: "no-store",
       headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
-      body: JSON.stringify({ sdp: peer.localDescription?.sdp, dcid: 4, ...(options.standby ? { standby: true } : {}) }),
+      body: JSON.stringify({ sdp: peer.localDescription?.sdp, dcid: 4 }),
       signal: AbortSignal.any([controller.signal, AbortSignal.timeout(25_000)]),
     });
     // Starting Web Audio can block the main thread on the first call. Do that
@@ -339,37 +338,10 @@ export async function connectLive(
     await ready;
     return {
       get hasMic() { return Boolean(mic); }, get microphoneError() { return microphoneError; },
-      async activate(handlers, startedAt, token) {
-        if (closed || closing || generatedBeforeActivation) throw new Error(CONNECTION_ERROR);
-        if (active) return;
-        h = handlers;
-        accessToken = token ?? accessToken;
-        timing = voiceTiming(undefined, undefined, startedAt);
-        // Open the real microphone only after the voice button/permission flow.
-        let stream: MediaStream | undefined;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
-          stream.getTracks().forEach(track => { track.enabled = false; });
-          controller.signal.throwIfAborted();
-          if (closed || closing || generatedBeforeActivation) throw new Error(CONNECTION_ERROR);
-          await sender!.replaceTrack(stream.getAudioTracks()[0]);
-          controller.signal.throwIfAborted();
-          mic = stream;
-        } catch (error) { stream?.getTracks().forEach(track => track.stop()); throw error; }
-        silenceSource?.stop(); silenceSource = undefined;
-        if (silenceContext) { void silenceContext.close().catch(() => {}); silenceContext = undefined; }
-        active = true; requestedMic = true;
-        audio.muted = contextMuted || !requestedSound;
-        meter.initialize(); meter.setEnabled(true);
-        if (audio.srcObject) void audio.play().catch(() => {});
-        applyMic(); updateStatus('listening');
-        timing('channel_ready');
-        send({ type: 'session.commentary.append', delegation_id: null, content: '안녕!' });
-      },
       // Text conversations use /api/chat. Live accepts context, not Realtime conversation.item.create.
       sendText(text) { send({ type: "session.thinking.append", delegation_id: null, content: JSON.stringify({ role: "user", content: text.slice(0, 8000) }) }); },
       setMic(on) { requestedMic = on; applyMic(); if (status !== "speaking") updateStatus(on && mic ? "listening" : "idle"); },
-      setSound(on) { requestedSound = on; audio.muted = !active || contextMuted || !on; if (!on) h.onOutputLevel?.(0, "rest"); }, close,
+      setSound(on) { requestedSound = on; audio.muted = contextMuted || !on; if (!on) h.onOutputLevel?.(0, "rest"); }, close,
     };
   } catch (error) { cleanup(); throw error; }
 }

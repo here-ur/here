@@ -3,13 +3,12 @@ import test from 'node:test';
 import { SYSTEM_PROMPT, companionPrompt } from './companion-prompt.ts';
 import { liveSessionRequest } from './live-session.ts';
 
-test('standby keeps the same user context and voice but waits for the voice button before greeting', () => {
-  const live = liveSessionRequest({sdp:'v=0', standby:true}, 'gpt-live-1', 'noeul', {want:'가볍게 이야기 나누고 싶어요'});
-  const immediate = liveSessionRequest({sdp:'v=0'}, 'gpt-live-1', 'noeul', {want:'가볍게 이야기 나누고 싶어요'});
-  assert.equal(live.session.instructions, immediate.session.instructions);
-  assert.equal(live.session.model, 'gpt-live-1'); assert.equal(live.session.audio.output.voice, 'noeul');
-  assert.match(live.session.input[0].content[0].text, /시작할 때까지 조용히 기다리/);
-  assert.throws(() => liveSessionRequest({sdp:'v=0', standby:'true'}));
+test('old home preconnection requests are rejected before creating a paid session', () => {
+  for (const standby of [true, 'true', null]) assert.throws(() => liveSessionRequest({ sdp: 'v=0', standby }));
+  const live = liveSessionRequest({ sdp: 'v=0' }, 'gpt-live-1', 'noeul');
+  assert.equal(live.session.model, 'gpt-live-1');
+  assert.equal(live.session.audio.output.voice, 'noeul');
+  assert.match(live.session.input[0].content[0].text, /지금 바로 한국어로 짧게 인사/);
 });
 import { QUESTIONS } from './onboarding.ts';
 

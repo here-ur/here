@@ -17,8 +17,7 @@ import { DEFAULT_COMPANION, type Profile } from "@/lib/onboarding";
 import { useAccountActivity } from "./use-account-activity";
 import { useAccountProfile } from "./use-account-profile";
 import { type Realtime, type Handlers } from "@/lib/realtime";
-import { connectLive, LiveConnectionError } from "@/lib/live";
-import { prepareLiveSession } from '@/lib/live-preconnect';
+import { connectLive } from "@/lib/live";
 import { muteSfx } from "@/lib/sfx";
 import { displayNameForServer } from "@/lib/friends";
 import { requestQuotaStatus } from "@/lib/quota-status";
@@ -139,26 +138,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
   const outputLevel = useRef(0);
   const voiceClickedAt = useRef<number | undefined>(undefined);
   const outputShape = useRef<import("@/lib/mouth-shape").MouthShape>("rest");
-  const voiceWarmup = useRef<ReturnType<typeof prepareLiveSession> | null>(null);
-  const canPrepareVoice = Boolean(profile) && !basics.needed && !typing && !reportMode && !customizing && !showFriends;
-  const voiceProfileKey = JSON.stringify([profile?.companion, profile?.onboardingAnswers]);
-  useEffect(() => {
-    const dispose = () => { voiceWarmup.current?.dispose(); voiceWarmup.current = null; };
-    const prepare = () => {
-      if (document.hidden || !canPrepareVoice) { dispose(); return; }
-      if (!voiceMode && !voiceWarmup.current) voiceWarmup.current = prepareLiveSession(async () => {
-        const client = browserSupabase();
-        const result = await client?.auth.getSession();
-        if (!result?.data.session) throw Error('authentication_required');
-        return result.data.session.access_token;
-      });
-    };
-    prepare();
-    document.addEventListener('visibilitychange', prepare);
-    window.addEventListener('pagehide', dispose);
-    // The claimed session is removed from this ref before entering voice mode.
-    return () => { document.removeEventListener('visibilitychange', prepare); window.removeEventListener('pagehide', dispose); dispose(); };
-  }, [canPrepareVoice, voiceMode, voiceProfileKey]);
   // 음성 대화 중에는 효과음이 마이크에 섞이지 않게 모두 쉰다.
   useEffect(() => { muteSfx(voiceMode); return () => muteSfx(false); }, [voiceMode]);
 
@@ -204,7 +183,22 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
   const voiceRequest = useRef<AbortController | null>(null);
   const chatRequest = useRef<AbortController | null>(null);
 
-  useEffect(() => () => { connectionAttempt.current += 1; voiceRequest.current?.abort(); rt.current?.close(); chatRequest.current?.abort(); chatQueue.current?.cancel(); }, []);
+  useEffect(() => {
+    const dispose = () => {
+      connectionAttempt.current += 1;
+      voiceRequest.current?.abort(); voiceRequest.current = null;
+      rt.current?.close(); rt.current = null;
+      chatRequest.current?.abort(); chatQueue.current?.cancel();
+    };
+    // A cached page must return to the disconnected home state when restored.
+    const leave = () => {
+      dispose();
+      setVoiceMode(false); setMicOn(false); setHasMic(false);
+      setYawning(false); setHearing(false); setStatus('idle');
+    };
+    window.addEventListener('pagehide', leave);
+    return () => { window.removeEventListener('pagehide', leave); dispose(); };
+  }, []);
 
   const connecting = status === "connecting";
 
@@ -290,10 +284,8 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
     chatQueue.current.enqueue(message);
   }
 
-  /** 음성 대화만 기존 OpenAI Realtime 연결을 사용한다. */
+  /** 마이크 버튼을 눌렀을 때만 유료 Live 연결을 시작한다. */
   async function begin(startedAt = performance.now()) {
-    const prepared = voiceWarmup.current;
-    voiceWarmup.current = null;
     headlineLocked.current = true;
     cancelChat();
     const attempt = ++connectionAttempt.current;
@@ -320,7 +312,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
     }).catch(() => {});
     try {
       const token = await accessToken();
-      if (!current()) { prepared?.dispose(); return; }
+      if (!current()) return;
       const handlers: Handlers = {
         onOutputLevel: (level, shape) => { if (current()) { outputLevel.current = level; outputShape.current = shape; } },
         onStatus: (next) => { if (current()) { setStatus(next); if (next === "speaking") setYawning(false); } },
@@ -347,15 +339,7 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
         onMemoryWarning: (message) => { if (current()) setMemoryWarning(message); },
         onSearchSources: (sources) => { if (current()) setSearchSources(sources); },
       };
-      let conn: Realtime;
-      try {
-        if (!prepared) throw Error('no_prepared_session');
-        conn = await prepared.claim(handlers, startedAt, token, controller.signal);
-      } catch (error) {
-        if (!current() || controller.signal.aborted) return;
-        if (error instanceof LiveConnectionError && [401, 403, 429].includes(error.status)) throw error;
-        conn = await connectLive(handlers, { name: profile?.companion, voice: profile?.voice, nickname: profile?.nickname || undefined, style: profile?.style }, controller.signal, token, { historyManaged: true, startedAt });
-      }
+      const conn = await connectLive(handlers, { name: profile?.companion, voice: profile?.voice, nickname: profile?.nickname || undefined, style: profile?.style }, controller.signal, token, { historyManaged: true, startedAt });
       if (!current()) { conn.close(); return; }
       rt.current = conn;
       conn.setSound(true);
@@ -367,7 +351,6 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
         setError(conn.microphoneError ?? "마이크를 쓸 수 없어서 글로 적을 수 있게 열어 뒀어요.");
       }
     } catch (e) {
-      prepared?.dispose();
       if (!current()) return;
       setYawning(false);
       setError((e as Error).message);
