@@ -185,7 +185,7 @@ test('cancelling an established call sends close and never starts another sessio
 
 test('server rejects startup after media connects: client stops tracks and requests closure', async t => {
  const m=setup(t);const previous=globalThis.fetch;
- t.mock.method(globalThis,'fetch',async(url,init)=>String(url).startsWith('/api/live/status?')?Response.json({started:false,closed:true}):previous(url,init));
+ t.mock.method(globalThis,'fetch',async(url: Parameters<typeof fetch>[0], init?: RequestInit)=>String(url).startsWith('/api/live/status?')?Response.json({started:false,closed:true}):previous(url,init));
  await assert.rejects(connectLive(m.handlers,{},undefined,'test-token'));
  assert.equal(m.track.stops,1);assert.equal(m.peerClosed(),true);assert.equal(m.requests.filter(r=>r.url==='/api/live/close').length,1);
 });
