@@ -1,3 +1,4 @@
+import { requireActiveVoice } from '@/lib/voice-quota';
 import { requireMember } from '@/lib/member-auth';
 import { requireMemoryConsent } from '@/lib/memory-access';
 import { requireApiQuota } from '@/lib/api-quota';
@@ -14,6 +15,8 @@ export async function POST(request: Request) {
   if (!memoryEnabled(process.env)) return json({ error: 'disabled' }, 404);
   const consent = await requireMemoryConsent(access.supabase);
   if (consent) return consent;
+  const active = await requireActiveVoice(access.supabase, request.headers.get('x-here-voice-call'));
+  if (active) return active;
   const quota = await requireApiQuota(access.supabase, 'voice_memory');
   if (quota) return quota;
   const guard = requireCipher(access.userId);

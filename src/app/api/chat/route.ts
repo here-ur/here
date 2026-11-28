@@ -9,6 +9,7 @@ import { createMemoryService, memoryEnabled } from "@/lib/memory";
 import { supabaseMemoryStore } from "@/lib/memory-store";
 import { requireMemoryConsent } from "@/lib/memory-access";
 import { requireApiQuota } from "@/lib/api-quota";
+import { withTextQuota } from '@/lib/text-quota';
 import { contextStore, createConversationContext } from '@/lib/conversation-context';
 import { processContextMaintenance } from '@/lib/context-maintenance';
 import { requireCipher } from '@/lib/conversation-cipher';
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
   if (access.response) return access.response;
   const consentError = await requireMemoryConsent(access.supabase);
   if (consentError) return consentError;
-  const quotaError = await requireApiQuota(access.supabase, "chat");
+  const quotaError = await requireApiQuota(access.supabase, "text_request");
   if (quotaError) return quotaError;
   const memoryConfig = {
     summaryKey: process.env.RUNYOUR_API_KEY || "",
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
         && Number.isFinite(h.userAt) && Number.isFinite(h.assistantAt)) history=h;
     } catch { /* Main request validation returns the user-facing error. */ }
   }
-  return chatResponse(request, {
+  return withTextQuota(access.supabase, () => chatResponse(request, {
     onboardingAnswers: access.onboardingAnswers,
     hereName: access.hereName,
     prepareContext,
@@ -71,5 +72,5 @@ export async function POST(request: Request) {
     baseUrl: process.env.RUNYOUR_BASE_URL,
     model: process.env.CHAT_MODEL,
     memory: memory ? { recall: memory.recall, schedule: messages => { if (historyVersion !== "v1" && historyVersion !== "v2") after(async () => { await memory.remember(messages); await processContextMaintenance(access.supabase, memoryConfig); }); } } : undefined,
-  });
+  }));
 }

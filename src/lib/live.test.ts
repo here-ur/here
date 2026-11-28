@@ -51,7 +51,8 @@ function setup(t: TestContext, fail = false, media?: () => Promise<unknown>, per
   global("navigator", { mediaDevices: { getUserMedia: () => { microphoneOpens++; return media ? media() : Promise.resolve(stream); } }, ...(permission ? { permissions: { query: async () => ({ state: permission }) } } : {}) });
   t.mock.method(globalThis, "fetch", async (url: Parameters<typeof fetch>[0], init?: RequestInit) => {
     requests.push({ url: String(url), body: JSON.parse(String(init?.body)) });
-    if (url === "/api/live") return Response.json({ sdp: "v=0\r\no=answer", memory: true }, { status: fail ? 502 : 200 });
+    if (url === "/api/live") return Response.json({ sdp: "v=0\r\no=answer", callId: requests.at(-1)!.body.callId, deadlineAt: Date.now()/1000+300, memory: true }, { status: fail ? 502 : 200 });
+    if(url === "/api/live/close") return Response.json({ requested: true });
     assert.equal(url, "/api/voice-memory");
     return Response.json({ accepted: true }, { status: 202 });
   });
@@ -64,7 +65,7 @@ test("Live exchanges SDP through authenticated app route and sends no Realtime c
   const m = setup(t);
   const rt = await connectLive(m.handlers, { name: "보리" }, undefined, "test-token", {});
   assert.equal(m.requests[0].url, "/api/live");
-  assert.deepEqual(m.requests[0].body, { sdp: "v=0\r\no=test", dcid: 4 });
+  assert.deepEqual(m.requests[0].body, { sdp: "v=0\r\no=test", dcid: 4, callId: m.requests[0].body.callId });
   assert.equal(m.track.enabled, true);
   assert.deepEqual(m.sent.map(e => e.type), ["session.input_audio.unmute"]);
   rt.setMic(false); assert.equal(m.track.enabled, false);

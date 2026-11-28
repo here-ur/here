@@ -38,6 +38,9 @@ export async function connectLive(
   audio.muted = false;
   let mic: MediaStream | undefined;
   let microphoneError: string | undefined;
+  const callId = crypto.randomUUID();
+  let sessionRequested = false;
+  let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
   let started = false, closed = false, closing = false, memory = false;
   let requestedMic = options.microphone !== false;
   let requestedSound = true, contextMuted = false;
@@ -91,7 +94,7 @@ export async function connectLive(
       if (!memory || !accessToken) return {};
       const response = await fetch('/api/live/context', {
         method: 'POST', credentials: 'same-origin', cache: 'no-store',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        headers: { 'Content-Type': 'application/json', ...(callId ? { 'x-here-voice-call': callId } : {}), Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({ messages }), signal: AbortSignal.any([workSignal, controller.signal, AbortSignal.timeout(8000)]),
       });
       if (response.status === 401 || response.status === 403) fail('회원·이용 동의를 다시 확인하려면 새로고침해 주세요.');
@@ -123,7 +126,7 @@ export async function connectLive(
     delegate: async (messages, workSignal) => {
       const response = await fetch("/api/live/delegate", {
         method: "POST", credentials: "same-origin", cache: "no-store",
-        headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+        headers: { "Content-Type": "application/json", ...(callId ? { "x-here-voice-call": callId } : {}), ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
         body: JSON.stringify({ messages, name: persona.name, nickname: persona.nickname, style: persona.style }),
         signal: AbortSignal.any([workSignal, controller.signal, AbortSignal.timeout(110_000)]),
       });
@@ -179,7 +182,7 @@ export async function connectLive(
     controller.abort();
     for (const pending of acknowledgments.values()) pending.reject(Error('session_closed'));
     acknowledgments.clear();
-    clearInterval(monitor); clearTimeout(closeTimer); clearTimeout(startTimer);
+    clearInterval(monitor); clearTimeout(deadlineTimer); clearTimeout(closeTimer); clearTimeout(startTimer);
     signal?.removeEventListener("abort", close);
     if (resumePlayback) {
       document.removeEventListener("pointerdown", resumePlayback);
@@ -195,6 +198,10 @@ export async function connectLive(
   }
   function close() {
     if (closed || closing) return;
+    if (sessionRequested && accessToken) void fetch('/api/live/close', {
+      method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ callId }),
+    }).catch(() => {});
     conversation.stopWork();
     playback.close();
     // Release the device immediately, but keep events open for the final
@@ -316,10 +323,11 @@ export async function connectLive(
     // The server answer contains reachable ICE candidates. Gathering continues in
     // the browser while the authenticated session request is in flight.
     controller.signal.throwIfAborted(); timing('session_request');
+    sessionRequested = true;
     const exchange = fetch("/api/live", {
       method: "POST", credentials: "same-origin", cache: "no-store",
-      headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
-      body: JSON.stringify({ sdp: peer.localDescription?.sdp, dcid: 4 }),
+      headers: { "Content-Type": "application/json", ...(callId ? { "x-here-voice-call": callId } : {}), ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+      body: JSON.stringify({ sdp: peer.localDescription?.sdp, dcid: 4, callId }),
       signal: AbortSignal.any([controller.signal, AbortSignal.timeout(25_000)]),
     });
     // Starting Web Audio can block the main thread on the first call. Do that
@@ -329,6 +337,9 @@ export async function connectLive(
     if (!response.ok) throw await LiveConnectionError.fromResponse(response);
     const result = await response.json();
     if (typeof result.sdp !== "string" || !result.sdp.startsWith("v=0")) throw new Error(CONNECTION_ERROR);
+    if (typeof result.callId !== 'string' || !Number.isFinite(result.deadlineAt)) throw new Error(CONNECTION_ERROR);
+    if (result.callId !== callId) throw new Error(CONNECTION_ERROR);
+    deadlineTimer = setTimeout(() => { h.onStatus('idle'); h.onError('음성 대화 이용 시간이 끝났어요. 글 대화로 이어갈 수 있어요.'); close(); }, Math.max(0, result.deadlineAt * 1000 - Date.now()));
     memory = result.memory === true && Boolean(accessToken);
     controller.signal.throwIfAborted(); timing("session_key");
     await mediaReady;
@@ -343,5 +354,5 @@ export async function connectLive(
       setMic(on) { requestedMic = on; applyMic(); if (status !== "speaking") updateStatus(on && mic ? "listening" : "idle"); },
       setSound(on) { requestedSound = on; audio.muted = contextMuted || !on; if (!on) h.onOutputLevel?.(0, "rest"); }, close,
     };
-  } catch (error) { cleanup(); throw error; }
+  } catch (error) { close(); cleanup(); throw error; }
 }

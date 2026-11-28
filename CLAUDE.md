@@ -39,6 +39,8 @@ AI와 말로 이야기하고, 필요할 때 도움받기에서 실제 사람인 
 
 ## 기술 결정
 
+- **API 한도 변경 작업(2026-11-28, 배포 전)**: 글 정상 답변 40회/한국 날짜, 실패 미차감, 부가 호출 보호 한도 분리. 구현은 `lib/text-quota.ts`와 `0034_text_usage_quota.sql`이며 메뉴는 새 글 집계를 조회한다. 모델 설정은 유지한다. 옛 `/api/realtime` 키 발급은 미사용 확인에 따라 410으로 차단했다. 아래 옛 Realtime 임시 키 발급 설명은 과거 계약이다. 음성 5분/회·10분/일·30분/월과 동시 1통화는 작업 브랜치·개발 DB에 구현했고 Vercel·Supabase의 5분 서버 종료를 확인했다. dev 병합 전이며, 사용자 변경 결정으로 홈 사전 연결을 제거했고 마이크를 눌렀을 때만 연결한다. 통화 중 대기는 시간에 포함한다. Supabase Cron과 Vercel after 감시 작업을 사용한다. 종료 확인이 없으면 잠금을 유지한다. [API 한도 적용 계획](docs/API_LIMITS_IMPLEMENTATION_PLAN.md)을 따른다.
+
 - Next.js (App Router, TypeScript, `src/`) + Tailwind, Vercel 배포
 - **API 키는 서버에만**: 글 대화의 `RUNYOUR_API_KEY`와 음성 대화의 `OPENAI_API_KEY`를 분리한다. 키는 서버 API 코드에서만 사용하고 `NEXT_PUBLIC_*`나 클라이언트 코드에 넣지 않는다. 음성 대화는 브라우저가 OpenAI realtime에 직접 붙지만, 서버(`/api/realtime`)가 발급한 60초짜리 임시 키만 쓴다.
 - **글 대화 API**: 브라우저 → `POST /api/chat` → Runyour AI의 Responses API. 기본 주소는 `https://api.runyour.ai/v1`, 모델은 `openai/gpt-5.6-sol`이며 서버의 `RUNYOUR_BASE_URL`·`CHAT_MODEL`로 변경한다. 추론 수준은 `medium`이며 마이크 권한·`getUserMedia`·WebRTC 없이 JSON 요청·응답으로 동작하고 스트리밍은 하지 않는다.

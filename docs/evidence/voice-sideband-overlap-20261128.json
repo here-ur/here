@@ -1,0 +1,89 @@
+{
+  "scenario": "overlapping sideband handoff and server-owned close; synthetic silence",
+  "events": [
+    {
+      "type": "session_created",
+      "at": "2026-11-28T08:33:59.759Z"
+    },
+    {
+      "type": "observer_attached",
+      "at": "2026-11-28T08:34:00.320Z",
+      "observer": 1
+    },
+    {
+      "type": "server_observed_start",
+      "at": "2026-11-28T08:34:00.341Z"
+    },
+    {
+      "type": "observer_attached",
+      "at": "2026-11-28T08:34:07.840Z",
+      "observer": 2
+    },
+    {
+      "type": "observer_overlap_ready",
+      "at": "2026-11-28T08:34:07.843Z",
+      "observer": 2
+    },
+    {
+      "type": "observer_released",
+      "at": "2026-11-28T08:34:07.850Z",
+      "observer": 1
+    },
+    {
+      "type": "observer_socket_closed",
+      "at": "2026-11-28T08:34:08.008Z",
+      "observer": 1
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T08:34:14.766Z",
+      "observer": 2,
+      "seconds": 15
+    },
+    {
+      "type": "observer_attached",
+      "at": "2026-11-28T08:34:15.856Z",
+      "observer": 3
+    },
+    {
+      "type": "observer_overlap_ready",
+      "at": "2026-11-28T08:34:15.858Z",
+      "observer": 3
+    },
+    {
+      "type": "observer_released",
+      "at": "2026-11-28T08:34:15.864Z",
+      "observer": 2
+    },
+    {
+      "type": "observer_socket_closed",
+      "at": "2026-11-28T08:34:16.026Z",
+      "observer": 2
+    },
+    {
+      "type": "usage",
+      "at": "2026-11-28T08:34:16.387Z",
+      "observer": 3,
+      "seconds": 15
+    },
+    {
+      "type": "server_close_sent",
+      "at": "2026-11-28T08:34:25.344Z",
+      "elapsedMs": 25003
+    },
+    {
+      "type": "session_closed",
+      "at": "2026-11-28T08:34:26.267Z",
+      "observer": 3,
+      "reason": "close_requested",
+      "usageSeconds": 23,
+      "elapsedMs": 25926
+    },
+    {
+      "type": "observer_socket_closed",
+      "at": "2026-11-28T08:34:26.419Z",
+      "observer": 3
+    }
+  ],
+  "result": "server_close_confirmed"
+}

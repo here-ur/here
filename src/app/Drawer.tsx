@@ -10,7 +10,7 @@ import "./drawer-menu.css";
 import { type Profile, cleanNickname, josa } from "@/lib/onboarding";
 import { TextField } from "./ui/TextField";
 import { WITHDRAWAL_GRACE_DAYS } from "@/lib/member-withdrawal";
-import { type QuotaStatus, quotaSummary } from "@/lib/quota-status";
+import { type QuotaStatus, quotaSummary, voiceTimeLeft } from "@/lib/quota-status";
 import { Icon } from "./art";
 import { getSfxEnabled, setSfxEnabled, subscribeSfx } from "@/lib/sfx";
 import { SWIPE_IGNORE_SELECTOR, SWIPE_SETTLE_MS, swipeCloses, swipeOffset, swipeStart } from "@/lib/drawer-swipe";
@@ -48,18 +48,21 @@ function SfxRow() {
   );
 }
 
-/** 서버의 실제 남은 횟수. 디자인의 200번은 예시이며 계정 값을 고정하지 않는다. */
+/** 서버의 실제 남은 횟수. 정상 답변과 진행 중 예약을 반영한다. */
 function QuotaLine({ status }: { status: QuotaStatus }) {
   const { chatLeft, voiceLeft, ratio, state } = quotaSummary(status);
-  const reset = new Date(status.resetAt * 1000);
-  const resetText = `${reset.getHours() < 12 ? "오전" : "오후"} ${reset.getHours() % 12 || 12}시${reset.getMinutes() ? ` ${reset.getMinutes()}분` : ""}에 다시 채워져요`;
-  const counts = `글 ${chatLeft}번 · 음성 ${voiceLeft}번`;
+  const resetText = "한국 시간 자정에 다시 채워져요";
+  const counts = `글 ${chatLeft}번${status.voice ? ` · 음성 오늘 ${voiceTimeLeft(status.voice.day)} · 이번 달 ${voiceTimeLeft(status.voice.month)}` : ` · 음성 ${voiceLeft}번`}`;
   return (
     <div role="group" aria-label={`오늘 남은 대화: ${counts}${state === "out" ? `. 글 대화는 ${resetText}` : ""}`} className="here-menu-quota" data-state={state}>
       <span aria-hidden="true" className="here-menu-quota-track">
         <span className="here-menu-quota-fill" style={{ width: `${Math.round(ratio * 100)}%` }} />
       </span>
-      <p aria-hidden="true" className="here-menu-quota-label"><span>오늘 남은 대화</span><b>{chatLeft}번</b></p>
+      <p aria-hidden="true" className="here-menu-quota-label"><span>오늘 남은 글 대화</span><b>{chatLeft}번</b></p>
+      {status.voice && <>
+        <p aria-hidden="true" className="here-menu-quota-label"><span>오늘 남은 음성</span><b>{voiceTimeLeft(status.voice.day)}</b></p>
+        <p aria-hidden="true" className="here-menu-quota-label"><span>이번 달 남은 음성</span><b>{voiceTimeLeft(status.voice.month)}</b></p>
+      </>}
     </div>
   );
 }
