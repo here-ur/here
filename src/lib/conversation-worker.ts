@@ -16,7 +16,7 @@ export async function handleConversationWorker(request:Request,env:Env,deps:Work
  if(!memoryEnabled(env)) return json({error:'disabled'},404);
  const token=/^Bearer ([a-f0-9]{64})$/.exec(request.headers.get('authorization')??'')?.[1];
  if(!token) return json({error:'unauthorized'},401);
- if(!env.RUNYOUR_API_KEY||!env.OPENAI_API_KEY||!env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) return json({error:'unavailable'},503);
+ if(!env.RUNYOUR_API_KEY||!env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) return json({error:'unavailable'},503);
  const client=deps.client??createClient(env.NEXT_PUBLIC_SUPABASE_URL!,env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,{
   auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},
  });
@@ -30,7 +30,7 @@ export async function handleConversationWorker(request:Request,env:Env,deps:Work
   if(!job) return json({processed:false},200);
   claimed=true;
   const signal=AbortSignal.timeout(45000);
-  const config:MemoryConfig={openaiKey:env.OPENAI_API_KEY,summaryKey:env.RUNYOUR_API_KEY,
+  const config:MemoryConfig={summaryKey:env.RUNYOUR_API_KEY,
    summaryBaseUrl:env.RUNYOUR_BASE_URL,summaryModel:env.MEMORY_SUMMARY_MODEL,
    fetch:memoryRetryFetch(deps.fetch)};
   const summary=await summarizeConversation(job.messages,config,signal,job.context);

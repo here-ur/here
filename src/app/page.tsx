@@ -103,6 +103,8 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const history = useConversationHistory(userId, messages);
+  const restoredHistoryRef = useRef<HistoryMessage[]>([]);
+  useEffect(() => { restoredHistoryRef.current = history.messages; }, [history.messages]);
   const [status, setStatus] = useState<Status>("idle");
   const [crisis, setCrisis] = useState(false);
   const [suggest, setSuggest] = useState(false);
@@ -271,7 +273,8 @@ function Home({ userId, signOut, startEmpty, afterConsent, replay = false, onRes
           const saved = await loadRecentChatHistory(token, controller.signal);
           if (signal.aborted) return;
           // Read the ref after loading: new queued messages/replies may arrive in the meantime.
-          const context = queuedChatContext(mergeChatHistory(saved, messagesRef.current), batch);
+          const local = mergeChatHistory(restoredHistoryRef.current, messagesRef.current);
+          const context = queuedChatContext(mergeChatHistory(saved, local), batch);
           const assistantId = crypto.randomUUID();
           const result = await requestChat(context, { name: profile?.companion ?? DEFAULT_COMPANION, nickname: profile?.nickname, style: profile?.style }, controller.signal, token,
             { batchId: crypto.randomUUID(), userMessageId: last.id, assistantMessageId: assistantId, userAt: last.at, assistantAt: Math.max(Date.now(), last.at + 1) });

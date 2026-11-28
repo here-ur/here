@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   const quotaError = await requireApiQuota(access.supabase, "voice_memory");
   if (quotaError) return quotaError;
   const memory = createMemoryService(supabaseMemoryStore(access.supabase), {
-    openaiKey: process.env.OPENAI_API_KEY || "", summaryKey: process.env.RUNYOUR_API_KEY || "",
+    summaryKey: process.env.RUNYOUR_API_KEY || "",
     summaryBaseUrl: process.env.RUNYOUR_BASE_URL, summaryModel: process.env.MEMORY_SUMMARY_MODEL,
   });
   return voiceMemoryResponse(request, {

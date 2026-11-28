@@ -85,5 +85,5 @@ export function createConversationContext(store: ContextStore, config: MemoryCon
 }
 
 export function contextConfig(env: Record<string, string | undefined>): MemoryConfig {
-  return { openaiKey: env.OPENAI_API_KEY || '', summaryKey: env.RUNYOUR_API_KEY || '', summaryBaseUrl: env.RUNYOUR_BASE_URL, summaryModel: env.MEMORY_SUMMARY_MODEL };
+  return { summaryKey: env.RUNYOUR_API_KEY || '', summaryBaseUrl: env.RUNYOUR_BASE_URL, summaryModel: env.MEMORY_SUMMARY_MODEL };
 }

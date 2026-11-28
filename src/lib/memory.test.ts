@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createMemoryService, embed, EMBEDDING_MODEL, memoryEnabled, memoryKey, parseMemoryFacts, summarize, type MemoryConfig, type MemoryStore } from "./memory.ts";
+import { createMemoryService, embed, EMBEDDING_MODEL, EMBEDDING_REQUEST_MODEL, memoryEnabled, memoryKey, parseMemoryFacts, summarize, type MemoryConfig, type MemoryStore } from "./memory.ts";
 import { MEMORY_CONSENT_VERSION, validMemoryConsent } from "./memory-consent.ts";
 
 const vector = Array.from({ length: 1536 }, (_, i) => i === 0 ? 1 : 0);
@@ -8,7 +8,7 @@ const embedding = () => ({ model: EMBEDDING_MODEL, data: [{ index: 0, embedding:
 const summary = (facts = [{ text: "사용자는 차를 좋아한다고 말했다.", evidence: "차를 좋아해" }]) => ({ status: "completed", output: [{ type: "message", role: "assistant", content: [{ type: "output_text", text: JSON.stringify({ facts }) }] }] });
 function provider(results: unknown[]) {
   const calls: { url: string; body: Record<string, unknown>; auth: string | null }[] = [];
-  const config: MemoryConfig = { openaiKey: "test-embedding", summaryKey: "test-summary", fetch: async (url, init) => {
+  const config: MemoryConfig = { summaryKey: "test-summary", fetch: async (url, init) => {
     calls.push({ url: String(url), body: JSON.parse(String(init?.body)), auth: new Headers(init?.headers).get("Authorization") });
     const result = results.shift();
     assert.notEqual(result, undefined);
@@ -39,12 +39,26 @@ test("현재 버전의 두 필수 동의를 모두 명시해야 한다", () => {
   for (const body of [null, {}, { version: MEMORY_CONSENT_VERSION, privacy: true }, { version: "old", privacy: true, sensitive: true }, { version: MEMORY_CONSENT_VERSION, privacy: "true", sensitive: true }]) assert.equal(validMemoryConsent(body), false);
   assert.equal(validMemoryConsent({ version: MEMORY_CONSENT_VERSION, privacy: true, sensitive: true }), true);
 });
-test("large 1536차원·float 형식으로 임베딩하고 별도 키를 쓴다", async () => {
+test("Runyour 키로 large 1536차원·float 임베딩을 요청하고 기존 저장 모델명을 유지한다", async () => {
   const { config, calls } = provider([embedding()]);
   assert.deepEqual(await embed("차 취향", config, AbortSignal.timeout(1000)), vector);
-  assert.equal(calls[0].url, "https://api.openai.com/v1/embeddings");
-  assert.deepEqual(calls[0].body, { input: "차 취향", model: EMBEDDING_MODEL, dimensions: 1536, encoding_format: "float" });
-  assert.equal(calls[0].auth, "Bearer test-embedding");
+  assert.equal(calls[0].url, "https://api.runyour.ai/v1/embeddings");
+  assert.deepEqual(calls[0].body, { input: "차 취향", model: "openai/text-embedding-3-large", dimensions: 1536, encoding_format: "float" });
+  assert.equal(calls[0].auth, "Bearer test-summary");
+  assert.equal(EMBEDDING_MODEL, "text-embedding-3-large");
+});
+test("Runyour base URL을 적용하고 동일 모델의 접두사 응답도 허용한다", async () => {
+  const { config, calls } = provider([{ ...embedding(), model: EMBEDDING_REQUEST_MODEL }]);
+  assert.deepEqual(await embed("차", { ...config, summaryBaseUrl: "https://gateway.example/v1/" }, AbortSignal.timeout(1000)), vector);
+  assert.equal(calls[0].url, "https://gateway.example/v1/embeddings");
+});
+test("Runyour 키 누락이나 안전하지 않은 주소는 외부 호출 전에 거절한다", async () => {
+  const { config, calls } = provider([]);
+  await assert.rejects(embed("차", { ...config, summaryKey: "" }, AbortSignal.timeout(1000)));
+  for (const summaryBaseUrl of ["http://gateway.example/v1", "https://user:pass@gateway.example/v1", "https://gateway.example/v1?key=secret", "https://gateway.example/v1#fragment"]) {
+    await assert.rejects(embed("차", { ...config, summaryBaseUrl }, AbortSignal.timeout(1000)));
+  }
+  assert.equal(calls.length, 0);
 });
 test("잘못된 모델·차원·벡터, 과한 응답과 제공자 오류를 거절한다", async () => {
   for (const response of [{ ...embedding(), model: "other" }, { data: [] }, { ...embedding(), data: [{ embedding: [1, 2] }] }, { ...embedding(), data: [{ embedding: Array(1536).fill(0) }] }, new Response("private-token-details", { status: 401 }), new Response("x".repeat(128 * 1024 + 1))]) {
