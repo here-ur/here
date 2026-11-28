@@ -15,6 +15,31 @@ export function authCookieOptions(https: boolean) {
   return { path: "/", sameSite: "lax" as const, secure: https };
 }
 
+/** UT 전용 브랜치: 아이폰 사파리는 다른 사이트 안(iframe)의 쿠키를 분할 쿠키까지 모두 막는다.
+ * 그래서 운영이 아닌 빌드가 iframe 안에서 열리면 로그인 쿠키를 이 사이트의 localStorage에 대신 둔다(저장이 막히면 탭 메모리). */
+const UT_FRAME_COOKIE_KEY = "here-ut-frame-auth-cookies";
+const frameCookieMemory: Record<string, string> = {};
+
+function inThirdPartyFrame(): boolean {
+  try { return window.self !== window.top; } catch { return true; }
+}
+
+function frameCookieJar(): Record<string, string> {
+  try { return { ...JSON.parse(window.localStorage.getItem(UT_FRAME_COOKIE_KEY) ?? "{}"), ...frameCookieMemory }; } catch { return { ...frameCookieMemory }; }
+}
+
+const frameCookies = {
+  getAll: () => Object.entries(frameCookieJar()).map(([name, value]) => ({ name, value })),
+  setAll: (cookies: { name: string; value: string; options?: { maxAge?: number } }[]) => {
+    const jar = frameCookieJar();
+    for (const { name, value, options } of cookies) {
+      if (!value || options?.maxAge === 0) { delete jar[name]; delete frameCookieMemory[name]; }
+      else { jar[name] = value; frameCookieMemory[name] = value; }
+    }
+    try { window.localStorage.setItem(UT_FRAME_COOKIE_KEY, JSON.stringify(jar)); } catch { /* Memory fallback. */ }
+  },
+};
+
 export function isSupabaseConfigured(): boolean {
   return Boolean(url && key);
 }
@@ -26,6 +51,7 @@ export function browserSupabase(): SupabaseClient | null {
     try { migrateAuthCookie(url, document, window.localStorage, location.protocol === "https:"); } catch { /* Storage may be blocked. */ }
   }
   browserClient ??= createBrowserClient(url, key, {
+    ...(process.env.HERE_DEPLOY_ENV !== "production" && inThirdPartyFrame() ? { cookies: frameCookies } : {}),
     cookieOptions: authCookieOptions(location.protocol === "https:"),
     auth: { detectSessionInUrl: false },
   });
