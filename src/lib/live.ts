@@ -327,7 +327,7 @@ export async function connectLive(
     const exchange = fetch("/api/live", {
       method: "POST", credentials: "same-origin", cache: "no-store",
       headers: { "Content-Type": "application/json", ...(callId ? { "x-here-voice-call": callId } : {}), ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
-      body: JSON.stringify({ sdp: peer.localDescription?.sdp, dcid: 4, callId }),
+      body: JSON.stringify({ sdp: peer.localDescription?.sdp, dcid: 4, callId, meteringVersion: 2 }),
       signal: AbortSignal.any([controller.signal, AbortSignal.timeout(25_000)]),
     });
     // Starting Web Audio can block the main thread on the first call. Do that
@@ -347,6 +347,27 @@ export async function connectLive(
     startTimer = setTimeout(() => fail(CONNECTION_ERROR), 20_000);
     await peer.setRemoteDescription({ type: "answer", sdp: result.sdp });
     await ready;
+    if (result.awaitingStart === true) {
+      const statusSignal = AbortSignal.any([controller.signal, AbortSignal.timeout(8000)]);
+      while (true) {
+        statusSignal.throwIfAborted();
+        const observedAt = performance.now();
+        const statusResponse = await fetch(`/api/live/status?callId=${encodeURIComponent(callId)}`, {
+          headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store', signal: statusSignal,
+        });
+        if (!statusResponse.ok) throw new Error(CONNECTION_ERROR);
+        const state = await statusResponse.json();
+        if (state.closed || typeof state.started !== 'boolean') throw new Error(CONNECTION_ERROR);
+        if (state.started) {
+          if (![state.deadline_at, state.server_now].every(n => typeof n === 'number' && Number.isFinite(n))) throw new Error(CONNECTION_ERROR);
+          clearTimeout(deadlineTimer);
+          const remainingMs = Math.max(0, (state.deadline_at - state.server_now) * 1000 - (performance.now() - observedAt));
+          deadlineTimer = setTimeout(() => { h.onStatus('idle'); h.onError('음성 대화 이용 시간이 끝났어요. 글 대화로 이어갈 수 있어요.'); close(); }, remainingMs);
+          break;
+        }
+        await new Promise<void>(resolve => setTimeout(resolve, 200));
+      }
+    }
     return {
       get hasMic() { return Boolean(mic); }, get microphoneError() { return microphoneError; },
       // Text conversations use /api/chat. Live accepts context, not Realtime conversation.item.create.

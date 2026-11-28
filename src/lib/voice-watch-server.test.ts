@@ -115,3 +115,25 @@ test('deferred worker acknowledges before holding the socket and still commits o
  const pending=work();socket.open();await flush();socket.closed();await pending;
  assert.ok(db.calls.some(c=>c.name==='confirm_voice_watch_closed'));
 });
+
+
+test('startup event starts the metered deadline; HTTP/socket connection alone never starts usage', async t => {
+ t.mock.timers.enable({apis:['setTimeout','setInterval']});
+ const socket=new Socket();const db=rpcFixture({confirm_voice_started:{server_now:1008,deadline_at:1308,close_requested:false}});
+ const result=watchVoiceLease({...job,awaiting_start:true,deadline_at:1020},token,socket,db.rpc);
+ socket.open();await flush();t.mock.timers.tick(8000);await flush();
+ assert.equal(db.calls.some(c=>c.name==='confirm_voice_started'),false);
+ socket.emit('message',JSON.stringify({type:'session.started'}));await flush();
+ assert.equal(db.calls.filter(c=>c.name==='confirm_voice_started').length,1);
+ socket.emit('message',JSON.stringify({type:'session.started'}));await flush();
+ assert.equal(db.calls.filter(c=>c.name==='confirm_voice_started').length,1);
+ t.mock.timers.tick(12000);await flush();assert.equal(socket.sent.length,0,'the setup deadline was replaced after actual start');
+ socket.closed();assert.equal(await result,'closed');
+});
+
+test('missing startup closes at setup deadline without granting 5 minutes', async t => {
+ t.mock.timers.enable({apis:['setTimeout','setInterval']});const socket=new Socket(),db=rpcFixture();
+ const result=watchVoiceLease({...job,awaiting_start:true,deadline_at:1020},token,socket,db.rpc);
+ socket.open();await flush();t.mock.timers.tick(20000);await flush();assert.equal(socket.sent[0],'session.close');
+ assert.equal(db.calls.some(c=>c.name==='confirm_voice_started'),false);socket.closed();assert.equal(await result,'closed');
+});

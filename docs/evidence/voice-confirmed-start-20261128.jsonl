@@ -1,0 +1,6 @@
+{"type":"metered_app_connected","boundCallId":true,"hasDeadline":true}
+{"type":"peer_session_started"}
+{"type":"server_start_status","httpStatus":200,"started":true,"closed":false,"remainingSeconds":298.7236530780792}
+{"type":"manual_close_api","status":200}
+{"type":"peer_session_closed"}
+{"result":"provider_closed"}

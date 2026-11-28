@@ -33,7 +33,7 @@ export async function createMeteredVoice(client: SupabaseClient, env: Record<str
   close?: typeof closeProviderSession;
   callId?: string;
   cancelled?: () => boolean;
-} = {}): Promise<{ id: string; sdp: string; callId: string; deadlineAt: number } | Response> {
+} = {}): Promise<{ id: string; sdp: string; callId: string; deadlineAt: number; awaitingStart: true } | Response> {
   if (env.VOICE_QUOTA_ENABLED !== 'true' || !/^[a-f0-9]{64}$/.test(env.VOICE_CONTROL_SECRET ?? '') || !env.OPENAI_API_KEY) return voiceQuotaUnavailable();
   const id = deps.callId ?? randomUUID(), token = randomBytes(32).toString('hex');
   let providerId: string | undefined, activated = false, begun = false;
@@ -59,7 +59,7 @@ export async function createMeteredVoice(client: SupabaseClient, env: Record<str
     if (!providerId || typeof result.transport?.sdp !== 'string' || !result.transport.sdp.startsWith('v=0')) throw Error('invalid_provider_response');
     let active: { deadline_at: number; close_requested: boolean } | null = null;
     for (let attempt = 0; attempt < 2; attempt++) {
-      try { active = await rpc(client, 'activate_voice_usage', { p_id: id, p_token: token, p_provider_id: providerId, p_started_at: stamp }); if (active) break; } catch { /* idempotent retry */ }
+      try { active = await rpc(client, 'prepare_voice_usage', { p_id: id, p_token: token, p_provider_id: providerId }); if (active) break; } catch { /* idempotent retry */ }
     }
     activated = Boolean(active);
     if (!active || !Number.isFinite(active.deadline_at) || active.close_requested || deps.cancelled?.()) throw Error('voice_activation_failed');
@@ -69,7 +69,7 @@ export async function createMeteredVoice(client: SupabaseClient, env: Record<str
     const until = performance.now() + 8000;
     do {
       if (deps.cancelled?.()) throw Error('call_cancelled');
-      if (await rpc(client, 'voice_watch_ready', { p_id: id, p_token: token }) === true) return { id: providerId, sdp: result.transport.sdp, callId: id, deadlineAt: active.deadline_at };
+      if (await rpc(client, 'voice_watch_ready', { p_id: id, p_token: token }) === true) return { id: providerId, sdp: result.transport.sdp, callId: id, deadlineAt: active.deadline_at, awaitingStart: true };
       await sleep(250);
     } while (performance.now() < until);
     throw Error('watch_not_ready');

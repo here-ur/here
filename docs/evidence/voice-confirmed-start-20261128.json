@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-28",
+  "scenario": "actual provider startup confirmation with synthetic silence; manual close",
+  "state": "closed",
+  "counted_seconds": 8.566121,
+  "start_confirmed": true,
+  "deadline_seconds": 300,
+  "provider_reported_seconds": 15,
+  "excluded_preparation_seconds": 4.299119
+}

@@ -32,7 +32,7 @@ try {
   await peer.setLocalDescription(await peer.createOffer());
   const response = await fetch(application ? appUrl + '/api/live' : 'http://127.0.0.1:3003/session', {
     method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:3003', ...(application ? {Authorization: `Bearer ${fixture.accessToken}`, 'x-vercel-protection-bypass': fixture.bypass} : {}) },
-    body: JSON.stringify({ sdp: peer.localDescription.sdp, dcid: 4, callId }), signal: AbortSignal.timeout(25_000),
+    body: JSON.stringify({ sdp: peer.localDescription.sdp, dcid: 4, callId, meteringVersion: 2 }), signal: AbortSignal.timeout(25_000),
   });
   const result = await response.json();
   if (!response.ok) { console.log(JSON.stringify({ type: 'probe_rejected', status: response.status, code: typeof result.code === 'string' ? result.code : 'unknown' })); finish('creation_failed'); }
@@ -40,6 +40,9 @@ try {
     await peer.setRemoteDescription({ type: 'answer', sdp: result.sdp });
     if(application) {
       console.log(JSON.stringify({type:'metered_app_connected',boundCallId:result.callId===callId,hasDeadline:Number.isFinite(result.deadlineAt)}));
+      const statusResponse=await fetch(appUrl+'/api/live/status?callId='+encodeURIComponent(callId),{headers:{Authorization:`Bearer ${fixture.accessToken}`,'x-vercel-protection-bypass':fixture.bypass},signal:AbortSignal.timeout(5000)});
+      const observed=await statusResponse.json();
+      console.log(JSON.stringify({type:'server_start_status',httpStatus:statusResponse.status,started:observed.started,closed:observed.closed,remainingSeconds:typeof observed.deadline_at==='number'?observed.deadline_at-observed.server_now:null}));
       setTimeout(async()=>{
         const stop=await fetch(appUrl+'/api/live/close',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${fixture.accessToken}`,'x-vercel-protection-bypass':fixture.bypass},body:JSON.stringify({callId})});
         console.log(JSON.stringify({type:'manual_close_api',status:stop.status}));
